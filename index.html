@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON GRAVITY: TIME PARADOX</title>
+    <title>NEON GRAVITY: CORRECTED</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
     <style>
         body { 
@@ -72,10 +72,11 @@
             width: 50px; height: 50px; border-radius: 50%; background: rgba(255, 255, 255, 0.5); 
             position: absolute; transform: translate(0, 0); transition: transform 0.05s;
         }
-        /* Mobile Touch Area for Bomb */
-        #bomb-touch-area {
-            position: absolute; top: 0; left: 0; width: 100%; height: 60%; /* Top 60% */
-            z-index: 55; pointer-events: auto;
+        
+        /* Guide Text for Mobile */
+        #mobile-hint {
+            position: absolute; top: 20%; width: 100%; text-align: center; color: rgba(255,255,255,0.3);
+            font-size: 14px; pointer-events: none; display: none;
         }
 
         @keyframes blink { 50% { opacity: 0.5; } }
@@ -100,11 +101,13 @@
     <div id="progress-bar"><div id="progress-fill"></div></div>
 </div>
 
+<div id="mobile-hint">TAP UPPER SCREEN TO BOMB</div>
+
 <div id="overlay">
-    <h1 style="color:#0ff; font-size:40px; margin-bottom:40px; text-shadow:0 0 20px #0ff; text-align:center;">NEON GRAVITY<br><span style="font-size:20px;color:#fff;">TIME PARADOX</span></h1>
+    <h1 style="color:#0ff; font-size:40px; margin-bottom:40px; text-shadow:0 0 20px #0ff; text-align:center;">NEON GRAVITY<br><span style="font-size:20px;color:#fff;">CORRECTED</span></h1>
     <div class="menu-btn" id="btn-start">START GAME</div>
     <div class="menu-btn" id="btn-ost">SOUNDTRACK</div>
-    <div style="font-size:12px;color:#888;margin-top:20px;">MOBILE: Tap Top Area to Bomb<br>PC: [Z] Key to Bomb</div>
+    <div style="margin-top:20px; font-size:12px; color:#888;">PC: [ARROWS] Move [SPACE] Shoot [Z] Bomb<br>MOBILE: Sticks to Move/Aim, Tap Top to Bomb</div>
 </div>
 
 <div id="ost-ui">
@@ -114,7 +117,6 @@
 </div>
 
 <div id="controls">
-    <div id="bomb-touch-area"></div>
     <div id="stick-left" class="joystick-area"><div class="knob" id="knob-left"></div></div>
     <div id="stick-right" class="joystick-area"><div class="knob" id="knob-right"></div></div>
 </div>
@@ -137,10 +139,10 @@ const ui = {
     controls: document.getElementById('controls'), score: document.getElementById('score-display'),
     stage: document.getElementById('stage-num'), wLv: document.getElementById('w-lv'),
     shieldBar: document.getElementById('shield-bar'), msg: document.getElementById('stage-msg'),
-    warn: document.getElementById('warning-msg'),
+    warn: document.getElementById('warning-msg'), hint: document.getElementById('mobile-hint'),
     knobL: document.getElementById('knob-left'), knobR: document.getElementById('knob-right'),
     stickL: document.getElementById('stick-left'), stickR: document.getElementById('stick-right'),
-    prog: document.getElementById('progress-fill'), bombArea: document.getElementById('bomb-touch-area')
+    prog: document.getElementById('progress-fill')
 };
 
 // --- Game State ---
@@ -251,18 +253,23 @@ function resize() {
         gameRect = { x: 0, y: 0, w: width, h: height * 0.75 };
         ui.stickL.style.left = '40px'; ui.stickL.style.bottom = '50px'; ui.stickL.style.right = 'auto';
         ui.stickR.style.right = '40px'; ui.stickR.style.bottom = '50px'; ui.stickR.style.left = 'auto';
+        ui.hint.style.display = 'block';
     } else {
         const margin = 160; 
         gameRect = { x: margin, y: 0, w: width - (margin*2), h: height };
         ui.stickL.style.left = '20px'; ui.stickL.style.bottom = '40px';
         ui.stickR.style.right = '20px'; ui.stickR.style.bottom = '40px';
+        ui.hint.style.display = 'none';
     }
     initGrid();
 }
 
 function initGrid() {
-    const cols = Math.ceil(width/GRID_SPACING)+2;
-    const rows = Math.ceil(height/GRID_SPACING)+2;
+    const gW = Math.max(width, gameRect.w || width);
+    const gH = Math.max(height, gameRect.h || height);
+    const cols = Math.ceil(gW/GRID_SPACING)+2;
+    const rows = Math.ceil(gH/GRID_SPACING)+2;
+    
     gridPoints = [];
     for(let x=0; x<=cols; x++) {
         gridPoints[x]=[];
@@ -317,10 +324,11 @@ function startStage() {
 }
 
 function spawnWormhole() {
+    // 寿命: 400フレーム (約6.6秒)
     wormholes.push({ 
         x: gameRect.x + 50 + Math.random()*(gameRect.w - 100), 
         y: gameRect.y + 50 + Math.random()*(gameRect.h - 100), 
-        life: 400, // 6.5s
+        life: 400, 
         maxLife: 400,
         active: true 
     });
@@ -340,7 +348,7 @@ function update() {
         player.x=gameRect.x+gameRect.w/2; player.y=gameRect.y+gameRect.h/2; player.vx=0; player.vy=0; 
     }
 
-    // Controls - Instant (No Inertia)
+    // Controls
     let mx = input.keys['ArrowLeft']?-1:input.keys['ArrowRight']?1:input.move.x;
     let my = input.keys['ArrowUp']?-1:input.keys['ArrowDown']?1:input.move.y;
     
@@ -362,32 +370,35 @@ function update() {
     if((input.aim.active || input.keys['Space'] || input.keys['KeyZ']) && frame % 10 === 0) fire();
 
     // Wormholes Logic (Spawn -> Emit -> Vanish)
-    // New Wormhole check
-    if (spawnedCount < enemiesToSpawn && wormholes.filter(w=>w.active).length < 2 && Math.random() < 0.02) {
+    // New Wormhole check (ワームホールが減ってきたら追加)
+    if (spawnedCount < enemiesToSpawn && wormholes.filter(w=>w.active).length < (1+Math.floor(stage/2)) && Math.random() < 0.01) {
         spawnWormhole();
     }
 
     wormholes.forEach((w) => {
-        if(!w.active) return;
-        w.life--; 
-        // Spawn Enemy Periodically
-        if (w.life > 60 && w.life % 60 === 0 && spawnedCount < enemiesToSpawn) {
-            spawnEnemy(w.x, w.y);
-            spawnedCount++;
-            distortGrid(w.x, w.y, 10, 80);
+        w.life--; // バグ修正: 常に減らす
+        
+        if (w.active) {
+            // Spawn Enemy Periodically
+            if (w.life > 60 && w.life % 60 === 0 && spawnedCount < enemiesToSpawn) {
+                spawnEnemy(w.x, w.y);
+                spawnedCount++;
+                distortGrid(w.x, w.y, 10, 80);
+            }
+            // Repulsion
+            const dx = player.x - w.x; const dy = player.y - w.y;
+            const d = Math.hypot(dx, dy) || 0.01;
+            if (d < 180) { 
+                const f = 500 / (d + 1);
+                player.x += (dx/d) * f * 0.01; player.y += (dy/d) * f * 0.01;
+            }
         }
-        // Vanish
-        if (w.life <= 0) w.active = false;
 
-        // Repulsion
-        const dx = player.x - w.x; const dy = player.y - w.y;
-        const d = Math.hypot(dx, dy) || 0.01;
-        if (d < 180) { 
-            const f = 500 / (d + 1);
-            player.x += (dx/d) * f * 0.01; player.y += (dy/d) * f * 0.01;
-        }
+        // 自然消滅
+        if (w.life <= 0) w.active = false;
     });
-    wormholes = wormholes.filter(w => w.life > -30);
+    // フェードアウト用に少し残す
+    wormholes = wormholes.filter(w => w.life > -60);
 
     // Satellites
     player.satellites.forEach((s,i) => {
@@ -401,10 +412,12 @@ function update() {
     updateGrid();
     updateScorePopups();
     
-    const progress = Math.min(100, (spawnedCount / enemiesToSpawn) * 100);
+    // Progress based on Kill Count
+    const progress = Math.min(100, (killCount / enemiesToSpawn) * 100);
     ui.prog.style.width = `${progress}%`;
 
-    // Clear Condition
+    // Clear Condition: Kill all enemies
+    // ワームホールは無視、出現数が出尽くして、かつ敵が全滅したらクリア
     if(spawnedCount >= enemiesToSpawn && enemies.length === 0 && !isStageClear) {
         isStageClear = true; ui.msg.style.display = 'block';
         AudioSys.playBGM('clear');
@@ -430,8 +443,8 @@ function spawnEnemy(x, y) {
     const spd = SPEED_SCALE;
     const ox = (Math.random()-0.5)*30; const oy = (Math.random()-0.5)*30;
     
-    if (r < 0.1) { 
-        let e = {x:x+ox, y:y+oy, vx:0, vy:0, hp:8, speed:1.75*spd, color:'#f00', type:'dragon', angle:0, segments:[], drop:'invincible', scale:0.9, fireTimer:0};
+    if (r < 0.1) { // Dragon (Slower speed)
+        let e = {x:x+ox, y:y+oy, vx:0, vy:0, hp:8, speed:1.5*spd, color:'#f00', type:'dragon', angle:0, segments:[], drop:'invincible', scale:0.9, fireTimer:0};
         for(let i=0; i<16; i++) e.segments.push({x:x+ox, y:y+oy, angle:0});
         enemies.push(e);
     } else {
@@ -463,6 +476,7 @@ function updateEntities() {
         e.vx += (dx/d)*speedMult*SPEED_SCALE; e.vy += (dy/d)*speedMult*SPEED_SCALE;
         e.x+=e.vx + Math.cos(e.angle)*e.speed; e.y+=e.vy + Math.sin(e.angle)*e.speed;
         
+        // Bounce within gameRect
         if(e.x < gameRect.x + WALL_MARGIN || e.x > gameRect.x + gameRect.w - WALL_MARGIN) e.vx *= -1.2;
         if(e.y < gameRect.y + WALL_MARGIN || e.y > gameRect.y + gameRect.h - WALL_MARGIN) e.vy *= -1.2;
         e.x = Math.max(gameRect.x+WALL_MARGIN, Math.min(gameRect.x+gameRect.w-WALL_MARGIN, e.x));
@@ -527,10 +541,9 @@ function updateEntities() {
     });
     missiles = missiles.filter(m => m.life>0);
 
-    // Particle Firework Physics
     particles.forEach(p => { 
         p.x+=p.vx; p.y+=p.vy; 
-        p.vx *= 0.92; p.vy *= 0.92; p.vy += 0.005; // weak gravity
+        p.vx *= 0.92; p.vy *= 0.92; p.vy += 0.005; 
         p.life-=0.02; 
     });
     particles = particles.filter(p => p.life>0);
@@ -603,14 +616,17 @@ function draw() {
 
     ctx.strokeStyle='#0ff'; ctx.lineWidth=3; ctx.strokeRect(gameRect.x+2, gameRect.y+2, gameRect.w-4, gameRect.h-4);
 
-    wormholes.forEach(w => { if(w.active || w.life > -30){ 
-        const alpha = w.life < 0 ? (30+w.life)/30 : (w.life > 280 ? (300-w.life)/20 : 1);
-        ctx.globalAlpha = Math.max(0, alpha);
-        ctx.save(); ctx.shadowBlur=20; ctx.shadowColor='#fff'; 
-        ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(w.x, w.y, 15+Math.sin(frame*0.2)*5, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(w.x, w.y, 30+Math.sin(frame*0.1)*10, 0, Math.PI*2); ctx.stroke();
+    wormholes.forEach(w => { if(w.active || w.life > -60){ 
+        // Fade logic fixed
+        let scale = 1;
+        if (w.life > 300) scale = (400-w.life)/100; // In (Faster)
+        else if (w.life <= 0) scale = Math.max(0, (60+w.life)/60); // Out (Fade)
+
+        ctx.save(); ctx.translate(w.x, w.y); ctx.scale(scale, scale);
+        ctx.shadowBlur=20; ctx.shadowColor='#fff'; 
+        ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0, 0, 15+Math.sin(frame*0.2)*5, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(0, 0, 30+Math.sin(frame*0.1)*10, 0, Math.PI*2); ctx.stroke();
         ctx.restore();
-        ctx.globalAlpha = 1.0;
     }});
     
     enemies.forEach(e => {
