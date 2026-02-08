@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON GRAVITY: CORRECTED</title>
+    <title>NEON GRAVITY: GLOW & DRAGONS</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
     <style>
         body { 
@@ -21,19 +21,29 @@
             display: flex; flex-direction: column; padding: 10px; box-sizing: border-box;
         }
         .hud-row { display: flex; justify-content: space-between; width: 100%; max-width: 800px; margin: 0 auto; }
-        #score-display { font-size: 24px; color: #0ff; text-shadow: 0 0 10px #0ff; }
         
-        #shield-wrapper { width: 140px; text-align: right; pointer-events: auto; }
-        #shield-container { width: 100%; height: 8px; border: 1px solid #0ff; background: rgba(0,20,40,0.8); margin-top: 5px; }
+        #score-display { font-size: 24px; color: #0ff; text-shadow: 0 0 10px #0ff; }
+        .sub-text { font-size: 12px; color: #aaa; font-weight: bold; }
+
+        #gauge-box { width: 160px; text-align: right; pointer-events: auto; }
+        .bar-label { font-size: 10px; color: #0ff; display: block; margin-bottom: 2px; }
+        .bar-frame { width: 100%; height: 8px; border: 1px solid #0ff; background: rgba(0,20,40,0.8); margin-bottom: 5px; }
         #shield-bar { width: 100%; height: 100%; background: #0ff; transition: width 0.1s; }
         .shield-critical { animation: blink 0.2s infinite; background: #f00 !important; }
+        
+        .bar-label.enemy { color: #f00; }
+        .bar-frame.enemy { border-color: #f00; background: rgba(40,0,0,0.8); }
+        #enemy-bar { width: 100%; height: 100%; background: #f00; transition: width 0.5s; }
 
-        #progress-bar {
-            position: absolute; bottom: 10px; left: 10%; width: 80%; height: 4px; background: #333;
+        #warning-msg {
+            display: none; position: absolute; top: 20%; width: 100%; text-align: center;
+            color: #f00; font-size: 24px; animation: blink 0.2s infinite;
         }
-        #progress-fill { height: 100%; width: 0%; background: #f0f; box-shadow: 0 0 5px #f0f; transition: width 0.5s; }
+        #stage-msg {
+            display: none; position: absolute; top: 35%; width: 100%; text-align: center;
+            color: #fff; font-size: 40px; text-shadow: 0 0 20px #0ff;
+        }
 
-        /* Overlay */
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85);
@@ -48,7 +58,6 @@
         }
         .menu-btn:active { background: #0ff; color: #000; transform: scale(0.95); }
 
-        /* OST */
         #ost-ui {
             display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; z-index: 110; flex-direction: column; align-items: center; justify-content: center;
@@ -57,7 +66,6 @@
         .track-item { padding: 20px; width: 80%; border-bottom: 1px solid #333; color: #888; text-align: center; font-size: 18px; }
         .track-item.playing { color: #0ff; border-color: #0ff; }
 
-        /* Controls */
         #controls {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 50; display: none; touch-action: none; pointer-events: auto;
@@ -72,12 +80,14 @@
             width: 50px; height: 50px; border-radius: 50%; background: rgba(255, 255, 255, 0.5); 
             position: absolute; transform: translate(0, 0); transition: transform 0.05s;
         }
-        
-        /* Guide Text for Mobile */
-        #mobile-hint {
-            position: absolute; top: 20%; width: 100%; text-align: center; color: rgba(255,255,255,0.3);
-            font-size: 14px; pointer-events: none; display: none;
+        #launch-btn {
+            position: absolute; 
+            width: 60px; height: 60px; border-radius: 50%; 
+            background: rgba(255, 255, 0, 0.15); border: 2px solid #ff0;
+            color: #ff0; font-weight: bold; display: flex; justify-content: center; align-items: center;
+            font-size: 10px; box-shadow: 0 0 10px #ff0; pointer-events: auto;
         }
+        #launch-btn:active { background: #ff0; color: #000; transform: scale(0.9); }
 
         @keyframes blink { 50% { opacity: 0.5; } }
     </style>
@@ -86,28 +96,27 @@
 
 <div id="ui">
     <div class="hud-row">
-        <div>
+        <div id="info-box">
             <div id="score-display">000000</div>
-            <div style="font-size:12px; color:#aaa;">STAGE: <span id="stage-num">1</span></div>
-            <div style="font-size:12px; color:#aaa;">WEAPON: <span id="w-lv">1</span></div>
+            <div class="sub-text">STAGE: <span id="stage-num">1</span></div>
+            <div class="sub-text">WEAPON: <span id="w-lv">1</span></div>
         </div>
-        <div id="shield-wrapper">
-            <span style="font-size:10px; color:#0ff;">SHIELD</span>
-            <div id="shield-container"><div id="shield-bar"></div></div>
+        <div id="gauge-box">
+            <span class="bar-label">SHIELD</span>
+            <div class="bar-frame"><div id="shield-bar"></div></div>
+            <span class="bar-label enemy">ENEMY SWARM</span>
+            <div class="bar-frame enemy"><div id="enemy-bar"></div></div>
         </div>
     </div>
-    <div id="warning-msg" style="display:none; color:#f00; width:100%; text-align:center; margin-top:20%; font-size:20px; animation:blink 0.2s infinite;">GRAVITY CRITICAL</div>
-    <div id="stage-msg" style="display:none; color:#fff; width:100%; text-align:center; margin-top:30%; font-size:40px; text-shadow:0 0 20px #0ff;">STAGE CLEAR</div>
-    <div id="progress-bar"><div id="progress-fill"></div></div>
+    <div id="warning-msg">GRAVITY CRITICAL</div>
+    <div id="stage-msg">STAGE CLEAR</div>
 </div>
 
-<div id="mobile-hint">TAP UPPER SCREEN TO BOMB</div>
-
 <div id="overlay">
-    <h1 style="color:#0ff; font-size:40px; margin-bottom:40px; text-shadow:0 0 20px #0ff; text-align:center;">NEON GRAVITY<br><span style="font-size:20px;color:#fff;">CORRECTED</span></h1>
+    <h1 style="color:#0ff; font-size:40px; margin-bottom:40px; text-shadow:0 0 20px #0ff; text-align:center;">NEON GRAVITY<br><span style="font-size:20px;color:#fff;">GLOW & DRAGONS</span></h1>
     <div class="menu-btn" id="btn-start">START GAME</div>
     <div class="menu-btn" id="btn-ost">SOUNDTRACK</div>
-    <div style="margin-top:20px; font-size:12px; color:#888;">PC: [ARROWS] Move [SPACE] Shoot [Z] Bomb<br>MOBILE: Sticks to Move/Aim, Tap Top to Bomb</div>
+    <div style="font-size:12px;color:#888;margin-top:20px;">PC: [Z] Bomb<br>MOBILE: Small Button to Bomb</div>
 </div>
 
 <div id="ost-ui">
@@ -119,6 +128,7 @@
 <div id="controls">
     <div id="stick-left" class="joystick-area"><div class="knob" id="knob-left"></div></div>
     <div id="stick-right" class="joystick-area"><div class="knob" id="knob-right"></div></div>
+    <div id="launch-btn">BOMB</div>
 </div>
 
 <canvas id="game"></canvas>
@@ -138,8 +148,9 @@ const ui = {
     overlay: document.getElementById('overlay'), ost: document.getElementById('ost-ui'),
     controls: document.getElementById('controls'), score: document.getElementById('score-display'),
     stage: document.getElementById('stage-num'), wLv: document.getElementById('w-lv'),
-    shieldBar: document.getElementById('shield-bar'), msg: document.getElementById('stage-msg'),
-    warn: document.getElementById('warning-msg'), hint: document.getElementById('mobile-hint'),
+    shieldBar: document.getElementById('shield-bar'), enemyBar: document.getElementById('enemy-bar'),
+    msg: document.getElementById('stage-msg'), warn: document.getElementById('warning-msg'),
+    launchBtn: document.getElementById('launch-btn'),
     knobL: document.getElementById('knob-left'), knobR: document.getElementById('knob-right'),
     stickL: document.getElementById('stick-left'), stickR: document.getElementById('stick-right'),
     prog: document.getElementById('progress-fill')
@@ -147,7 +158,8 @@ const ui = {
 
 // --- Game State ---
 let width, height;
-let gameRect = { x: 0, y: 0, w: 0, h: 0 }; 
+let worldSize = 0; 
+let camera = { x: 0, y: 0 };
 
 let gameState = 'TITLE'; 
 let score = 0, frame = 0, stage = 1;
@@ -157,7 +169,7 @@ let killCount = 0;
 const player = { x:0, y:0, vx:0, vy:0, angle:0, satellites:[], shield:100, weaponLevel:1, invuln:0 };
 const input = { move:{x:0,y:0,active:false}, aim:{x:0,y:0,active:false}, keys:{} };
 
-let bullets=[], enemies=[], enemyBullets=[], particles=[], crystals=[], missiles=[], powerups=[], wormholes=[], scorePopups=[], gridPoints=[], rings=[];
+let bullets=[], enemies=[], enemyBullets=[], particles=[], crystals=[], missiles=[], powerups=[], wormholes=[], scorePopups=[], gridPoints=[], rings=[], stars=[];
 
 // --- Audio ---
 const BGM_FILES = {
@@ -248,28 +260,27 @@ function resize() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
     
+    const size = Math.max(width, height) * 1.5;
+    worldSize = size;
+
+    // Controls Layout
     const isPortrait = height > width;
     if (isPortrait) {
-        gameRect = { x: 0, y: 0, w: width, h: height * 0.75 };
         ui.stickL.style.left = '40px'; ui.stickL.style.bottom = '50px'; ui.stickL.style.right = 'auto';
         ui.stickR.style.right = '40px'; ui.stickR.style.bottom = '50px'; ui.stickR.style.left = 'auto';
-        ui.hint.style.display = 'block';
+        ui.launchBtn.style.right = '40px'; ui.launchBtn.style.bottom = '180px'; 
     } else {
-        const margin = 160; 
-        gameRect = { x: margin, y: 0, w: width - (margin*2), h: height };
         ui.stickL.style.left = '20px'; ui.stickL.style.bottom = '40px';
         ui.stickR.style.right = '20px'; ui.stickR.style.bottom = '40px';
-        ui.hint.style.display = 'none';
+        ui.launchBtn.style.right = '20px'; ui.launchBtn.style.bottom = '170px';
     }
     initGrid();
+    initStars();
 }
 
 function initGrid() {
-    const gW = Math.max(width, gameRect.w || width);
-    const gH = Math.max(height, gameRect.h || height);
-    const cols = Math.ceil(gW/GRID_SPACING)+2;
-    const rows = Math.ceil(gH/GRID_SPACING)+2;
-    
+    const cols = Math.ceil(worldSize/GRID_SPACING)+2;
+    const rows = Math.ceil(worldSize/GRID_SPACING)+2;
     gridPoints = [];
     for(let x=0; x<=cols; x++) {
         gridPoints[x]=[];
@@ -277,10 +288,21 @@ function initGrid() {
     }
 }
 
+function initStars() {
+    stars = [];
+    for(let i=0; i<200; i++) {
+        stars.push({
+            x: Math.random() * worldSize, y: Math.random() * worldSize,
+            size: Math.random() * 2, brightness: Math.random(), parallax: 0.2 + Math.random() * 0.3 
+        });
+    }
+}
+
 function init() {
     resize();
     AudioSys.init();
     AudioSys.playBGM('title');
+    player.x = worldSize / 2; player.y = worldSize / 2;
 }
 
 window.addEventListener('resize', resize);
@@ -293,44 +315,40 @@ function startGame() {
     document.getElementById('controls').style.display = 'block'; 
     document.getElementById('stick-left').style.display = 'flex';
     document.getElementById('stick-right').style.display = 'flex';
+    document.getElementById('launch-btn').style.display = 'flex';
     
     score = 0; stage = 1; frame = 0;
     
-    player.x = gameRect.x + gameRect.w/2; 
-    player.y = gameRect.y + gameRect.h/2; 
+    player.x = worldSize/2; 
+    player.y = worldSize/2; 
     player.vx=0; player.vy=0; 
     player.shield=100; player.weaponLevel=1; player.satellites=[]; player.invuln=0;
     
     ui.score.innerText = "000000"; ui.stage.innerText = "1"; ui.wLv.innerText = "1"; 
     ui.shieldBar.style.width = "100%"; ui.shieldBar.classList.remove('shield-critical');
     ui.shieldBar.style.backgroundColor = '#0ff';
+    ui.enemyBar.style.width = "100%";
     ui.warn.style.display = 'none';
 
     startStage();
 }
 
 function startStage() {
-    enemiesToSpawn = 30 + (stage * 15); 
+    enemiesToSpawn = 40 + (stage * 15); 
     spawnedCount = 0; isStageClear = false; killCount = 0;
     ui.msg.style.display = 'none';
     bullets=[]; enemies=[]; enemyBullets=[]; crystals=[]; missiles=[]; powerups=[]; wormholes=[]; scorePopups=[]; rings=[];
     if(stage > 1) AudioSys.playBGM('stage', stage - 1);
 
-    // Initial Wormholes
     const whCount = Math.max(1, Math.floor((stage+1)/2)); 
-    for(let i=0; i<whCount; i++) {
-        spawnWormhole();
-    }
+    for(let i=0; i<whCount; i++) spawnWormhole();
 }
 
 function spawnWormhole() {
-    // 寿命: 400フレーム (約6.6秒)
     wormholes.push({ 
-        x: gameRect.x + 50 + Math.random()*(gameRect.w - 100), 
-        y: gameRect.y + 50 + Math.random()*(gameRect.h - 100), 
-        life: 400, 
-        maxLife: 400,
-        active: true 
+        x: WALL_MARGIN + 100 + Math.random()*(worldSize - WALL_MARGIN*2 - 200), 
+        y: WALL_MARGIN + 100 + Math.random()*(worldSize - WALL_MARGIN*2 - 200), 
+        life: 400, maxLife: 400, active: true 
     });
     distortGrid(wormholes[wormholes.length-1].x, wormholes[wormholes.length-1].y, 50, 150);
 }
@@ -345,23 +363,31 @@ function loop() {
 function update() {
     frame++;
     if(!Number.isFinite(player.x) || !Number.isFinite(player.y)) { 
-        player.x=gameRect.x+gameRect.w/2; player.y=gameRect.y+gameRect.h/2; player.vx=0; player.vy=0; 
+        player.x=worldSize/2; player.y=worldSize/2; player.vx=0; player.vy=0; 
     }
 
     // Controls
     let mx = input.keys['ArrowLeft']?-1:input.keys['ArrowRight']?1:input.move.x;
     let my = input.keys['ArrowUp']?-1:input.keys['ArrowDown']?1:input.move.y;
     
-    const moveSpeed = 6.0 * SPEED_SCALE;
+    // Normalize speed
+    const mag = Math.hypot(mx, my);
+    if (mag > 1) { mx /= mag; my /= mag; }
+
+    const moveSpeed = 7.8 * SPEED_SCALE; 
     player.vx = mx * moveSpeed; 
     player.vy = my * moveSpeed;
     player.x += player.vx; player.y += player.vy;
 
-    // Wall Collision
-    if(player.x < gameRect.x + WALL_MARGIN) { player.x = gameRect.x + WALL_MARGIN; player.vx = 0; }
-    if(player.x > gameRect.x + gameRect.w - WALL_MARGIN) { player.x = gameRect.x + gameRect.w - WALL_MARGIN; player.vx = 0; }
-    if(player.y < gameRect.y + WALL_MARGIN) { player.y = gameRect.y + WALL_MARGIN; player.vy = 0; }
-    if(player.y > gameRect.y + gameRect.h - WALL_MARGIN) { player.y = gameRect.y + gameRect.h - WALL_MARGIN; player.vy = 0; }
+    // World Boundary Collision
+    if(player.x < WALL_MARGIN) { player.x = WALL_MARGIN; player.vx = 0; }
+    if(player.x > worldSize - WALL_MARGIN) { player.x = worldSize - WALL_MARGIN; player.vx = 0; }
+    if(player.y < WALL_MARGIN) { player.y = WALL_MARGIN; player.vy = 0; }
+    if(player.y > worldSize - WALL_MARGIN) { player.y = worldSize - WALL_MARGIN; player.vy = 0; }
+
+    // Camera Follow
+    camera.x = player.x - width/2;
+    camera.y = player.y - height/2;
 
     // Aim
     if(input.aim.active) player.angle = Math.atan2(input.aim.y, input.aim.x);
@@ -369,23 +395,23 @@ function update() {
 
     if((input.aim.active || input.keys['Space'] || input.keys['KeyZ']) && frame % 10 === 0) fire();
 
-    // Wormholes Logic (Spawn -> Emit -> Vanish)
-    // New Wormhole check (ワームホールが減ってきたら追加)
-    if (spawnedCount < enemiesToSpawn && wormholes.filter(w=>w.active).length < (1+Math.floor(stage/2)) && Math.random() < 0.01) {
+    // Wormholes Logic
+    if (spawnedCount < enemiesToSpawn && wormholes.filter(w=>w.active).length < (1+Math.floor(stage/2)) && Math.random() < 0.02) {
         spawnWormhole();
     }
 
     wormholes.forEach((w) => {
-        w.life--; // バグ修正: 常に減らす
-        
+        w.life--; 
         if (w.active) {
-            // Spawn Enemy Periodically
             if (w.life > 60 && w.life % 60 === 0 && spawnedCount < enemiesToSpawn) {
-                spawnEnemy(w.x, w.y);
-                spawnedCount++;
-                distortGrid(w.x, w.y, 10, 80);
+                const r = Math.random();
+                // Adjusted Probabilities: Dragon is common now (20%)
+                if(r < 0.20) spawnEnemy(w.x, w.y, 'dragon');
+                else if(r < 0.40) spawnEnemy(w.x, w.y, 'cube');
+                else if(r < 0.60) spawnEnemy(w.x, w.y, 'tadpole');
+                else spawnEnemy(w.x, w.y, 'triangle'); 
             }
-            // Repulsion
+            if (w.life <= 0) w.active = false;
             const dx = player.x - w.x; const dy = player.y - w.y;
             const d = Math.hypot(dx, dy) || 0.01;
             if (d < 180) { 
@@ -393,11 +419,7 @@ function update() {
                 player.x += (dx/d) * f * 0.01; player.y += (dy/d) * f * 0.01;
             }
         }
-
-        // 自然消滅
-        if (w.life <= 0) w.active = false;
     });
-    // フェードアウト用に少し残す
     wormholes = wormholes.filter(w => w.life > -60);
 
     // Satellites
@@ -412,12 +434,10 @@ function update() {
     updateGrid();
     updateScorePopups();
     
-    // Progress based on Kill Count
-    const progress = Math.min(100, (killCount / enemiesToSpawn) * 100);
-    ui.prog.style.width = `${progress}%`;
+    const enemyRemains = (enemiesToSpawn - killCount);
+    const forcePct = Math.max(0, (enemyRemains / enemiesToSpawn) * 100);
+    ui.enemyBar.style.width = `${forcePct}%`;
 
-    // Clear Condition: Kill all enemies
-    // ワームホールは無視、出現数が出尽くして、かつ敵が全滅したらクリア
     if(spawnedCount >= enemiesToSpawn && enemies.length === 0 && !isStageClear) {
         isStageClear = true; ui.msg.style.display = 'block';
         AudioSys.playBGM('clear');
@@ -429,7 +449,7 @@ function update() {
 }
 
 function fire() {
-    const s = 12 * SPEED_SCALE;
+    const s = 24 * SPEED_SCALE; 
     for(let i=0; i<player.weaponLevel; i++) {
         const a = player.angle + (i-(player.weaponLevel-1)/2)*0.1;
         bullets.push({x:player.x, y:player.y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, life:240});
@@ -438,22 +458,61 @@ function fire() {
     distortGrid(player.x, player.y, 10, 40);
 }
 
-function spawnEnemy(x, y) {
-    const r = Math.random();
+function spawnEnemy(x, y, type) {
     const spd = SPEED_SCALE;
-    const ox = (Math.random()-0.5)*30; const oy = (Math.random()-0.5)*30;
     
-    if (r < 0.1) { // Dragon (Slower speed)
-        let e = {x:x+ox, y:y+oy, vx:0, vy:0, hp:8, speed:1.5*spd, color:'#f00', type:'dragon', angle:0, segments:[], drop:'invincible', scale:0.9, fireTimer:0};
-        for(let i=0; i<16; i++) e.segments.push({x:x+ox, y:y+oy, angle:0});
+    const burstAngle = Math.random() * Math.PI * 2;
+    const burstSpeed = 5.0 * spd;
+    const vx = Math.cos(burstAngle) * burstSpeed;
+    const vy = Math.sin(burstAngle) * burstSpeed;
+
+    if (type === 'dragon') { 
+        let e = {x:x, y:y, vx:vx, vy:vy, hp:8, speed:1.0*spd, color:'#f00', type:'dragon', angle:0, segments:[], drop:'invincible', scale:0.9, fireTimer:0};
+        for(let i=0; i<16; i++) e.segments.push({x:x, y:y, angle:0});
         enemies.push(e);
-    } else {
-        if(r < 0.5) { // Triangle
-            let e = {x:x+ox, y:y+oy, vx:0, vy:0, hp:1, speed:3.0*spd, color:'#fa0', type:'triangle', angle:0, drop:'none', scale:0.7};
+        spawnedCount++;
+    } else if (type === 'cube') { 
+        let e = {x:x, y:y, vx:vx, vy:vy, hp:2, speed:1.5*spd, color:'#0f0', type:'cube', angle:0, drop:'crystal', scale:0.8, rot:0, rotX:0, rotY:0};
+        enemies.push(e);
+        spawnedCount++;
+    } else if (type === 'tadpole') { 
+        let e = {x:x, y:y, vx:vx, vy:vy, hp:1, speed:2.0*spd, color:'#eef', type:'tadpole', angle:0, drop:'none', scale:0.6, history:[]};
+        enemies.push(e);
+        spawnedCount++;
+    } else { // Triangle
+        const forms = ['V', 'line', 'circle'];
+        const form = forms[Math.floor(Math.random()*forms.length)];
+        const leader = {
+            x: x, y: y, vx: vx, vy: vy, hp: 1, speed: 2.5*spd, color: '#d0f', type: 'triangle', 
+            angle: 0, drop: 'none', scale: 0.7, 
+            isLeader: true, followers: []
+        };
+        enemies.push(leader);
+        spawnedCount++;
+
+        for(let i=1; i<=4; i++) {
+            if(spawnedCount >= enemiesToSpawn) break;
+            
+            let offX = 0, offY = 0;
+            if(form === 'V') {
+                offX = (i%2===0 ? 1 : -1) * Math.ceil(i/2) * 25;
+                offY = -Math.ceil(i/2) * 25;
+            } else if (form === 'line') {
+                offX = (i%2===0 ? 1 : -1) * Math.ceil(i/2) * 35;
+                offY = 0;
+            } else { // Circle
+                const angle = (Math.PI*2 / 5) * i;
+                offX = Math.cos(angle)*35; offY = Math.sin(angle)*35;
+            }
+
+            let e = {
+                x: x, y: y, vx: vx, vy: vy, hp: 1, speed: 2.5*spd, color: '#d0f', type: 'triangle', 
+                angle: 0, drop: 'none', scale: 0.7, 
+                leader: leader, formOffset: {x:offX, y:offY}
+            };
             enemies.push(e);
-        } else { // Rhombus
-            let e = {x:x+ox, y:y+oy, vx:0, vy:0, hp:2, speed:1.5*spd, color:'#0ff', type:'rhombus', angle:0, drop:'crystal', scale:0.8, rot:0};
-            enemies.push(e);
+            leader.followers.push(e);
+            spawnedCount++;
         }
     }
 }
@@ -461,40 +520,67 @@ function spawnEnemy(x, y) {
 function updateEntities() {
     bullets.forEach(b => {
         b.x+=b.vx; b.y+=b.vy; b.life--;
-        enemies.forEach(e => { if(Math.hypot(b.x-e.x, b.y-e.y)<20 * e.scale){ b.life=0; e.hp--; } });
+        enemies.forEach(e => { if(Math.hypot(b.x-e.x, b.y-e.y)<25 * e.scale){ b.life=0; e.hp--; } });
     });
     bullets = bullets.filter(b => b.life>0);
 
     enemies.forEach(e => {
         const dx=player.x-e.x, dy=player.y-e.y;
-        const d=Math.hypot(dx,dy) || 0.0001;
+        const distToPlayer=Math.hypot(dx,dy) || 0.0001;
         
         let speedMult = 0.1;
-        if(e.type === 'triangle') speedMult = 0.15;
-        if(e.type === 'rhombus') speedMult = 0.05;
+        if(e.type === 'triangle') speedMult = 0.12; 
+        if(e.type === 'cube') speedMult = 0.05;
+        if(e.type === 'tadpole') speedMult = 0.10;
 
-        e.vx += (dx/d)*speedMult*SPEED_SCALE; e.vy += (dy/d)*speedMult*SPEED_SCALE;
-        e.x+=e.vx + Math.cos(e.angle)*e.speed; e.y+=e.vy + Math.sin(e.angle)*e.speed;
+        if (e.leader && e.leader.hp > 0) {
+            const la = e.leader.angle;
+            const ox = e.formOffset.x * Math.cos(la) - e.formOffset.y * Math.sin(la);
+            const oy = e.formOffset.x * Math.sin(la) + e.formOffset.y * Math.cos(la);
+            const tx = e.leader.x + ox;
+            const ty = e.leader.y + oy;
+            e.x += (tx - e.x) * 0.1;
+            e.y += (ty - e.y) * 0.1;
+            e.angle = e.leader.angle;
+        } else {
+            e.vx += (dx/distToPlayer)*speedMult*SPEED_SCALE; e.vy += (dy/distToPlayer)*speedMult*SPEED_SCALE;
+            e.x+=e.vx + Math.cos(e.angle)*e.speed; e.y+=e.vy + Math.sin(e.angle)*e.speed;
+            
+            if(e.type === 'triangle' || e.type === 'dragon' || e.type === 'tadpole') {
+               e.angle = Math.atan2(dy, dx);
+            }
+        }
+
+        enemies.forEach(other => {
+            if(e === other) return;
+            const odx = e.x - other.x; const ody = e.y - other.y;
+            const od = Math.hypot(odx, ody);
+            if(od < 30) {
+                const push = (30 - od) * 0.05;
+                e.x += (odx/od) * push; e.y += (ody/od) * push;
+            }
+        });
         
-        // Bounce within gameRect
-        if(e.x < gameRect.x + WALL_MARGIN || e.x > gameRect.x + gameRect.w - WALL_MARGIN) e.vx *= -1.2;
-        if(e.y < gameRect.y + WALL_MARGIN || e.y > gameRect.y + gameRect.h - WALL_MARGIN) e.vy *= -1.2;
-        e.x = Math.max(gameRect.x+WALL_MARGIN, Math.min(gameRect.x+gameRect.w-WALL_MARGIN, e.x));
-        e.y = Math.max(gameRect.y+WALL_MARGIN, Math.min(gameRect.y+gameRect.h-WALL_MARGIN, e.y));
+        if(e.x < WALL_MARGIN || e.x > worldSize - WALL_MARGIN) e.vx *= -1.2;
+        if(e.y < WALL_MARGIN || e.y > worldSize - WALL_MARGIN) e.vy *= -1.2;
+        e.x = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, e.x));
+        e.y = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, e.y));
 
         if(e.type==='dragon') {
-            e.angle = Math.atan2(dy, dx);
             let lx=e.x, ly=e.y;
             e.segments.forEach(s => { const dd=Math.hypot(lx-s.x, ly-s.y); if(dd>10*G_SCALE*e.scale){ s.x+=(lx-s.x)*0.3; s.y+=(ly-s.y)*0.3; } lx=s.x; ly=s.y; });
             e.fireTimer++;
             if(e.fireTimer>100) { e.fireTimer=0; enemyBullets.push({x:e.x, y:e.y, vx:Math.cos(e.angle)*4*SPEED_SCALE, vy:Math.sin(e.angle)*4*SPEED_SCALE, life:200}); AudioSys.playSE('shoot'); }
-        } else if(e.type==='rhombus') {
-            e.angle = Math.atan2(e.vy, e.vx); e.rot = (e.rot || 0) + 0.1;
+        } else if(e.type==='cube') {
+            e.rotX += 0.02; e.rotY += 0.03;
+        } else if(e.type==='tadpole') {
+            e.history.unshift({x:e.x, y:e.y});
+            if(e.history.length > 50) e.history.pop(); 
         } else {
             e.angle = Math.atan2(e.vy, e.vx);
         }
 
-        if(d < 20 && player.invuln <= 0) { damage(20); if(e.type!=='dragon') e.hp=0; }
+        if(distToPlayer < 20 && player.invuln <= 0) { damage(20); if(e.type!=='dragon') e.hp=0; }
         
         for(let i=player.satellites.length-1; i>=0; i--){
             const s=player.satellites[i];
@@ -595,32 +681,48 @@ function damage(v) {
 
 function draw() {
     ctx.save();
-    ctx.beginPath(); ctx.rect(gameRect.x, gameRect.y, gameRect.w, gameRect.h); ctx.clip();
+    ctx.translate(-camera.x, -camera.y);
 
-    ctx.strokeStyle='rgba(0, 255, 255, 0.2)'; ctx.lineWidth=1; ctx.shadowBlur=5; ctx.shadowColor='#0ff'; ctx.beginPath(); 
-    const startCol = Math.floor(gameRect.x / GRID_SPACING);
-    const endCol = Math.ceil((gameRect.x + gameRect.w) / GRID_SPACING);
-    const startRow = Math.floor(gameRect.y / GRID_SPACING);
-    const endRow = Math.ceil((gameRect.y + gameRect.h) / GRID_SPACING);
+    // Stars
+    ctx.fillStyle = '#fff';
+    stars.forEach(s => {
+        const sx = (s.x - camera.x * s.parallax) % worldSize;
+        const sy = (s.y - camera.y * s.parallax) % worldSize;
+        const dx = (sx + worldSize) % worldSize;
+        const dy = (sy + worldSize) % worldSize;
+        ctx.globalAlpha = s.brightness;
+        ctx.beginPath(); ctx.arc(dx, dy, s.size, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha = 1.0;
 
-    for(let i=startCol; i<=endCol; i++) {
-        if(!gridPoints[i]) continue;
-        for(let j=startRow; j<=endRow; j++) {
-            const p=gridPoints[i][j];
-            if(!p) continue;
-            if(i>startCol && gridPoints[i-1] && gridPoints[i-1][j]) { ctx.moveTo(gridPoints[i-1][j].x, gridPoints[i-1][j].y); ctx.lineTo(p.x, p.y); }
-            if(j>startRow && gridPoints[i][j-1]) { ctx.moveTo(gridPoints[i][j-1].x, gridPoints[i][j-1].y); ctx.lineTo(p.x, p.y); }
-        }
+    // Grid inside Boundary (Enhanced Glow)
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, worldSize, worldSize); ctx.clip();
+    
+    ctx.strokeStyle='rgba(0, 255, 255, 0.4)'; // Increased opacity
+    ctx.lineWidth=1.5; 
+    ctx.shadowBlur=15; // Increased blur for stronger glow
+    ctx.shadowColor='#0ff'; ctx.beginPath(); 
+    const viewX = camera.x; const viewY = camera.y;
+    const viewW = width; const viewH = height;
+    
+    for(let i=0; i<gridPoints.length; i++) for(let j=0; j<gridPoints[i].length; j++) {
+        const p=gridPoints[i][j];
+        if(!p) continue;
+        if(p.x < viewX - 50 || p.x > viewX + viewW + 50 || p.y < viewY - 50 || p.y > viewY + viewH + 50) continue;
+        if(i>0 && gridPoints[i-1] && gridPoints[i-1][j]) { ctx.moveTo(gridPoints[i-1][j].x, gridPoints[i-1][j].y); ctx.lineTo(p.x, p.y); }
+        if(j>0 && gridPoints[i][j-1]) { ctx.moveTo(gridPoints[i][j-1].x, gridPoints[i][j-1].y); ctx.lineTo(p.x, p.y); }
     }
     ctx.stroke(); ctx.shadowBlur=0; 
+    ctx.restore();
 
-    ctx.strokeStyle='#0ff'; ctx.lineWidth=3; ctx.strokeRect(gameRect.x+2, gameRect.y+2, gameRect.w-4, gameRect.h-4);
+    // Boundary Frame
+    ctx.strokeStyle='#0ff'; ctx.lineWidth=3; ctx.strokeRect(WALL_MARGIN, WALL_MARGIN, worldSize-WALL_MARGIN*2, worldSize-WALL_MARGIN*2);
 
     wormholes.forEach(w => { if(w.active || w.life > -60){ 
-        // Fade logic fixed
         let scale = 1;
-        if (w.life > 300) scale = (400-w.life)/100; // In (Faster)
-        else if (w.life <= 0) scale = Math.max(0, (60+w.life)/60); // Out (Fade)
+        if (w.life > 300) scale = (400-w.life)/100; 
+        else if (w.life <= 0) scale = Math.max(0, (60+w.life)/60); 
 
         ctx.save(); ctx.translate(w.x, w.y); ctx.scale(scale, scale);
         ctx.shadowBlur=20; ctx.shadowColor='#fff'; 
@@ -632,7 +734,8 @@ function draw() {
     enemies.forEach(e => {
         if(e.type==='dragon') drawDragonEnemy(ctx, e);
         else if(e.type==='triangle') drawTriangleEnemy(ctx, e);
-        else drawRhombusEnemy(ctx, e);
+        else if(e.type==='cube') drawCubeEnemy(ctx, e);
+        else if(e.type==='tadpole') drawTadpoleEnemy(ctx, e);
     });
 
     ctx.fillStyle='#aaf'; enemyBullets.forEach(eb => { ctx.beginPath(); ctx.arc(eb.x, eb.y, 4*G_SCALE, 0, Math.PI*2); ctx.fill(); });
@@ -677,15 +780,61 @@ function draw() {
 function drawTriangleEnemy(ctx, e) {
     ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.angle); ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
     ctx.strokeStyle = e.color; ctx.lineWidth = 2;
+    ctx.shadowBlur = 10; ctx.shadowColor = e.color; // Glow
     ctx.beginPath(); ctx.moveTo(15,0); ctx.lineTo(-10,10); ctx.lineTo(-10,-10); ctx.closePath();
-    ctx.stroke(); ctx.restore();
+    ctx.stroke(); ctx.shadowBlur = 0; ctx.restore();
 }
 
-function drawRhombusEnemy(ctx, e) {
-    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.rot); ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
+function drawCubeEnemy(ctx, e) {
+    ctx.save(); ctx.translate(e.x, e.y); ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
     ctx.strokeStyle = e.color; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(8,0); ctx.lineTo(0,12); ctx.lineTo(-8,0); ctx.closePath();
-    ctx.stroke(); ctx.restore();
+    // 3D Cube Projection
+    const size = 15;
+    const pts = [
+        {x:-1,y:-1,z:-1},{x:1,y:-1,z:-1},{x:1,y:1,z:-1},{x:-1,y:1,z:-1},
+        {x:-1,y:-1,z:1},{x:1,y:-1,z:1},{x:1,y:1,z:1},{x:-1,y:1,z:1}
+    ];
+    // Rotate
+    const cosX = Math.cos(e.rotX), sinX = Math.sin(e.rotX);
+    const cosY = Math.cos(e.rotY), sinY = Math.sin(e.rotY);
+    
+    const proj = pts.map(p => {
+        let y = p.y*cosX - p.z*sinX; let z = p.y*sinX + p.z*cosX;
+        let x = p.x*cosY + z*sinY; 
+        return {x: x*size, y: y*size};
+    });
+    
+    // Draw Edges
+    const lines = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+    ctx.beginPath();
+    lines.forEach(l => { ctx.moveTo(proj[l[0]].x, proj[l[0]].y); ctx.lineTo(proj[l[1]].x, proj[l[1]].y); });
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawTadpoleEnemy(ctx, e) {
+    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.angle); ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
+    ctx.strokeStyle = e.color; ctx.lineWidth = 2;
+    
+    // Draw Larger Head
+    ctx.beginPath(); 
+    // Increased size from (10, 7) to (15, 10)
+    ctx.ellipse(8, 0, 15, 10, 0, 0, Math.PI*2); 
+    ctx.stroke();
+    
+    ctx.restore();
+
+    // Draw Trail (World Coords)
+    if(e.history.length > 1) {
+        ctx.save(); ctx.strokeStyle = e.color; ctx.lineWidth = 2; ctx.globalAlpha=0.6;
+        ctx.beginPath();
+        ctx.moveTo(e.x, e.y);
+        for(let i=0; i<e.history.length; i++) {
+            ctx.lineTo(e.history[i].x, e.history[i].y);
+        }
+        ctx.stroke();
+        ctx.restore();
+    }
 }
 
 function drawDragonEnemy(ctx, e) {
@@ -696,9 +845,9 @@ function drawDragonEnemy(ctx, e) {
         ctx.beginPath(); const wingSize = (15 - i*0.5); ctx.moveTo(0, 0); ctx.lineTo(-5, wingSize); ctx.moveTo(0, 0); ctx.lineTo(-5, -wingSize); ctx.stroke();
         ctx.restore();
     });
+    // Head (No Eyes)
     ctx.save(); ctx.translate(e.x / (e.scale*G_SCALE), e.y / (e.scale*G_SCALE)); ctx.rotate(e.angle);
     ctx.beginPath(); ctx.moveTo(25, 0); ctx.lineTo(5, 12); ctx.lineTo(-10, 8); ctx.lineTo(-10, -8); ctx.lineTo(5, -12); ctx.closePath(); ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(12, 7, 4, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(12, -7, 4, 0, Math.PI * 2); ctx.fill();
     ctx.restore(); ctx.restore();
 }
 
@@ -714,7 +863,6 @@ function drawScorePopups() {
 function updateGrid() {
     for(let i=0; i<gridPoints.length; i++) for(let j=0; j<gridPoints[i].length; j++) {
         const p=gridPoints[i][j];
-        if(!p) continue;
         const dx=p.x-p.ox, dy=p.y-p.oy;
         const f = -0.05 * Math.hypot(dx,dy); const ang = Math.atan2(dy, dx);
         p.vx += Math.cos(ang)*f; p.vy += Math.sin(ang)*f; p.vx *= 0.9; p.vy *= 0.9;
@@ -770,8 +918,8 @@ function handleTouch(e) {
     if(gameState !== 'PLAYING') return;
     input.move.active=false; input.aim.active=false;
     
-    // Tap to Bomb Check (Top Area)
-    const bRect = ui.prog.getBoundingClientRect(); // Use progress bar as mid line ref if needed, or window height
+    // Bomb Button Check (Coordinate)
+    const bRect = ui.launchBtn.getBoundingClientRect(); 
     
     const lR=ui.stickL.getBoundingClientRect(), rR=ui.stickR.getBoundingClientRect();
     const lC={x:lR.left+lR.width/2, y:lR.top+lR.height/2}, rC={x:rR.left+rR.width/2, y:rR.top+rR.height/2};
@@ -779,8 +927,7 @@ function handleTouch(e) {
     for(let i=0; i<e.touches.length; i++) {
         const t=e.touches[i];
         
-        // Bomb Area (Top 60%)
-        if(t.clientY < height * 0.6) {
+        if (t.clientX >= bRect.left && t.clientX <= bRect.right && t.clientY >= bRect.top && t.clientY <= bRect.bottom) {
             launchSatellites();
             continue;
         }
@@ -801,6 +948,7 @@ function handleTouch(e) {
     if(!input.aim.active) { input.aim.x=0; input.aim.y=0; ui.knobR.style.transform='translate(0,0)'; }
 }
 
+ui.launchBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); launchSatellites(); ui.launchBtn.classList.add('active'); setTimeout(()=>ui.launchBtn.classList.remove('active'), 100); });
 ui.controls.addEventListener('touchstart', handleTouch, {passive:false});
 ui.controls.addEventListener('touchmove', handleTouch, {passive:false});
 ui.controls.addEventListener('touchend', handleTouch, {passive:false});
