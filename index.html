@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON GEOMETRY: RING MATCH</title>
+    <title>NEON GEOMETRY: FIXED</title>
     <style>
         body { 
             margin: 0; background: #000; overflow: hidden; font-family: monospace; color: #fff; 
@@ -24,63 +24,52 @@
         .blink { animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
 
-        /* --- コントローラー配置の修正 --- */
-        
-        /* 左スティック */
+        /* スティック位置調整 (bottomを80pxに上げて操作しやすく) */
         .joystick-area {
-            position: absolute; bottom: 50px; left: 50px;
+            position: absolute; bottom: 80px; 
             width: 120px; height: 120px;
-            border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.15);
             display: flex; justify-content: center; align-items: center; pointer-events: none;
         }
         .knob {
             width: 50px; height: 50px; border-radius: 50%;
-            background: rgba(255, 255, 255, 0.5); position: absolute; transform: translate(0, 0);
+            background: rgba(255, 255, 255, 0.4); position: absolute; transform: translate(0, 0);
         }
 
-        /* 右側のボタン群（A/Bボタン配置） */
-        .action-btn {
-            position: absolute; border-radius: 50%;
-            display: flex; justify-content: center; align-items: center;
-            font-weight: bold; z-index: 50; box-shadow: 0 0 10px rgba(255,255,255,0.2);
-            transition: transform 0.1s; user-select: none;
-        }
-        .action-btn:active { transform: scale(0.9); }
+        /* 左スティック */
+        #stick-left { left: 40px; border-color: rgba(0, 255, 255, 0.3); }
+        
+        /* 右スティック */
+        #stick-right { right: 40px; border-color: rgba(255, 0, 0, 0.3); }
+        #knob-right { background: rgba(255, 100, 100, 0.4); }
 
-        /* FIREボタン (メイン：右下) */
-        #fire-btn {
-            bottom: 50px; right: 40px;
-            width: 90px; height: 90px;
-            background: rgba(255, 0, 0, 0.3); border: 3px solid #f00; 
-            color: #fff; font-size: 18px; text-shadow: 0 0 5px #f00;
-        }
-        #fire-btn:active { background: #f00; }
-
-        /* BOMBボタン (サブ：FIREの左側) */
+        /* BOMBボタン (スティックのさらに上) */
         #launch-btn {
-            bottom: 40px; right: 150px; /* FIREボタンの左隣 */
-            width: 70px; height: 70px;
-            background: rgba(255, 200, 0, 0.3); border: 2px solid #fd0; 
-            color: #fff; font-size: 12px; text-shadow: 0 0 5px #fd0;
+            position: absolute; bottom: 220px; right: 65px;
+            width: 70px; height: 70px; border-radius: 50%;
+            background: rgba(255, 200, 0, 0.2); border: 2px solid #fd0;
+            color: #fd0; font-weight: bold; display: flex; justify-content: center; align-items: center;
+            font-size: 14px; z-index: 50; box-shadow: 0 0 10px #fd0;
+            transition: transform 0.1s;
         }
-        #launch-btn:active { background: #fd0; color: #000; }
+        #launch-btn:active { background: #fd0; color: #000; transform: scale(0.9); }
 
     </style>
 </head>
 <body>
 
-<div id="ui">SCORE: <span id="score">0</span><br>WEAPON LV: <span id="w-lv">1</span> / 10</div>
+<div id="ui">SCORE: <span id="score">0</span><br>WEAPON LV: <span id="w-lv">1</span> / 10<br>SATELLITES: <span id="sat-count">0</span></div>
 
 <div id="overlay">
-    <h1>NEON RING</h1>
+    <h1>NEON DRAGON</h1>
     <p>TAP TO START</p>
-    <p style="color:#fd0; font-size: 3.5vw;">BOUNCE OFF WALLS!<br>LV UP TO 10!</p>
+    <p style="color:#f00; font-size: 3.5vw;">DRAGON'S WEAKNESS IS HEAD!</p>
 </div>
 
 <div id="controls" style="display:none;">
     <div id="stick-left" class="joystick-area"><div class="knob" id="knob-left"></div></div>
-    <div id="launch-btn" class="action-btn">BOMB</div>
-    <div id="fire-btn" class="action-btn">FIRE</div>
+    <div id="stick-right" class="joystick-area"><div class="knob" id="knob-right"></div></div>
+    <div id="launch-btn">BOMB</div>
 </div>
 
 <canvas id="game"></canvas>
@@ -88,53 +77,50 @@
 <script>
 // --- GLOBAL SETTINGS ---
 const G_SCALE = 0.7; 
-const SPEED_SCALE = 0.4; // 速度はゆっくり
+const SPEED_SCALE = 0.4; 
 const WALL_MARGIN = 20;
 
 // --- オーディオシステム ---
 const AudioSys = {
     ctx: null,
     init: function() {
-        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        else if (this.ctx.state === 'suspended') this.ctx.resume();
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                this.ctx = new AudioContext();
+            }
+        } catch(e) { console.log('Audio init failed'); }
     },
     play: function(type) {
         if (!this.ctx) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        
         const t = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.connect(gain); gain.connect(this.ctx.destination);
 
         if (type === 'shoot') {
-            osc.type = 'triangle'; osc.frequency.setValueAtTime(600, t);
-            osc.frequency.exponentialRampToValueAtTime(100, t+0.1);
-            gain.gain.setValueAtTime(0.05, t); gain.gain.linearRampToValueAtTime(0, t+0.1);
-            osc.start(t); osc.stop(t+0.1);
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(600, t); osc.frequency.exponentialRampToValueAtTime(100, t+0.1);
+            gain.gain.setValueAtTime(0.05, t); gain.gain.linearRampToValueAtTime(0, t+0.1); osc.start(t); osc.stop(t+0.1);
         } else if (type === 'powerup') {
-            osc.type = 'square'; osc.frequency.setValueAtTime(400, t);
-            osc.frequency.linearRampToValueAtTime(1200, t+0.3);
-            gain.gain.setValueAtTime(0.1, t); gain.gain.linearRampToValueAtTime(0, t+0.3);
-            osc.start(t); osc.stop(t+0.3);
+            osc.type = 'square'; osc.frequency.setValueAtTime(400, t); osc.frequency.linearRampToValueAtTime(1200, t+0.3);
+            gain.gain.setValueAtTime(0.1, t); gain.gain.linearRampToValueAtTime(0, t+0.3); osc.start(t); osc.stop(t+0.3);
         } else if (type === 'bounce') {
-            osc.type = 'sine'; osc.frequency.setValueAtTime(150, t);
-            osc.frequency.exponentialRampToValueAtTime(50, t+0.2);
-            gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0, t+0.2);
-            osc.start(t); osc.stop(t+0.2);
+            osc.type = 'sine'; osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(50, t+0.2);
+            gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0, t+0.2); osc.start(t); osc.stop(t+0.2);
         } else if (type === 'launch') {
-            osc.type = 'square'; osc.frequency.setValueAtTime(200, t);
-            osc.frequency.linearRampToValueAtTime(800, t+0.5);
-            gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0, t+0.5);
-            osc.start(t); osc.stop(t+0.5);
+            osc.type = 'square'; osc.frequency.setValueAtTime(200, t); osc.frequency.linearRampToValueAtTime(800, t+0.5);
+            gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0, t+0.5); osc.start(t); osc.stop(t+0.5);
         } else if (type === 'explode') {
-            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, t);
-            osc.frequency.exponentialRampToValueAtTime(10, t+0.3);
-            gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0, t+0.3);
-            osc.start(t); osc.stop(t+0.3);
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, t); osc.frequency.exponentialRampToValueAtTime(10, t+0.3);
+            gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0, t+0.3); osc.start(t); osc.stop(t+0.3);
         } else if (type === 'damage') {
-            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, t);
-            osc.frequency.linearRampToValueAtTime(50, t+0.2);
-            gain.gain.setValueAtTime(0.3, t); gain.gain.linearRampToValueAtTime(0, t+0.2);
-            osc.start(t); osc.stop(t+0.2);
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, t); osc.frequency.linearRampToValueAtTime(50, t+0.2);
+            gain.gain.setValueAtTime(0.3, t); gain.gain.linearRampToValueAtTime(0, t+0.2); osc.start(t); osc.stop(t+0.2);
+        } else if (type === 'deflect') {
+            osc.type = 'square'; osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(200, t+0.1);
+            gain.gain.setValueAtTime(0.1, t); gain.gain.linearRampToValueAtTime(0, t+0.1); osc.start(t); osc.stop(t+0.1);
         }
     }
 };
@@ -145,11 +131,13 @@ const ctx = canvas.getContext('2d');
 const overlay = document.getElementById('overlay');
 const scoreEl = document.getElementById('score');
 const wLvEl = document.getElementById('w-lv');
+const satCountEl = document.getElementById('sat-count');
 const controlsDiv = document.getElementById('controls');
 const launchBtn = document.getElementById('launch-btn');
-const fireBtn = document.getElementById('fire-btn');
 const stickLeftEl = document.getElementById('stick-left');
 const knobLeftEl = document.getElementById('knob-left');
+const stickRightEl = document.getElementById('stick-right');
+const knobRightEl = document.getElementById('knob-right');
 
 let width, height;
 let gameState = 'START';
@@ -164,7 +152,7 @@ const player = {
     invuln: 0 
 };
 const keys = {};
-const input = { move:{x:0, y:0, active:false}, fire: false };
+const input = { move:{x:0, y:0, active:false}, aim:{x:0, y:0, active:false} };
 
 // Objects
 let bullets=[], enemies=[], particles=[], gridPoints=[], crystals=[], missiles=[], powerups=[];
@@ -210,8 +198,6 @@ function drawGrid() {
     for(let x=0; x<gridPoints.length-1; x++) for(let y=0; y<gridPoints[0].length; y++) { ctx.moveTo(gridPoints[x][y].x, gridPoints[x][y].y); ctx.lineTo(gridPoints[x+1][y].x, gridPoints[x+1][y].y); }
     for(let x=0; x<gridPoints.length; x++) for(let y=0; y<gridPoints[0].length-1; y++) { ctx.moveTo(gridPoints[x][y].x, gridPoints[x][y].y); ctx.lineTo(gridPoints[x][y+1].x, gridPoints[x][y+1].y); }
     ctx.stroke();
-    
-    // Draw Ring Ropes (Boundary)
     ctx.strokeStyle = '#f0f'; ctx.lineWidth = 4;
     ctx.strokeRect(WALL_MARGIN, WALL_MARGIN, width - WALL_MARGIN*2, height - WALL_MARGIN*2);
 }
@@ -231,7 +217,7 @@ function startGame() {
     player.x=width/2; player.y=height/2; player.vx=0; player.vy=0;
     player.shield = player.maxShield;
     player.weaponLevel = 1;
-    wLvEl.innerText = "1";
+    wLvEl.innerText = "1"; satCountEl.innerText = "0";
     gameState = 'PLAYING';
     overlay.style.display='none'; controlsDiv.style.display='block';
 }
@@ -246,6 +232,7 @@ function launchSatellites() {
         });
     });
     player.satellites = [];
+    satCountEl.innerText = "0";
     distortGrid(player.x, player.y, 200*G_SCALE, 300*G_SCALE);
 }
 
@@ -257,11 +244,9 @@ function spawnPowerup(x, y) {
     powerups.push({x:x, y:y, vx:(Math.random()-0.5)*1, vy:(Math.random()-0.5)*1, life:800});
 }
 
-// Lv 1-10 Weapon Logic
 function fireBullet() {
     const spd = 20 * SPEED_SCALE;
     const lv = player.weaponLevel;
-    
     const shoot = (angleOffset, speedMult=1) => {
         bullets.push({
             x:player.x, y:player.y, 
@@ -270,7 +255,6 @@ function fireBullet() {
             life: 80
         });
     };
-
     if (lv === 1) { shoot(0); } 
     else if (lv === 2) { shoot(-0.05); shoot(0.05); } 
     else if (lv === 3) { shoot(-0.15); shoot(0); shoot(0.15); } 
@@ -281,15 +265,11 @@ function fireBullet() {
     else if (lv >= 8) { 
         const count = lv; 
         for(let i=0; i<count; i++) {
-            const spread = (Math.PI / 2); 
-            const a = -spread/2 + (spread/(count-1)) * i;
-            shoot(a);
+            const spread = (Math.PI / 2); const a = -spread/2 + (spread/(count-1)) * i; shoot(a);
         }
         if(lv === 10) { shoot(Math.PI); shoot(Math.PI-0.2); shoot(Math.PI+0.2); }
     }
-
-    player.vx -= Math.cos(player.angle)*1*SPEED_SCALE; 
-    player.vy -= Math.sin(player.angle)*1*SPEED_SCALE;
+    player.vx -= Math.cos(player.angle)*1*SPEED_SCALE; player.vy -= Math.sin(player.angle)*1*SPEED_SCALE;
     distortGrid(player.x, player.y, 10, 50);
     AudioSys.play('shoot');
 }
@@ -298,64 +278,57 @@ function update() {
     if (gameState !== 'PLAYING') return;
     frame++;
 
-    // Player Move
     let mx=0, my=0;
     if(keys['ArrowUp']) my-=1; if(keys['ArrowDown']) my+=1;
     if(keys['ArrowLeft']) mx-=1; if(keys['ArrowRight']) mx+=1;
     if(input.move.active) { mx+=input.move.x; my+=input.move.y; }
-
     const accel = 0.8 * SPEED_SCALE;
     player.vx+=mx*accel; player.vy+=my*accel;
     player.vx*=0.95; player.vy*=0.95; 
     player.x+=player.vx; player.y+=player.vy;
 
-    // Boundary Bounce
     let bounced = false;
     if (player.x < WALL_MARGIN) { player.x = WALL_MARGIN; player.vx *= -0.8; bounced=true; }
     if (player.x > width - WALL_MARGIN) { player.x = width - WALL_MARGIN; player.vx *= -0.8; bounced=true; }
     if (player.y < WALL_MARGIN) { player.y = WALL_MARGIN; player.vy *= -0.8; bounced=true; }
     if (player.y > height - WALL_MARGIN) { player.y = height - WALL_MARGIN; player.vy *= -0.8; bounced=true; }
-    
     if (bounced && Math.hypot(player.vx, player.vy) > 1) {
-        distortGrid(player.x, player.y, 50, 100);
-        AudioSys.play('bounce');
+        distortGrid(player.x, player.y, 50, 100); AudioSys.play('bounce');
     }
 
-    // Facing Angle
-    if(Math.hypot(player.vx, player.vy) > 0.1) {
+    let shooting = false;
+    if (input.aim.active && (Math.abs(input.aim.x)>0.1 || Math.abs(input.aim.y)>0.1)) {
+        player.angle = Math.atan2(input.aim.y, input.aim.x); shooting = true;
+    } else if (Math.hypot(player.vx, player.vy) > 0.1) {
         player.angle = Math.atan2(player.vy, player.vx);
     }
-
-    // Shooting
-    let fireRate = 8;
-    if (player.weaponLevel >= 5) fireRate = 6;
-    if (player.weaponLevel >= 9) fireRate = 4;
-
-    let shooting = keys['Space'] || input.fire;
-    if(shooting && frame % fireRate === 0) fireBullet();
-    
+    let fireRate = 8; if (player.weaponLevel >= 5) fireRate = 6; if (player.weaponLevel >= 9) fireRate = 4;
+    if((shooting || keys['Space']) && frame % fireRate === 0) fireBullet();
     if(keys['KeyZ']) { launchSatellites(); keys['KeyZ']=false; }
 
-    // Satellites
+    // Satellites Radius increased (65 + wave)
     player.satellites.forEach((s, i) => {
         s.angle += 0.05 * SPEED_SCALE;
-        const radius = (40 + Math.sin(frame*0.05)*5) * G_SCALE;
+        const radius = (65 + Math.sin(frame*0.05)*10) * G_SCALE;
         const offset = (Math.PI*2 / player.satellites.length) * i;
         s.x = player.x + Math.cos(s.angle + offset) * radius;
         s.y = player.y + Math.sin(s.angle + offset) * radius;
     });
 
-    // Missiles
     missiles.forEach(m => {
         if(!m.target || !enemies.includes(m.target)) {
             let minDist = 9999;
             enemies.forEach(e => {
-                const d = Math.hypot(e.x-m.x, e.y-m.y);
+                const targetX = e.type === 'dragon' ? e.x : e.x;
+                const targetY = e.type === 'dragon' ? e.y : e.y;
+                const d = Math.hypot(targetX-m.x, targetY-m.y);
                 if(d < minDist) { minDist = d; m.target = e; }
             });
         }
         if(m.target) {
-            const angle = Math.atan2(m.target.y - m.y, m.target.x - m.x);
+            const targetX = m.target.type === 'dragon' ? m.target.x : m.target.x;
+            const targetY = m.target.type === 'dragon' ? m.target.y : m.target.y;
+            const angle = Math.atan2(targetY - m.y, targetX - m.x);
             m.vx += Math.cos(angle) * 0.5; m.vy += Math.sin(angle) * 0.5;
         }
         const spd = Math.hypot(m.vx, m.vy);
@@ -365,20 +338,21 @@ function update() {
     });
     missiles = missiles.filter(m => m.life>0);
 
-    // Crystals
     crystals.forEach(c => {
         c.x+=c.vx; c.y+=c.vy; c.vx*=0.95; c.vy*=0.95; c.life--;
         const dist = Math.hypot(player.x-c.x, player.y-c.y);
         if(dist < 150 * G_SCALE) { c.x += (player.x-c.x)*0.1; c.y += (player.y-c.y)*0.1; }
         if(dist < 30 * G_SCALE) {
             c.life = 0;
-            if(player.satellites.length < 16) player.satellites.push({angle: Math.random()*Math.PI*2, x:0, y:0});
+            if(player.satellites.length < 16) {
+                player.satellites.push({angle: Math.random()*Math.PI*2, x:0, y:0});
+                satCountEl.innerText = player.satellites.length;
+            }
             else score += 500;
         }
     });
     crystals = crystals.filter(c => c.life>0);
 
-    // Powerups
     powerups.forEach(p => {
         p.x+=p.vx; p.y+=p.vy; p.vx*=0.95; p.vy*=0.95; p.life--;
         const dist = Math.hypot(player.x-p.x, player.y-p.y);
@@ -405,39 +379,97 @@ function update() {
     bullets = bullets.filter(b => b.life>0);
 
     enemies.forEach(e => {
-        const dx=player.x-e.x, dy=player.y-e.y, d=Math.sqrt(dx*dx+dy*dy);
-        e.x+=(dx/d)*e.speed; e.y+=(dy/d)*e.speed;
+        if(e.type === 'dragon') {
+            const dx = player.x - e.x, dy = player.y - e.y;
+            const targetAngle = Math.atan2(dy, dx);
+            let diff = targetAngle - e.angle;
+            while (diff < -Math.PI) diff += Math.PI*2; while (diff > Math.PI) diff -= Math.PI*2;
+            e.angle += diff * 0.05;
+            e.x += Math.cos(e.angle) * e.speed; e.y += Math.sin(e.angle) * e.speed;
+            
+            let leaderX = e.x, leaderY = e.y;
+            e.segments.forEach((seg, i) => {
+                const dx = leaderX - seg.x, dy = leaderY - seg.y, d = Math.hypot(dx, dy);
+                const spacing = 15 * G_SCALE;
+                if(d > spacing) {
+                    const moveDist = d - spacing;
+                    seg.x += (dx/d) * moveDist; seg.y += (dy/d) * moveDist;
+                }
+                seg.angle = Math.atan2(leaderY - seg.y, leaderX - seg.x);
+                leaderX = seg.x; leaderY = seg.y;
+            });
+        } else {
+            const dx=player.x-e.x, dy=player.y-e.y, d=Math.sqrt(dx*dx+dy*dy);
+            e.vx += (dx/d)*e.speed*0.05; e.vy += (dy/d)*e.speed*0.05;
+            e.vx *= 0.98; e.vy *= 0.98;
+            e.x+=e.vx; e.y+=e.vy;
+            e.angle = Math.atan2(e.vy, e.vx);
+        }
         
-        if(e.x < WALL_MARGIN || e.x > width-WALL_MARGIN) e.x = Math.max(WALL_MARGIN, Math.min(e.x, width-WALL_MARGIN));
-        if(e.y < WALL_MARGIN || e.y > height-WALL_MARGIN) e.y = Math.max(WALL_MARGIN, Math.min(e.y, height-WALL_MARGIN));
+        if(e.x < WALL_MARGIN || e.x > width-WALL_MARGIN) { e.x = Math.max(WALL_MARGIN, Math.min(e.x, width-WALL_MARGIN)); e.vx*=-0.8; }
+        if(e.y < WALL_MARGIN || e.y > height-WALL_MARGIN) { e.y = Math.max(WALL_MARGIN, Math.min(e.y, height-WALL_MARGIN)); e.vy*=-0.8; }
 
-        if(d < 25 * G_SCALE && player.invuln <= 0) {
-            damagePlayer(15);
+        const distToPlayer = Math.hypot(player.x - e.x, player.y - e.y);
+        if(distToPlayer < 25 * G_SCALE && player.invuln <= 0) {
+            damagePlayer(e.type==='dragon' ? 30 : 15);
             createExplosion(player.x, player.y, '#f00', 10);
-            destroyEnemy(e);
+            if(e.type !== 'dragon') destroyEnemy(e);
         }
 
-        let hitSat = false;
-        player.satellites.forEach((s, idx) => {
-            if(!hitSat && Math.hypot(s.x-e.x, s.y-e.y) < 25 * G_SCALE) {
-                hitSat = true; player.satellites.splice(idx, 1);
-                e.hp -= 5; createExplosion(e.x, e.y, '#fd0', 5); AudioSys.play('explode');
+        for (let i = player.satellites.length - 1; i >= 0; i--) {
+            const s = player.satellites[i];
+            let isHit = false;
+            if(e.type === 'dragon') {
+                if(Math.hypot(s.x - e.x, s.y - e.y) < 22 * G_SCALE) isHit = true; 
+                else {
+                    for(let seg of e.segments) {
+                        if(Math.hypot(s.x - seg.x, s.y - seg.y) < 18 * G_SCALE) {
+                            createExplosion(s.x, s.y, '#fff', 3); AudioSys.play('deflect');
+                            player.satellites.splice(i, 1); 
+                            break; 
+                        }
+                    }
+                }
+            } else {
+                if(Math.hypot(s.x - e.x, s.y - e.y) < 25 * G_SCALE) isHit = true;
             }
-        });
-        if(hitSat && e.hp<=0) destroyEnemy(e);
+
+            if(isHit) {
+                player.satellites.splice(i, 1); 
+                e.hp = 0; 
+                createExplosion(e.x, e.y, '#fd0', 10); AudioSys.play('explode');
+                satCountEl.innerText = player.satellites.length;
+                break; 
+            }
+        }
+        if(e.hp<=0) { destroyEnemy(e); continue; }
 
         bullets.forEach(b => {
-            if(Math.hypot(b.x-e.x, b.y-e.y) < 30 * G_SCALE) {
-                e.hp--; b.life=0; createExplosion(b.x, b.y, '#fff', 2);
-                if(e.hp<=0) destroyEnemy(e);
+            let isHit = false, isDeflect = false;
+            if(e.type === 'dragon') {
+                if(Math.hypot(b.x - e.x, b.y - e.y) < 22 * G_SCALE) isHit = true;
+                else {
+                    for(let seg of e.segments) if(Math.hypot(b.x - seg.x, b.y - seg.y) < 18 * G_SCALE) isDeflect = true;
+                }
+            } else {
+                if(Math.hypot(b.x - e.x, b.y - e.y) < 30 * G_SCALE) isHit = true;
             }
+
+            if(isHit) { e.hp--; b.life=0; createExplosion(b.x, b.y, '#fff', 2); }
+            else if(isDeflect) { b.life=0; createExplosion(b.x, b.y, '#fff', 1); AudioSys.play('deflect'); }
         });
+        if(e.hp<=0) { destroyEnemy(e); continue; }
 
         missiles.forEach(m => {
-            if(Math.hypot(m.x-e.x, m.y-e.y) < 30 * G_SCALE) {
-                e.hp-=10; m.life=0; createExplosion(m.x, m.y, '#fd0', 5);
-                if(e.hp<=0) destroyEnemy(e);
+            let isHit = false, isDeflect = false;
+            if(e.type === 'dragon') {
+                if(Math.hypot(m.x - e.x, m.y - e.y) < 22 * G_SCALE) isHit = true;
+                else for(let seg of e.segments) if(Math.hypot(m.x - seg.x, m.y - seg.y) < 18 * G_SCALE) isDeflect = true;
+            } else {
+                if(Math.hypot(m.x - e.x, m.y - e.y) < 30 * G_SCALE) isHit = true;
             }
+            if(isHit) { e.hp-=10; m.life=0; createExplosion(m.x, m.y, '#fd0', 5); }
+            else if(isDeflect) { m.life=0; createExplosion(m.x, m.y, '#fff', 3); AudioSys.play('deflect'); }
         });
     });
     enemies = enemies.filter(e => e.hp>0);
@@ -457,12 +489,15 @@ function damagePlayer(amount) {
 }
 
 function destroyEnemy(e) {
-    createExplosion(e.x, e.y, e.color, 15);
+    createExplosion(e.x, e.y, e.color, e.type==='dragon'?30:15);
     distortGrid(e.x, e.y, 50*G_SCALE, 100*G_SCALE);
-    score += 100; scoreEl.innerText = score;
+    score += e.type==='dragon' ? 500 : 100; scoreEl.innerText = score;
     AudioSys.play('explode');
     if (e.dropType === 'powerup') spawnPowerup(e.x, e.y);
-    else spawnCrystal(e.x, e.y);
+    else {
+        const count = e.type==='dragon' ? 5 : 1;
+        for(let i=0; i<count; i++) spawnCrystal(e.x + (Math.random()-0.5)*20, e.y + (Math.random()-0.5)*20);
+    }
 }
 
 function gameOver() {
@@ -484,12 +519,16 @@ function spawnEnemy() {
     }
     
     const t=Math.random();
-    let e={x:ex, y:ey, hp:1, speed:(2+Math.random()*2)*SPEED_SCALE, color:'#f0f', dropType:'crystal'};
-    
-    if(t<0.2) { e.hp=3; e.speed=1.5*SPEED_SCALE; e.color='#f00'; e.dropType='powerup'; }
-    else if(t<0.6) { e.color='#0ff'; }
-    else { e.speed=5*SPEED_SCALE; e.color='#0f0'; }
-    enemies.push(e);
+    if(t<0.15) { 
+        let e={x:ex, y:ey, vx:0, vy:0, hp:1, speed:1.5*SPEED_SCALE, color:'#f00', dropType:'powerup', type:'dragon', angle:0, segments:[]};
+        for(let i=0; i<8; i++) e.segments.push({x:ex, y:ey, angle:0});
+        enemies.push(e);
+    } else {
+        let e={x:ex, y:ey, vx:0, vy:0, hp:1, speed:(2+Math.random()*2)*SPEED_SCALE, color:'#f0f', dropType:'crystal', type:'normal', angle:0};
+        if(t<0.6) { e.color='#0ff'; }
+        else { e.speed=4*SPEED_SCALE; e.color='#0f0'; }
+        enemies.push(e);
+    }
 }
 
 function createExplosion(x, y, color, count) {
@@ -499,40 +538,48 @@ function createExplosion(x, y, color, count) {
     }
 }
 
-// --- Render Fighter Jet ---
 function drawPlayerShip(ctx, x, y, angle, scale) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-    ctx.scale(scale, scale);
-    
-    ctx.lineWidth = 2;
-    ctx.shadowBlur = 10; ctx.shadowColor = '#0ff';
-    ctx.strokeStyle = '#0ff';
-
-    // Body
-    ctx.beginPath();
-    ctx.moveTo(20, 0); ctx.lineTo(-10, 5); ctx.lineTo(-10, -5); ctx.closePath(); ctx.stroke();
-
-    // Wings
-    ctx.beginPath();
-    ctx.moveTo(-5, 0); ctx.lineTo(-15, 20); ctx.lineTo(-10, 5);
-    ctx.moveTo(-5, 0); ctx.lineTo(-15, -20); ctx.lineTo(-10, -5);
-    ctx.stroke();
-
-    // Engines
-    ctx.beginPath();
-    ctx.moveTo(-10, 5); ctx.lineTo(-18, 5);
-    ctx.moveTo(-10, -5); ctx.lineTo(-18, -5);
-    ctx.stroke();
-
-    // Jet Fire
+    ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.scale(scale, scale);
+    ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = '#0ff'; ctx.strokeStyle = '#0ff';
+    ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-10, 5); ctx.lineTo(-10, -5); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(-15, 20); ctx.lineTo(-10, 5); ctx.moveTo(-5, 0); ctx.lineTo(-15, -20); ctx.lineTo(-10, -5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-18, 5); ctx.moveTo(-10, -5); ctx.lineTo(-18, -5); ctx.stroke();
     if (Math.hypot(player.vx, player.vy) > 0.5) {
         ctx.fillStyle = '#0ff';
         ctx.beginPath(); ctx.moveTo(-18, 5); ctx.lineTo(-30-Math.random()*10, 5); ctx.lineTo(-18, 3); ctx.fill();
         ctx.beginPath(); ctx.moveTo(-18, -5); ctx.lineTo(-30-Math.random()*10, -5); ctx.lineTo(-18, -3); ctx.fill();
     }
+    ctx.restore();
+}
 
+function drawNormalEnemy(ctx, e) {
+    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.angle); ctx.scale(G_SCALE, G_SCALE);
+    ctx.strokeStyle=e.color; ctx.shadowBlur=10; ctx.shadowColor=e.color; ctx.lineWidth=2;
+    ctx.beginPath();
+    if(e.color === '#0ff') { 
+        ctx.moveTo(15,0); ctx.lineTo(-10, 10); ctx.lineTo(-5, 0); ctx.lineTo(-10, -10); ctx.closePath();
+    } else if(e.color === '#0f0') {
+        ctx.moveTo(20,0); ctx.lineTo(0, 5); ctx.lineTo(-15, 15); ctx.moveTo(0, -5); ctx.lineTo(-15, -15); ctx.moveTo(0,5); ctx.lineTo(0,-5);
+    } else {
+        ctx.moveTo(10,10); ctx.lineTo(-10,10); ctx.lineTo(-15,0); ctx.lineTo(-10,-10); ctx.lineTo(10,-10); ctx.lineTo(15,0); ctx.closePath();
+    }
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawDragonEnemy(ctx, e) {
+    ctx.save(); ctx.scale(G_SCALE, G_SCALE);
+    ctx.strokeStyle=e.color; ctx.shadowBlur=10; ctx.shadowColor=e.color; ctx.lineWidth=2;
+    e.segments.forEach((seg, i) => {
+        ctx.save(); ctx.translate(seg.x/G_SCALE, seg.y/G_SCALE); ctx.rotate(seg.angle);
+        ctx.beginPath();
+        const size = i < e.segments.length - 2 ? 12 : (12 - (i - (e.segments.length-3))*3);
+        ctx.arc(0, 0, size, 0, Math.PI*2); ctx.stroke(); ctx.restore();
+    });
+    ctx.save(); ctx.translate(e.x/G_SCALE, e.y/G_SCALE); ctx.rotate(e.angle);
+    ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(5, 15); ctx.lineTo(-10, 10); ctx.lineTo(-10, -10); ctx.lineTo(5, -15); ctx.closePath(); ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(10, 5, 2, 0, Math.PI*2); ctx.arc(10, -5, 2, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
     ctx.restore();
 }
 
@@ -558,7 +605,6 @@ function draw() {
         if (player.invuln <= 0 || frame % 4 < 2) {
             drawPlayerShip(ctx, player.x, player.y, player.angle, G_SCALE);
         }
-
         player.satellites.forEach(s => {
             ctx.fillStyle = '#fd0'; ctx.shadowColor = '#fd0'; ctx.shadowBlur = 10;
             ctx.beginPath(); ctx.arc(s.x, s.y, 4*G_SCALE, 0, Math.PI*2); ctx.fill();
@@ -569,9 +615,8 @@ function draw() {
 
     missiles.forEach(m => { ctx.fillStyle = '#fd0'; ctx.beginPath(); ctx.arc(m.x, m.y, 4*G_SCALE, 0, Math.PI*2); ctx.fill(); });
     enemies.forEach(e => {
-        ctx.strokeStyle=e.color; ctx.shadowBlur=10; ctx.shadowColor=e.color; ctx.lineWidth=2;
-        const es = 20 * G_SCALE;
-        ctx.beginPath(); ctx.rect(e.x-es/2, e.y-es/2, es, es); ctx.stroke();
+        if(e.type === 'dragon') drawDragonEnemy(ctx, e);
+        else drawNormalEnemy(ctx, e);
     });
     ctx.fillStyle='#ff0'; bullets.forEach(b=>{ctx.beginPath(); ctx.arc(b.x, b.y, 3*G_SCALE, 0, Math.PI*2); ctx.fill();});
     particles.forEach(p=>{ctx.fillStyle=p.color; ctx.globalAlpha=p.life; ctx.beginPath(); ctx.arc(p.x, p.y, 2*G_SCALE, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha=1.0;});
@@ -589,36 +634,45 @@ function draw() {
     requestAnimationFrame(()=>{update(); draw();});
 }
 
-// Controls Logic
 function handleTouch(e) {
     e.preventDefault();
     input.move.active=false; input.move.x=0; input.move.y=0;
+    input.aim.active=false; input.aim.x=0; input.aim.y=0;
     
     const lR=stickLeftEl.getBoundingClientRect(), lCX=lR.left+lR.width/2, lCY=lR.top+lR.height/2;
+    const rR=stickRightEl.getBoundingClientRect(), rCX=rR.left+rR.width/2, rCY=rR.top+rR.height/2;
     const maxD=40;
 
     for(let i=0; i<e.touches.length; i++) {
         const t=e.touches[i], tx=t.clientX, ty=t.clientY;
         if(tx < width/2) {
             const dx=tx-lCX, dy=ty-lCY, d=Math.sqrt(dx*dx+dy*dy);
-            if(d < 150) {
+            if(d<150) {
                 input.move.active=true; const dist=Math.min(d,maxD), ang=Math.atan2(dy,dx);
                 input.move.x=(Math.cos(ang)*dist)/maxD; input.move.y=(Math.sin(ang)*dist)/maxD;
                 knobLeftEl.style.transform=`translate(${input.move.x*maxD}px, ${input.move.y*maxD}px)`;
             }
+        } else {
+            const dx=tx-rCX, dy=ty-rCY, d=Math.sqrt(dx*dx+dy*dy);
+            if(d<150) {
+                input.aim.active=true; const dist=Math.min(d,maxD), ang=Math.atan2(dy,dx);
+                input.aim.x=(Math.cos(ang)*dist)/maxD; input.aim.y=(Math.sin(ang)*dist)/maxD;
+                knobRightEl.style.transform=`translate(${input.aim.x*maxD}px, ${input.aim.y*maxD}px)`;
+            }
         }
     }
     if(!input.move.active) knobLeftEl.style.transform=`translate(0px, 0px)`;
+    if(!input.aim.active) knobRightEl.style.transform=`translate(0px, 0px)`;
 }
 
-// Touch Button Handlers
-fireBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); input.fire=true; });
-fireBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); input.fire=false; });
 launchBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); launchSatellites(); });
 
 window.addEventListener('keydown', e=>keys[e.code]=true);
 window.addEventListener('keyup', e=>keys[e.code]=false);
-window.addEventListener('touchstart', e=>{if(gameState==='PLAYING')handleTouch(e);}, {passive:false});
+window.addEventListener('touchstart', e=>{
+    if(e.target===launchBtn) return;
+    if(gameState==='PLAYING')handleTouch(e);
+}, {passive:false});
 window.addEventListener('touchmove', e=>{if(gameState==='PLAYING')handleTouch(e);}, {passive:false});
 window.addEventListener('touchend', e=>{if(gameState==='PLAYING')handleTouch(e);}, {passive:false});
 overlay.addEventListener('touchstart', e=>{e.preventDefault(); if(gameState!=='PLAYING') startGame();});
