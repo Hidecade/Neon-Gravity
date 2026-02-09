@@ -342,6 +342,15 @@
         };
         const DRAGON_ACCELERATION = 0.2; // ボスがプレイヤーを追いかける時の加速の強さ
 
+        // --- 敵キャラクター別の当たり判定半径 (Hitbox) ---
+        const ENEMY_HITBOX = {
+            TRIANGLE: 12,  // 紫
+            CUBE: 15,      // 緑
+            TADPOLE: 18,   // 白
+            DRAGON: 25,    // 赤
+            BULLET: 8      // ★追加: 敵の「弾」自体の当たり判定半径
+        };
+
         // エフェクト演出
         const EXPLOSION_SPEED_MAG = 2.0; // 敵撃破時の火花の飛散速度 (大きいほど勢いが増す)
         const EXPLOSION_COUNT_MAG = 1.5; // 敵撃破時の火花の量 (大きくすると豪華になりますが重くなる可能性あり)
@@ -362,6 +371,7 @@
             SPAWN_INTERVAL: 180,         // 湧き穴から敵が出る間隔 (フレーム数。60=1秒)
             WORMHOLE_CHANCE: 0.03        // 新しい湧き穴が画面内に発生する確率 (毎フレーム判定)
         };
+
 
         // アイテム・特殊武器
         const LASER_DURATION = 600;      // レーザーを取得した時の持続時間 (600=10秒間)
@@ -932,11 +942,28 @@
 
         function checkPlayerCollision(e) {
             if (gameState === 'DYING') return;
+
+            // 距離を計算
             const dist = Math.hypot(player.x - e.x, player.y - e.y);
-            const collisionDist = (e.type === 'tadpole') ? (40 * (e.scale / 0.6)) : 25;
+
+            // 敵の種類に応じた判定半径を取得（種類が見つからない場合は15をデフォルトにする）
+            let radius = 15;
+            if (e.type === 'triangle') radius = ENEMY_HITBOX.TRIANGLE;
+            else if (e.type === 'cube') radius = ENEMY_HITBOX.CUBE;
+            else if (e.type === 'tadpole') radius = ENEMY_HITBOX.TADPOLE;
+            else if (e.type === 'dragon') radius = ENEMY_HITBOX.DRAGON;
+
+            // スケール補正（敵が個別に拡大縮小している場合に対応）
+            const collisionDist = radius * (e.scale / 0.7);
+
             if (dist < collisionDist) {
                 player.shield -= 0.5;
-                if (player.invuln <= 0) { player.shield -= 10; player.invuln = 10; createExplosion(player.x, player.y, '#f00', 5); AudioSys.playSE('damage'); }
+                if (player.invuln <= 0) {
+                    player.shield -= 10;
+                    player.invuln = 10;
+                    createExplosion(player.x, player.y, '#f00', 5);
+                    AudioSys.playSE('damage');
+                }
                 ui.shieldBar.style.width = Math.max(0, player.shield) + "%";
                 if (player.shield <= 0) damage(0);
             }
@@ -951,34 +978,24 @@
 
         function updateEnemyBullets() {
             enemyBullets.forEach(eb => {
-                // 移動前の座標を保存
                 const oldX = eb.x;
                 const oldY = eb.y;
 
-                // 移動実行
                 eb.x += eb.vx;
                 eb.y += eb.vy;
                 eb.life--;
 
                 if (gameState !== 'DYING' && player.invuln <= 0) {
-                    // --- トンネル現象対策: 線分と点の距離で判定 ---
-                    // 弾の移動前(old)と移動後(eb)を結ぶ線分と、プレイヤーの中心座標の距離を計算
                     const dx = eb.x - oldX;
                     const dy = eb.y - oldY;
                     const t = ((player.x - oldX) * dx + (player.y - oldY) * dy) / (dx * dx + dy * dy);
-
-                    // 線分の範囲内に限定 (0〜1)
                     const closestT = Math.max(0, Math.min(1, t));
-
-                    // 線分上の最もプレイヤーに近い点の座標
                     const closestX = oldX + closestT * dx;
                     const closestY = oldY + closestT * dy;
 
-                    // その点とプレイヤーの距離を測る
                     const dist = Math.hypot(player.x - closestX, player.y - closestY);
 
-                    // 当たり判定のしきい値（12〜15くらいが適正）
-                    if (dist < 15) {
+                    if (dist < ENEMY_HITBOX.BULLET) {
                         eb.life = 0;
                         createExplosion(player.x, player.y, '#f00', 10);
                         damage(15);
