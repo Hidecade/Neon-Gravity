@@ -723,15 +723,15 @@
             const vx = Math.cos(burstAngle) * burstSpeed;
             const vy = Math.sin(burstAngle) * burstSpeed;
 
-            // --- 修正: ドロップ確率の変更 ---
+            // --- ドロップ確率の設定 ---
             const rnd = Math.random();
             let dropType = 'crystal';
-            if (rnd < 0.1) dropType = 'laser'; // 10%でレーザー
+            if (rnd < 0.1) dropType = 'laser';      // 10%でレーザー
             else if (rnd < 0.3) dropType = 'level'; // 20%でレベルアップ
-            else dropType = 'crystal'; // 残りクリスタル
+            else dropType = 'crystal';              // 残りクリスタル
 
+            // 1. DRAGON（ボス）の生成
             if (type === 'dragon') {
-                // ... (既存のコード) ...
                 let e = {
                     x: x, y: y, vx: vx, vy: vy, hp: 8,
                     speed: ENEMY_SPEEDS.DRAGON * spd,
@@ -740,7 +740,9 @@
                 for (let i = 0; i < 16; i++) e.segments.push({ x: x, y: y, angle: 0 });
                 enemies.push(e);
                 spawnedCount++;
-            } else if (type === 'cube') {
+            }
+            // 2. CUBE（緑の敵）の生成
+            else if (type === 'cube') {
                 let e = {
                     x: x, y: y, vx: vx, vy: vy, hp: 2,
                     speed: ENEMY_SPEEDS.CUBE * spd,
@@ -748,11 +750,21 @@
                 };
                 enemies.push(e);
                 spawnedCount++;
-            } else { // TRIANGLE (編隊生成ロジック)
+            }
+            // 3. TADPOLE（精子型/白）の生成 
+            else if (type === 'tadpole') {
+                let e = {
+                    x: x, y: y, vx: vx, vy: vy, hp: 1,
+                    speed: ENEMY_SPEEDS.TADPOLE * spd,
+                    color: '#fff', type: 'tadpole', angle: 0, drop: 'none', scale: 0.6, history: []
+                };
+                enemies.push(e);
+                spawnedCount++;
+            }
+            // 4. TRIANGLE（編隊生成）
+            else if (type === 'triangle') {
                 const forms = ['V', 'line', 'circle'];
                 const form = forms[Math.floor(Math.random() * forms.length)];
-
-                // リーダーの初期角度を移動方向から決定
                 const initialAngle = Math.atan2(vy, vx);
 
                 const leader = {
@@ -773,14 +785,13 @@
 
                     let baseOffX = 0, baseOffY = 0;
 
-                    // リーダーが「右(角度0)」を向いていると仮定した時の配置
                     if (form === 'V') {
-                        const spreadX = 20; // 左右の広がり
-                        const depthY = -30; // 後方への下がり
-                        baseOffX = Math.ceil(i / 2) * depthY; // リーダーの後ろへ
-                        baseOffY = (i % 2 === 0 ? 1 : -1) * Math.ceil(i / 2) * spreadX; // 左右に展開
+                        const spreadX = 20;
+                        const depthY = -30;
+                        baseOffX = Math.ceil(i / 2) * depthY;
+                        baseOffY = (i % 2 === 0 ? 1 : -1) * Math.ceil(i / 2) * spreadX;
                     } else if (form === 'line') {
-                        baseOffX = -Math.ceil(i / 2) * 45; // 真後ろに一列
+                        baseOffX = -Math.ceil(i / 2) * 45;
                         baseOffY = 0;
                     } else { // circle
                         const angle = (Math.PI * 2 / 5) * i;
@@ -788,7 +799,6 @@
                         baseOffY = Math.sin(angle) * 40;
                     }
 
-                    // 【重要】リーダーの初期角度に合わせてオフセット座標を回転させる
                     const rotatedOffX = baseOffX * Math.cos(initialAngle) - baseOffY * Math.sin(initialAngle);
                     const rotatedOffY = baseOffX * Math.sin(initialAngle) + baseOffY * Math.cos(initialAngle);
 
@@ -798,7 +808,7 @@
                         color: '#d0f', type: 'triangle',
                         angle: initialAngle, drop: 'none', scale: 0.7,
                         leader: leader,
-                        formOffset: { x: baseOffX, y: baseOffY }, // 回転前の基本オフセットを保存
+                        formOffset: { x: baseOffX, y: baseOffY },
                         rotX: Math.random() * Math.PI,
                         rotY: Math.random() * Math.PI,
                         rotZ: Math.random() * Math.PI
@@ -1120,36 +1130,52 @@
 
         function updateCrystals() {
             crystals.forEach(c => {
-                const dx = player.x - c.x, dy = player.y - c.y, d = Math.hypot(dx, dy) || 0.0001;
+                // --- 修正: 寿命を減らす処理を追加 ---
+                c.life--;
+
+                const dx = player.x - c.x, dy = player.y - c.y;
+                const d = Math.hypot(dx, dy) || 0.0001;
+
+                // プレイヤーへの吸い寄せ
                 const factor = 0.03 + (d * 0.0005);
                 c.x += dx * factor; c.y += dy * factor;
-                if (d < 20) { c.life = 0; if (player.satellites.length < 12) player.satellites.push({}); }
+
+                // 取得判定
+                if (d < 20) {
+                    c.life = 0; // 取得されたら即死
+                    if (player.satellites.length < 12) player.satellites.push({});
+                }
             });
+            // 寿命が0になったら消す
             crystals = crystals.filter(c => c.life > 0);
         }
 
         function updatePowerups() {
             powerups.forEach(p => {
-                if (Math.hypot(player.x - p.x, player.y - p.y) < 30) {
-                    p.life = 0;
+                // --- 修正: 寿命を減らす処理を追加 ---
+                p.life--;
 
-                    // --- 追加: アイテム取得音 ---
+                const d = Math.hypot(player.x - p.x, player.y - p.y);
+
+                // 取得判定
+                if (d < 30) {
+                    p.life = 0; // 取得されたら即死
                     AudioSys.playSE('powerup');
 
                     if (p.type === 'laser') {
-                        player.laserTimer = LASER_DURATION; // 時間設定
-                        // 取得エフェクト（青いリング）
+                        player.laserTimer = LASER_DURATION;
                         rings.push({ x: player.x, y: player.y, r: 10, color: '#0ff', life: 1 });
                         rings.push({ x: player.x, y: player.y, r: 50, color: '#0ff', life: 1 });
                     } else if (p.type === 'invincible') {
-                        player.invuln = 600; // 無敵
-                        AudioSys.playSE('invincible'); // 無敵音
+                        player.invuln = 600;
+                        AudioSys.playSE('invincible');
                     } else if (p.type === 'level') {
                         player.weaponLevel = Math.min(5, player.weaponLevel + 1);
                         ui.wLv.innerText = player.weaponLevel;
                     }
                 }
             });
+            // 寿命が0になったら消す
             powerups = powerups.filter(p => p.life > 0);
         }
 
@@ -1213,13 +1239,17 @@
             score += pts; ui.score.innerText = score.toString().padStart(6, '0');
             scorePopups.push({ x: e.x, y: e.y, text: pts, life: 40, alpha: 1, vy: -1 });
             distortGrid(e.x, e.y, 40, 80);
+
+
             if (e.noDrop || e.drop === 'none') return;
 
-            // --- 修正: ドロップ生成 ---
-            if (e.drop === 'laser') powerups.push({ x: e.x, y: e.y, type: 'laser', life: 1000 });
-            else if (e.drop === 'invincible') powerups.push({ x: e.x, y: e.y, type: 'invincible', life: 1000 });
-            else if (e.drop === 'level' || Math.random() < 0.05) powerups.push({ x: e.x, y: e.y, type: 'level', life: 1000 });
-            else crystals.push({ x: e.x, y: e.y, life: 1000 });
+            const ITEM_LIFE = 180; // 3秒間 (60fps * 3)
+
+            if (e.drop === 'laser') powerups.push({ x: e.x, y: e.y, type: 'laser', life: ITEM_LIFE });
+            else if (e.drop === 'invincible') powerups.push({ x: e.x, y: e.y, type: 'invincible', life: ITEM_LIFE });
+            else if (e.drop === 'level' || Math.random() < 0.05) powerups.push({ x: e.x, y: e.y, type: 'level', life: ITEM_LIFE });
+            else crystals.push({ x: e.x, y: e.y, life: ITEM_LIFE });
+
         }
 
         function damage(v) {
@@ -1398,7 +1428,7 @@
                 ctx.fill();
 
                 // 中心に白い芯を描画して輝きを強調
-                ctx.fillStyle = '#fff';
+                ctx.fillStyle = '#fdd';
                 ctx.beginPath();
                 ctx.moveTo(0, -size * 0.4);
                 ctx.lineTo(size * 0.3, 0);
@@ -1435,32 +1465,72 @@
             drawLasers();
 
             ctx.fillStyle = '#0f8'; bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, Math.PI * 2); ctx.fill(); });
-            ctx.fillStyle = '#0f0'; crystals.forEach(c => {
-                ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(frame * 0.1);
-                ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(4, 0); ctx.lineTo(0, 6); ctx.lineTo(-4, 0); ctx.fill(); ctx.restore();
+
+            // Crystals (残りライフで縮小)
+            ctx.fillStyle = '#0f0';
+            crystals.forEach(c => {
+                ctx.save();
+                ctx.translate(c.x, c.y);
+                ctx.rotate(frame * 0.1);
+
+                // --- 追加: 縮小スケール計算 ---
+                const scale = Math.max(0, c.life / 180);
+                ctx.scale(scale, scale);
+
+                ctx.beginPath();
+                ctx.moveTo(0, -6); ctx.lineTo(4, 0); ctx.lineTo(0, 6); ctx.lineTo(-4, 0);
+                ctx.fill();
+                ctx.restore();
             });
 
-            // Powerups (修正: 種類ごとの描画)
+            // Powerups (残りライフで縮小)
             powerups.forEach(p => {
-                // 色分け
                 if (p.type === 'laser') ctx.strokeStyle = '#0ff';
                 else if (p.type === 'level') ctx.strokeStyle = '#0f0';
-                else ctx.strokeStyle = '#fd0'; // invincible
+                else ctx.strokeStyle = '#fd0';
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+
+                // --- 追加: 縮小スケール計算 ---
+                const scale = Math.max(0, p.life / 180);
+                ctx.scale(scale, scale);
 
                 ctx.lineWidth = 2;
-                ctx.strokeRect(p.x - 8, p.y - 8, 16, 16);
-                ctx.fillStyle = ctx.strokeStyle; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.strokeRect(-8, -8, 16, 16);
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.font = 'bold 12px monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
 
-                // 文字分け
                 let char = 'S';
-                if (p.type === 'level') char = 'L';
-                else if (p.type === 'laser') char = 'B'; // Beam
+                if (p.type === 'level') char = 'S';
+                else if (p.type === 'laser') char = 'L';
 
-                ctx.fillText(char, p.x, p.y);
+                ctx.fillText(char, 0, 0);
+                ctx.restore();
             });
 
             ctx.fillStyle = '#fd0'; missiles.forEach(m => { ctx.beginPath(); ctx.arc(m.x, m.y, 4 * G_SCALE, 0, Math.PI * 2); ctx.fill(); });
-            particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, 2 * G_SCALE, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1.0; });
+
+            // パーティクル描画部分のアップグレード版
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+
+                // 単なる点ではなく、移動方向に少し伸びた線として描画
+                ctx.beginPath();
+                const length = 2.0; // 伸びる長さ
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
+                ctx.lineWidth = p.size || 2;
+                ctx.strokeStyle = p.color;
+                ctx.stroke();
+
+                ctx.restore();
+            });
+            ctx.globalAlpha = 1.0;
 
             rings.forEach(r => {
                 ctx.strokeStyle = r.color; ctx.lineWidth = 3; ctx.globalAlpha = r.life;
@@ -1697,26 +1767,50 @@
             }
         }
         
-        function createExplosion(x, y, c, n) {
-            // 生成する破片の総数を倍率で増やす
+        function createExplosion(x, y, baseColor, n) {
+            // 生成するパーティクル数を倍率で増やす
             const count = Math.floor(n * EXPLOSION_COUNT_MAG);
 
             for (let i = 0; i < count; i++) {
                 const angle = Math.random() * Math.PI * 2;
 
-                // 飛散スピードを倍率で強化
-                // Math.random() * 5 + 2 (基本) に対して EXPLOSION_SPEED_MAG を乗算
-                const speed = (Math.random() * 5 + 2) * EXPLOSION_SPEED_MAG;
+                // 飛散スピードをランダムにして勢いにバラつきを出す
+                const speed = (Math.random() * 8 + 2) * EXPLOSION_SPEED_MAG;
+
+                // --- パーティクルの色決定ロジック ---
+                let color;
+                const rnd = Math.random();
+
+                if (rnd < 0.5) {
+                    // 50%：その敵のベースカラー
+                    color = baseColor;
+                } else if (rnd < 0.7) {
+                    // 20%：白（中心のまばゆい輝き）
+                    color = '#fff';
+                } else if (rnd < 0.85) {
+                    // 15%：オレンジや黄色（燃焼する火花）
+                    color = rnd < 0.77 ? '#ff8800' : '#ffff00';
+                } else {
+                    // 15%：完全にランダムなネオンカラー（サイバー感を強調）
+                    const colors = ['#0ff', '#f0f', '#0f0', '#ff0'];
+                    color = colors[Math.floor(Math.random() * colors.length)];
+                }
 
                 particles.push({
-                    x, y,
+                    x: x,
+                    y: y,
                     vx: Math.cos(angle) * speed,
                     vy: Math.sin(angle) * speed,
-                    color: c,
-                    // 遠くまで飛ぶようにライフ（消えるまでの時間）を少し長めに設定(1.0 -> 1.2)
-                    life: 1.2
+                    color: color,
+                    // 大きさも少しランダムにする
+                    size: (Math.random() * 2 + 1) * G_SCALE,
+                    // 派手さを維持するためライフを少し長めに設定
+                    life: 1.0 + Math.random() * 0.5
                 });
             }
+
+            // 爆発の瞬間に強烈なグリッドの歪みを加える
+            distortGrid(x, y, 60, 120);
         }
 
         function launchSatellites() {
