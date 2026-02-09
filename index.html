@@ -324,31 +324,46 @@
     <canvas id="game"></canvas>
 
     <script>
-        // --- Settings ---
-        const G_SCALE = 0.7;
-        const SPEED_SCALE = 0.25;
-        const WALL_MARGIN = 5;
-        const MAX_WEAPON_LEVEL = 5;
-        const GRID_SPACING = 30;
+        // --- 基本設定 (Settings) ---
+        const G_SCALE = 0.7;             // グラフィック全体の大きさの倍率
+        const SPEED_SCALE = 0.25;        // 全体の移動速度の基準値
+        const WALL_MARGIN = 5;           // 画面端の移動制限エリアの幅
+        const MAX_WEAPON_LEVEL = 5;      // 武器の最大レベル（弾の数など）
+        const GRID_SPACING = 30;         // 背景グリッド線の間隔
 
-        // --- Constants ---
+        // --- 難易度・出現バランスの設定 (New) ---
+        const SPAWN_SETTINGS = {
+            BASE_ENEMIES: 60,            // ステージ1の敵の総数
+            ENEMIES_PER_STAGE: 15,       // ステージが進むごとに追加される敵の数
+            MAX_WORMHOLES_BASE: 5,       // 同時に存在するワームホールの基本数
+            SPAWN_INTERVAL: 180,         // 敵が湧く間隔 (フレーム数。180=約3秒に1回)
+            WORMHOLE_CHANCE: 0.03        // 新しいワームホールが発生する確率 (毎フレーム判定)
+        };
+
+        // --- 敵キャラクターの設定 (Constants) ---
         const ENEMY_SPEEDS = {
-            TRIANGLE: 4.8,
-            CUBE: 2.5,
-            TADPOLE: 6,
-            DRAGON: 8
+            TRIANGLE: 4.8,               // 紫色の敵（主力機）の最高速度
+            CUBE: 2.5,                   // 緑色の敵（アイテム持ち）の最高速度
+            TADPOLE: 6,                  // 白色の敵（精子型）の最高速度
+            DRAGON: 8                    // 赤色の敵（ボス）の最高速度
         };
-        const DRAGON_ACCELERATION = 0.2;
-        const EXPLOSION_SPEED_MAG = 2.0;
-        const EXPLOSION_COUNT_MAG = 1.5;
+        const DRAGON_ACCELERATION = 0.2; // ドラゴンがプレイヤーを追う時の加速の強さ
+
+        // --- エフェクトの設定 ---
+        const EXPLOSION_SPEED_MAG = 2.0; // 敵を倒した時の火花の飛散速度（大きいほど派手）
+        const EXPLOSION_COUNT_MAG = 1.5; // 敵を倒した時の火花の量（大きいほど派手）
+
+        // --- 弾・レーザーの設定 ---
         const BULLET_SETTINGS = {
-            PLAYER_SPEED: 32.0,
-            PLAYER_LIFE: 120,
-            ENEMY_SPEED: 10.0,
-            ENEMY_LIFE: 200
+            PLAYER_SPEED: 32.0,          // プレイヤーの弾速
+            PLAYER_LIFE: 120,            // プレイヤーの弾が消えるまでの時間（射程距離に影響）
+            ENEMY_SPEED: 10.0,           // 敵の弾速
+            ENEMY_LIFE: 200              // 敵の弾が消えるまでの時間
         };
-        const LASER_DURATION = 600;
-        const ITEM_LIFE = 240;
+        const LASER_DURATION = 600;      // レーザーアイテムの持続時間 (60fpsで10秒間)
+
+        // --- アイテムの設定 ---
+        const ITEM_LIFE = 240;           // アイテムが消滅するまでの寿命 (240フレーム=約4秒)
 
         // --- DOM References ---
         const canvas = document.getElementById('game');
@@ -601,7 +616,7 @@
         }
 
         function startStage() {
-            enemiesToSpawn = 70 + (stage * 15);
+            enemiesToSpawn = SPAWN_SETTINGS.BASE_ENEMIES + (stage * SPAWN_SETTINGS.ENEMIES_PER_STAGE);
             spawnedCount = 0; isStageClear = false; killCount = 0;
             ui.msg.style.display = 'none';
             bullets = []; lasers = []; enemies = []; enemyBullets = []; crystals = []; missiles = []; powerups = []; wormholes = []; scorePopups = []; rings = [];
@@ -727,16 +742,23 @@
             if (input.aim.active) player.angle = Math.atan2(input.aim.y, input.aim.x);
             else if (Math.hypot(mx, my) > 0.1) player.angle = Math.atan2(my, mx);
 
-            const fireInterval = player.laserTimer > 0 ? 4 : 10;
+            // --- 修正: レーザー中は発射間隔を短くする ---
+            // 4 = レーザー時の間隔（小さいほど速い）
+            // 10 = 通常弾の間隔（小さいほど速い）
+            const fireInterval = player.laserTimer > 0 ? 4 : 6;
+
             if ((input.aim.active || input.keys['Space'] || input.keys['KeyZ']) && frame % fireInterval === 0) fire();
 
-            const maxWormholes = 5 + stage;
-            if (spawnedCount < enemiesToSpawn && wormholes.filter(w => w.active).length < maxWormholes && Math.random() < 0.03) spawnWormhole();
+            const maxWormholes = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage;
+            // ワームホールの新規発生判定
+            if (spawnedCount < enemiesToSpawn && wormholes.filter(w => w.active).length < maxWormholes && Math.random() < SPAWN_SETTINGS.WORMHOLE_CHANCE) {
+                spawnWormhole();
+            }
 
             wormholes.forEach((w) => {
                 w.life--;
                 if (w.active) {
-                    if (w.life > 60 && w.life % 180 === 0 && spawnedCount < enemiesToSpawn) {
+                    if (w.life > 60 && w.life % SPAWN_SETTINGS.SPAWN_INTERVAL === 0 && spawnedCount < enemiesToSpawn) {
                         const r = Math.random();
                         if (r < 0.20) spawnEnemy(w.x, w.y, 'dragon');
                         else if (r < 0.35) spawnEnemy(w.x, w.y, 'cube');
