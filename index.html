@@ -318,6 +318,14 @@
             DRAGON: 3.5  // 赤：ボス。加速度移動の上限値
         };
 
+        // 武器・弾の設定 (定数化)
+        const BULLET_SETTINGS = {
+            PLAYER_SPEED: 24.0,  // 自機の弾速
+            PLAYER_LIFE: 120,   // 自機の弾の射程(フレーム数)
+            ENEMY_SPEED: 4.0,   // 敵の弾速
+            ENEMY_LIFE: 200    // 敵の弾の射程(フレーム数)
+        };
+
         // --- DOM References ---
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
@@ -625,11 +633,23 @@
         }
 
         function fire() {
-            const s = 24 * SPEED_SCALE;
+            // 定数 PLAYER_SPEED (24.0) を使用
+            const s = BULLET_SETTINGS.PLAYER_SPEED * SPEED_SCALE;
+
             for (let i = 0; i < player.weaponLevel; i++) {
-                const a = player.angle + (i - (player.weaponLevel - 1) / 2) * 0.1;
-                bullets.push({ x: player.x, y: player.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 240 });
+                // ショットの広がり角の計算
+                const a = player.angle + (i - (player.weaponLevel - 1) / 2) * 0.15;
+
+                bullets.push({
+                    x: player.x,
+                    y: player.y,
+                    vx: Math.cos(a) * s,
+                    vy: Math.sin(a) * s,
+                    // 定数 PLAYER_LIFE (120) を使用
+                    life: BULLET_SETTINGS.PLAYER_LIFE
+                });
             }
+
             AudioSys.playSE('shoot');
             distortGrid(player.x, player.y, 10, 40);
         }
@@ -647,16 +667,28 @@
             const dropType = Math.random() < 0.3 ? 'level' : 'crystal';
 
             if (type === 'dragon') {
-                let e = { x: x, y: y, vx: vx, vy: vy, hp: 8, speed: ENEMY_SPEEDS.DRAGON * spd, color: '#f00', type: 'dragon', angle: 0, segments: [], drop: 'invincible', scale: 0.9, fireTimer: 0 };
+                let e = {
+                    x: x, y: y, vx: vx, vy: vy, hp: 8,
+                    speed: ENEMY_SPEEDS.DRAGON * spd,
+                    color: '#f00', type: 'dragon', angle: 0, segments: [], drop: 'invincible', scale: 0.9, fireTimer: 0
+                };
                 for (let i = 0; i < 16; i++) e.segments.push({ x: x, y: y, angle: 0 });
                 enemies.push(e);
                 spawnedCount++;
             } else if (type === 'cube') {
-                let e = { x: x, y: y, vx: vx, vy: vy, hp: 2, speed: ENEMY_SPEEDS.CUBE * spd, color: '#0f0', type: 'cube', angle: 0, drop: dropType, scale: 0.8, rot: 0, rotX: 0, rotY: 0 };
+                let e = {
+                    x: x, y: y, vx: vx, vy: vy, hp: 2,
+                    speed: ENEMY_SPEEDS.CUBE * spd,
+                    color: '#0f0', type: 'cube', angle: 0, drop: dropType, scale: 0.8, rot: 0, rotX: 0, rotY: 0
+                };
                 enemies.push(e);
                 spawnedCount++;
             } else if (type === 'tadpole') {
-                let e = { x: x, y: y, vx: vx, vy: vy, hp: 1, speed: ENEMY_SPEEDS.TADPOLE * spd, color: '#f0f', type: 'tadpole', angle: 0, drop: 'none', scale: 0.6, history: [] };
+                let e = {
+                    x: x, y: y, vx: vx, vy: vy, hp: 1,
+                    speed: ENEMY_SPEEDS.TADPOLE * spd,
+                    color: '#f0f', type: 'tadpole', angle: 0, drop: 'none', scale: 0.6, history: []
+                };
                 enemies.push(e);
                 spawnedCount++;
             } else { // Triangle
@@ -707,135 +739,269 @@
             }
         }
 
+        /**
+         * 全エンティティ（弾、敵、アイテム、エフェクト）の状態更新
+         */
         function updateEntities() {
+            updatePlayerBullets();
+            updateEnemies();
+            updateEnemyBullets();
+            updateCrystals();
+            updatePowerups();
+            updateMissiles();
+            updateParticlesAndRings();
+            updatePlayerStatus();
+        }
+
+        /**
+         * 自機の弾の移動と敵との当たり判定
+         */
+        function updatePlayerBullets() {
             bullets.forEach(b => {
                 b.x += b.vx; b.y += b.vy; b.life--;
-                enemies.forEach(e => { if (Math.hypot(b.x - e.x, b.y - e.y) < 25 * e.scale) { b.life = 0; e.hp--; } });
-            });
-            bullets = bullets.filter(b => b.life > 0);
-
-            enemies.forEach(e => {
-                const dx = player.x - e.x, dy = player.y - e.y;
-                const distToPlayer = Math.hypot(dx, dy) || 0.0001;
-
-                let speedMult = 0.1;
-                if (e.type === 'triangle') speedMult = 0.12;
-                if (e.type === 'cube') speedMult = 0.05;
-                if (e.type === 'tadpole') speedMult = 0.10;
-
-                if (e.leader && e.leader.hp > 0) {
-                    const la = e.leader.angle;
-                    const ox = e.formOffset.x * Math.cos(la) - e.formOffset.y * Math.sin(la);
-                    const oy = e.formOffset.x * Math.sin(la) + e.formOffset.y * Math.cos(la);
-                    const tx = e.leader.x + ox;
-                    const ty = e.leader.y + oy;
-                    e.x += (tx - e.x) * 0.1;
-                    e.y += (ty - e.y) * 0.1;
-                    e.angle = e.leader.angle;
-                } else {
-                    // Dragon Speed Limit Logic
-                    if (e.type === 'dragon') {
-                        e.vx += (dx / distToPlayer) * 0.05 * SPEED_SCALE;
-                        e.vy += (dy / distToPlayer) * 0.05 * SPEED_SCALE;
-                        e.vx *= 0.98; e.vy *= 0.98;
-
-                        const curSpd = Math.hypot(e.vx, e.vy);
-                        const maxDragonSpd = ENEMY_SPEEDS.DRAGON * SPEED_SCALE;
-                        if (curSpd > maxDragonSpd) {
-                            e.vx = (e.vx / curSpd) * maxDragonSpd;
-                            e.vy = (e.vy / curSpd) * maxDragonSpd;
-                        }
-                    } else {
-                        e.vx += (dx / distToPlayer) * speedMult * SPEED_SCALE; e.vy += (dy / distToPlayer) * speedMult * SPEED_SCALE;
-                        e.x += e.vx + Math.cos(e.angle) * e.speed; e.y += e.vy + Math.sin(e.angle) * e.speed;
-
-                        if (e.type === 'triangle' || e.type === 'tadpole') {
-                            e.angle = Math.atan2(dy, dx);
-                        }
-                    }
-                }
-
-                // Apply Velocity for independent units
-                if (!e.leader) {
-                    e.x += e.vx; e.y += e.vy;
-                }
-
-                enemies.forEach(other => {
-                    if (e === other) return;
-                    const odx = e.x - other.x; const ody = e.y - other.y;
-                    const od = Math.hypot(odx, ody);
-                    if (od < 30) {
-                        const push = (30 - od) * 0.05;
-                        e.x += (odx / od) * push; e.y += (ody / od) * push;
+                enemies.forEach(e => {
+                    if (Math.hypot(b.x - e.x, b.y - e.y) < 30 * e.scale) {
+                        b.life = 0;
+                        e.hp--;
                     }
                 });
+            });
+            bullets = bullets.filter(b => b.life > 0);
+        }
 
-                if (e.x < WALL_MARGIN || e.x > worldSize - WALL_MARGIN) e.vx *= -1.2;
-                if (e.y < WALL_MARGIN || e.y > worldSize - WALL_MARGIN) e.vy *= -1.2;
-                e.x = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, e.x));
-                e.y = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, e.y));
-
-                if (e.type === 'dragon') {
-                    let lx = e.x, ly = e.y;
-                    e.segments.forEach(s => { const dd = Math.hypot(lx - s.x, ly - s.y); if (dd > 10 * G_SCALE * e.scale) { s.x += (lx - s.x) * 0.3; s.y += (ly - s.y) * 0.3; } lx = s.x; ly = s.y; });
-                    e.fireTimer++;
-                    if (e.fireTimer > 100) { e.fireTimer = 0; enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(e.angle) * 4 * SPEED_SCALE, vy: Math.sin(e.angle) * 4 * SPEED_SCALE, life: 200 }); AudioSys.playSE('shoot'); }
-                } else if (e.type === 'cube') {
-                    e.rotX += 0.02; e.rotY += 0.03;
-                } else if (e.type === 'tadpole') {
-                    e.history.unshift({ x: e.x, y: e.y });
-                    if (e.history.length > 50) e.history.pop();
-                } else if (e.type !== 'dragon' && !e.leader) {
-                    e.angle = Math.atan2(e.vy, e.vx);
+        /**
+         * 敵全体の更新処理（種類ごとに分岐）
+         */
+        function updateEnemies() {
+            enemies.forEach(e => {
+                // 1. 移動・AIロジックの適用
+                if (e.leader && e.leader.hp > 0) {
+                    updateFormationMovement(e); // 編隊移動
+                } else {
+                    // 種類ごとの固有ロジック
+                    switch (e.type) {
+                        case 'dragon': updateDragonAI(e); break;
+                        case 'tadpole': updateTadpoleAI(e); break;
+                        case 'triangle': updateTriangleAI(e); break;
+                        case 'cube': updateCubeAI(e); break;
+                    }
                 }
 
-                if (distToPlayer < 20 && player.invuln <= 0) { damage(20); if (e.type !== 'dragon') e.hp = 0; }
+                // 2. 共通処理（衝突回避・画面端バウンス）
+                applySeparation(e);
+                applyWorldBoundary(e);
 
-                for (let i = player.satellites.length - 1; i >= 0; i--) {
-                    const s = player.satellites[i];
-                    if (Math.hypot(s.x - e.x, s.y - e.y) < 25) { e.hp = 0; player.satellites.splice(i, 1); e.noDrop = true; break; }
-                }
+                // 3. プレイヤーとの接触判定
+                checkPlayerCollision(e);
+
+                // 4. サテライト（緑の破片）との接触判定
+                checkSatelliteCollision(e);
+
+                // 5. 死亡判定
                 if (e.hp <= 0) destroyEnemy(e);
             });
             enemies = enemies.filter(e => e.hp > 0);
+        }
 
-            enemyBullets.forEach(eb => {
-                eb.x += eb.vx; eb.y += eb.vy; eb.life--;
-                if (Math.hypot(player.x - eb.x, player.y - eb.y) < 15 && player.invuln <= 0) { damage(15); eb.life = 0; createExplosion(player.x, player.y, '#f00', 10); }
+        /* --- 敵の種類別 AI 関数 --- */
+
+        function updateDragonAI(e) {
+            const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 0.001;
+            // 加速移動
+            e.vx += (dx / d) * 0.08 * SPEED_SCALE;
+            e.vy += (dy / d) * 0.08 * SPEED_SCALE;
+            e.vx *= 0.98; e.vy *= 0.98; // 摩擦
+            // 最高速制限
+            const cv = Math.hypot(e.vx, e.vy);
+            const lim = ENEMY_SPEEDS.DRAGON * SPEED_SCALE;
+            if (cv > lim) { e.vx = (e.vx / cv) * lim; e.vy = (e.vy / cv) * lim; }
+
+            e.x += e.vx; e.y += e.vy;
+            e.angle = Math.atan2(dy, dx);
+
+            // 節（セグメント）の追従
+            let lx = e.x, ly = e.y;
+            e.segments.forEach(s => {
+                const dd = Math.hypot(lx - s.x, ly - s.y);
+                if (dd > 10) { s.x += (lx - s.x) * 0.3; s.y += (ly - s.y) * 0.3; }
+                lx = s.x; ly = s.y;
             });
-            enemyBullets = enemyBullets.filter(eb => eb.life > 0);
 
+            // 攻撃（射撃）
+            e.fireTimer++;
+            if (e.fireTimer > 100) {
+                e.fireTimer = 0;
+                // --- 定数 BULLET_SETTINGS  ---
+                const bSpd = BULLET_SETTINGS.ENEMY_SPEED * SPEED_SCALE;
+                enemyBullets.push({
+                    x: e.x,
+                    y: e.y,
+                    vx: Math.cos(e.angle) * bSpd,
+                    vy: Math.sin(e.angle) * bSpd,
+                    life: BULLET_SETTINGS.ENEMY_LIFE
+                });
+                AudioSys.playSE('shoot');
+            }
+        }
+
+        function updateTadpoleAI(e) {
+            const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 0.001;
+            // 定速移動
+            e.vx += (dx / d) * 0.2 * SPEED_SCALE;
+            e.vy += (dy / d) * 0.2 * SPEED_SCALE;
+            const cv = Math.hypot(e.vx, e.vy);
+            if (cv > e.speed) { e.vx = (e.vx / cv) * e.speed; e.vy = (e.vy / cv) * e.speed; }
+
+            e.x += e.vx; e.y += e.vy;
+            e.angle = Math.atan2(dy, dx);
+
+            // 軌跡の記録
+            e.history.unshift({ x: e.x, y: e.y });
+            if (e.history.length > 60) e.history.pop();
+        }
+
+        function updateTriangleAI(e) {
+            const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 0.001;
+            e.vx += (dx / d) * 0.2 * SPEED_SCALE;
+            e.vy += (dy / d) * 0.2 * SPEED_SCALE;
+            const cv = Math.hypot(e.vx, e.vy);
+            if (cv > e.speed) { e.vx = (e.vx / cv) * e.speed; e.vy = (e.vy / cv) * e.speed; }
+
+            e.x += e.vx; e.y += e.vy;
+            e.angle = Math.atan2(e.vy, e.vx);
+        }
+
+        function updateCubeAI(e) {
+            const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 0.001;
+            e.vx += (dx / d) * 0.2 * SPEED_SCALE;
+            e.vy += (dy / d) * 0.2 * SPEED_SCALE;
+            const cv = Math.hypot(e.vx, e.vy);
+            if (cv > e.speed) { e.vx = (e.vx / cv) * e.speed; e.vy = (e.vy / cv) * e.speed; }
+
+            e.x += e.vx; e.y += e.vy;
+            e.rotX += 0.03; e.rotY += 0.04;
+        }
+
+        /* --- ヘルパー・共通関数 --- */
+
+        function updateFormationMovement(e) {
+            const la = e.leader.angle;
+            const ox = e.formOffset.x * Math.cos(la) - e.formOffset.y * Math.sin(la);
+            const oy = e.formOffset.x * Math.sin(la) + e.formOffset.y * Math.cos(la);
+            e.x += (e.leader.x + ox - e.x) * 0.1;
+            e.y += (e.leader.y + oy - e.y) * 0.1;
+            e.angle = la;
+        }
+
+        function applySeparation(e) {
+            enemies.forEach(other => {
+                if (e === other) return;
+                const odx = e.x - other.x, ody = e.y - other.y;
+                const od = Math.hypot(odx, ody);
+                if (od < 30) {
+                    const push = (30 - od) * 0.05;
+                    e.x += (odx / od) * push; e.y += (ody / od) * push;
+                }
+            });
+        }
+
+        function applyWorldBoundary(e) {
+            if (e.x < WALL_MARGIN || e.x > worldSize - WALL_MARGIN) e.vx *= -1.2;
+            if (e.y < WALL_MARGIN || e.y > worldSize - WALL_MARGIN) e.vy *= -1.2;
+            e.x = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, e.x));
+            e.y = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, e.y));
+        }
+
+        function checkPlayerCollision(e) {
+            const dist = Math.hypot(player.x - e.x, player.y - e.y);
+            if (dist < 25 && player.invuln <= 0) {
+                player.shield -= 15;
+                player.invuln = 60;
+                if (e.type !== 'dragon') e.hp = 0; // ドラゴン以外は体当たりで消滅
+            }
+        }
+
+        function checkSatelliteCollision(e) {
+            for (let i = player.satellites.length - 1; i >= 0; i--) {
+                const s = player.satellites[i];
+                if (Math.hypot(s.x - e.x, s.y - e.y) < 25) {
+                    e.hp = 0;
+                    player.satellites.splice(i, 1); // サテライトを消費
+                    e.noDrop = true;
+                    break;
+                }
+            }
+        }
+
+        /* --- エフェクト・UI更新関数（元からあったもの） --- */
+
+        /**
+         * 敵の弾の移動とプレイヤーへの当たり判定
+         */
+        function updateEnemyBullets() {
+            enemyBullets.forEach(eb => {
+                // 1. 移動：速度(vx, vy)を座標に加算
+                eb.x += eb.vx;
+                eb.y += eb.vy;
+
+                // 2. 寿命を減らす
+                eb.life--;
+
+                // 3. プレイヤーとの当たり判定
+                // player.invuln(無敵時間)が0以下の時のみ判定
+                if (Math.hypot(player.x - eb.x, player.y - eb.y) < 15 && player.invuln <= 0) {
+                    damage(15);      // ダメージ関数を呼ぶ（シールドを減らす）
+                    eb.life = 0;     // 弾を消滅させる
+                    // プレイヤーの位置に赤い火花を出す
+                    createExplosion(player.x, player.y, '#f00', 10);
+                }
+            });
+
+            // 4. 寿命が尽きた弾を配列から削除
+            enemyBullets = enemyBullets.filter(eb => eb.life > 0);
+        }
+
+        function updateCrystals() {
             crystals.forEach(c => {
-                const dx = player.x - c.x, dy = player.y - c.y;
-                const d = Math.hypot(dx, dy) || 0.0001;
+                const dx = player.x - c.x, dy = player.y - c.y, d = Math.hypot(dx, dy) || 0.0001;
                 const factor = 0.03 + (d * 0.0005);
                 c.x += dx * factor; c.y += dy * factor;
                 if (d < 20) { c.life = 0; if (player.satellites.length < 12) player.satellites.push({}); }
             });
             crystals = crystals.filter(c => c.life > 0);
+        }
 
+        function updatePowerups() {
             powerups.forEach(p => {
-                if (Math.hypot(player.x - p.x, player.y - p.y) < 25) {
+                if (Math.hypot(player.x - p.x, player.y - p.y) < 30) {
                     p.life = 0;
-                    if (p.type === 'level') { if (player.weaponLevel < MAX_WEAPON_LEVEL) player.weaponLevel++; ui.wLv.innerText = player.weaponLevel; AudioSys.playSE('powerup'); }
-                    else { player.invuln = 600; player.shield = Math.min(100, player.shield + 50); ui.shieldBar.style.width = player.shield + "%"; AudioSys.playSE('invincible'); }
-                    createExplosion(player.x, player.y, '#0ff', 20);
+                    player.weaponLevel = Math.min(5, player.weaponLevel + 1);
+                    ui.wLv.innerText = player.weaponLevel;
                 }
             });
             powerups = powerups.filter(p => p.life > 0);
+        }
 
+        function updateMissiles() {
             missiles.forEach(m => {
                 if (!m.target || !enemies.includes(m.target)) {
-                    let min = 9999; enemies.forEach(e => { const d = Math.hypot(e.x - m.x, e.y - m.y); if (d < min) { min = d; m.target = e; } });
+                    let min = 9999;
+                    enemies.forEach(e => { const d = Math.hypot(e.x - m.x, e.y - m.y); if (d < min) { min = d; m.target = e; } });
                 }
-                if (m.target) { const ta = Math.atan2(m.target.y - m.y, m.target.x - m.x); m.vx += Math.cos(ta) * 0.5; m.vy += Math.sin(ta) * 0.5; }
-                const s = Math.hypot(m.vx, m.vy); if (s > 0.001) { m.vx = (m.vx / s) * m.speed; m.vy = (m.vy / s) * m.speed; }
+                if (m.target) {
+                    const ta = Math.atan2(m.target.y - m.y, m.target.x - m.x);
+                    m.vx += Math.cos(ta) * 0.5; m.vy += Math.sin(ta) * 0.5;
+                }
+                const s = Math.hypot(m.vx, m.vy);
+                if (s > 0.001) { m.vx = (m.vx / s) * m.speed; m.vy = (m.vy / s) * m.speed; }
                 m.x += m.vx; m.y += m.vy; m.life--;
-                enemies.forEach(e => { if (Math.hypot(e.x - m.x, e.y - m.y) < 30) { e.hp -= 10; m.life = 0; if (e.hp <= 0) destroyEnemy(e); } });
+                enemies.forEach(e => { if (Math.hypot(e.x - m.x, e.y - m.y) < 30) { e.hp -= 10; m.life = 0; } });
                 particles.push({ x: m.x, y: m.y, vx: (Math.random() - 0.5), vy: (Math.random() - 0.5), color: '#fd0', life: 0.3 });
             });
             missiles = missiles.filter(m => m.life > 0);
+        }
 
+        function updateParticlesAndRings() {
             particles.forEach(p => {
                 p.x += p.vx; p.y += p.vy;
                 p.vx *= 0.92; p.vy *= 0.92; p.vy += 0.005;
@@ -845,10 +1011,16 @@
 
             rings.forEach(r => { r.r += 2; r.life -= 0.02; });
             rings = rings.filter(r => r.life > 0);
-
-            if (player.invuln > 0) { player.invuln--; ui.shieldBar.style.backgroundColor = (Math.floor(frame / 4) % 2 === 0) ? '#ff0' : '#0ff'; }
-            else ui.shieldBar.style.backgroundColor = '#0ff';
         }
+
+        function updatePlayerStatus() {
+            if (player.invuln > 0) player.invuln--;
+        }
+
+
+        /** 
+         * 
+         */
 
         function updateScorePopups() {
             scorePopups.forEach(s => { s.y += s.vy; s.life--; s.alpha = s.life / 30; });
@@ -1076,6 +1248,7 @@
                 p.x += p.vx; p.y += p.vy;
             }
         }
+
         function distortGrid(x, y, force, radius) {
             const cx = Math.floor(x / GRID_SPACING), cy = Math.floor(y / GRID_SPACING), r = Math.ceil(radius / GRID_SPACING);
             for (let i = Math.max(0, cx - r); i < Math.min(gridPoints.length, cx + r); i++) for (let j = Math.max(0, cy - r); j < Math.min(gridPoints[0].length, cy + r); j++) {
@@ -1083,6 +1256,7 @@
                 if (d < radius) { const f = force * (1 - d / radius), a = Math.atan2(p.y - y, p.x - x); p.vx += Math.cos(a) * f; p.vy += Math.sin(a) * f; }
             }
         }
+        
         function createExplosion(x, y, c, n) {
             for (let i = 0; i < n; i++) {
                 const angle = Math.random() * Math.PI * 2;
@@ -1117,6 +1291,7 @@
                 list.appendChild(d);
             });
         }
+
         function closeOST() { gameState = 'TITLE'; ui.ost.style.display = 'none'; ui.overlay.style.display = 'flex'; AudioSys.playBGM('title'); }
 
         // Inputs
