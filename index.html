@@ -1243,7 +1243,7 @@
 
             if (e.noDrop || e.drop === 'none') return;
 
-            const ITEM_LIFE = 180; // 3秒間 (60fps * 3)
+            const ITEM_LIFE = 240; // 修正: 3秒維持 + 1秒縮小 = 4秒 (240フレーム)
 
             if (e.drop === 'laser') powerups.push({ x: e.x, y: e.y, type: 'laser', life: ITEM_LIFE });
             else if (e.drop === 'invincible') powerups.push({ x: e.x, y: e.y, type: 'invincible', life: ITEM_LIFE });
@@ -1473,8 +1473,8 @@
                 ctx.translate(c.x, c.y);
                 ctx.rotate(frame * 0.1);
 
-                // --- 追加: 縮小スケール計算 ---
-                const scale = Math.max(0, c.life / 180);
+                // --- 修正: 残り60フレーム（1秒）になるまでは大きさ1、それ以降小さくなる ---
+                const scale = c.life > 60 ? 1 : c.life / 60;
                 ctx.scale(scale, scale);
 
                 ctx.beginPath();
@@ -1492,8 +1492,8 @@
                 ctx.save();
                 ctx.translate(p.x, p.y);
 
-                // --- 追加: 縮小スケール計算 ---
-                const scale = Math.max(0, p.life / 180);
+                // --- 修正: 残り60フレーム（1秒）になるまでは大きさ1 ---
+                const scale = p.life > 60 ? 1 : p.life / 60;
                 ctx.scale(scale, scale);
 
                 ctx.lineWidth = 2;
@@ -1504,8 +1504,8 @@
                 ctx.textBaseline = 'middle';
 
                 let char = 'S';
-                if (p.type === 'level') char = 'S';
-                else if (p.type === 'laser') char = 'L';
+                if (p.type === 'level') char = 'L';
+                else if (p.type === 'laser') char = 'B';
 
                 ctx.fillText(char, 0, 0);
                 ctx.restore();
@@ -1513,19 +1513,21 @@
 
             ctx.fillStyle = '#fd0'; missiles.forEach(m => { ctx.beginPath(); ctx.arc(m.x, m.y, 4 * G_SCALE, 0, Math.PI * 2); ctx.fill(); });
 
-            // パーティクル描画部分のアップグレード版
+            // Particles (サイズは維持し、透明度だけで消える)
             particles.forEach(p => {
                 ctx.save();
-                ctx.globalAlpha = p.life;
-                ctx.fillStyle = p.color;
+                // ライフをそのまま透明度に使用（1.0以上なら1.0として扱う）
+                ctx.globalAlpha = Math.min(1, p.life);
 
-                // 単なる点ではなく、移動方向に少し伸びた線として描画
                 ctx.beginPath();
-                const length = 2.0; // 伸びる長さ
+                const length = 4.0; // 勢いよく見せるため少し長く
                 ctx.moveTo(p.x, p.y);
                 ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
+
+                // サイズは固定（縮小させない）
                 ctx.lineWidth = p.size || 2;
                 ctx.strokeStyle = p.color;
+                ctx.lineCap = 'round'; // 端を丸くしてリッチに
                 ctx.stroke();
 
                 ctx.restore();
