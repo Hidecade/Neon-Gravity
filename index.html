@@ -1008,17 +1008,22 @@
         function updateCrystals() {
             crystals.forEach(c => {
                 c.life--;
-                const dx = player.x - c.x, dy = player.y - c.y;
+                const dx = player.x - c.x;
+                const dy = player.y - c.y;
                 const d = Math.hypot(dx, dy) || 0.0001;
 
-                // 数値を引き上げ（0.03 → 0.08 / 0.0005 → 0.001）
-                // これにより、遠くからでも加速しながら一気に自機へ飛び込んできます
-                const factor = 0.03 + (d * 0.0005);
+                // --- 修正箇所: 近くでもしっかり動くロジック ---
+                // ベースの移動量(2.5px) ＋ 距離に比例した移動量(2%)
+                // これにより、至近距離でも最低 2.5px 以上の速度で飛び込んできます
+                const speed = 2.5 + (d * 0.02);
 
-                c.x += dx * factor;
-                c.y += dy * factor;
+                // 1フレームの移動量が距離dを超えないように制限（追い越し防止）
+                const moveAmount = Math.min(d, speed);
 
-                // 取得判定（d < 20）はそのまま
+                c.x += (dx / d) * moveAmount;
+                c.y += (dy / d) * moveAmount;
+
+                // 取得判定
                 if (d < 20) {
                     c.life = 0;
                     if (player.satellites.length < 12) player.satellites.push({});
