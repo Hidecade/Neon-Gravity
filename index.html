@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON GRAVITY: DEBUGGED</title>
+    <title>NEON GRAVITY: ORBITAL</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -147,6 +147,22 @@
             pointer-events: auto;
         }
 
+        #pause-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 105;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+        }
+
         .menu-btn {
             background: rgba(0, 255, 255, 0.1);
             border: 2px solid #0ff;
@@ -248,7 +264,7 @@
             pointer-events: auto;
         }
 
-            #launch-btn:active {
+            #launch-btn.active {
                 background: #ff0;
                 color: #000;
                 transform: scale(0.9);
@@ -282,10 +298,15 @@
     </div>
 
     <div id="overlay">
-        <h1 style="color:#0ff; font-size:40px; margin-bottom:40px; text-shadow:0 0 20px #0ff; text-align:center;">NEON GRAVITY<br><span style="font-size:20px;color:#fff;">DEBUGGED</span></h1>
+        <h1 style="color:#0ff; font-size:40px; margin-bottom:40px; text-shadow:0 0 20px #0ff; text-align:center;">NEON GRAVITY<br><span style="font-size:20px;color:#fff;">ORBITAL</span></h1>
         <div class="menu-btn" id="btn-start">START GAME</div>
         <div class="menu-btn" id="btn-ost">SOUNDTRACK</div>
         <div style="font-size:12px;color:#888;margin-top:20px;">PC: [X] Bomb<br>MOBILE: Small Button to Bomb</div>
+    </div>
+
+    <div id="pause-overlay">
+        <h1 style="color:#fff; font-size:40px; text-shadow:0 0 10px #fff;">PAUSED</h1>
+        <p style="color:#aaa; margin-top:20px;">TAP TO RESUME</p>
     </div>
 
     <div id="ost-ui">
@@ -310,46 +331,45 @@
         const MAX_WEAPON_LEVEL = 5;
         const GRID_SPACING = 30;
 
-        // --- 敵機の最高速度設定 (この数値をいじるだけでOK) ---
+        // --- Constants ---
         const ENEMY_SPEEDS = {
-            TRIANGLE: 4.8,  // 紫：フォーメーションを組む主力
-            CUBE: 2.5,      // 緑：アイテム持ち。少し遅め
-            TADPOLE: 6,   // 白：精子型。頭が大きい
-            DRAGON: 8     // 赤：ボス。加速度移動の上限値
+            TRIANGLE: 4.8,
+            CUBE: 2.5,
+            TADPOLE: 6,
+            DRAGON: 8
         };
-
-        // --- ドラゴンの加速度設定 (追加) ---
-        // 数値を大きくするとプレイヤーへの反応が鋭くなり、小さくするとゆったり動きます
         const DRAGON_ACCELERATION = 0.2;
-
-        // --- 爆発エフェクト設定 (追加) ---
-        const EXPLOSION_SPEED_MAG = 2.0;  // 飛散スピードの倍率 (2.0で今の2倍)
-        const EXPLOSION_COUNT_MAG = 1.5;  // 破片の数の倍率 (1.5で今の1.5倍)
-
-        // 武器・弾の設定 (定数化)
+        const EXPLOSION_SPEED_MAG = 2.0;
+        const EXPLOSION_COUNT_MAG = 1.5;
         const BULLET_SETTINGS = {
-            PLAYER_SPEED: 32.0,  // 自機の弾速
-            PLAYER_LIFE: 120,   // 自機の弾の射程(フレーム数)
-            ENEMY_SPEED: 10.0,   // 敵の弾速
-            ENEMY_LIFE: 200    // 敵の弾の射程(フレーム数)
+            PLAYER_SPEED: 32.0,
+            PLAYER_LIFE: 120,
+            ENEMY_SPEED: 10.0,
+            ENEMY_LIFE: 200
         };
-
-        // --- LASER SETTINGS (追加) ---
-        const LASER_DURATION = 600; // レーザー持続時間 (60fps * 10秒 = 600)
+        const LASER_DURATION = 600;
+        const ITEM_LIFE = 240;
 
         // --- DOM References ---
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
         const ui = {
-            overlay: document.getElementById('overlay'), ost: document.getElementById('ost-ui'),
-            controls: document.getElementById('controls'), score: document.getElementById('score-display'),
-            stage: document.getElementById('stage-num'), wLv: document.getElementById('w-lv'),
-            shieldBar: document.getElementById('shield-bar'), enemyBar: document.getElementById('enemy-bar'),
-            msg: document.getElementById('stage-msg'), warn: document.getElementById('warning-msg'),
+            overlay: document.getElementById('overlay'),
+            pauseOverlay: document.getElementById('pause-overlay'),
+            ost: document.getElementById('ost-ui'),
+            controls: document.getElementById('controls'),
+            score: document.getElementById('score-display'),
+            stage: document.getElementById('stage-num'),
+            wLv: document.getElementById('w-lv'),
+            shieldBar: document.getElementById('shield-bar'),
+            enemyBar: document.getElementById('enemy-bar'),
+            msg: document.getElementById('stage-msg'),
+            warn: document.getElementById('warning-msg'),
             launchBtn: document.getElementById('launch-btn'),
-            knobL: document.getElementById('knob-left'), knobR: document.getElementById('knob-right'),
-            stickL: document.getElementById('stick-left'), stickR: document.getElementById('stick-right')
-           
+            knobL: document.getElementById('knob-left'),
+            knobR: document.getElementById('knob-right'),
+            stickL: document.getElementById('stick-left'),
+            stickR: document.getElementById('stick-right')
         };
 
         // --- Game State ---
@@ -358,18 +378,19 @@
         let camera = { x: 0, y: 0 };
 
         let gameState = 'TITLE';
+        let previousGameState = '';
         let score = 0, frame = 0, stage = 1;
         let spawnedCount = 0, enemiesToSpawn = 0, isStageClear = false;
         let killCount = 0;
 
-        const player = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, satellites: [], shield: 100, weaponLevel: 1, invuln: 0 };
+        const player = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, satellites: [], shield: 100, weaponLevel: 1, invuln: 0, laserTimer: 0 };
         const input = { move: { x: 0, y: 0, active: false }, aim: { x: 0, y: 0, active: false }, keys: {} };
         let bullets = [], lasers = [], enemies = [], enemyBullets = [], particles = [], crystals = [], missiles = [], powerups = [], wormholes = [], scorePopups = [], gridPoints = [], rings = [], stars = [];
 
-
         // --- Audio ---
         const BGM_FILES = {
-            title: 'audio/Neo_Gravity_Title.mp3', clear: 'audio/Neo_Gravity_Clear.mp3',
+            title: 'audio/Neo_Gravity_Title.mp3',
+            clear: 'audio/Neo_Gravity_Clear.mp3',
             stages: ['audio/Neo_Gravity_00.mp3', 'audio/Neo_Gravity_01.mp3', 'audio/Neo_Gravity_02.mp3', 'audio/Neo_Gravity_03.mp3']
         };
 
@@ -377,7 +398,10 @@
             ctx: null, bgmEl: null, currentSrc: null, noiseBuffer: null,
             init() {
                 if (!this.ctx) {
-                    try { const AC = window.AudioContext || window.webkitAudioContext; if (AC) { this.ctx = new AC(); this.createNoise(); } } catch (e) { }
+                    try {
+                        const AC = window.AudioContext || window.webkitAudioContext;
+                        if (AC) { this.ctx = new AC(); this.createNoise(); }
+                    } catch (e) { console.error(e); }
                 }
                 if (!this.bgmEl) { this.bgmEl = new Audio(); this.bgmEl.loop = true; this.bgmEl.volume = 0.4; }
             },
@@ -395,27 +419,18 @@
                 this.resume();
                 const t = this.ctx.currentTime;
                 const g = this.ctx.createGain(); g.connect(this.ctx.destination);
+
                 if (type === 'shoot') {
                     const o = this.ctx.createOscillator(); o.type = 'triangle';
                     o.frequency.setValueAtTime(800, t); o.frequency.exponentialRampToValueAtTime(100, t + 0.1);
                     g.gain.setValueAtTime(0.2, t); g.gain.linearRampToValueAtTime(0, t + 0.1);
                     o.connect(g); o.start(t); o.stop(t + 0.1);
-                } else if (type === 'laser') { // --- 追加: レーザー音 ---
+                } else if (type === 'laser') {
                     const o = this.ctx.createOscillator(); o.type = 'sawtooth';
-                    // ジジジ...という音を作る
-                    o.frequency.setValueAtTime(120, t);
-                    o.frequency.linearRampToValueAtTime(80, t + 0.15);
-
-                    // ノイズ感を出すための変調
-                    const mod = this.ctx.createOscillator();
-                    mod.type = 'square';
-                    mod.frequency.value = 500;
-                    const modGain = this.ctx.createGain();
-                    modGain.gain.value = 500;
-                    mod.connect(modGain);
-                    modGain.connect(o.frequency);
-                    mod.start(t); mod.stop(t + 0.15);
-
+                    o.frequency.setValueAtTime(120, t); o.frequency.linearRampToValueAtTime(80, t + 0.15);
+                    const mod = this.ctx.createOscillator(); mod.type = 'square'; mod.frequency.value = 500;
+                    const modGain = this.ctx.createGain(); modGain.gain.value = 500;
+                    mod.connect(modGain); modGain.connect(o.frequency); mod.start(t); mod.stop(t + 0.15);
                     g.gain.setValueAtTime(0.15, t); g.gain.linearRampToValueAtTime(0, t + 0.15);
                     o.connect(g); o.start(t); o.stop(t + 0.15);
                 } else if (type === 'explode') {
@@ -466,14 +481,64 @@
                 this.bgmEl.src = src; this.bgmEl.currentTime = 0; this.bgmEl.play().catch(e => { console.warn("BGM Error:", e); });
                 this.currentSrc = src;
             },
-            stopBGM() { if (this.bgmEl) this.bgmEl.pause(); }
+            stopBGM() { if (this.bgmEl) this.bgmEl.pause(); },
+            pauseBGM() { if (this.bgmEl && !this.bgmEl.paused) this.bgmEl.pause(); },
+            resumeBGM() { if (this.bgmEl && this.bgmEl.paused && this.currentSrc) this.bgmEl.play().catch(() => { }); }
         };
+
+        // --- Functions missing in previous code ---
+        function openOST() {
+            AudioSys.resume();
+            gameState = 'OST';
+            ui.overlay.style.display = 'none';
+            ui.ost.style.display = 'flex';
+            const list = document.getElementById('track-list');
+            list.innerHTML = '';
+            const tracks = [
+                { n: 'Title Theme', k: 'title' },
+                { n: 'Stage 1', k: 'stage', i: 0 },
+                { n: 'Stage 2', k: 'stage', i: 1 },
+                { n: 'Stage 3', k: 'stage', i: 2 },
+                { n: 'Stage 4', k: 'stage', i: 3 },
+                { n: 'Clear Theme', k: 'clear' }
+            ];
+            tracks.forEach(t => {
+                const d = document.createElement('div'); d.className = 'track-item'; d.innerText = t.n;
+                d.onclick = () => {
+                    AudioSys.playBGM(t.k, t.i);
+                    document.querySelectorAll('.track-item').forEach(e => e.classList.remove('playing'));
+                    d.classList.add('playing');
+                };
+                list.appendChild(d);
+            });
+        }
+
+        function closeOST() {
+            gameState = 'TITLE';
+            ui.ost.style.display = 'none';
+            ui.overlay.style.display = 'flex';
+            AudioSys.playBGM('title');
+        }
+
+        function launchSatellites() {
+            if (player.satellites.length === 0) return;
+            AudioSys.playSE('launch');
+            player.satellites.forEach(s => {
+                missiles.push({
+                    x: s.x, y: s.y,
+                    vx: Math.cos(s.angle) * 10 * SPEED_SCALE,
+                    vy: Math.sin(s.angle) * 10 * SPEED_SCALE,
+                    target: null, life: 200, speed: 12 * SPEED_SCALE
+                });
+            });
+            player.satellites = [];
+            distortGrid(player.x, player.y, 300, 400);
+        }
 
         // --- Layout & Init ---
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
-
             const size = Math.max(width, height) * 1.5;
             worldSize = size;
 
@@ -505,42 +570,28 @@
         function initStars() {
             stars = [];
             for (let i = 0; i < 200; i++) {
-                stars.push({
-                    x: Math.random() * worldSize, y: Math.random() * worldSize,
-                    size: Math.random() * 2, brightness: Math.random(), parallax: 0.2 + Math.random() * 0.3
-                });
+                stars.push({ x: Math.random() * worldSize, y: Math.random() * worldSize, size: Math.random() * 2, brightness: Math.random(), parallax: 0.2 + Math.random() * 0.3 });
             }
         }
-
-        function init() {
-            resize();
-            AudioSys.init();
-            AudioSys.playBGM('title');
-            player.x = worldSize / 2; player.y = worldSize / 2;
-        }
-
-        window.addEventListener('resize', resize);
 
         // --- Game Logic ---
         function startGame() {
             AudioSys.init(); AudioSys.resume(); AudioSys.playBGM('stage', 0);
             gameState = 'PLAYING';
             ui.overlay.style.display = 'none'; ui.ost.style.display = 'none';
-            document.getElementById('controls').style.display = 'block';
-            document.getElementById('stick-left').style.display = 'flex';
-            document.getElementById('stick-right').style.display = 'flex';
-            document.getElementById('launch-btn').style.display = 'flex';
+            ui.controls.style.display = 'block';
 
-            score = 0; stage = 1; frame = 0;
+            score = 0;
+            stage = 3; // Difficulty fix: start at 3
+            frame = 0;
 
             player.x = worldSize / 2;
             player.y = worldSize / 2;
             player.vx = 0; player.vy = 0;
-            player.shield = 100; player.weaponLevel = 2; // Start LV2
-            player.satellites = []; player.invuln = 0;
-            player.laserTimer = 0;
+            player.shield = 100; player.weaponLevel = 2;
+            player.satellites = []; player.invuln = 0; player.laserTimer = 0;
 
-            ui.score.innerText = "000000"; ui.stage.innerText = "1"; ui.wLv.innerText = "2";
+            ui.score.innerText = "000000"; ui.stage.innerText = "3"; ui.wLv.innerText = "2";
             ui.shieldBar.style.width = "100%"; ui.shieldBar.classList.remove('shield-critical');
             ui.shieldBar.style.backgroundColor = '#0ff';
             ui.enemyBar.style.width = "100%";
@@ -550,9 +601,7 @@
         }
 
         function startStage() {
-            // 現在の計算式: 基礎40体 + (ステージ数 × 15体)
             enemiesToSpawn = 70 + (stage * 15);
-
             spawnedCount = 0; isStageClear = false; killCount = 0;
             ui.msg.style.display = 'none';
             bullets = []; lasers = []; enemies = []; enemyBullets = []; crystals = []; missiles = []; powerups = []; wormholes = []; scorePopups = []; rings = [];
@@ -571,8 +620,85 @@
             distortGrid(wormholes[wormholes.length - 1].x, wormholes[wormholes.length - 1].y, 50, 150);
         }
 
+        function resetGame() {
+            // Soft Reset
+            score = 0; stage = 3; frame = 0;
+            spawnedCount = 0; enemiesToSpawn = 0; isStageClear = false; killCount = 0;
+            bullets = []; lasers = []; enemies = []; enemyBullets = []; particles = []; crystals = []; missiles = []; powerups = []; wormholes = []; scorePopups = []; rings = [];
+
+            player.x = worldSize / 2; player.y = worldSize / 2;
+            player.vx = 0; player.vy = 0;
+            player.shield = 100; player.weaponLevel = 2; player.invuln = 0; player.laserTimer = 0; player.satellites = [];
+
+            ui.score.innerText = "000000"; ui.stage.innerText = "3"; ui.wLv.innerText = "2";
+            ui.shieldBar.style.width = "100%"; ui.shieldBar.classList.remove('shield-critical');
+            ui.shieldBar.style.backgroundColor = '#0ff';
+            ui.enemyBar.style.width = "100%";
+            ui.warn.style.display = 'none'; ui.msg.style.display = 'none';
+            ui.overlay.style.display = 'none'; ui.controls.style.display = 'block';
+
+            const titleEl = ui.overlay.querySelector('h1');
+            if (titleEl) {
+                titleEl.innerHTML = `NEON GRAVITY<br><span style="font-size:20px;color:#fff;">ORBITAL</span>`;
+                titleEl.style.color = '#0ff'; titleEl.style.textShadow = '0 0 20px #0ff';
+            }
+            const startBtn = document.getElementById('btn-start');
+            if (startBtn) {
+                startBtn.innerText = 'START GAME'; startBtn.style.borderColor = '#0ff'; startBtn.style.color = '#0ff';
+                startBtn.onclick = startGame; startBtn.ontouchstart = null;
+            }
+            const ostBtn = document.getElementById('btn-ost');
+            if (ostBtn) ostBtn.style.display = 'block';
+
+            startGame();
+        }
+
+        function spawnEnemy(x, y, type) {
+            const spd = SPEED_SCALE;
+            const burstAngle = Math.random() * Math.PI * 2;
+            const burstSpeed = 5.0 * spd;
+            const vx = Math.cos(burstAngle) * burstSpeed;
+            const vy = Math.sin(burstAngle) * burstSpeed;
+
+            const rnd = Math.random();
+            let dropType = 'crystal';
+            if (rnd < 0.1) dropType = 'laser'; else if (rnd < 0.3) dropType = 'level';
+
+            if (type === 'dragon') {
+                let e = { x: x, y: y, vx: vx, vy: vy, hp: 8, speed: ENEMY_SPEEDS.DRAGON * spd, color: '#f00', type: 'dragon', angle: 0, segments: [], drop: 'invincible', scale: 0.9, fireTimer: 0 };
+                for (let i = 0; i < 16; i++) e.segments.push({ x: x, y: y, angle: 0 });
+                enemies.push(e); spawnedCount++;
+            } else if (type === 'cube') {
+                let e = { x: x, y: y, vx: vx, vy: vy, hp: 2, speed: ENEMY_SPEEDS.CUBE * spd, color: '#0f0', type: 'cube', angle: 0, drop: dropType, scale: 0.8, rotX: 0, rotY: 0 };
+                enemies.push(e); spawnedCount++;
+            } else if (type === 'tadpole') {
+                let e = { x: x, y: y, vx: vx, vy: vy, hp: 1, speed: ENEMY_SPEEDS.TADPOLE * spd, color: '#fff', type: 'tadpole', angle: 0, drop: 'none', scale: 0.6, history: [] };
+                enemies.push(e); spawnedCount++;
+            } else if (type === 'triangle') {
+                const forms = ['V', 'line', 'circle'];
+                const form = forms[Math.floor(Math.random() * forms.length)];
+                const initialAngle = Math.atan2(vy, vx);
+                const leader = { x: x, y: y, vx: vx, vy: vy, hp: 1, speed: ENEMY_SPEEDS.TRIANGLE * spd, color: '#d0f', type: 'triangle', angle: initialAngle, drop: dropType, scale: 0.7, isLeader: true, followers: [], rotX: Math.random() * Math.PI, rotY: Math.random() * Math.PI, rotZ: Math.random() * Math.PI };
+                enemies.push(leader); spawnedCount++;
+
+                for (let i = 1; i <= 4; i++) {
+                    if (spawnedCount >= enemiesToSpawn) break;
+                    let baseOffX = 0, baseOffY = 0;
+                    if (form === 'V') { const spreadX = 20; const depthY = -30; baseOffX = Math.ceil(i / 2) * depthY; baseOffY = (i % 2 === 0 ? 1 : -1) * Math.ceil(i / 2) * spreadX; }
+                    else if (form === 'line') { baseOffX = -Math.ceil(i / 2) * 45; baseOffY = 0; }
+                    else { const angle = (Math.PI * 2 / 5) * i; baseOffX = Math.cos(angle) * 40; baseOffY = Math.sin(angle) * 40; }
+                    const rotatedOffX = baseOffX * Math.cos(initialAngle) - baseOffY * Math.sin(initialAngle);
+                    const rotatedOffY = baseOffX * Math.sin(initialAngle) + baseOffY * Math.cos(initialAngle);
+                    let e = { x: x + rotatedOffX, y: y + rotatedOffY, vx: vx, vy: vy, hp: 1, speed: ENEMY_SPEEDS.TRIANGLE * spd, color: '#d0f', type: 'triangle', angle: initialAngle, drop: 'none', scale: 0.7, leader: leader, formOffset: { x: baseOffX, y: baseOffY }, rotX: Math.random() * Math.PI, rotY: Math.random() * Math.PI, rotZ: Math.random() * Math.PI };
+                    enemies.push(e); leader.followers.push(e); spawnedCount++;
+                }
+            }
+        }
+
+        // --- Main Loop ---
         function loop() {
             requestAnimationFrame(loop);
+            if (gameState === 'PAUSED') return;
             ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, width, height);
             if (gameState === 'PLAYING') update();
             draw();
@@ -580,78 +706,51 @@
 
         function update() {
             frame++;
-            if (!Number.isFinite(player.x) || !Number.isFinite(player.y)) {
-                player.x = worldSize / 2; player.y = worldSize / 2; player.vx = 0; player.vy = 0;
-            }
+            if (!Number.isFinite(player.x) || !Number.isFinite(player.y)) { player.x = worldSize / 2; player.y = worldSize / 2; player.vx = 0; player.vy = 0; }
 
-            // Controls
+            // Controls (Keyboard)
             let mx = input.keys['ArrowLeft'] ? -1 : input.keys['ArrowRight'] ? 1 : input.move.x;
             let my = input.keys['ArrowUp'] ? -1 : input.keys['ArrowDown'] ? 1 : input.move.y;
-
             const mag = Math.hypot(mx, my);
             if (mag > 1) { mx /= mag; my /= mag; }
-
             const moveSpeed = 7.8 * SPEED_SCALE;
-            player.vx = mx * moveSpeed;
-            player.vy = my * moveSpeed;
+            player.vx = mx * moveSpeed; player.vy = my * moveSpeed;
             player.x += player.vx; player.y += player.vy;
 
-            // World Boundary Collision
             if (player.x < WALL_MARGIN) { player.x = WALL_MARGIN; player.vx = 0; }
             if (player.x > worldSize - WALL_MARGIN) { player.x = worldSize - WALL_MARGIN; player.vx = 0; }
             if (player.y < WALL_MARGIN) { player.y = WALL_MARGIN; player.vy = 0; }
             if (player.y > worldSize - WALL_MARGIN) { player.y = worldSize - WALL_MARGIN; player.vy = 0; }
 
-            // Camera Follow
-            camera.x = player.x - width / 2;
-            camera.y = player.y - height / 2;
+            camera.x = player.x - width / 2; camera.y = player.y - height / 2;
 
-            // Aim
             if (input.aim.active) player.angle = Math.atan2(input.aim.y, input.aim.x);
             else if (Math.hypot(mx, my) > 0.1) player.angle = Math.atan2(my, mx);
 
-            // --- 修正: レーザー中は発射間隔を短くする ---
             const fireInterval = player.laserTimer > 0 ? 4 : 10;
             if ((input.aim.active || input.keys['Space'] || input.keys['KeyZ']) && frame % fireInterval === 0) fire();
 
-            // Wormholes Logic
             const maxWormholes = 5 + stage;
-
-            if (spawnedCount < enemiesToSpawn && wormholes.filter(w => w.active).length < maxWormholes && Math.random() < 0.03) {
-                spawnWormhole();
-            }
+            if (spawnedCount < enemiesToSpawn && wormholes.filter(w => w.active).length < maxWormholes && Math.random() < 0.03) spawnWormhole();
 
             wormholes.forEach((w) => {
                 w.life--;
                 if (w.active) {
-                    // 現在の設定: 180フレーム（約3秒）に1回
                     if (w.life > 60 && w.life % 180 === 0 && spawnedCount < enemiesToSpawn) {
                         const r = Math.random();
-      
-
-                        // --- 修正後（TADPOLE激増パターン） ---
-                        if (r < 0.20) {
-                            spawnEnemy(w.x, w.y, 'dragon'); // 20% (ボスは少し減らす)
-                        } else if (r < 0.35) {
-                            spawnEnemy(w.x, w.y, 'cube');   // 15% (アイテム持ち)
-                        } else if (r < 0.65) {
-                            spawnEnemy(w.x, w.y, 'tadpole');// 30% (アイテム持ち)
-                        } else {
-                            spawnEnemy(w.x, w.y, 'triangle'); // 残り35%
-                        }
+                        if (r < 0.20) spawnEnemy(w.x, w.y, 'dragon');
+                        else if (r < 0.35) spawnEnemy(w.x, w.y, 'cube');
+                        else if (r < 0.65) spawnEnemy(w.x, w.y, 'tadpole');
+                        else spawnEnemy(w.x, w.y, 'triangle');
                     }
                     if (w.life <= 0) w.active = false;
                     const dx = player.x - w.x; const dy = player.y - w.y;
                     const d = Math.hypot(dx, dy) || 0.01;
-                    if (d < 180) {
-                        const f = 500 / (d + 1);
-                        player.x += (dx / d) * f * 0.01; player.y += (dy / d) * f * 0.01;
-                    }
+                    if (d < 180) { const f = 500 / (d + 1); player.x += (dx / d) * f * 0.01; player.y += (dy / d) * f * 0.01; }
                 }
             });
             wormholes = wormholes.filter(w => w.life > -60);
 
-            // Satellites
             player.satellites.forEach((s, i) => {
                 s.angle = (s.angle || 0) + 0.15;
                 const rad = 45 * G_SCALE;
@@ -668,258 +767,62 @@
             ui.enemyBar.style.width = `${forcePct}%`;
 
             if (spawnedCount >= enemiesToSpawn && enemies.length === 0 && !isStageClear) {
-                isStageClear = true; ui.msg.style.display = 'block';
-                AudioSys.playBGM('clear');
+                isStageClear = true; ui.msg.style.display = 'block'; AudioSys.playBGM('clear');
                 setTimeout(() => { stage++; ui.stage.innerText = stage; startStage(); }, 4000);
             }
 
-            if (player.shield < 30) ui.shieldBar.classList.add('shield-critical');
-            else ui.shieldBar.classList.remove('shield-critical');
+            if (player.shield < 30) ui.shieldBar.classList.add('shield-critical'); else ui.shieldBar.classList.remove('shield-critical');
 
-            // --- 追加: レーザータイマー処理とUI更新 ---
-            if (player.laserTimer > 0) {
-                player.laserTimer--;
-                ui.wLv.innerText = "LASER (" + Math.ceil(player.laserTimer / 60) + "s)";
-                ui.wLv.style.color = "#0ff";
-            } else {
-                ui.wLv.innerText = player.weaponLevel;
-                ui.wLv.style.color = "#fff";
-            }
+            if (player.laserTimer > 0) { player.laserTimer--; ui.wLv.innerText = "LASER (" + Math.ceil(player.laserTimer / 60) + "s)"; ui.wLv.style.color = "#0ff"; }
+            else { ui.wLv.innerText = player.weaponLevel; ui.wLv.style.color = "#fff"; }
         }
 
         function fire() {
-            // --- 追加: レーザー発射ロジック ---
             if (player.laserTimer > 0) {
-                // レーザーは瞬間的に伸びるビームとして扱う
-                lasers.push({
-                    x: player.x,
-                    y: player.y,
-                    angle: player.angle,
-                    life: 5, // ビームの残存時間（短くして点滅させる）
-                    width: 40 // 当たり判定の幅
-                });
-                AudioSys.playSE('laser');
-                distortGrid(player.x, player.y, 20, 60);
-                return; // 通常弾は撃たない
+                lasers.push({ x: player.x, y: player.y, angle: player.angle, life: 5, width: 40 });
+                AudioSys.playSE('laser'); distortGrid(player.x, player.y, 20, 60); return;
             }
-
-            // --- 既存: 通常弾発射ロジック ---
-            // 定数 PLAYER_SPEED (24.0) を使用
             const s = BULLET_SETTINGS.PLAYER_SPEED * SPEED_SCALE;
-
             for (let i = 0; i < player.weaponLevel; i++) {
-                // ショットの広がり角の計算
                 const a = player.angle + (i - (player.weaponLevel - 1) / 2) * 0.15;
-
-                bullets.push({
-                    x: player.x,
-                    y: player.y,
-                    vx: Math.cos(a) * s,
-                    vy: Math.sin(a) * s,
-                    // 定数 PLAYER_LIFE (120) を使用
-                    life: BULLET_SETTINGS.PLAYER_LIFE
-                });
+                bullets.push({ x: player.x, y: player.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: BULLET_SETTINGS.PLAYER_LIFE });
             }
-
-            AudioSys.playSE('shoot');
-            distortGrid(player.x, player.y, 10, 40);
+            AudioSys.playSE('shoot'); distortGrid(player.x, player.y, 10, 40);
         }
 
-
-        function spawnEnemy(x, y, type) {
-            const spd = SPEED_SCALE;
-
-            const burstAngle = Math.random() * Math.PI * 2;
-            const burstSpeed = 5.0 * spd;
-            const vx = Math.cos(burstAngle) * burstSpeed;
-            const vy = Math.sin(burstAngle) * burstSpeed;
-
-            // --- ドロップ確率の設定 ---
-            const rnd = Math.random();
-            let dropType = 'crystal';
-            if (rnd < 0.1) dropType = 'laser';      // 10%でレーザー
-            else if (rnd < 0.3) dropType = 'level'; // 20%でレベルアップ
-            else dropType = 'crystal';              // 残りクリスタル
-
-            // 1. DRAGON（ボス）の生成
-            if (type === 'dragon') {
-                let e = {
-                    x: x, y: y, vx: vx, vy: vy, hp: 8,
-                    speed: ENEMY_SPEEDS.DRAGON * spd,
-                    color: '#f00', type: 'dragon', angle: 0, segments: [], drop: 'invincible', scale: 0.9, fireTimer: 0
-                };
-                for (let i = 0; i < 16; i++) e.segments.push({ x: x, y: y, angle: 0 });
-                enemies.push(e);
-                spawnedCount++;
-            }
-            // 2. CUBE（緑の敵）の生成
-            else if (type === 'cube') {
-                let e = {
-                    x: x, y: y, vx: vx, vy: vy, hp: 2,
-                    speed: ENEMY_SPEEDS.CUBE * spd,
-                    color: '#0f0', type: 'cube', angle: 0, drop: dropType, scale: 0.8, rot: 0, rotX: 0, rotY: 0
-                };
-                enemies.push(e);
-                spawnedCount++;
-            }
-            // 3. TADPOLE（精子型/白）の生成 
-            else if (type === 'tadpole') {
-                let e = {
-                    x: x, y: y, vx: vx, vy: vy, hp: 1,
-                    speed: ENEMY_SPEEDS.TADPOLE * spd,
-                    color: '#fff', type: 'tadpole', angle: 0, drop: 'none', scale: 0.6, history: []
-                };
-                enemies.push(e);
-                spawnedCount++;
-            }
-            // 4. TRIANGLE（編隊生成）
-            else if (type === 'triangle') {
-                const forms = ['V', 'line', 'circle'];
-                const form = forms[Math.floor(Math.random() * forms.length)];
-                const initialAngle = Math.atan2(vy, vx);
-
-                const leader = {
-                    x: x, y: y, vx: vx, vy: vy, hp: 1,
-                    speed: ENEMY_SPEEDS.TRIANGLE * spd,
-                    color: '#d0f', type: 'triangle', angle: initialAngle,
-                    drop: dropType, scale: 0.7,
-                    isLeader: true, followers: [],
-                    rotX: Math.random() * Math.PI,
-                    rotY: Math.random() * Math.PI,
-                    rotZ: Math.random() * Math.PI
-                };
-                enemies.push(leader);
-                spawnedCount++;
-
-                for (let i = 1; i <= 4; i++) {
-                    if (spawnedCount >= enemiesToSpawn) break;
-
-                    let baseOffX = 0, baseOffY = 0;
-
-                    if (form === 'V') {
-                        const spreadX = 20;
-                        const depthY = -30;
-                        baseOffX = Math.ceil(i / 2) * depthY;
-                        baseOffY = (i % 2 === 0 ? 1 : -1) * Math.ceil(i / 2) * spreadX;
-                    } else if (form === 'line') {
-                        baseOffX = -Math.ceil(i / 2) * 45;
-                        baseOffY = 0;
-                    } else { // circle
-                        const angle = (Math.PI * 2 / 5) * i;
-                        baseOffX = Math.cos(angle) * 40;
-                        baseOffY = Math.sin(angle) * 40;
-                    }
-
-                    const rotatedOffX = baseOffX * Math.cos(initialAngle) - baseOffY * Math.sin(initialAngle);
-                    const rotatedOffY = baseOffX * Math.sin(initialAngle) + baseOffY * Math.cos(initialAngle);
-
-                    let e = {
-                        x: x + rotatedOffX, y: y + rotatedOffY, vx: vx, vy: vy, hp: 1,
-                        speed: ENEMY_SPEEDS.TRIANGLE * spd,
-                        color: '#d0f', type: 'triangle',
-                        angle: initialAngle, drop: 'none', scale: 0.7,
-                        leader: leader,
-                        formOffset: { x: baseOffX, y: baseOffY },
-                        rotX: Math.random() * Math.PI,
-                        rotY: Math.random() * Math.PI,
-                        rotZ: Math.random() * Math.PI
-                    };
-                    enemies.push(e);
-                    leader.followers.push(e);
-                    spawnedCount++;
-                }
-            }
-        }
-
-        /**
-         * 全エンティティ（弾、敵、アイテム、エフェクト）の状態更新
-         */
         function updateEntities() {
-            updatePlayerBullets();
-            updateLasers(); // --- 追加 ---
-            updateEnemies();
-            updateEnemyBullets();
-            updateCrystals();
-            updatePowerups();
-            updateMissiles();
-            updateParticlesAndRings();
-            updatePlayerStatus();
+            updatePlayerBullets(); updateLasers(); updateEnemies(); updateEnemyBullets(); updateCrystals(); updatePowerups(); updateMissiles(); updateParticlesAndRings(); updatePlayerStatus();
         }
 
-        /**
-         * レーザーの更新と当たり判定
-         * レーザーは線分と円の衝突判定を行う
-         */
         function updateLasers() {
             lasers.forEach(l => {
                 l.life--;
-
-                // レーザーの終点計算 (画面外まで届く長さ)
-                const len = 2000;
-                const p1x = l.x;
-                const p1y = l.y;
-                const p2x = l.x + Math.cos(l.angle) * len;
-                const p2y = l.y + Math.sin(l.angle) * len;
-
-                // 各敵との当たり判定
+                const len = 2000; const p1x = l.x; const p1y = l.y; const p2x = l.x + Math.cos(l.angle) * len; const p2y = l.y + Math.sin(l.angle) * len;
                 enemies.forEach(e => {
-                    // 線分(p1-p2)と点(e)の距離を計算
-                    const A = p1x - p2x;
-                    const B = p1y - p2y;
-                    const C = p2x * p1y - p1x * p2y;
+                    const A = p1x - p2x; const B = p1y - p2y; const C = p2x * p1y - p1x * p2y;
                     const dist = Math.abs(A * e.y - B * e.x + C) / Math.hypot(A, B);
-
-                    // 敵が自機より「前方」にいるか確認 (内積)
                     const dot = (e.x - p1x) * (p2x - p1x) + (e.y - p1y) * (p2y - p1y);
-
                     if (dist < (l.width / 2 + 15 * e.scale) && dot > 0) {
-                        e.hp -= 0.5; // レーザーは毎フレーム当たるので威力は抑えめ
-
-                        // ヒットエフェクト
-                        if (frame % 4 === 0) {
-                            particles.push({
-                                x: e.x, y: e.y,
-                                vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2,
-                                color: '#0ff', life: 0.5
-                            });
-                        }
+                        e.hp -= 0.5;
+                        if (frame % 4 === 0) particles.push({ x: e.x, y: e.y, vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2, color: '#0ff', life: 0.5 });
                     }
                 });
             });
             lasers = lasers.filter(l => l.life > 0);
         }
 
-        /**
-         * 自機の弾の移動と敵との当たり判定
-         */
         function updatePlayerBullets() {
             bullets.forEach(b => {
                 b.x += b.vx; b.y += b.vy; b.life--;
-                enemies.forEach(e => {
-                    if (Math.hypot(b.x - e.x, b.y - e.y) < 30 * e.scale) {
-                        b.life = 0;
-                        e.hp--;
-                    }
-                });
+                enemies.forEach(e => { if (Math.hypot(b.x - e.x, b.y - e.y) < 30 * e.scale) { b.life = 0; e.hp--; } });
             });
             bullets = bullets.filter(b => b.life > 0);
         }
 
-        /**
-         * 敵全体の更新処理（種類ごとに分岐）
-         */
         function updateEnemies() {
             enemies.forEach(e => {
-                // 1. 移動・AIロジックの適用
-                if (e.leader && e.leader.hp > 0) {
-                    updateFormationMovement(e); // 編隊移動
-                    if (e.type === 'triangle') {
-                        e.rotX += 0.08;
-                        e.rotY += 0.12;
-                        e.rotZ += 0.05;
-                    }
-                } else {
-                    // 種類ごとの固有ロジック
+                if (e.leader && e.leader.hp > 0) { updateFormationMovement(e); if (e.type === 'triangle') { e.rotX += 0.08; e.rotY += 0.12; e.rotZ += 0.05; } }
+                else {
                     switch (e.type) {
                         case 'dragon': updateDragonAI(e); break;
                         case 'tadpole': updateTadpoleAI(e); break;
@@ -927,146 +830,70 @@
                         case 'cube': updateCubeAI(e); break;
                     }
                 }
-
-                // 2. 共通処理（衝突回避・画面端バウンス）
-                applySeparation(e);
-                applyWorldBoundary(e);
-
-                // 3. プレイヤーとの接触判定
-                checkPlayerCollision(e);
-
-                // 4. サテライト（緑の破片）との接触判定
-                checkSatelliteCollision(e);
-
-                // 5. 死亡判定
+                applySeparation(e); applyWorldBoundary(e); checkPlayerCollision(e); checkSatelliteCollision(e);
                 if (e.hp <= 0) destroyEnemy(e);
             });
             enemies = enemies.filter(e => e.hp > 0);
         }
 
-        /* --- 敵の種類別 AI 関数 --- */
-
         function updateDragonAI(e) {
             const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 0.001;
-            // 加速移動
-            e.vx += (dx / d) * DRAGON_ACCELERATION * SPEED_SCALE;
-            e.vy += (dy / d) * DRAGON_ACCELERATION * SPEED_SCALE;
-            e.vx *= 0.98; e.vy *= 0.98; // 摩擦
-            // 最高速制限
-            const cv = Math.hypot(e.vx, e.vy);
-            const lim = ENEMY_SPEEDS.DRAGON * SPEED_SCALE;
+            e.vx += (dx / d) * DRAGON_ACCELERATION * SPEED_SCALE; e.vy += (dy / d) * DRAGON_ACCELERATION * SPEED_SCALE;
+            e.vx *= 0.98; e.vy *= 0.98;
+            const cv = Math.hypot(e.vx, e.vy); const lim = ENEMY_SPEEDS.DRAGON * SPEED_SCALE;
             if (cv > lim) { e.vx = (e.vx / cv) * lim; e.vy = (e.vy / cv) * lim; }
-
-            e.x += e.vx; e.y += e.vy;
-            e.angle = Math.atan2(dy, dx);
-
-            // 節（セグメント）の追従
+            e.x += e.vx; e.y += e.vy; e.angle = Math.atan2(dy, dx);
             let lx = e.x, ly = e.y;
-            e.segments.forEach(s => {
-                const dd = Math.hypot(lx - s.x, ly - s.y);
-                if (dd > 10) { s.x += (lx - s.x) * 0.3; s.y += (ly - s.y) * 0.3; }
-                lx = s.x; ly = s.y;
-            });
-
-            // 攻撃（射撃）
+            e.segments.forEach(s => { const dd = Math.hypot(lx - s.x, ly - s.y); if (dd > 10) { s.x += (lx - s.x) * 0.3; s.y += (ly - s.y) * 0.3; } lx = s.x; ly = s.y; });
             e.fireTimer++;
             if (e.fireTimer > 100) {
-                e.fireTimer = 0;
-                // --- 定数 BULLET_SETTINGS  ---
-                const bSpd = BULLET_SETTINGS.ENEMY_SPEED * SPEED_SCALE;
-                enemyBullets.push({
-                    x: e.x,
-                    y: e.y,
-                    vx: Math.cos(e.angle) * bSpd,
-                    vy: Math.sin(e.angle) * bSpd,
-                    life: BULLET_SETTINGS.ENEMY_LIFE
-                });
+                e.fireTimer = 0; const bSpd = BULLET_SETTINGS.ENEMY_SPEED * SPEED_SCALE;
+                enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(e.angle) * bSpd, vy: Math.sin(e.angle) * bSpd, life: BULLET_SETTINGS.ENEMY_LIFE });
                 AudioSys.playSE('shoot');
             }
         }
 
         function updateTadpoleAI(e) {
             const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 0.001;
-            // 定速移動
-            e.vx += (dx / d) * 0.2 * SPEED_SCALE;
-            e.vy += (dy / d) * 0.2 * SPEED_SCALE;
+            e.vx += (dx / d) * 0.2 * SPEED_SCALE; e.vy += (dy / d) * 0.2 * SPEED_SCALE;
             const cv = Math.hypot(e.vx, e.vy);
             if (cv > e.speed) { e.vx = (e.vx / cv) * e.speed; e.vy = (e.vy / cv) * e.speed; }
-
-            e.x += e.vx; e.y += e.vy;
-            e.angle = Math.atan2(dy, dx);
-
-            // 軌跡の記録
-            e.history.unshift({ x: e.x, y: e.y });
-            if (e.history.length > 60) e.history.pop();
+            e.x += e.vx; e.y += e.vy; e.angle = Math.atan2(dy, dx);
+            e.history.unshift({ x: e.x, y: e.y }); if (e.history.length > 60) e.history.pop();
         }
 
         function updateTriangleAI(e) {
             const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 0.001;
-            e.vx += (dx / d) * 0.2 * SPEED_SCALE;
-            e.vy += (dy / d) * 0.2 * SPEED_SCALE;
+            e.vx += (dx / d) * 0.2 * SPEED_SCALE; e.vy += (dy / d) * 0.2 * SPEED_SCALE;
             const cv = Math.hypot(e.vx, e.vy);
             if (cv > e.speed) { e.vx = (e.vx / cv) * e.speed; e.vy = (e.vy / cv) * e.speed; }
-
-            e.x += e.vx; e.y += e.vy;
-            e.angle = Math.atan2(e.vy, e.vx);
-
-            // --- 追加: 高速な立体回転 ---
-            e.rotX += 0.08;
-            e.rotY += 0.12;
-            e.rotZ += 0.05;
+            e.x += e.vx; e.y += e.vy; e.angle = Math.atan2(e.vy, e.vx);
+            e.rotX += 0.08; e.rotY += 0.12; e.rotZ += 0.05;
         }
 
         function updateCubeAI(e) {
             const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 0.001;
-            e.vx += (dx / d) * 0.2 * SPEED_SCALE;
-            e.vy += (dy / d) * 0.2 * SPEED_SCALE;
+            e.vx += (dx / d) * 0.2 * SPEED_SCALE; e.vy += (dy / d) * 0.2 * SPEED_SCALE;
             const cv = Math.hypot(e.vx, e.vy);
             if (cv > e.speed) { e.vx = (e.vx / cv) * e.speed; e.vy = (e.vy / cv) * e.speed; }
-
-            e.x += e.vx; e.y += e.vy;
-            e.rotX += 0.03; e.rotY += 0.04;
+            e.x += e.vx; e.y += e.vy; e.rotX += 0.03; e.rotY += 0.04;
         }
-
-        /* --- ヘルパー・共通関数 --- */
 
         function updateFormationMovement(e) {
             if (!e.leader || e.leader.hp <= 0) return;
-
-            // リーダーの現在の向き（角度）を取得
             const la = e.leader.angle;
-
-            // フォーメーションのオフセット座標をリーダーの向きに合わせて回転させる（回転行列）
-            // これにより、リーダーが旋回しても子機の相対位置が維持される
             const rotatedOffX = e.formOffset.x * Math.cos(la) - e.formOffset.y * Math.sin(la);
             const rotatedOffY = e.formOffset.x * Math.sin(la) + e.formOffset.y * Math.cos(la);
-
-            // ターゲットとなる絶対座標
-            const targetX = e.leader.x + rotatedOffX;
-            const targetY = e.leader.y + rotatedOffY;
-
-            // 線形補間（Lerp）ではなく、直接代入に近い強い追従を適用
-            // 0.1 を 0.3 程度に上げると、より「ガッチリ」固定されます
-            e.x += (targetX - e.x) * 0.3;
-            e.y += (targetY - e.y) * 0.3;
-
-            // 速度もリーダーに合わせる（分離ロジックによるガタつきを抑える）
-            e.vx = e.leader.vx;
-            e.vy = e.leader.vy;
-
-            // 向きもリーダーに同期
-            e.angle = la;
+            const targetX = e.leader.x + rotatedOffX; const targetY = e.leader.y + rotatedOffY;
+            e.x += (targetX - e.x) * 0.3; e.y += (targetY - e.y) * 0.3;
+            e.vx = e.leader.vx; e.vy = e.leader.vy; e.angle = la;
         }
 
         function applySeparation(e) {
             enemies.forEach(other => {
                 if (e === other) return;
-                const odx = e.x - other.x, ody = e.y - other.y;
-                const od = Math.hypot(odx, ody);
-                if (od < 30) {
-                    const push = (30 - od) * 0.05;
-                    e.x += (odx / od) * push; e.y += (ody / od) * push;
-                }
+                const odx = e.x - other.x, ody = e.y - other.y; const od = Math.hypot(odx, ody);
+                if (od < 30) { const push = (30 - od) * 0.05; e.x += (odx / od) * push; e.y += (ody / od) * push; }
             });
         }
 
@@ -1078,62 +905,29 @@
         }
 
         function checkPlayerCollision(e) {
-
             const dist = Math.hypot(player.x - e.x, player.y - e.y);
-            // サイズに応じた当たり判定
             const collisionDist = (e.type === 'tadpole') ? (40 * (e.scale / 0.6)) : 25;
-
             if (dist < collisionDist) {
-                // 無敵時間中でも、接触している間はシールドを削り続ける
-                // 1フレームごとに 0.5 削る（1秒で30ダメージ相当の持続ダメージ）
                 player.shield -= 0.5;
-
-                // もし無敵時間外であれば、大きな衝撃ダメージ
-                if (player.invuln <= 0) {
-                    player.shield -= 10;
-                    player.invuln = 10; // 連続ヒットのノイズを防ぐための極短無敵
-                    createExplosion(player.x, player.y, '#f00', 5);
-                    AudioSys.playSE('damage');
-                }
-
-                // ドラゴン以外は体当たりで消滅（これも即死させたければ残す）
-                if (e.type !== 'dragon' && player.shield > 0) {
-                    // e.hp = 0; // 敵を消したくない場合はここをコメントアウト
-                }
-
-                // UIの更新と死亡判定
+                if (player.invuln <= 0) { player.shield -= 10; player.invuln = 10; createExplosion(player.x, player.y, '#f00', 5); AudioSys.playSE('damage'); }
                 ui.shieldBar.style.width = Math.max(0, player.shield) + "%";
-                if (player.shield <= 0) {
-                    damage(0); // 盾が尽きたら死亡処理を呼ぶ
-                }
+                if (player.shield <= 0) damage(0);
             }
         }
 
         function checkSatelliteCollision(e) {
             for (let i = player.satellites.length - 1; i >= 0; i--) {
                 const s = player.satellites[i];
-                if (Math.hypot(s.x - e.x, s.y - e.y) < 25) {
-                    e.hp = 0;
-                    player.satellites.splice(i, 1); // サテライトを消費
-                    e.noDrop = true;
-                    break;
-                }
+                if (Math.hypot(s.x - e.x, s.y - e.y) < 25) { e.hp = 0; player.satellites.splice(i, 1); e.noDrop = true; break; }
             }
         }
 
-        /* --- エフェクト・UI更新関数（元からあったもの） --- */
-
-        /**
-         * 敵の弾の移動とプレイヤーへの当たり判定
-         */
         function updateEnemyBullets() {
             enemyBullets.forEach(eb => {
                 eb.x += eb.vx; eb.y += eb.vy; eb.life--;
-
-                if (Math.hypot(player.x - eb.x, player.y - eb.y) < 15 && player.invuln <= 0) {
-                    eb.life = 0;
-                    createExplosion(player.x, player.y, '#f00', 10);
-                    damage(15); // この中で shield <= 0 の判定を行っていることを確認
+                // Fix: Hitbox size reduced from 15 to 6
+                if (Math.hypot(player.x - eb.x, player.y - eb.y) < 6 && player.invuln <= 0) {
+                    eb.life = 0; createExplosion(player.x, player.y, '#f00', 10); damage(15);
                 }
             });
             enemyBullets = enemyBullets.filter(eb => eb.life > 0);
@@ -1141,67 +935,33 @@
 
         function updateCrystals() {
             crystals.forEach(c => {
-                // --- 修正: 寿命を減らす処理を追加 ---
                 c.life--;
-
-                const dx = player.x - c.x, dy = player.y - c.y;
-                const d = Math.hypot(dx, dy) || 0.0001;
-
-                // プレイヤーへの吸い寄せ
-                const factor = 0.03 + (d * 0.0005);
-                c.x += dx * factor; c.y += dy * factor;
-
-                // 取得判定
-                if (d < 20) {
-                    c.life = 0; // 取得されたら即死
-                    if (player.satellites.length < 12) player.satellites.push({});
-                }
+                const dx = player.x - c.x, dy = player.y - c.y; const d = Math.hypot(dx, dy) || 0.0001;
+                const factor = 0.03 + (d * 0.0005); c.x += dx * factor; c.y += dy * factor;
+                if (d < 20) { c.life = 0; if (player.satellites.length < 12) player.satellites.push({}); }
             });
-            // 寿命が0になったら消す
             crystals = crystals.filter(c => c.life > 0);
         }
 
         function updatePowerups() {
             powerups.forEach(p => {
-                // --- 修正: 寿命を減らす処理を追加 ---
                 p.life--;
-
                 const d = Math.hypot(player.x - p.x, player.y - p.y);
-
-                // 取得判定
                 if (d < 30) {
-                    p.life = 0; // 取得されたら即死
-                    AudioSys.playSE('powerup');
-
-                    if (p.type === 'laser') {
-                        player.laserTimer = LASER_DURATION;
-                        rings.push({ x: player.x, y: player.y, r: 10, color: '#0ff', life: 1 });
-                        rings.push({ x: player.x, y: player.y, r: 50, color: '#0ff', life: 1 });
-                    } else if (p.type === 'invincible') {
-                        player.invuln = 600;
-                        AudioSys.playSE('invincible');
-                    } else if (p.type === 'level') {
-                        player.weaponLevel = Math.min(5, player.weaponLevel + 1);
-                        ui.wLv.innerText = player.weaponLevel;
-                    }
+                    p.life = 0; AudioSys.playSE('powerup');
+                    if (p.type === 'laser') { player.laserTimer = LASER_DURATION; rings.push({ x: player.x, y: player.y, r: 10, color: '#0ff', life: 1 }); rings.push({ x: player.x, y: player.y, r: 50, color: '#0ff', life: 1 }); }
+                    else if (p.type === 'invincible') { player.invuln = 600; AudioSys.playSE('invincible'); }
+                    else if (p.type === 'level') { player.weaponLevel = Math.min(5, player.weaponLevel + 1); ui.wLv.innerText = player.weaponLevel; }
                 }
             });
-            // 寿命が0になったら消す
             powerups = powerups.filter(p => p.life > 0);
         }
 
         function updateMissiles() {
             missiles.forEach(m => {
-                if (!m.target || !enemies.includes(m.target)) {
-                    let min = 9999;
-                    enemies.forEach(e => { const d = Math.hypot(e.x - m.x, e.y - m.y); if (d < min) { min = d; m.target = e; } });
-                }
-                if (m.target) {
-                    const ta = Math.atan2(m.target.y - m.y, m.target.x - m.x);
-                    m.vx += Math.cos(ta) * 0.5; m.vy += Math.sin(ta) * 0.5;
-                }
-                const s = Math.hypot(m.vx, m.vy);
-                if (s > 0.001) { m.vx = (m.vx / s) * m.speed; m.vy = (m.vy / s) * m.speed; }
+                if (!m.target || !enemies.includes(m.target)) { let min = 9999; enemies.forEach(e => { const d = Math.hypot(e.x - m.x, e.y - m.y); if (d < min) { min = d; m.target = e; } }); }
+                if (m.target) { const ta = Math.atan2(m.target.y - m.y, m.target.x - m.x); m.vx += Math.cos(ta) * 0.5; m.vy += Math.sin(ta) * 0.5; }
+                const s = Math.hypot(m.vx, m.vy); if (s > 0.001) { m.vx = (m.vx / s) * m.speed; m.vy = (m.vy / s) * m.speed; }
                 m.x += m.vx; m.y += m.vy; m.life--;
                 enemies.forEach(e => { if (Math.hypot(e.x - m.x, e.y - m.y) < 30) { e.hp -= 10; m.life = 0; } });
                 particles.push({ x: m.x, y: m.y, vx: (Math.random() - 0.5), vy: (Math.random() - 0.5), color: '#fd0', life: 0.3 });
@@ -1210,541 +970,193 @@
         }
 
         function updateParticlesAndRings() {
-            particles.forEach(p => {
-                p.x += p.vx; p.y += p.vy;
-                p.vx *= 0.92; p.vy *= 0.92; p.vy += 0.005;
-                p.life -= 0.02;
-            });
+            particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vx *= 0.92; p.vy *= 0.92; p.vy += 0.005; p.life -= 0.02; });
             particles = particles.filter(p => p.life > 0);
-
             rings.forEach(r => { r.r += 2; r.life -= 0.02; });
             rings = rings.filter(r => r.life > 0);
         }
 
-        function updatePlayerStatus() {
-            if (player.invuln > 0) player.invuln--;
-        }
+        function updatePlayerStatus() { if (player.invuln > 0) player.invuln--; }
 
-
-        /** 
-         * 
-         */
-
-        function updateScorePopups() {
-            scorePopups.forEach(s => { s.y += s.vy; s.life--; s.alpha = s.life / 30; });
-            scorePopups = scorePopups.filter(s => s.life > 0);
-        }
+        function updateScorePopups() { scorePopups.forEach(s => { s.y += s.vy; s.life--; s.alpha = s.life / 30; }); scorePopups = scorePopups.filter(s => s.life > 0); }
 
         function destroyEnemy(e) {
             createExplosion(e.x, e.y, e.color, 40);
-            if (e.type === 'dragon') {
-                rings.push({ x: e.x, y: e.y, r: 10, color: '#f00', life: 1 });
-                rings.push({ x: e.x, y: e.y, r: 5, color: '#fff', life: 1 });
-                AudioSys.playSE('dragon_explode');
-            } else {
-                AudioSys.playSE('explode');
-            }
-
-            killCount++;
-            const pts = e.type === 'dragon' ? 1000 : 100;
+            if (e.type === 'dragon') { rings.push({ x: e.x, y: e.y, r: 10, color: '#f00', life: 1 }); rings.push({ x: e.x, y: e.y, r: 5, color: '#fff', life: 1 }); AudioSys.playSE('dragon_explode'); }
+            else { AudioSys.playSE('explode'); }
+            killCount++; const pts = e.type === 'dragon' ? 1000 : 100;
             score += pts; ui.score.innerText = score.toString().padStart(6, '0');
             scorePopups.push({ x: e.x, y: e.y, text: pts, life: 40, alpha: 1, vy: -1 });
             distortGrid(e.x, e.y, 40, 80);
-
-
             if (e.noDrop || e.drop === 'none') return;
-
-            const ITEM_LIFE = 240; // 修正: 3秒維持 + 1秒縮小 = 4秒 (240フレーム)
-
             if (e.drop === 'laser') powerups.push({ x: e.x, y: e.y, type: 'laser', life: ITEM_LIFE });
             else if (e.drop === 'invincible') powerups.push({ x: e.x, y: e.y, type: 'invincible', life: ITEM_LIFE });
             else if (e.drop === 'level' || Math.random() < 0.05) powerups.push({ x: e.x, y: e.y, type: 'level', life: ITEM_LIFE });
             else crystals.push({ x: e.x, y: e.y, life: ITEM_LIFE });
-
         }
 
         function damage(v) {
-            player.shield -= v;
-            player.invuln = 5;
-
+            player.shield -= v; player.invuln = 5;
             ui.shieldBar.style.width = Math.max(0, player.shield) + "%";
-            AudioSys.playSE('damage');
-            distortGrid(player.x, player.y, 50, 100);
-
+            AudioSys.playSE('damage'); distortGrid(player.x, player.y, 50, 100);
             if (player.shield <= 0) {
-                gameState = 'GAMEOVER';
-                AudioSys.stopBGM();
-
-                // UIを隠してオーバーレイを表示
-                ui.controls.style.display = 'none';
-                ui.overlay.style.display = 'flex';
-
-                // --- 修正箇所: innerHTMLで書き換えず、要素を操作する ---
-
-                // 1. タイトルとスコアの更新
+                gameState = 'GAMEOVER'; AudioSys.stopBGM();
+                ui.controls.style.display = 'none'; ui.overlay.style.display = 'flex';
                 const titleEl = ui.overlay.querySelector('h1');
-                // H1タグがない場合のフォールバック（念の為）
-                if (titleEl) {
-                    titleEl.innerHTML = `GAME OVER<br><span style="font-size:20px;color:#f00;">SCORE: ${score}</span>`;
-                    titleEl.style.color = '#f00';
-                    titleEl.style.textShadow = '0 0 20px #f00';
-                }
-
-                // 2. STARTボタンを「RETRY」ボタンに改造
+                if (titleEl) { titleEl.innerHTML = `GAME OVER<br><span style="font-size:20px;color:#f00;">SCORE: ${score}</span>`; titleEl.style.color = '#f00'; titleEl.style.textShadow = '0 0 20px #f00'; }
                 const startBtn = document.getElementById('btn-start');
                 if (startBtn) {
-                    startBtn.innerText = 'RETRY';
-                    startBtn.style.borderColor = '#f00';
-                    startBtn.style.color = '#f00';
-
-                    // ソフトリセットを実行する関数をバインド
-                    const doRetry = (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        resetGame(); // これを呼ぶ！
-                    };
-
-                    startBtn.onclick = doRetry;
-                    startBtn.ontouchstart = doRetry;
+                    startBtn.innerText = 'RETRY'; startBtn.style.borderColor = '#f00'; startBtn.style.color = '#f00';
+                    const doRetry = (e) => { e.stopPropagation(); e.preventDefault(); resetGame(); };
+                    startBtn.onclick = doRetry; startBtn.ontouchstart = doRetry;
                 }
-
-                // 3. 不要なボタン（SOUNDTRACKなど）を隠す
                 const ostBtn = document.getElementById('btn-ost');
                 if (ostBtn) ostBtn.style.display = 'none';
             }
         }
 
         function draw() {
-            ctx.save();
-            ctx.translate(-camera.x, -camera.y);
-
-            // Stars (既存)
+            ctx.save(); ctx.translate(-camera.x, -camera.y);
             ctx.fillStyle = '#fff';
             stars.forEach(s => {
-                const sx = (s.x - camera.x * s.parallax) % worldSize;
-                const sy = (s.y - camera.y * s.parallax) % worldSize;
-                const dx = (sx + worldSize) % worldSize;
-                const dy = (sy + worldSize) % worldSize;
-                ctx.globalAlpha = s.brightness;
-                ctx.beginPath(); ctx.arc(dx, dy, s.size, 0, Math.PI * 2); ctx.fill();
+                const sx = (s.x - camera.x * s.parallax) % worldSize; const sy = (s.y - camera.y * s.parallax) % worldSize;
+                const dx = (sx + worldSize) % worldSize; const dy = (sy + worldSize) % worldSize;
+                ctx.globalAlpha = s.brightness; ctx.beginPath(); ctx.arc(dx, dy, s.size, 0, Math.PI * 2); ctx.fill();
             });
             ctx.globalAlpha = 1.0;
 
-            // Grid inside Boundary (既存)
-            ctx.save();
-            ctx.beginPath(); ctx.rect(0, 0, worldSize, worldSize); ctx.clip();
-
-            ctx.strokeStyle = 'rgba(255, 255, 0, 0.4)';
-            ctx.lineWidth = 1;
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = '#0ff';
-            ctx.beginPath();
-
-            const viewX = camera.x; const viewY = camera.y;
-            const viewW = width; const viewH = height;
-
+            ctx.save(); ctx.beginPath(); ctx.rect(0, 0, worldSize, worldSize); ctx.clip();
+            ctx.strokeStyle = 'rgba(255, 255, 0, 0.4)'; ctx.lineWidth = 1; ctx.shadowBlur = 15; ctx.shadowColor = '#0ff'; ctx.beginPath();
+            const viewX = camera.x; const viewY = camera.y; const viewW = width; const viewH = height;
             for (let i = 0; i < gridPoints.length; i++) for (let j = 0; j < gridPoints[i].length; j++) {
-                const p = gridPoints[i][j];
-                if (!p) continue;
+                const p = gridPoints[i][j]; if (!p) continue;
                 if (p.x < viewX - 50 || p.x > viewX + viewW + 50 || p.y < viewY - 50 || p.y > viewY + viewH + 50) continue;
                 if (i > 0 && gridPoints[i - 1] && gridPoints[i - 1][j]) { ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y); ctx.lineTo(p.x, p.y); }
                 if (j > 0 && gridPoints[i][j - 1]) { ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y); ctx.lineTo(p.x, p.y); }
             }
-            ctx.stroke(); ctx.shadowBlur = 0;
-            ctx.restore();
+            ctx.stroke(); ctx.shadowBlur = 0; ctx.restore();
 
-            // Boundary Frame (既存)
             ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3; ctx.strokeRect(WALL_MARGIN, WALL_MARGIN, worldSize - WALL_MARGIN * 2, worldSize - WALL_MARGIN * 2);
 
-            // Wormholes (既存)
-            // Wormholes (漆黒の鏡面球体版)
             wormholes.forEach(w => {
                 if (w.active || w.life > -60) {
-                    let scale = 1;
-                    if (w.life > 300) scale = (400 - w.life) / 100;
-                    else if (w.life <= 0) scale = Math.max(0, (60 + w.life) / 60);
-
-                    ctx.save();
-                    ctx.translate(w.x, w.y);
-                    ctx.scale(scale, scale);
-
-                    // 1. 背後の空間の歪み（ぼんやりした暗い紫の影）
-                    ctx.shadowBlur = 30;
-                    ctx.shadowColor = '#20f'; // わずかに紫を感じる影
-
-                    // 2. 球体本体のグラデーション（鏡面・金属的な質感をシミュレート）
-                    // 中心を真っ黒、エッジを鋭い青白にすることで鏡面感を出す
+                    let scale = 1; if (w.life > 300) scale = (400 - w.life) / 100; else if (w.life <= 0) scale = Math.max(0, (60 + w.life) / 60);
+                    ctx.save(); ctx.translate(w.x, w.y); ctx.scale(scale, scale);
+                    ctx.shadowBlur = 30; ctx.shadowColor = '#20f';
                     const grad = ctx.createRadialGradient(-5, -5, 2, 0, 0, 25);
-                    grad.addColorStop(0, '#333');   // 左上の映り込みハイライト
-                    grad.addColorStop(0.2, '#000'); // 深い黒
-                    grad.addColorStop(0.8, '#000'); // 外縁に向かって黒を維持
-                    grad.addColorStop(1, '#0ff');   // 鋭いエッジ（イベントホライゾン）
-
-                    ctx.fillStyle = grad;
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 20 + Math.sin(frame * 0.1) * 2, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    // 3. 周囲を回るリング（吸い込まれる粒子感を表現）
-                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 35 + Math.cos(frame * 0.05) * 5, 0, Math.PI * 2);
-                    ctx.stroke();
-
-                    // 4. 球体表面の光の筋（レンズフレア的な輝き）
-                    ctx.globalCompositeOperation = 'lighter';
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-                    ctx.beginPath();
-                    ctx.moveTo(-15, -15);
-                    ctx.lineTo(5, 5);
-                    ctx.stroke();
-
+                    grad.addColorStop(0, '#333'); grad.addColorStop(0.2, '#000'); grad.addColorStop(0.8, '#000'); grad.addColorStop(1, '#0ff');
+                    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, 20 + Math.sin(frame * 0.1) * 2, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, 35 + Math.cos(frame * 0.05) * 5, 0, Math.PI * 2); ctx.stroke();
+                    ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(5, 5); ctx.stroke();
                     ctx.restore();
                 }
             });
 
-            // Enemies (既存)
             enemies.forEach(e => {
-                if (e.type === 'dragon') drawDragonEnemy(ctx, e);
-                else if (e.type === 'triangle') drawTriangleEnemy(ctx, e);
-                else if (e.type === 'cube') drawCubeEnemy(ctx, e);
-                else if (e.type === 'tadpole') drawTadpoleEnemy(ctx, e);
+                if (e.type === 'dragon') drawDragonEnemy(ctx, e); else if (e.type === 'triangle') drawTriangleEnemy(ctx, e); else if (e.type === 'cube') drawCubeEnemy(ctx, e); else if (e.type === 'tadpole') drawTadpoleEnemy(ctx, e);
             });
 
-            // --- 敵の弾（回転する点滅ひし形への差し替え） ---
             enemyBullets.forEach(eb => {
-                ctx.save();
-                ctx.translate(eb.x, eb.y);
-
-                // 回転アニメーション
-                ctx.rotate(frame * 0.15);
-
-                // 赤（#f00）と橙（#f80）を高速点滅（5フレームごと）
+                ctx.save(); ctx.translate(eb.x, eb.y); ctx.rotate(frame * 0.15);
                 const bulletColor = (Math.floor(frame / 5) % 2 === 0) ? '#ff0000' : '#ff8800';
-                ctx.fillStyle = bulletColor;
-
-                // ネオンのような発光
-                ctx.shadowBlur = 8;
-                ctx.shadowColor = bulletColor;
-
-                // ひし形を描画
+                ctx.fillStyle = bulletColor; ctx.shadowBlur = 8; ctx.shadowColor = bulletColor;
                 const size = 6 * G_SCALE;
-                ctx.beginPath();
-                ctx.moveTo(0, -size);      // 上
-                ctx.lineTo(size * 0.7, 0); // 右
-                ctx.lineTo(0, size);       // 下
-                ctx.lineTo(-size * 0.7, 0);// 左
-                ctx.closePath();
-                ctx.fill();
-
-                // 中心に白い芯を描画して輝きを強調
-                ctx.fillStyle = '#fdd';
-                ctx.beginPath();
-                ctx.moveTo(0, -size * 0.4);
-                ctx.lineTo(size * 0.3, 0);
-                ctx.lineTo(0, size * 0.4);
-                ctx.lineTo(-size * 0.3, 0);
-                ctx.closePath();
-                ctx.fill();
-
+                ctx.beginPath(); ctx.moveTo(0, -size); ctx.lineTo(size * 0.7, 0); ctx.lineTo(0, size); ctx.lineTo(-size * 0.7, 0); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#fdd'; ctx.beginPath(); ctx.moveTo(0, -size * 0.4); ctx.lineTo(size * 0.3, 0); ctx.lineTo(0, size * 0.4); ctx.lineTo(-size * 0.3, 0); ctx.closePath(); ctx.fill();
                 ctx.restore();
             });
-            ctx.shadowBlur = 0; // 他の描画に影響が出ないようリセット
+            ctx.shadowBlur = 0;
 
-            // Player (修正: レーザー中は色を変える)
             if (gameState === 'PLAYING') {
                 ctx.save(); ctx.translate(player.x, player.y); ctx.rotate(player.angle); ctx.scale(G_SCALE, G_SCALE);
-
-                // 色の切り替え
-                let shipColor = '#0f8';
-                if (player.invuln > 0) shipColor = '#ff0';
-                else if (player.laserTimer > 0) shipColor = '#0ff'; // レーザー中はシアン
-
-                ctx.strokeStyle = shipColor; ctx.lineWidth = 2;
-                ctx.shadowBlur = 10; ctx.shadowColor = ctx.strokeStyle;
-                ctx.beginPath();
-                ctx.moveTo(20, 0); ctx.lineTo(-10, 10); ctx.lineTo(-5, 0); ctx.lineTo(-10, -10); ctx.closePath();
-                ctx.moveTo(-5, 0); ctx.lineTo(-15, 15); ctx.moveTo(-5, 0); ctx.lineTo(-15, -15);
-                ctx.stroke();
+                let shipColor = '#0f8'; if (player.invuln > 0) shipColor = '#ff0'; else if (player.laserTimer > 0) shipColor = '#0ff';
+                ctx.strokeStyle = shipColor; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = ctx.strokeStyle;
+                ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-10, 10); ctx.lineTo(-5, 0); ctx.lineTo(-10, -10); ctx.closePath(); ctx.moveTo(-5, 0); ctx.lineTo(-15, 15); ctx.moveTo(-5, 0); ctx.lineTo(-15, -15); ctx.stroke();
                 ctx.restore(); ctx.shadowBlur = 0;
-
                 player.satellites.forEach(s => { ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(s.x, s.y, 3, 0, Math.PI * 2); ctx.fill(); });
             }
 
-            // --- 追加: レーザー描画 ---
             drawLasers();
-
             ctx.fillStyle = '#0f8'; bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, Math.PI * 2); ctx.fill(); });
 
-            // Crystals (残りライフで縮小)
             ctx.fillStyle = '#0f0';
             crystals.forEach(c => {
-                ctx.save();
-                ctx.translate(c.x, c.y);
-                ctx.rotate(frame * 0.1);
-
-                // --- 修正: 残り60フレーム（1秒）になるまでは大きさ1、それ以降小さくなる ---
-                const scale = c.life > 60 ? 1 : c.life / 60;
-                ctx.scale(scale, scale);
-
-                ctx.beginPath();
-                ctx.moveTo(0, -6); ctx.lineTo(4, 0); ctx.lineTo(0, 6); ctx.lineTo(-4, 0);
-                ctx.fill();
-                ctx.restore();
+                ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(frame * 0.1);
+                const scale = c.life > 60 ? 1 : c.life / 60; ctx.scale(scale, scale);
+                ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(4, 0); ctx.lineTo(0, 6); ctx.lineTo(-4, 0); ctx.fill(); ctx.restore();
             });
 
-            // Powerups (残りライフで縮小)
             powerups.forEach(p => {
-                if (p.type === 'laser') ctx.strokeStyle = '#0ff';
-                else if (p.type === 'level') ctx.strokeStyle = '#0f0';
-                else ctx.strokeStyle = '#fd0';
-
-                ctx.save();
-                ctx.translate(p.x, p.y);
-
-                // --- 修正: 残り60フレーム（1秒）になるまでは大きさ1 ---
-                const scale = p.life > 60 ? 1 : p.life / 60;
-                ctx.scale(scale, scale);
-
-                ctx.lineWidth = 2;
-                ctx.strokeRect(-8, -8, 16, 16);
-                ctx.fillStyle = ctx.strokeStyle;
-                ctx.font = 'bold 12px monospace';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-
-                let char = 'S';
-                if (p.type === 'level') char = 'L';
-                else if (p.type === 'laser') char = 'B';
-
-                ctx.fillText(char, 0, 0);
-                ctx.restore();
+                if (p.type === 'laser') ctx.strokeStyle = '#0ff'; else if (p.type === 'level') ctx.strokeStyle = '#0f0'; else ctx.strokeStyle = '#fd0';
+                ctx.save(); ctx.translate(p.x, p.y);
+                const scale = p.life > 60 ? 1 : p.life / 60; ctx.scale(scale, scale);
+                ctx.lineWidth = 2; ctx.strokeRect(-8, -8, 16, 16);
+                ctx.fillStyle = ctx.strokeStyle; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                let char = 'S'; if (p.type === 'level') char = 'L'; else if (p.type === 'laser') char = 'B';
+                ctx.fillText(char, 0, 0); ctx.restore();
             });
 
             ctx.fillStyle = '#fd0'; missiles.forEach(m => { ctx.beginPath(); ctx.arc(m.x, m.y, 4 * G_SCALE, 0, Math.PI * 2); ctx.fill(); });
 
-            // Particles (サイズは維持し、透明度だけで消える)
             particles.forEach(p => {
-                ctx.save();
-                // ライフをそのまま透明度に使用（1.0以上なら1.0として扱う）
-                ctx.globalAlpha = Math.min(1, p.life);
-
-                ctx.beginPath();
-                const length = 4.0; // 勢いよく見せるため少し長く
-                ctx.moveTo(p.x, p.y);
-                ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
-
-                // サイズは固定（縮小させない）
-                ctx.lineWidth = p.size || 2;
-                ctx.strokeStyle = p.color;
-                ctx.lineCap = 'round'; // 端を丸くしてリッチに
-                ctx.stroke();
-
+                ctx.save(); ctx.globalAlpha = Math.min(1, p.life);
+                ctx.beginPath(); const length = 4.0; ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
+                ctx.lineWidth = p.size || 2; ctx.strokeStyle = p.color; ctx.lineCap = 'round'; ctx.stroke();
                 ctx.restore();
             });
             ctx.globalAlpha = 1.0;
 
-            rings.forEach(r => {
-                ctx.strokeStyle = r.color; ctx.lineWidth = 3; ctx.globalAlpha = r.life;
-                ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
-                ctx.globalAlpha = 1.0;
-            });
-
-            drawScorePopups();
-            ctx.restore();
+            rings.forEach(r => { ctx.strokeStyle = r.color; ctx.lineWidth = 3; ctx.globalAlpha = r.life; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1.0; });
+            drawScorePopups(); ctx.restore();
         }
 
-        /**
-         * レーザーの描画処理
-         */
-   
-      
         function drawLasers() {
             lasers.forEach(l => {
-                ctx.save();
-                ctx.translate(l.x, l.y);
-                ctx.rotate(l.angle);
-
-                // 発光・加算合成設定
-                ctx.globalCompositeOperation = 'lighter';
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = '#0ff';
-                ctx.strokeStyle = '#0ff';
-                ctx.lineWidth = 1.5;
-
-                const len = 2000;
-                const segments = 20; // びりびりさせるための分割数
-                const segLen = len / segments;
-                const jitter = 15 * (l.life / 5); // 震えの幅（ライフに応じて減衰）
-
-                // 1. メインのびりびり線（ジグザグ）
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                for (let i = 1; i <= segments; i++) {
-                    // Xは直線的に進み、Yをランダムに振る
-                    const px = i * segLen;
-                    const py = (Math.random() - 0.5) * jitter * 2;
-                    ctx.lineTo(px, py);
-                }
-                ctx.stroke();
-
-                // 2. 外側のワイヤーフレーム（上下の境界線）
-                // 上のライン
-                ctx.beginPath();
-                ctx.moveTo(0, -l.width / 4);
-                for (let i = 1; i <= segments; i++) {
-                    const px = i * segLen;
-                    const py = -l.width / 4 + (Math.random() - 0.5) * (jitter / 2);
-                    ctx.lineTo(px, py);
-                }
-                ctx.stroke();
-
-                // 下のライン
-                ctx.beginPath();
-                ctx.moveTo(0, l.width / 4);
-                for (let i = 1; i <= segments; i++) {
-                    const px = i * segLen;
-                    const py = l.width / 4 + (Math.random() - 0.5) * (jitter / 2);
-                    ctx.lineTo(px, py);
-                }
-                ctx.stroke();
-
-                // 3. 中心に白いコアの直線（時々ランダムで途切れる演出）
-                if (Math.random() > 0.2) {
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(0, 0);
-                    ctx.lineTo(len, (Math.random() - 0.5) * 5);
-                    ctx.stroke();
-                }
-
+                ctx.save(); ctx.translate(l.x, l.y); ctx.rotate(l.angle);
+                ctx.globalCompositeOperation = 'lighter'; ctx.shadowBlur = 15; ctx.shadowColor = '#0ff'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 1.5;
+                const len = 2000; const segments = 20; const segLen = len / segments; const jitter = 15 * (l.life / 5);
+                ctx.beginPath(); ctx.moveTo(0, 0); for (let i = 1; i <= segments; i++) { const px = i * segLen; const py = (Math.random() - 0.5) * jitter * 2; ctx.lineTo(px, py); } ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -l.width / 4); for (let i = 1; i <= segments; i++) { const px = i * segLen; const py = -l.width / 4 + (Math.random() - 0.5) * (jitter / 2); ctx.lineTo(px, py); } ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, l.width / 4); for (let i = 1; i <= segments; i++) { const px = i * segLen; const py = l.width / 4 + (Math.random() - 0.5) * (jitter / 2); ctx.lineTo(px, py); } ctx.stroke();
+                if (Math.random() > 0.2) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, (Math.random() - 0.5) * 5); ctx.stroke(); }
                 ctx.restore();
             });
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.shadowBlur = 0;
+            ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0;
         }
 
-        /**
-                 * TRIANGLE（三角錐ワイヤーフレーム版）の描画処理
-                 */
-        /**
-                 * TRIANGLE（三角錐ワイヤーフレーム版）の描画処理
-                 * ネオンのような強い発光表現に強化
-                 */
         function drawTriangleEnemy(ctx, e) {
-            ctx.save();
-            ctx.translate(e.x, e.y);
-            ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
-
-            // --- ネオン効果の強化 ---
-            // 1. 加算合成: 背景の黒に色が加算され、発光しているように見える
-            ctx.globalCompositeOperation = 'lighter';
-
-            ctx.strokeStyle = e.color; // 色は元のまま (#d0f)
-
-            // 2. 線の太さ: 光の量を増やすため少し太くする
-            ctx.lineWidth = 2.5;
-
-            // 3. グロー効果: 光の滲みを強く、広くする
-            ctx.shadowBlur = 25;
-            ctx.shadowColor = e.color;
-
-            // --- 以下、3D計算と描画ロジック ---
-            const size = 15;
-            const pts = [
-                { x: 1, y: 1, z: 1 },
-                { x: -1, y: -1, z: 1 },
-                { x: -1, y: 1, z: -1 },
-                { x: 1, y: -1, z: -1 }
-            ];
-
-            const cosX = Math.cos(e.rotX), sinX = Math.sin(e.rotX);
-            const cosY = Math.cos(e.rotY), sinY = Math.sin(e.rotY);
-            const cosZ = Math.cos(e.rotZ), sinZ = Math.sin(e.rotZ);
-
-            const proj = pts.map(p => {
-                let y1 = p.y * cosX - p.z * sinX;
-                let z1 = p.y * sinX + p.z * cosX;
-                let x2 = p.x * cosY + z1 * sinY;
-                let z2 = -p.x * sinY + z1 * cosY;
-                let x3 = x2 * cosZ - y1 * sinZ;
-                let y3 = x2 * sinZ + y1 * cosZ;
-                return { x: x3 * size, y: y3 * size };
-            });
-
-            const lines = [
-                [0, 1], [0, 2], [0, 3],
-                [1, 2], [1, 3], [2, 3]
-            ];
-
-            ctx.beginPath();
-            lines.forEach(l => {
-                ctx.moveTo(proj[l[0]].x, proj[l[0]].y);
-                ctx.lineTo(proj[l[1]].x, proj[l[1]].y);
-            });
-            ctx.stroke();
-
-            // 中心のコアも強く光らせる
-            ctx.shadowBlur = 35;
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.arc(0, 0, 3, 0, Math.PI * 2);
-            ctx.fill();
-
+            ctx.save(); ctx.translate(e.x, e.y); ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
+            ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = e.color; ctx.lineWidth = 2.5; ctx.shadowBlur = 25; ctx.shadowColor = e.color;
+            const size = 15; const pts = [{ x: 1, y: 1, z: 1 }, { x: -1, y: -1, z: 1 }, { x: -1, y: 1, z: -1 }, { x: 1, y: -1, z: -1 }];
+            const cosX = Math.cos(e.rotX), sinX = Math.sin(e.rotX); const cosY = Math.cos(e.rotY), sinY = Math.sin(e.rotY); const cosZ = Math.cos(e.rotZ), sinZ = Math.sin(e.rotZ);
+            const proj = pts.map(p => { let y1 = p.y * cosX - p.z * sinX; let z1 = p.y * sinX + p.z * cosX; let x2 = p.x * cosY + z1 * sinY; let z2 = -p.x * sinY + z1 * cosY; let x3 = x2 * cosZ - y1 * sinZ; let y3 = x2 * sinZ + y1 * cosZ; return { x: x3 * size, y: y3 * size }; });
+            const lines = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+            ctx.beginPath(); lines.forEach(l => { ctx.moveTo(proj[l[0]].x, proj[l[0]].y); ctx.lineTo(proj[l[1]].x, proj[l[1]].y); }); ctx.stroke();
+            ctx.shadowBlur = 35; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
         }
 
         function drawCubeEnemy(ctx, e) {
-            ctx.save(); ctx.translate(e.x, e.y); ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
-            ctx.strokeStyle = e.color; ctx.lineWidth = 2;
-            // 3D Cube Projection
-            const size = 15;
-            const pts = [
-                { x: -1, y: -1, z: -1 }, { x: 1, y: -1, z: -1 }, { x: 1, y: 1, z: -1 }, { x: -1, y: 1, z: -1 },
-                { x: -1, y: -1, z: 1 }, { x: 1, y: -1, z: 1 }, { x: 1, y: 1, z: 1 }, { x: -1, y: 1, z: 1 }
-            ];
-            // Rotate
-            const cosX = Math.cos(e.rotX), sinX = Math.sin(e.rotX);
-            const cosY = Math.cos(e.rotY), sinY = Math.sin(e.rotY);
-
-            const proj = pts.map(p => {
-                let y = p.y * cosX - p.z * sinX; let z = p.y * sinX + p.z * cosX;
-                let x = p.x * cosY + z * sinY;
-                return { x: x * size, y: y * size };
-            });
-
-            // Draw Edges
+            ctx.save(); ctx.translate(e.x, e.y); ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE); ctx.strokeStyle = e.color; ctx.lineWidth = 2;
+            const size = 15; const pts = [{ x: -1, y: -1, z: -1 }, { x: 1, y: -1, z: -1 }, { x: 1, y: 1, z: -1 }, { x: -1, y: 1, z: -1 }, { x: -1, y: -1, z: 1 }, { x: 1, y: -1, z: 1 }, { x: 1, y: 1, z: 1 }, { x: -1, y: 1, z: 1 }];
+            const cosX = Math.cos(e.rotX), sinX = Math.sin(e.rotX); const cosY = Math.cos(e.rotY), sinY = Math.sin(e.rotY);
+            const proj = pts.map(p => { let y = p.y * cosX - p.z * sinX; let z = p.y * sinX + p.z * cosX; let x = p.x * cosY + z * sinY; return { x: x * size, y: y * size }; });
             const lines = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
-            ctx.beginPath();
-            lines.forEach(l => { ctx.moveTo(proj[l[0]].x, proj[l[0]].y); ctx.lineTo(proj[l[1]].x, proj[l[1]].y); });
-            ctx.stroke();
-            ctx.restore();
+            ctx.beginPath(); lines.forEach(l => { ctx.moveTo(proj[l[0]].x, proj[l[0]].y); ctx.lineTo(proj[l[1]].x, proj[l[1]].y); }); ctx.stroke(); ctx.restore();
         }
 
         function drawTadpoleEnemy(ctx, e) {
-            ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.angle); ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
-            ctx.strokeStyle = e.color; ctx.lineWidth = 2;
-
-            // Draw Larger Head
-            ctx.beginPath();
-            ctx.ellipse(8, 0, 15, 10, 0, 0, Math.PI * 2);
-            ctx.stroke();
-
-            ctx.restore();
-
-            // Draw Trail (World Coords)
+            ctx.save();
             if (e.history.length > 1) {
-                ctx.save(); ctx.strokeStyle = e.color; ctx.lineWidth = 2; ctx.globalAlpha = 0.6;
-                ctx.beginPath();
-                ctx.moveTo(e.x, e.y);
-                for (let i = 0; i < e.history.length; i++) {
-                    ctx.lineTo(e.history[i].x, e.history[i].y);
-                }
-                ctx.stroke();
-                ctx.restore();
+                ctx.beginPath(); ctx.moveTo(e.history[0].x, e.history[0].y);
+                for (let i = 1; i < e.history.length; i++) ctx.lineTo(e.history[i].x, e.history[i].y);
+                ctx.strokeStyle = 'rgba(200, 255, 255, 0.5)'; ctx.lineWidth = 3 * G_SCALE; ctx.lineCap = 'round'; ctx.stroke();
             }
+            ctx.translate(e.x, e.y); ctx.rotate(e.angle); ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
+            ctx.shadowBlur = 15; ctx.shadowColor = '#fff'; ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.ellipse(5, 0, 12, 9, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 5; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(8, 0, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.restore(); ctx.shadowBlur = 0;
         }
 
         function drawDragonEnemy(ctx, e) {
@@ -1755,7 +1167,6 @@
                 ctx.beginPath(); const wingSize = (15 - i * 0.5); ctx.moveTo(0, 0); ctx.lineTo(-5, wingSize); ctx.moveTo(0, 0); ctx.lineTo(-5, -wingSize); ctx.stroke();
                 ctx.restore();
             });
-            // Head (No Eyes)
             ctx.save(); ctx.translate(e.x / (e.scale * G_SCALE), e.y / (e.scale * G_SCALE)); ctx.rotate(e.angle);
             ctx.beginPath(); ctx.moveTo(25, 0); ctx.lineTo(5, 12); ctx.lineTo(-10, 8); ctx.lineTo(-10, -8); ctx.lineTo(5, -12); ctx.closePath(); ctx.stroke();
             ctx.restore(); ctx.restore();
@@ -1763,20 +1174,15 @@
 
         function drawScorePopups() {
             ctx.fillStyle = '#fff'; ctx.font = '16px Orbitron'; ctx.textAlign = 'center';
-            scorePopups.forEach(s => {
-                ctx.globalAlpha = s.alpha;
-                ctx.fillText(s.text, s.x, s.y);
-            });
+            scorePopups.forEach(s => { ctx.globalAlpha = s.alpha; ctx.fillText(s.text, s.x, s.y); });
             ctx.globalAlpha = 1.0;
         }
 
         function updateGrid() {
             for (let i = 0; i < gridPoints.length; i++) for (let j = 0; j < gridPoints[i].length; j++) {
-                const p = gridPoints[i][j];
-                const dx = p.x - p.ox, dy = p.y - p.oy;
+                const p = gridPoints[i][j]; const dx = p.x - p.ox, dy = p.y - p.oy;
                 const f = -0.05 * Math.hypot(dx, dy); const ang = Math.atan2(dy, dx);
-                p.vx += Math.cos(ang) * f; p.vy += Math.sin(ang) * f; p.vx *= 0.9; p.vy *= 0.9;
-                p.x += p.vx; p.y += p.vy;
+                p.vx += Math.cos(ang) * f; p.vy += Math.sin(ang) * f; p.vx *= 0.9; p.vy *= 0.9; p.x += p.vx; p.y += p.vy;
             }
         }
 
@@ -1787,105 +1193,72 @@
                 if (d < radius) { const f = force * (1 - d / radius), a = Math.atan2(p.y - y, p.x - x); p.vx += Math.cos(a) * f; p.vy += Math.sin(a) * f; }
             }
         }
-        
-        function createExplosion(x, y, baseColor, n) {
-            // 生成するパーティクル数を倍率で増やす
-            const count = Math.floor(n * EXPLOSION_COUNT_MAG);
 
+        function createExplosion(x, y, baseColor, n) {
+            const count = Math.floor(n * EXPLOSION_COUNT_MAG);
             for (let i = 0; i < count; i++) {
                 const angle = Math.random() * Math.PI * 2;
-
-                // 飛散スピードをランダムにして勢いにバラつきを出す
                 const speed = (Math.random() * 8 + 2) * EXPLOSION_SPEED_MAG;
-
-                // --- パーティクルの色決定ロジック ---
-                let color;
-                const rnd = Math.random();
-
-                if (rnd < 0.7) {
-                    // 70%：その敵のベースカラー
-                    color = baseColor;
-                } else if (rnd < 0.8) {
-                    // 10%：白（中心のまばゆい輝き）
-                    color = '#fff';
-                } else if (rnd < 0.90) {
-                    // 10%：オレンジや黄色（燃焼する火花）
-                    color = rnd < 0.77 ? '#ff8800' : '#ffff00';
-                } else {
-                    // 10%：完全にランダムなネオンカラー（サイバー感を強調）
-                    const colors = ['#0ff', '#f0f', '#0f0', '#ff0'];
-                    color = colors[Math.floor(Math.random() * colors.length)];
-                }
-
-                particles.push({
-                    x: x,
-                    y: y,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed,
-                    color: color,
-                    // 大きさも少しランダムにする
-                    size: (Math.random() * 2 + 1) * G_SCALE,
-                    // 派手さを維持するためライフを少し長めに設定
-                    life: 1.0 + Math.random() * 0.5
-                });
+                let color; const rnd = Math.random();
+                if (rnd < 0.7) color = baseColor; else if (rnd < 0.8) color = '#fff'; else if (rnd < 0.90) color = rnd < 0.77 ? '#ff8800' : '#ffff00';
+                else { const colors = ['#0ff', '#f0f', '#0f0', '#ff0']; color = colors[Math.floor(Math.random() * colors.length)]; }
+                particles.push({ x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, color: color, size: (Math.random() * 2 + 1) * G_SCALE, life: 1.0 + Math.random() * 0.5 });
             }
-
-            // 爆発の瞬間に強烈なグリッドの歪みを加える
             distortGrid(x, y, 60, 120);
         }
 
-        function launchSatellites() {
-            if (player.satellites.length === 0) return;
-            AudioSys.playSE('launch');
-            player.satellites.forEach(s => {
-                missiles.push({ x: s.x, y: s.y, vx: Math.cos(s.angle) * 10 * SPEED_SCALE, vy: Math.sin(s.angle) * 10 * SPEED_SCALE, target: null, life: 200, speed: 12 * SPEED_SCALE });
-            });
-            player.satellites = [];
-            distortGrid(player.x, player.y, 300, 400);
+        // --- PAUSE Control ---
+        function togglePause(forcedState) {
+            const newState = forcedState !== undefined ? forcedState : (gameState === 'PAUSED');
+            if (newState) {
+                // Resume
+                if (gameState === 'PAUSED') {
+                    gameState = previousGameState;
+                    ui.pauseOverlay.style.display = 'none';
+                    AudioSys.resumeBGM();
+                }
+            } else {
+                // Pause
+                if (gameState === 'PLAYING' || gameState === 'OST') {
+                    previousGameState = gameState;
+                    gameState = 'PAUSED';
+                    ui.pauseOverlay.style.display = 'flex';
+                    AudioSys.pauseBGM();
+                }
+            }
         }
 
-        // OST & Menu
-        function openOST() {
-            AudioSys.resume(); gameState = 'OST';
-            ui.overlay.style.display = 'none'; ui.ost.style.display = 'flex';
-            const list = document.getElementById('track-list'); list.innerHTML = '';
-            [{ n: 'Title Theme', k: 'title' }, { n: 'Stage 1', k: 'stage', i: 0 }, { n: 'Stage 2', k: 'stage', i: 1 }, { n: 'Stage 3', k: 'stage', i: 2 }, { n: 'Stage 4', k: 'stage', i: 3 }, { n: 'Clear Theme', k: 'clear' }].forEach(t => {
-                const d = document.createElement('div'); d.className = 'track-item'; d.innerText = t.n;
-                d.onclick = () => { AudioSys.playBGM(t.k, t.i); document.querySelectorAll('.track-item').forEach(e => e.classList.remove('playing')); d.classList.add('playing'); };
-                list.appendChild(d);
-            });
-        }
+        // --- Event Listeners for Visibility Change ---
+        document.addEventListener('visibilitychange', () => { if (document.hidden) togglePause(false); });
+        window.addEventListener('blur', () => togglePause(false));
+        ui.pauseOverlay.addEventListener('click', () => togglePause(true));
+        ui.pauseOverlay.addEventListener('touchstart', (e) => { e.preventDefault(); togglePause(true); });
 
-        function closeOST() { gameState = 'TITLE'; ui.ost.style.display = 'none'; ui.overlay.style.display = 'flex'; AudioSys.playBGM('title'); }
-
-        // Inputs
+        // --- Touch Handler Fix ---
         function handleTouch(e) {
             e.preventDefault();
             if (gameState !== 'PLAYING') return;
             input.move.active = false; input.aim.active = false;
 
-            // Bomb Button Check (Coordinate)
             const bRect = ui.launchBtn.getBoundingClientRect();
-
-            const lR = ui.stickL.getBoundingClientRect(), rR = ui.stickR.getBoundingClientRect();
-            const lC = { x: lR.left + lR.width / 2, y: lR.top + lR.height / 2 }, rC = { x: rR.left + rR.width / 2, y: rR.top + rR.height / 2 };
+            const lR = ui.stickL.getBoundingClientRect(); const rR = ui.stickR.getBoundingClientRect();
+            const lC = { x: lR.left + lR.width / 2, y: lR.top + lR.height / 2 };
+            const rC = { x: rR.left + rR.width / 2, y: rR.top + rR.height / 2 };
 
             for (let i = 0; i < e.touches.length; i++) {
                 const t = e.touches[i];
-
                 if (t.clientX >= bRect.left && t.clientX <= bRect.right && t.clientY >= bRect.top && t.clientY <= bRect.bottom) {
-                    launchSatellites();
-                    continue;
+                    launchSatellites(); continue;
                 }
-
-                const dL = Math.hypot(t.clientX - lC.x, t.clientY - lC.y), dR = Math.hypot(t.clientX - rC.x, t.clientY - rC.y);
+                const dL = Math.hypot(t.clientX - lC.x, t.clientY - lC.y);
+                const dR = Math.hypot(t.clientX - rC.x, t.clientY - rC.y);
 
                 if (dL < 100) {
-                    input.move.active = true; const a = Math.atan2(t.clientY - lC.y, t.clientX - lC.x), d = Math.min(dL, 40);
+                    input.move.active = true; const a = Math.atan2(t.clientY - lC.y, t.clientX - lC.x); const d = Math.min(dL, 40);
                     input.move.x = Math.cos(a) * (d / 40); input.move.y = Math.sin(a) * (d / 40);
                     ui.knobL.style.transform = `translate(${input.move.x * 40}px,${input.move.y * 40}px)`;
                 } else if (dR < 100) {
-                    input.aim.active = true; const a = Math.atan2(t.clientY - rC.y, t.clientX - rC.x), d = Math.min(dR, 40);
+                    input.aim.active = true; const a = Math.atan2(t.clientY - rC.y, t.clientX - rC.x); const d = Math.min(dR, 40);
                     input.aim.x = Math.cos(a) * (d / 40); input.aim.y = Math.sin(a) * (d / 40);
                     ui.knobR.style.transform = `translate(${input.aim.x * 40}px,${input.aim.y * 40}px)`;
                 }
@@ -1904,113 +1277,32 @@
         document.getElementById('btn-back').onclick = closeOST;
 
         window.addEventListener('keydown', e => {
-            // スクロールなどのブラウザデフォルト動作を防止
             if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyZ', 'KeyX'].includes(e.code)) e.preventDefault();
-
             input.keys[e.code] = true;
-
-            // タイトル画面でSpaceキーを押すとゲーム開始
             if (gameState === 'TITLE' && e.code === 'Space') startGame();
-
-            // プレイ中、Xキーでボム（サテライト射出）を実行
             if (gameState === 'PLAYING' && e.code === 'KeyX') launchSatellites();
-
-            // プレイ中、Zキーを「ボム」のままにしたい場合は以下の通り（あなたの元のコード通り）
-            // if (gameState === 'PLAYING' && e.code === 'KeyZ') launchSatellites();
         });
         window.addEventListener('keyup', e => input.keys[e.code] = false);
+        window.addEventListener('resize', resize);
 
-
-        // ユーザーの最初の操作でオーディオを有効化する関数
+        // Init Interaction
+        let isInit = false;
         const handleInteraction = () => {
+            if (isInit) return;
+            isInit = true;
             AudioSys.resume();
-            if (gameState === 'TITLE' && !AudioSys.currentSrc) {
-                AudioSys.playBGM('title');
-            }
-            // 一度実行されたらイベントを解除
+            if (gameState === 'TITLE' && !AudioSys.currentSrc) AudioSys.playBGM('title');
             document.removeEventListener('click', handleInteraction);
             document.removeEventListener('touchstart', handleInteraction);
             document.removeEventListener('keydown', handleInteraction);
         };
-
         document.addEventListener('click', handleInteraction);
         document.addEventListener('touchstart', handleInteraction);
         document.addEventListener('keydown', handleInteraction);
 
-        function resetGame() {
-            // ゲームの状態変数を初期化
-            score = 0;
-            stage = 1;
-            frame = 0;
-            spawnedCount = 0;
-            enemiesToSpawn = 0;
-            isStageClear = false;
-            killCount = 0;
-
-            // エンティティの配列を空にする
-            bullets = [];
-            lasers = [];
-            enemies = [];
-            enemyBullets = [];
-            particles = [];
-            crystals = [];
-            missiles = [];
-            powerups = [];
-            wormholes = [];
-            scorePopups = [];
-            rings = [];
-
-            // プレイヤーの状態をリセット
-            player.x = worldSize / 2;
-            player.y = worldSize / 2;
-            player.vx = 0;
-            player.vy = 0;
-            player.shield = 100;
-            player.weaponLevel = 2; // 初期武器レベル
-            player.invuln = 0;
-            player.laserTimer = 0;
-            player.satellites = [];
-
-            // UIのリセット
-            ui.score.innerText = "000000";
-            ui.stage.innerText = "1";
-            ui.wLv.innerText = "2";
-            ui.shieldBar.style.width = "100%";
-            ui.shieldBar.classList.remove('shield-critical');
-            ui.shieldBar.style.backgroundColor = '#0ff';
-            ui.enemyBar.style.width = "100%";
-            ui.warn.style.display = 'none';
-            ui.msg.style.display = 'none';
-
-            // ゲームオーバー画面を隠す（リロードしないので重要）
-            ui.overlay.style.display = 'none';
-            ui.controls.style.display = 'block';
-
-            // UI上のボタン等を元の状態に戻す
-            const titleEl = ui.overlay.querySelector('h1');
-            if (titleEl) {
-                titleEl.innerHTML = `NEON GRAVITY<br><span style="font-size:20px;color:#fff;">DEBUGGED</span>`;
-                titleEl.style.color = '#0ff';
-                titleEl.style.textShadow = '0 0 20px #0ff';
-            }
-            const startBtn = document.getElementById('btn-start');
-            if (startBtn) {
-                startBtn.innerText = 'START GAME';
-                startBtn.style.borderColor = '#0ff';
-                startBtn.style.color = '#0ff';
-                // イベントリスナーは startGame 内で再設定されるか、このまま startGame を呼ぶ
-            }
-            const ostBtn = document.getElementById('btn-ost');
-            if (ostBtn) ostBtn.style.display = 'block';
-
-            // ゲーム開始
-            startGame();
-        }
-
         function init() {
             resize();
             AudioSys.init();
-            // 最初からBGMを鳴らそうとせず、handleInteractionに任せる
         }
 
         init();
