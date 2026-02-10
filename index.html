@@ -1316,32 +1316,35 @@
             }
         }
 
-        // --- PAUSE Control (プレイ中のみポーズ画面、他はBGM停止のみ) ---
+
+
+        // --- PAUSE Control (プレイ中のみポーズ画面、他はBGM停止・自動再開) ---
         function setPaused(paused) {
             if (paused) {
-                // ゲームプレイ中ならポーズ画面を表示して進行を止める
+                // 【非アクティブ時】
                 if (gameState === 'PLAYING') {
+                    // ゲームプレイ中のみ、ポーズ画面を出して進行を止める
                     previousGameState = gameState;
                     gameState = 'PAUSED';
                     ui.pauseOverlay.style.display = 'flex';
                 }
-                // どの画面であっても非アクティブ時は音を止める
+                // どの画面（TITLE, OST, GAMEOVER）であってもBGMは一時停止
                 AudioSys.pauseBGM();
             } else {
-                // アクティブに戻った時の処理
+                // 【アクティブに戻った時】
                 if (gameState === 'PAUSED') {
-                    // ポーズ画面が出ている場合（プレイ中だった場合）は、
-                    // タップされるまで待つのでここでは何もしない
+                    // ゲームプレイ中にポーズされた場合は、オーバーレイを維持。
+                    // ユーザーのタップを待つ。
                 } else {
-                    // ポーズ画面が出ていない状態（TITLE, OST, GAMEOVER）なら音を自動再開
+                    // それ以外（TITLE, OST, GAMEOVER）なら、即座にBGMを自動再開
                     AudioSys.resumeBGM();
                 }
             }
         }
 
-        // --- Event Listeners (ここを差し替えてください) ---
+        // --- Event Listeners (ここを最新版に差し替えてください) ---
 
-        // 画面の表示状態が変わった時（タブ切り替え、ホームに戻るなど）
+        // 画面の表示・非表示の切り替え
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 setPaused(true);
@@ -1350,31 +1353,26 @@
             }
         });
 
-        // ウィンドウからフォーカスが外れた時（PCでの別窓操作など）
+        // ウィンドウのフォーカス（PCの別窓クリックなど）
         window.addEventListener('blur', () => setPaused(true));
-
-        // ウィンドウにフォーカスが戻った時
         window.addEventListener('focus', () => setPaused(false));
 
-        // ポーズ画面（オーバーレイ）をタップ・クリックして再開
-        // ※これは「PLAYING」中にポーズされた場合のみ必要
-        ui.pauseOverlay.addEventListener('click', (e) => {
-            e.preventDefault();
+        // ポーズ画面（オーバーレイ）をタップして再開
+        // ※ PLAYING中にポーズされた場合のみ実行されます
+        const resumeAction = (e) => {
+            if (e) e.preventDefault();
             if (gameState === 'PAUSED') {
                 gameState = 'PLAYING';
                 ui.pauseOverlay.style.display = 'none';
                 AudioSys.resumeBGM();
             }
-        });
+        };
 
-        ui.pauseOverlay.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (gameState === 'PAUSED') {
-                gameState = 'PLAYING';
-                ui.pauseOverlay.style.display = 'none';
-                AudioSys.resumeBGM();
-            }
-        }, { passive: false });
+        ui.pauseOverlay.addEventListener('click', resumeAction);
+        ui.pauseOverlay.addEventListener('touchstart', resumeAction, { passive: false });
+
+
+
 
 
         function handleTouch(e) {
