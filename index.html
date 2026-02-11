@@ -253,7 +253,7 @@
             background: rgba(0, 255, 255, 0.1);
             border: 1px solid #0ff;
             color: #0ff;
-            padding: 20px 50px;
+            padding: 10px 30px;
             margin: 10px;
             font-size: 22px;
             font-family: 'Orbitron';
@@ -373,40 +373,44 @@
             }
         }
 
-        /* --- ランキング機能用 CSS (ここから追加) --- */
+        /* ランキング画面：スクロール対応とレイアウト修正 */
         #ranking-overlay {
             display: none;
-            position: absolute;
+            position: fixed; /* absoluteから変更 */
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.95);
-            z-index: 150;
+            z-index: 1000;
             flex-direction: column;
             align-items: center;
-            padding-top: 50px;
+            padding: 5px;
+            box-sizing: border-box;
         }
 
-        /* ランキングテーブル */
+        /* テーブルを表示エリア内でスクロール可能にする */
         #ranking-table {
-            width: 90%;
+            width: 95%;
             max-width: 600px;
             border-collapse: collapse;
             color: #fff;
             font-family: 'Orbitron';
-            margin-bottom: 20px;
+            font-size: 14px;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            overflow-y: auto; /* 縦に長くなったらスクロール */
         }
 
             #ranking-table th {
-                border-bottom: 2px solid #0ff;
+                border-bottom: 1px solid #0ff;
                 color: #0ff;
                 padding: 10px;
             }
 
             #ranking-table td {
                 border-bottom: 1px solid #333;
-                padding: 10px;
+                padding: 8px 10px;
             }
 
         /* 順位ごとの色 */
@@ -585,7 +589,7 @@
 
 
     <div id="ranking-overlay">
-        <h1 style="color:#0ff; text-shadow:0 0 20px #0ff; margin-bottom: 20px;">TOP COMMANDERS</h1>
+        <h1 style="color:#0ff; text-shadow:0 0 20px #0ff; margin-bottom: 2px;">TOP COMMANDERS</h1>
         <div id="loading-ranking" style="color:#0ff; animation: blink 0.5s infinite;">CONNECTING...</div>
         <table id="ranking-table" style="display:none;">
             <thead>
@@ -626,7 +630,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // ★★★ ここをあなたのFirebase設定に書き換えてください ★★★
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCRjHe893FZopPErdjtgX8KJ8KPT_rmgnI",
             authDomain: "stellar-gravity.firebaseapp.com",
@@ -641,21 +645,18 @@
         const db = getFirestore(app);
         const SCORES_COLLECTION = "neon_gravity_scores";
 
-        // HTML Elements
+        // HTML要素の取得
         const rankingOverlay = document.getElementById("ranking-overlay");
         const rankingBody = document.getElementById("ranking-list-body");
         const loadingEl = document.getElementById("loading-ranking");
         const tableEl = document.getElementById("ranking-table");
-
-        //const nameInputArea = document.getElementById("name-input-area");
-        //const nameInput = document.getElementById("player-name-input");
-        //const submitBtn = document.getElementById("submit-score-btn");
 
         function escapeHtml(str) {
             if (!str) return "";
             return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
         }
 
+        // --- ランキング表示機能 ---
         window.showRanking = async function () {
             rankingOverlay.style.display = "flex";
             loadingEl.style.display = "block";
@@ -668,30 +669,29 @@
 
                 if (snapshot.empty) {
                     rankingBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">NO DATA</td></tr>';
+                } else {
+                    let rank = 1;
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        const tr = document.createElement("tr");
+                        let rankClass = "";
+                        let rankText = "#" + rank;
+                        if (rank === 1) { rankClass = "rank-1"; rankText = "1ST"; }
+                        else if (rank === 2) { rankClass = "rank-2"; rankText = "2ND"; }
+                        else if (rank === 3) { rankClass = "rank-3"; rankText = "3RD"; }
+
+                        const stageVal = data.stage ? "ST." + data.stage : "-";
+
+                        tr.innerHTML = `
+                                <td class="${rankClass}" style="text-align:center;">${rankText}</td>
+                                <td style="text-align:left;">${escapeHtml(data.name)}</td>
+                                <td style="color:#aaa; text-align:center;">${stageVal}</td>
+                                <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
+                            `;
+                        rankingBody.appendChild(tr);
+                        rank++;
+                    });
                 }
-
-                let rank = 1;
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const tr = document.createElement("tr");
-
-                    let rankClass = "";
-                    let rankText = "#" + rank;
-                    if (rank === 1) { rankClass = "rank-1"; rankText = "1ST"; }
-                    else if (rank === 2) { rankClass = "rank-2"; rankText = "2ND"; }
-                    else if (rank === 3) { rankClass = "rank-3"; rankText = "3RD"; }
-
-                    const stageVal = data.stage ? "ST." + data.stage : "-";
-
-                    tr.innerHTML = `
-                                                            <td class="${rankClass}" style="text-align:center;">${rankText}</td>
-                                                            <td style="text-align:left;">${escapeHtml(data.name)}</td>
-                                                            <td style="color:#aaa; text-align:center;">${stageVal}</td>
-                                                            <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
-                                                        `;
-                    rankingBody.appendChild(tr);
-                    rank++;
-                });
 
                 loadingEl.style.display = "none";
                 tableEl.style.display = "table";
@@ -701,10 +701,13 @@
             }
         };
 
+        // --- スコア送信機能 ---
         window.submitScore = async function (score, stage) {
+            const nameInput = document.getElementById("player-name-input");
+            const submitBtn = document.getElementById("submit-score-btn");
+            const nameInputArea = document.getElementById("name-input-area");
+
             const name = nameInput.value.trim() || "PILOT";
-            submitBtn.innerText = "SENDING...";
-            submitBtn.style.pointerEvents = "none";
 
             try {
                 await addDoc(collection(db, SCORES_COLLECTION), {
@@ -716,12 +719,8 @@
 
                 localStorage.setItem("neonGravity_last_name", name);
 
-                // 入力エリアを隠す
+                // 送信成功後の処理
                 nameInputArea.style.display = "none";
-                submitBtn.innerText = "SUBMIT";
-                submitBtn.style.pointerEvents = "auto";
-
-                // 次のメニューへ
                 if (typeof window.proceedToNextMenu === "function") {
                     window.proceedToNextMenu();
                 } else {
@@ -730,34 +729,29 @@
 
             } catch (e) {
                 console.error("Submit Error:", e);
-                alert("Error sending score.");
-                submitBtn.innerText = "SUBMIT";
+                alert("Error sending score. Please try again.");
+                // 失敗した場合はボタンを再活性化
                 submitBtn.style.pointerEvents = "auto";
+                submitBtn.innerText = "SUBMIT";
             }
         };
 
-        document.getElementById("skip-score-btn").onclick = () => {
-            if (typeof window.proceedToNextMenu === "function") {
-                window.proceedToNextMenu();
-            } else {
-                document.getElementById('name-input-area').style.display = 'none';
-            }
-        };
+        // --- 画面内のボタン初期設定 ---
+        const btnRanking = document.getElementById("btn-ranking");
+        if (btnRanking) btnRanking.onclick = () => window.showRanking();
 
-        document.getElementById("btn-ranking").onclick = () => window.showRanking();
-        document.getElementById("close-ranking-btn").onclick = () => {
-            rankingOverlay.style.display = "none";
-        };
-        submitBtn.onclick = () => {
-            const s = window.finalGameScore || 0;
-            const st = window.finalGameStage || 1;
-            window.submitScore(s, st);
-        };
+        const closeRankingBtn = document.getElementById("close-ranking-btn");
+        if (closeRankingBtn) {
+            closeRankingBtn.onclick = () => {
+                rankingOverlay.style.display = "none";
+            };
+        }
 
+        // 保存された名前の読み込み
         const saved = localStorage.getItem("neonGravity_last_name");
-        if (saved) nameInput.value = saved;
+        const nameInput = document.getElementById("player-name-input");
+        if (saved && nameInput) nameInput.value = saved;
     </script>
-
 
     <script>
         // --- ゲームバランス・グラフィック設定 ---
@@ -771,7 +765,7 @@
         // 通常ショットの最大強化レベル（1〜7）
         const MAX_WEAPON_LEVEL = 7; // 最大を7に変更
 
-        const MAX_STAGE = 8;
+        const MAX_STAGE = 1;
 
         // 背景グリッド線の間隔（小さいほど網目が細かくなる）
         const GRID_SPACING = 25;
@@ -879,7 +873,7 @@
             btnBackTitle: document.getElementById('btn-back-to-title'),
 
             btnNextResult: document.getElementById('btn-next-result'),
-            closeRankingBtn: document.getElementById("close-ranking-btn"),
+            //closeRankingBtn: document.getElementById("close-ranking-btn"),
 
             submitBtn: document.getElementById("submit-score-btn"),
             skipScoreBtn: document.getElementById("skip-score-btn"),
@@ -1379,7 +1373,9 @@
                 ui.nameInputArea.style.display = 'flex';
 
                 // 送信ボタンの処理
+                // ★送信ボタンに機能を割り当てる
                 ui.submitBtn.onclick = async () => {
+                    // Firebase側の関数 (window.submitScore) を呼び出す
                     await window.submitScore(score, stage);
                 };
 
