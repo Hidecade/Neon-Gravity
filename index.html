@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,25 +8,19 @@
     <meta http-equiv="Expires" content="0">
     <title>NEON GRAVITY: ORBITAL</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
-
+   
     <style>
         /* --- 基本レイアウト設定 --- */
         body {
             margin: 0;
-            background: #050505;
-            /* 真っ黒に近い背景でネオンを引き立てる */
-            overflow: hidden;
-            /* スクロールバーを隠す */
-            font-family: 'Orbitron', monospace;
-            /* 近未来的なフォントを採用 */
+            background: #050505; /* 真っ黒に近い背景でネオンを引き立てる */
+            overflow: hidden; /* スクロールバーを隠す */
+            font-family: 'Orbitron', monospace; /* 近未来的なフォントを採用 */
             color: #fff;
-            user-select: none;
-            /* プレイ中にテキストが選択されるのを防ぐ */
+            user-select: none; /* プレイ中にテキストが選択されるのを防ぐ */
             -webkit-user-select: none;
-            touch-action: none;
-            /* スマホでのブラウザ標準ジェスチャーを無効化 */
-            -webkit-tap-highlight-color: transparent;
-            /* タップ時の青い枠を消す */
+            touch-action: none; /* スマホでのブラウザ標準ジェスチャーを無効化 */
+            -webkit-tap-highlight-color: transparent; /* タップ時の青い枠を消す */
         }
 
         /* ゲーム描画用のメインキャンバス */
@@ -36,8 +29,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            z-index: 1;
-            /* 背景として配置 */
+            z-index: 1; /* 背景として配置 */
         }
 
         /* UI全体のコンテナ（HUDやメッセージ） */
@@ -47,8 +39,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none;
-            /* 下にあるジョイスティック等の操作を邪魔しない */
+            pointer-events: none; /* 下にあるジョイスティック等の操作を邪魔しない */
             z-index: 20;
             display: flex;
             flex-direction: column;
@@ -69,8 +60,7 @@
         #score-display {
             font-size: 28px;
             color: #0ff;
-            text-shadow: 0 0 10px #0ff;
-            /* ネオンのような光 */
+            text-shadow: 0 0 10px #0ff; /* ネオンのような光 */
             letter-spacing: 2px;
             margin-bottom: 5px;
         }
@@ -86,8 +76,7 @@
         #gauge-box {
             width: 160px;
             text-align: right;
-            pointer-events: auto;
-            /* ここだけは必要に応じてイベントを拾えるように設定 */
+            pointer-events: auto; /* ここだけは必要に応じてイベントを拾えるように設定 */
         }
 
         /* ゲージのタイトルラベル */
@@ -103,7 +92,7 @@
             width: 100%;
             height: 12px;
             border: 1px solid #0ff;
-            background: rgba(0, 20, 40, 0.8);
+            background: rgba(0,20,40,0.8);
             margin-bottom: 5px;
         }
 
@@ -112,8 +101,7 @@
             width: 100%;
             height: 100%;
             background: #0ff;
-            transition: width 0.1s;
-            /* 減少を滑らかに見せる */
+            transition: width 0.1s; /* 減少を滑らかに見せる */
             box-shadow: 0 0 10px #0ff;
         }
 
@@ -130,7 +118,7 @@
 
         .bar-frame.enemy {
             border-color: #f00;
-            background: rgba(40, 0, 0, 0.8);
+            background: rgba(40,0,0,0.8);
         }
 
         #enemy-bar {
@@ -178,7 +166,7 @@
             color: #fff;
             font-weight: bold;
             line-height: 1.0;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
         }
 
         /* 武器レベルのブロック（通常時） */
@@ -190,13 +178,12 @@
             border: 1px solid #444;
             display: inline-block;
         }
-
-        /* レベルアップした時に付与されるクラス：緑色の発光 */
-        .w-block.active {
-            background: #0f0;
-            border-color: #0f0;
-            box-shadow: 0 0 5px #0f0;
-        }
+            /* レベルアップした時に付与されるクラス：緑色の発光 */
+            .w-block.active {
+                background: #0f0;
+                border-color: #0f0;
+                box-shadow: 0 0 5px #0f0;
+            }
 
         /* レーザー装備時の持続時間バー */
         .laser-bar-frame {
@@ -219,15 +206,13 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            /* 半透明の黒でゲーム画面を暗くする */
+            background: rgba(0,0,0,0.85); /* 半透明の黒でゲーム画面を暗くする */
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 100;
-            pointer-events: auto;
-            /* UI背面を触れないようにする */
+            pointer-events: auto; /* UI背面を触れないようにする */
         }
 
         /* ポーズ画面：ぼかしエフェクト付き */
@@ -244,8 +229,7 @@
             align-items: center;
             z-index: 105;
             pointer-events: auto;
-            backdrop-filter: blur(5px);
-            /* 背景をボケさせる */
+            backdrop-filter: blur(5px); /* 背景をボケさせる */
         }
 
         /* メニューボタン（START GAME等）のデザイン */
@@ -260,15 +244,14 @@
             cursor: pointer;
             min-width: 240px;
             text-align: center;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0,255,255,0.3);
         }
-
-        /* ボタンクリック/タップ時の押し込み演出 */
-        .menu-btn:active {
-            background: #0ff;
-            color: #000;
-            transform: scale(0.95);
-        }
+            /* ボタンクリック/タップ時の押し込み演出 */
+            .menu-btn:active {
+                background: #0ff;
+                color: #000;
+                transform: scale(0.95);
+            }
 
         /* サウンドトラック画面 */
         #ost-ui {
@@ -295,12 +278,11 @@
             text-align: center;
             font-size: 18px;
         }
-
-        /* 現在再生中の楽曲：水色で強調 */
-        .track-item.playing {
-            color: #0ff;
-            border-color: #0ff;
-        }
+            /* 現在再生中の楽曲：水色で強調 */
+            .track-item.playing {
+                color: #0ff;
+                border-color: #0ff;
+            }
 
         /* 操作パネル（ジョイスティック等） */
         #controls {
@@ -322,7 +304,7 @@
             height: 120px;
             border-radius: 50%;
             border: 2px solid rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255,255,255,0.05);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -337,8 +319,7 @@
             background: rgba(255, 255, 255, 0.5);
             position: absolute;
             transform: translate(0, 0);
-            transition: transform 0.05s;
-            /* 指の動きに滑らかに追従 */
+            transition: transform 0.05s; /* 指の動きに滑らかに追従 */
         }
 
         /* 特殊攻撃（ボム）ボタン：黄色のネオン */
@@ -358,13 +339,12 @@
             box-shadow: 0 0 10px #ff0;
             pointer-events: auto;
         }
-
-        /* ボムボタン使用時のフィードバック */
-        #launch-btn.active {
-            background: #ff0;
-            color: #000;
-            transform: scale(0.9);
-        }
+            /* ボムボタン使用時のフィードバック */
+            #launch-btn.active {
+                background: #ff0;
+                color: #000;
+                transform: scale(0.9);
+            }
 
         /* 共通アニメーション：0.2秒ごとに不透明度を半分にする点滅 */
         @keyframes blink {
@@ -375,7 +355,6 @@
     </style>
 
 </head>
-
 <body>
 
     <div id="ui">
@@ -396,24 +375,18 @@
 
                 <div id="invuln-wrapper" style="display:none; margin-top: 2px;">
                     <span class="bar-label" style="color:#ff0; font-size:10px;">INVINCIBLE</span>
-                    <div class="bar-frame"
-                        style="border-color:#ff0; background:rgba(40,40,0,0.5); width:80px; height:6px;">
-                        <div id="invuln-bar" style="width:0%; height:100%; background:#ff0; box-shadow:0 0 5px #ff0;">
-                        </div>
+                    <div class="bar-frame" style="border-color:#ff0; background:rgba(40,40,0,0.5); width:80px; height:6px;">
+                        <div id="invuln-bar" style="width:0%; height:100%; background:#ff0; box-shadow:0 0 5px #ff0;"></div>
                     </div>
                 </div>
             </div>
 
             <div id="gauge-box">
                 <span class="bar-label">SHIELD: <span id="shield-val" style="color:#fff; font-size:12px;">100</span></span>
-                <div class="bar-frame">
-                    <div id="shield-bar"></div>
-                </div>
+                <div class="bar-frame"><div id="shield-bar"></div></div>
 
                 <span class="bar-label enemy">ENEMY SWARM</span>
-                <div class="bar-frame enemy">
-                    <div id="enemy-bar"></div>
-                </div>
+                <div class="bar-frame enemy"><div id="enemy-bar"></div></div>
             </div>
         </div>
         <div id="warning-msg">GRAVITY CRITICAL</div>
@@ -421,8 +394,7 @@
     </div>
 
     <div id="overlay">
-        <h1 style="color:#0ff; font-size:40px; margin-bottom:40px; text-shadow:0 0 20px #0ff; text-align:center;">NEON
-            GRAVITY<br><span style="font-size:20px;color:#fff;">ORBITAL</span></h1>
+        <h1 style="color:#0ff; font-size:40px; margin-bottom:40px; text-shadow:0 0 20px #0ff; text-align:center;">NEON GRAVITY<br><span style="font-size:20px;color:#fff;">ORBITAL</span></h1>
         <div class="menu-btn" id="btn-start">START GAME</div>
         <div class="menu-btn" id="btn-ost">SOUNDTRACK</div>
         <div class="menu-btn" id="btn-title" style="display:none;">TITLE</div>
@@ -441,12 +413,8 @@
     </div>
 
     <div id="controls">
-        <div id="stick-left" class="joystick-area">
-            <div class="knob" id="knob-left"></div>
-        </div>
-        <div id="stick-right" class="joystick-area">
-            <div class="knob" id="knob-right"></div>
-        </div>
+        <div id="stick-left" class="joystick-area"><div class="knob" id="knob-left"></div></div>
+        <div id="stick-right" class="joystick-area"><div class="knob" id="knob-right"></div></div>
         <div id="launch-btn">BOMB</div>
     </div>
 
@@ -461,8 +429,8 @@
         const SPEED_SCALE = 0.25;
         // 画面端の見えない壁の余白
         const WALL_MARGIN = 5;
-        // 通常ショットの最大強化レベル（1〜5）
-        const MAX_WEAPON_LEVEL = 5;
+        // 通常ショットの最大強化レベル（1〜7）
+        const MAX_WEAPON_LEVEL = 7; // 最大を7に変更
         // 背景グリッド線の間隔（小さいほど網目が細かくなる）
         const GRID_SPACING = 25;
 
@@ -471,10 +439,21 @@
             TRIANGLE: 4.8, // 紫：高速で直線的な動き
             CUBE: 2.5,     // 緑：アイテムキャリア、動きは遅め
             TADPOLE: 10,    // 白：精子型、非常に素早い
-            DRAGON: 8      // 赤：ボス、最高速度が高い
+            DRAGON: 8,      // 赤：ボス、最高速度が高い
         };
+
         // ドラゴンがプレイヤーを追尾する際の加速力（旋回性能に影響）
         const DRAGON_ACCELERATION = 0.2;
+
+        // --- ボスのバリエーション設定 ---
+        const BOSS_VARIANTS = [
+            // Stage 1, 4, 7...
+            { name: 'OCTAGON', sides: 8, color: '#ff4400', hp: 100, bulletCount: 8, speedFactor: 1.0 },
+            // Stage 2, 5, 8...
+            { name: 'HEXAGON', sides: 6, color: '#00ccff', hp: 120, bulletCount: 6, speedFactor: 1.3 },
+            // Stage 3, 6, 9...
+            { name: 'DIAMOND', sides: 4, color: '#ffff00', hp: 150, bulletCount: 4, speedFactor: 0.7 }
+        ];
 
         // --- 当たり判定（半径）設定 ---
         const ENEMY_HITBOX = {
@@ -553,7 +532,8 @@
         let score = 0, frame = 0, stage = 1;
         let spawnedCount = 0, enemiesToSpawn = 0, isStageClear = false;
         let dyingTimer = 0;
-        let enemiesKilled = 0; // 撃破数カウント用に必要です
+        let enemiesKilled = 0; 
+        let isBossSpawned = false;
 
         const player = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, satellites: [], shield: 100, weaponLevel: 1, invuln: 0, laserTimer: 0 };
         const input = { move: { x: 0, y: 0, active: false }, aim: { x: 0, y: 0, active: false }, keys: {} };
@@ -752,7 +732,7 @@
             player.x = worldSize / 2;
             player.y = worldSize / 2;
             player.vx = 0; player.vy = 0;
-            player.shield = 100; player.weaponLevel = 2;
+            player.shield = 100; player.weaponLevel = 1;
             player.satellites = []; player.invuln = 0; player.laserTimer = 0;
 
             ui.score.innerText = "000000"; ui.stage.innerText = "1";
@@ -774,11 +754,11 @@
 
             player.x = worldSize / 2; player.y = worldSize / 2;
             player.vx = 0; player.vy = 0;
-            player.shield = 100; player.weaponLevel = 2; player.invuln = 0; player.laserTimer = 0; player.satellites = [];
+            player.shield = 100; player.weaponLevel = 1; player.invuln = 0; player.laserTimer = 0; player.satellites = [];
 
             // UI Reset
             ui.score.innerText = "000000"; ui.stage.innerText = "1";
-            // ★削除: ui.wLv.innerText = "2";
+    
 
             ui.shieldBar.style.width = "100%"; ui.shieldBar.classList.remove('shield-critical');
             ui.shieldBar.style.backgroundColor = '#0ff';
@@ -818,7 +798,8 @@
             // --- 変数のリセット ---
             spawnedCount = 0;
             isStageClear = false;
-            enemiesKilled = 0; // ★ここが重要！前のステージの撃破数をリセット
+            enemiesKilled = 0; 
+            isBossSpawned = false;
             // --------------------
 
             ui.msg.style.display = 'none';
@@ -890,6 +871,26 @@
                     let e = { x: x + rx, y: y + ry, vx, vy, hp: 1, speed: ENEMY_SPEEDS.TRIANGLE * spd, color: '#d0f', type: 'triangle', angle: initialAngle, drop: 'none', scale: 0.7, leader: leader, formOffset: { x: offX, y: offY }, rotX: Math.random() * Math.PI, rotY: Math.random() * Math.PI, rotZ: Math.random() * Math.PI };
                     enemies.push(e); leader.followers.push(e); spawnedCount++;
                 }
+            } else if (type === 'boss') {
+                // ステージ数に合わせてボスを選択（0, 1, 2 のループ）
+                const variantIndex = (stage - 1) % BOSS_VARIANTS.length;
+                const variant = BOSS_VARIANTS[variantIndex];
+
+                enemies.push({
+                    x: x, y: y,
+                    vx: vx * 0.2, vy: vy * 0.2,
+                    hp: variant.hp,
+                    speed: ENEMY_SPEEDS.FORTRESS * variant.speedFactor * spd,
+                    color: variant.color,
+                    type: 'boss', // 内部タイプは統一して 'boss' にする
+                    variant: variant, // 詳細データを保持させる
+                    angle: 0,
+                    drop: 'level',
+                    scale: 1.5,
+                    fireTimer: 0,
+                    flashTimer: 0,
+                });
+                spawnedCount++;
             }
         }
 
@@ -1005,11 +1006,24 @@
                 w.life--;
                 if (w.active) {
                     if (w.life > 60 && w.life % SPAWN_SETTINGS.SPAWN_INTERVAL === 0 && spawnedCount < enemiesToSpawn) {
-                        const r = Math.random();
-                        if (r < 0.20) spawnEnemy(w.x, w.y, 'dragon');
-                        else if (r < 0.35) spawnEnemy(w.x, w.y, 'cube');
-                        else if (r < 0.65) spawnEnemy(w.x, w.y, 'tadpole');
-                        else spawnEnemy(w.x, w.y, 'triangle');
+
+                        // 残りの出現予定数を計算
+                        const remaining = enemiesToSpawn - spawnedCount;
+                        // 出現させるタイミング（全体の1/5以下になったら）
+                        const threshold = Math.floor(enemiesToSpawn / 5);
+
+                        // まだボスが出ておらず、残り数が閾値を切ったら確定で出現
+                        if (!isBossSpawned && remaining <= threshold) {
+                            spawnEnemy(w.x, w.y, 'boss'); // ★ここを 'boss' にすることでバリエーション機能が働きます
+                            isBossSpawned = true;
+                        } else {
+                            // それ以外は通常の敵をランダム出現（確率は微調整）
+                            const r = Math.random();
+                            if (r < 0.20) spawnEnemy(w.x, w.y, 'dragon');
+                            else if (r < 0.35) spawnEnemy(w.x, w.y, 'cube');
+                            else if (r < 0.65) spawnEnemy(w.x, w.y, 'tadpole');
+                            else spawnEnemy(w.x, w.y, 'triangle');
+                        }
                     }
                     if (w.life <= 0) w.active = false;
                     const dx = player.x - w.x; const dy = player.y - w.y;
@@ -1058,7 +1072,7 @@
                 ui.weaponDisplay.appendChild(frameDiv);
                 player.laserTimer--;
             } else {
-                for (let i = 1; i <= 5; i++) {
+                for (let i = 1; i <= MAX_WEAPON_LEVEL; i++) {
                     const block = document.createElement('div');
                     block.className = 'w-block';
                     if (i <= player.weaponLevel) block.classList.add('active');
@@ -1085,11 +1099,27 @@
                 lasers.push({ x: player.x, y: player.y, angle: player.angle, life: 5, width: 40 });
                 AudioSys.playSE('laser'); distortGrid(player.x, player.y, 20, 60); return;
             }
+
             const s = BULLET_SETTINGS.PLAYER_SPEED * SPEED_SCALE;
-            for (let i = 0; i < player.weaponLevel; i++) {
-                const a = player.angle + (i - (player.weaponLevel - 1) / 2) * 0.15;
+            // レベルごとの発射角度オフセット設定（0 = 前方、Math.PI = 後方）
+            const shotPatterns = {
+                1: [0.08, -0.08], // 2way
+                2: [0.15, 0, -0.15], // 3way(前のみ)
+                3: [0.15, 0, -0.15, Math.PI], // 4way(前3 後1)
+                4: [0.15, 0, -0.15, Math.PI - 0.15, Math.PI + 0.15], // 5way(前3 後2)
+                5: [0.2, 0.07, -0.07, -0.2, Math.PI - 0.15, Math.PI + 0.15], // 6way(前4 後2)
+                6: [0.2, 0.07, -0.07, -0.2, Math.PI - 0.15, Math.PI + 0.15, Math.PI / 2, -Math.PI / 2], // 7way(前4 後2 左右1ずつ)
+                7: [0.25, 0.12, 0, -0.12, -0.25, Math.PI - 0.15, Math.PI + 0.15, Math.PI / 2, -Math.PI / 2] // 8way(前5後2 左右1ずつ)
+            };
+
+            // 現在のレベルのパターンを取得（最大レベルを超えないように制限）
+            const currentPattern = shotPatterns[player.weaponLevel] || shotPatterns[1];
+
+            currentPattern.forEach(offset => {
+                const a = player.angle + offset;
                 bullets.push({ x: player.x, y: player.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: BULLET_SETTINGS.PLAYER_LIFE });
-            }
+            });
+
             AudioSys.playSE('shoot'); distortGrid(player.x, player.y, 10, 40);
         }
 
@@ -1100,7 +1130,13 @@
         function updateLasers() {
             lasers.forEach(l => {
                 l.life--;
-                const len = 2000; const p1x = l.x; const p1y = l.y; const p2x = l.x + Math.cos(l.angle) * len; const p2y = l.y + Math.sin(l.angle) * len;
+                const len = 2000;
+                const p1x = l.x;
+                const p1y = l.y;
+                const p2x = l.x + Math.cos(l.angle) * len;
+                const p2y = l.y + Math.sin(l.angle) * len;
+
+                // 1. 敵機（enemies）との判定
                 enemies.forEach(e => {
                     const A = p1x - p2x; const B = p1y - p2y; const C = p2x * p1y - p1x * p2y;
                     const dist = Math.abs(A * e.y - B * e.x + C) / Math.hypot(A, B);
@@ -1110,6 +1146,23 @@
                         if (frame % 4 === 0) particles.push({ x: e.x, y: e.y, vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2, color: '#0ff', life: 0.5 });
                     }
                 });
+
+                // 2. ★追加：ホーミングミサイル（enemyBullets の isMissile）との判定
+                enemyBullets.forEach(eb => {
+                    if (eb.isMissile) {
+                        const A = p1x - p2x; const B = p1y - p2y; const C = p2x * p1y - p1x * p2y;
+                        const dist = Math.abs(A * eb.y - B * eb.x + C) / Math.hypot(A, B);
+                        const dot = (eb.x - p1x) * (p2x - p1x) + (eb.y - p1y) * (p2y - p1y);
+
+                        // レーザーの幅の中にミサイルが入っているか判定
+                        if (dist < (l.width / 2 + 10) && dot > 0) {
+                            eb.life = 0; // ミサイルを即座に破壊
+                            score += 50; // スコア加算
+                            createExplosion(eb.x, eb.y, eb.color, 15); // 爆発エフェクト
+                            AudioSys.playSE('explode');
+                        }
+                    }
+                });
             });
             lasers = lasers.filter(l => l.life > 0);
         }
@@ -1117,7 +1170,25 @@
         function updatePlayerBullets() {
             bullets.forEach(b => {
                 b.x += b.vx; b.y += b.vy; b.life--;
-                enemies.forEach(e => { if (Math.hypot(b.x - e.x, b.y - e.y) < 30 * e.scale) { b.life = 0; e.hp--; } });
+                enemies.forEach(e => {
+                    if (Math.hypot(b.x - e.x, b.y - e.y) < 30 * e.scale) {
+                        b.life = 0;
+                        e.hp--;
+                        // ボスへのダメージ演出
+                        if (e.type === 'boss') {
+                            e.flashTimer = 5;
+                            AudioSys.playSE('damage');
+                            for (let i = 0; i < 3; i++) {
+                                particles.push({
+                                    x: b.x, y: b.y,
+                                    vx: (Math.random() - 0.5) * 10,
+                                    vy: (Math.random() - 0.5) * 10,
+                                    color: '#fff', life: 0.2, size: 2
+                                });
+                            }
+                        }
+                    }
+                });
             });
             bullets = bullets.filter(b => b.life > 0);
         }
@@ -1131,6 +1202,7 @@
                         case 'tadpole': updateTadpoleAI(e); break;
                         case 'triangle': updateTriangleAI(e); break;
                         case 'cube': updateCubeAI(e); break;
+                        case 'boss': updateBossAI(e); break;
                     }
                 }
                 applySeparation(e); applyWorldBoundary(e); checkPlayerCollision(e); checkSatelliteCollision(e);
@@ -1171,6 +1243,99 @@
             const cv = Math.hypot(e.vx, e.vy); if (cv > e.speed) { e.vx = (e.vx / cv) * e.speed; e.vy = (e.vy / cv) * e.speed; }
             e.x += e.vx; e.y += e.vy; e.rotX += 0.03; e.rotY += 0.04;
         }
+
+        // --- ボス用AI ---
+        function updateBossAI(e) {
+            const dx = player.x - e.x, dy = player.y - e.y;
+            const d = Math.hypot(dx, dy) || 0.001;
+            e.vx += (dx / d) * 0.02 * SPEED_SCALE;
+            e.vy += (dy / d) * 0.02 * SPEED_SCALE;
+            const cv = Math.hypot(e.vx, e.vy);
+            if (cv > e.speed) { e.vx = (e.vx / cv) * e.speed; e.vy = (e.vy / cv) * e.speed; }
+            e.x += e.vx; e.y += e.vy;
+            e.angle += 0.005;
+
+            e.fireTimer++;
+            if (e.fireTimer > 200) {
+                e.fireTimer = 0;
+                const sides = e.variant.sides;
+                for (let i = 0; i < sides; i++) {
+                    const a = e.angle + (Math.PI * 2 / sides) * i;
+                    enemyBullets.push({
+                        x: e.x + Math.cos(a) * 60,
+                        y: e.y + Math.sin(a) * 60,
+                        vx: Math.cos(a) * 2,
+                        vy: Math.sin(a) * 2,
+                        life: 300,
+                        isMissile: true, // これでホーミングするようになる
+                        color: e.color
+                    });
+                }
+                AudioSys.playSE('launch');
+            }
+        }
+
+        // --- ボス描画 ---
+        function drawBossEnemy(ctx, e) {
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            ctx.rotate(e.angle);
+            ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
+
+            const color = (e.flashTimer > 0) ? '#ffffff' : e.color;
+            if (e.flashTimer > 0) e.flashTimer--;
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = (color === '#ffffff') ? 30 : 15;
+            ctx.shadowColor = color;
+
+            const sides = e.variant.sides;
+            // 外郭
+            ctx.beginPath();
+            for (let i = 0; i < sides; i++) {
+                const a = (Math.PI * 2 / sides) * i;
+                const px = Math.cos(a) * 45;
+                const py = Math.sin(a) * 45;
+                if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.closePath(); ctx.stroke();
+
+            // 砲台
+            for (let i = 0; i < sides; i++) {
+                const a = (Math.PI * 2 / sides) * i;
+                ctx.save();
+                ctx.translate(Math.cos(a) * 45, Math.sin(a) * 45);
+                ctx.rotate(a);
+                ctx.strokeRect(-8, -8, 16, 16);
+                ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(20, 0); ctx.stroke();
+                ctx.restore();
+            }
+            ctx.restore();
+        }
+
+        // --- ミサイル描画 ---
+        function drawHomingMissile(ctx, eb) {
+            const angle = Math.atan2(eb.vy, eb.vx);
+            ctx.rotate(angle);
+            const mSize = 12 * G_SCALE;
+            ctx.strokeStyle = eb.color || '#f00';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = ctx.strokeStyle;
+            ctx.beginPath();
+            ctx.moveTo(mSize, 0);
+            ctx.lineTo(-mSize, mSize * 0.6);
+            ctx.lineTo(-mSize * 0.4, 0);
+            ctx.lineTo(-mSize, -mSize * 0.6);
+            ctx.closePath(); ctx.stroke();
+            if (frame % 2 === 0) {
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.arc(-mSize * 0.5, 0, 2 * G_SCALE, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+
+
 
         function updateFormationMovement(e) {
             if (!e.leader || e.leader.hp <= 0) return;
@@ -1235,6 +1400,46 @@
 
         function updateEnemyBullets() {
             enemyBullets.forEach(eb => {
+                // --- ミサイルの追尾ロジック ---
+                if (eb.isMissile) {
+                    const dx = player.x - eb.x;
+                    const dy = player.y - eb.y;
+                    const dist = Math.hypot(dx, dy) || 0.001;
+
+                    // 旋回性能の計算
+                    eb.vx += (dx / dist) * 0.15 * SPEED_SCALE;
+                    eb.vy += (dy / dist) * 0.15 * SPEED_SCALE;
+
+                    // 最高速度制限
+                    const v = Math.hypot(eb.vx, eb.vy);
+                    const maxS = 6 * SPEED_SCALE;
+                    if (v > maxS) {
+                        eb.vx = (eb.vx / v) * maxS;
+                        eb.vy = (eb.vy / v) * maxS;
+                    }
+
+                    // 煙演出
+                    if (frame % 2 === 0) {
+                        particles.push({
+                            x: eb.x, y: eb.y,
+                            vx: -eb.vx * 0.3, vy: -eb.vy * 0.3,
+                            color: eb.color, life: 0.3, size: 2
+                        });
+                    }
+
+                    // ★追加：プレイヤーの弾との当たり判定（撃ち落とし処理）
+                    bullets.forEach(b => {
+                        if (b.life > 0 && Math.hypot(b.x - eb.x, b.y - eb.y) < 20) {
+                            eb.life = 0; // ミサイル消滅
+                            b.life = 0;  // プレイヤーの弾も消滅
+                            score += 50; // 撃ち落としスコア
+                            createExplosion(eb.x, eb.y, eb.color, 15); // ミサイルの色の爆発
+                            AudioSys.playSE('explode');
+                        }
+                    });
+                }
+
+                // --- 移動と壁・プレイヤーとの判定 ---
                 const oldX = eb.x;
                 const oldY = eb.y;
 
@@ -1251,10 +1456,11 @@
                     const closestY = oldY + closestT * dy;
 
                     const dist = Math.hypot(player.x - closestX, player.y - closestY);
+                    const hitboxSize = eb.isMissile ? ENEMY_HITBOX.BULLET * 1.5 : ENEMY_HITBOX.BULLET;
 
-                    if (dist < ENEMY_HITBOX.BULLET) {
+                    if (dist < hitboxSize) {
                         eb.life = 0;
-                        createExplosion(player.x, player.y, '#f00', 10);
+                        createExplosion(player.x, player.y, eb.color || '#f00', 10);
                         damage(15);
                     }
                 }
@@ -1293,7 +1499,6 @@
                     else if (p.type === 'invincible') { player.invuln = 600; AudioSys.playSE('invincible'); }
                     else if (p.type === 'level') {
                         player.weaponLevel = Math.min(5, player.weaponLevel + 1);
-                        // ★削除: ui.wLv.innerText = player.weaponLevel;
                     }
                 }
             });
@@ -1415,18 +1620,28 @@
             });
 
             enemies.forEach(e => {
-                if (e.type === 'dragon') drawDragonEnemy(ctx, e); else if (e.type === 'triangle') drawTriangleEnemy(ctx, e); else if (e.type === 'cube') drawCubeEnemy(ctx, e); else if (e.type === 'tadpole') drawTadpoleEnemy(ctx, e);
+                if (e.type === 'dragon') drawDragonEnemy(ctx, e);
+                else if (e.type === 'triangle') drawTriangleEnemy(ctx, e);
+                else if (e.type === 'cube') drawCubeEnemy(ctx, e);
+                else if (e.type === 'tadpole') drawTadpoleEnemy(ctx, e);
+                else if (e.type === 'boss') drawBossEnemy(ctx, e);
             });
 
+            // 敵の弾の描画ループ
             enemyBullets.forEach(eb => {
-                ctx.save(); ctx.translate(eb.x, eb.y); ctx.rotate(frame * 0.15);
-                const bulletColor = (Math.floor(frame / 5) % 2 === 0) ? '#ff0000' : '#ff8800';
-                ctx.fillStyle = bulletColor; ctx.shadowBlur = 8; ctx.shadowColor = bulletColor;
-                const size = 6 * G_SCALE;
-                ctx.beginPath(); ctx.moveTo(0, -size); ctx.lineTo(size * 0.7, 0); ctx.lineTo(0, size); ctx.lineTo(-size * 0.7, 0); ctx.closePath(); ctx.fill();
-                ctx.fillStyle = '#fdd'; ctx.beginPath(); ctx.moveTo(0, -size * 0.4); ctx.lineTo(size * 0.3, 0); ctx.lineTo(0, size * 0.4); ctx.lineTo(-size * 0.3, 0); ctx.closePath(); ctx.fill();
+                ctx.save();
+                ctx.translate(eb.x, eb.y);
+
+                // ミサイルか通常の弾かで描画関数を切り替える
+                if (eb.isMissile) {
+                    drawHomingMissile(ctx, eb);
+                } else {
+                    drawNormalBullet(ctx, eb);
+                }
+
                 ctx.restore();
             });
+
             ctx.shadowBlur = 0;
 
             if (gameState === 'PLAYING') {
@@ -1573,6 +1788,72 @@
             ctx.shadowBlur = 0;
         }
 
+        function drawBossEnemy(ctx, e) {
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            ctx.rotate(e.angle);
+            ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
+
+            // ダメージ時は白、通常時はボスの色
+            const drawColor = (e.flashTimer > 0) ? '#ffffff' : e.color;
+            if (e.flashTimer > 0) e.flashTimer--;
+
+            const sides = e.variant.sides;
+
+            ctx.strokeStyle = drawColor;
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = (e.flashTimer > 0) ? 30 : 15; // 光っている時は輝きを強く
+            ctx.shadowColor = drawColor;
+
+            // --- 1. 外殻（多角形） ---
+            ctx.beginPath();
+            for (let i = 0; i < sides; i++) {
+                const a = (Math.PI * 2 / sides) * i;
+                const r = 45;
+                const px = Math.cos(a) * r;
+                const py = Math.sin(a) * r;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // --- 2. 砲台（タレット）の描画 ---
+            for (let i = 0; i < sides; i++) {
+                const a = (Math.PI * 2 / sides) * i;
+                ctx.save();
+                ctx.translate(Math.cos(a) * 45, Math.sin(a) * 45);
+                ctx.rotate(a);
+                ctx.strokeRect(-8, -8, 16, 16);
+                ctx.beginPath();
+                ctx.moveTo(8, 0);
+                ctx.lineTo(20, 0);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // --- 3. 内部装飾 ---
+            ctx.beginPath();
+            for (let i = 0; i < sides; i++) {
+                const a = (Math.PI * 2 / sides) * i;
+                ctx.moveTo(Math.cos(a) * 45, Math.sin(a) * 45);
+                ctx.lineTo(Math.cos(a) * 15, Math.sin(a) * 15);
+            }
+            ctx.stroke();
+            ctx.strokeRect(-12, -12, 24, 24);
+
+            // ダメージ表現（体力が減っている時）
+            if (e.hp < (e.variant.hp / 2) && Math.floor(frame / 4) % 2 === 0) {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.beginPath();
+                ctx.arc(0, 0, 45, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
         function drawTadpoleEnemy(ctx, e) {
             ctx.save();
 
@@ -1679,6 +1960,53 @@
             ctx.restore(); ctx.restore();
         }
 
+        // 通常の敵弾を描画する関数
+        function drawNormalBullet(ctx, eb) {
+            ctx.rotate(frame * 0.15);
+            const bulletColor = (Math.floor(frame / 5) % 2 === 0) ? '#ff0000' : '#ff8800';
+            ctx.fillStyle = bulletColor;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = bulletColor;
+
+            const size = 6 * G_SCALE;
+            ctx.beginPath();
+            ctx.moveTo(0, -size);
+            ctx.lineTo(size * 0.7, 0);
+            ctx.lineTo(0, size);
+            ctx.lineTo(-size * 0.7, 0);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // ホーミングミサイルを描画する関数
+        function drawHomingMissile(ctx, eb) {
+            // ミサイルを進行方向（速度ベクトル）に向ける
+            const angle = Math.atan2(eb.vy, eb.vx);
+            ctx.rotate(angle);
+
+            const mSize = 12 * G_SCALE; // ミサイルは少し大きめに
+            const color = eb.color || '#f00';
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = color;
+
+            // ミサイルの形状（鋭い矢印型）
+            ctx.beginPath();
+            ctx.moveTo(mSize, 0);            // 先端
+            ctx.lineTo(-mSize, mSize * 0.6);   // 右後ろ
+            ctx.lineTo(-mSize * 0.4, 0);     // 中央のくぼみ
+            ctx.lineTo(-mSize, -mSize * 0.6);  // 左後ろ
+            ctx.closePath();
+            ctx.stroke();
+
+            // 推進エンジンの中心点
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(-mSize * 0.5, 0, 2 * G_SCALE, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         function drawScorePopups() {
             ctx.fillStyle = '#fff'; ctx.font = '16px Orbitron'; ctx.textAlign = 'center';
@@ -1851,5 +2179,4 @@
         init(); loop();
     </script>
 </body>
-
 </html>
