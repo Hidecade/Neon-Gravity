@@ -387,10 +387,25 @@
 
                 <span class="bar-label enemy">ENEMY SWARM</span>
                 <div class="bar-frame enemy"><div id="enemy-bar"></div></div>
+
+                <div id="boss-ui-container" style="display:none; margin-top: 10px;">
+                    <span class="bar-label" id="boss-name-label" style="color:#f00; font-size:10px;">BOSS: NAME</span>
+                    <div id="boss-bar-frame" class="bar-frame" style="border-color:#f00;">
+                        <div id="boss-hp-bar-inline" style="width:100%; height:100%; background:#f00; box-shadow:0 0 10px #f00; transition: width 0.2s, background-color 0.3s;"></div>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="warning-msg">GRAVITY CRITICAL</div>
         <div id="stage-msg">STAGE CLEAR</div>
+
+        <div id="ending-msg" style="display:none; position:absolute; top:30%; width:100%; text-align:center; z-index:200;">
+            <h1 style="color:#fff; font-size:48px; text-shadow:0 0 30px #0ff; margin-bottom:10px;">MISSION COMPLETE</h1>
+            <p style="color:#0ff; font-size:18px; letter-spacing:5px;">ALL SECTORS LIBERATED</p>
+            <div id="final-score" style="color:#fff; font-size:24px; margin-top:30px;">SCORE: 000000</div>
+            <div class="menu-btn" id="btn-back-to-title" style="margin: 40px auto; pointer-events:auto;">RETURN TO TITLE</div>
+        </div>
+
     </div>
 
     <div id="overlay">
@@ -447,12 +462,14 @@
 
         // --- ボスのバリエーション設定 ---
         const BOSS_VARIANTS = [
-            // Stage 1, 4, 7...
-            { name: 'OCTAGON', sides: 8, color: '#ff4400', hp: 100, bulletCount: 8, speedFactor: 1.0 },
-            // Stage 2, 5, 8...
-            { name: 'HEXAGON', sides: 6, color: '#00ccff', hp: 120, bulletCount: 6, speedFactor: 1.3 },
-            // Stage 3, 6, 9...
-            { name: 'DIAMOND', sides: 4, color: '#ffff00', hp: 150, bulletCount: 4, speedFactor: 0.7 }
+            { name: 'TRI-FORTRESS', sides: 3, color: '#f0f', hp: 100, bulletCount: 3, speedFactor: 1.5 }, // 高速
+            { name: 'DIAMOND-CORE', sides: 4, color: '#ffff00', hp: 120, bulletCount: 4, speedFactor: 1.3 },
+            { name: 'PENTA-BASE', sides: 5, color: '#0f8', hp: 140, bulletCount: 5, speedFactor: 1.1 },
+            { name: 'HEXAGON-NEST', sides: 6, color: '#0cc', hp: 160, bulletCount: 6, speedFactor: 1.0 },
+            { name: 'HEPTA-GATE', sides: 7, color: '#44f', hp: 180, bulletCount: 7, speedFactor: 0.9 },
+            { name: 'OCTAGON-COMMAND', sides: 8, color: '#f40', hp: 200, bulletCount: 8, speedFactor: 0.8 },
+            { name: 'NONA-REVEALER', sides: 9, color: '#f08', hp: 220, bulletCount: 9, speedFactor: 0.7 },
+            { name: 'DECA-DECIMATOR', sides: 10, color: '#fff', hp: 250, bulletCount: 10, speedFactor: 0.6 } // 超巨大・鈍重
         ];
 
         // --- 当たり判定（半径）設定 ---
@@ -523,7 +540,16 @@
             btnStart: document.getElementById('btn-start'),
             btnOst: document.getElementById('btn-ost'),
             btnTitle: document.getElementById('btn-title'),
-            titleText: document.querySelector('#overlay h1')
+            titleText: document.querySelector('#overlay h1'),
+
+            bossContainer: document.getElementById('boss-ui-container'),
+            bossNameLabel: document.getElementById('boss-name-label'),
+            bossBarFrame: document.getElementById('boss-bar-frame'), 
+            bossHpBarInline: document.getElementById('boss-hp-bar-inline'), 
+      
+            endingHud: document.getElementById('ending-msg'),
+            finalScore: document.getElementById('final-score'),
+            btnBackTitle: document.getElementById('btn-back-to-title'),
         };
 
         let width, height, worldSize = 0, camera = { x: 0, y: 0 };
@@ -902,23 +928,23 @@
                     enemies.push(e); leader.followers.push(e); spawnedCount++;
                 }
             } else if (type === 'boss') {
-                // ステージ数に合わせてボスを選択（0, 1, 2 のループ）
                 const variantIndex = (stage - 1) % BOSS_VARIANTS.length;
                 const variant = BOSS_VARIANTS[variantIndex];
 
                 enemies.push({
                     x: x, y: y,
                     vx: vx * 0.2, vy: vy * 0.2,
-                    hp: variant.hp,
-                    speed: ENEMY_SPEEDS.FORTRESS * variant.speedFactor * spd,
+                    hp: variant.hp, // ここが variant.hp になっているか確認
+                    maxHp: variant.hp, // HPバー計算用に保持しておくと便利
+                    speed: 1.2 * variant.speedFactor * spd, // ベース速度を調整
                     color: variant.color,
-                    type: 'boss', // 内部タイプは統一して 'boss' にする
-                    variant: variant, // 詳細データを保持させる
+                    type: 'boss',
+                    variant: variant,
                     angle: 0,
                     drop: 'level',
-                    scale: 1.5,
+                    scale: 1.5 + (variant.sides * 0.1), // 頂点数が多いほど巨大にする演出
                     fireTimer: 0,
-                    flashTimer: 0,
+                    flashTimer: 0
                 });
                 spawnedCount++;
             }
@@ -932,6 +958,11 @@
 
             if (gameState === 'PLAYING') update();
             else if (gameState === 'DYING') updateDying();
+            // ★ENDING中もパーティクルなどは動かし続ける
+            else if (gameState === 'ENDING') {
+                updateParticlesAndRings();
+                updateGrid();
+            }
 
             draw();
         }
@@ -1008,6 +1039,7 @@
 
         function update() {
             frame++;
+
             if (!Number.isFinite(player.x)) { player.x = worldSize / 2; player.y = worldSize / 2; player.vx = 0; player.vy = 0; }
 
             // Controls
@@ -1074,6 +1106,31 @@
             updateGrid();
             updateScorePopups();
             checkStageClear();
+
+            // --- ボスHPバーの更新ロジック ---
+            const currentBoss = enemies.find(e => e.type === 'boss');
+            if (currentBoss) {
+                ui.bossContainer.style.display = 'block';
+                const hpPct = Math.max(0, (currentBoss.hp / currentBoss.variant.hp) * 100);
+                const bColor = currentBoss.color; // ボスの色を取得
+
+                // --- バーの色と光をボスに合わせる ---
+                ui.bossHpBarInline.style.width = hpPct + "%";
+                ui.bossHpBarInline.style.backgroundColor = bColor;
+                ui.bossHpBarInline.style.boxShadow = `0 0 10px ${bColor}`;
+
+                // 枠の色とラベルの色も合わせる
+                ui.bossBarFrame.style.borderColor = bColor;
+                ui.bossNameLabel.style.color = bColor;
+                ui.bossNameLabel.innerText = "BOSS: " + currentBoss.variant.name;
+
+                // ピンチ時の点滅演出（白く光らせる）
+                if (hpPct < 25 && frame % 10 < 5) {
+                    ui.bossHpBarInline.style.backgroundColor = '#fff';
+                }
+            } else {
+                ui.bossContainer.style.display = 'none';
+            }
 
             // 敵の総数 - 倒した数 = 残り数 (0未満にならないようにMath.maxを使用)
             const enemyRemains = Math.max(0, enemiesToSpawn - enemiesKilled);
@@ -1292,8 +1349,8 @@
             e.x += e.vx; e.y += e.vy; e.rotX += 0.03; e.rotY += 0.04;
         }
 
-        // --- ボス用AI ---
         function updateBossAI(e) {
+            // --- 1. 移動ロジック ---
             const dx = player.x - e.x, dy = player.y - e.y;
             const d = Math.hypot(dx, dy) || 0.001;
             e.vx += (dx / d) * 0.02 * SPEED_SCALE;
@@ -1301,26 +1358,63 @@
             const cv = Math.hypot(e.vx, e.vy);
             if (cv > e.speed) { e.vx = (e.vx / cv) * e.speed; e.vy = (e.vy / cv) * e.speed; }
             e.x += e.vx; e.y += e.vy;
-            e.angle += 0.005;
 
+            // --- 2. 高速回転・停止・発射・硬直ロジック ---
             e.fireTimer++;
-            if (e.fireTimer > 200) {
-                e.fireTimer = 0;
-                const sides = e.variant.sides;
-                for (let i = 0; i < sides; i++) {
-                    const a = e.angle + (Math.PI * 2 / sides) * i;
-                    enemyBullets.push({
-                        x: e.x + Math.cos(a) * 60,
-                        y: e.y + Math.sin(a) * 60,
-                        vx: Math.cos(a) * 2,
-                        vy: Math.sin(a) * 2,
-                        life: 300,
-                        isMissile: true, // これでホーミングするようになる
-                        color: e.color
+
+            const maxCycle = 280;   // 全体のサイクルを少し長めに設定
+            const brakeStart = 160; // 減速開始タイミング
+            const fireTime = 220;   // 発射タイミング（ここで完全に止まる）
+            const restartTime = 250; // 硬直が解けて再回転するタイミング
+
+            let rotationSpeed = 0.08; // 通常時の高速回転
+
+            if (e.fireTimer > brakeStart && e.fireTimer < fireTime) {
+                // 【減速フェーズ】発射に向けてゆっくりに
+                const ratio = 1.0 - (e.fireTimer - brakeStart) / (fireTime - brakeStart);
+                rotationSpeed = Math.pow(ratio, 1.5) * 0.08;
+
+                // エネルギー収束パーティクル
+                if (frame % 3 === 0) {
+                    const ang = Math.random() * Math.PI * 2;
+                    particles.push({
+                        x: e.x + Math.cos(ang) * 80, y: e.y + Math.sin(ang) * 80,
+                        vx: -Math.cos(ang) * 4, vy: -Math.sin(ang) * 4,
+                        color: '#fff', life: 0.2, size: 1.5
                     });
                 }
-                AudioSys.playSE('launch');
             }
+            else if (e.fireTimer >= fireTime && e.fireTimer < restartTime) {
+                // 【発射＆硬直フェーズ】完全に停止
+                rotationSpeed = 0;
+
+                // 発射の瞬間（fireTime ぴったり）に弾を生成
+                if (e.fireTimer === fireTime) {
+                    const sides = e.variant.sides;
+                    camera.x += (Math.random() - 0.5) * 30; // 強い衝撃
+                    camera.y += (Math.random() - 0.5) * 30;
+
+                    for (let i = 0; i < sides; i++) {
+                        const a = e.angle + (Math.PI * 2 / sides) * i;
+                        enemyBullets.push({
+                            x: e.x + Math.cos(a) * 60, y: e.y + Math.sin(a) * 60,
+                            vx: Math.cos(a) * 3.5, vy: Math.sin(a) * 3.5,
+                            life: 300, isMissile: true, color: e.color
+                        });
+                    }
+                    AudioSys.playSE('launch');
+                    rings.push({ x: e.x, y: e.y, r: 20, color: '#fff', life: 1.0 });
+                    rings.push({ x: e.x, y: e.y, r: 100, color: e.color, life: 0.8 });
+                }
+            }
+            else if (e.fireTimer >= restartTime) {
+                // 【再始動フェーズ】徐々に元の回転速度に戻る
+                const ratio = (e.fireTimer - restartTime) / (maxCycle - restartTime);
+                rotationSpeed = Math.pow(ratio, 2) * 0.08;
+            }
+
+            e.angle += rotationSpeed;
+            if (e.fireTimer >= maxCycle) e.fireTimer = 0;
         }
 
         // --- ボス描画 ---
@@ -1334,31 +1428,122 @@
             if (e.flashTimer > 0) e.flashTimer--;
 
             ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            ctx.shadowBlur = (color === '#ffffff') ? 30 : 15;
+            ctx.shadowBlur = (e.flashTimer > 0) ? 30 : 10;
             ctx.shadowColor = color;
 
             const sides = e.variant.sides;
-            // 外郭
-            ctx.beginPath();
+            const radius = 45;
+
+            // --- 1. 極細の内部回路（グリッド・サブフレーム） ---
+            ctx.lineWidth = 0.4;
+            ctx.globalAlpha = 0.4;
             for (let i = 0; i < sides; i++) {
                 const a = (Math.PI * 2 / sides) * i;
-                const px = Math.cos(a) * 45;
-                const py = Math.sin(a) * 45;
-                if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-            }
-            ctx.closePath(); ctx.stroke();
+                const nextA = (Math.PI * 2 / sides) * (i + 1);
 
-            // 砲台
+                // 放射状トラスの描き込み
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius);
+                ctx.stroke();
+
+                // 頂点間を結ぶサブ・ブリッジ（三角形の補強材）
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(a) * radius * 0.6, Math.sin(a) * radius * 0.6);
+                ctx.lineTo(Math.cos(nextA) * radius * 0.6, Math.sin(nextA) * radius * 0.6);
+                ctx.lineTo(0, 0);
+                ctx.stroke();
+            }
+
+            // --- 2. 多層レイヤー装甲 (0.6px〜1.2pxの多重線) ---
+            ctx.globalAlpha = 1.0;
+            const layers = [
+                { r: radius, w: 1.5 },       // 最外郭
+                { r: radius - 2, w: 0.5 },   // 溝
+                { r: radius - 5, w: 0.8 },   // 第2装甲
+                { r: radius - 15, w: 0.5 },  // 内部放熱環
+                { r: radius - 18, w: 0.5 }   // 内部放熱環2
+            ];
+
+            layers.forEach(layer => {
+                ctx.lineWidth = layer.w;
+                ctx.beginPath();
+                for (let i = 0; i <= sides; i++) {
+                    const a = (Math.PI * 2 / sides) * i;
+                    ctx.lineTo(Math.cos(a) * layer.r, Math.sin(a) * layer.r);
+                }
+                ctx.stroke();
+            });
+
+            // --- 3. メカニカル・スリット (装甲の継ぎ目) ---
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i < sides; i++) {
+                const a = (Math.PI * 2 / sides) * i + (Math.PI / sides); // 辺の中点
+                ctx.save();
+                ctx.rotate(a);
+                // 辺の上に冷却スリットを描画
+                for (let k = 0; k < 4; k++) {
+                    const lineX = 40 - k * 3;
+                    ctx.beginPath();
+                    ctx.moveTo(lineX, -5); ctx.lineTo(lineX, 5);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            // --- 4. クアッド・コア・リアクター (中心部) ---
+            ctx.save();
+            ctx.rotate(-e.angle * 3); // 高速逆回転
+            ctx.lineWidth = 0.6;
+            for (let m = 0; m < 4; m++) {
+                ctx.rotate(Math.PI / 2);
+                ctx.strokeRect(4, 4, 8, 8); // 四隅のサブコア
+                ctx.beginPath();
+                ctx.moveTo(0, 0); ctx.lineTo(4, 4);
+                ctx.stroke();
+            }
+            // センターサークル
+            ctx.beginPath();
+            ctx.arc(0, 0, 8, 0, Math.PI * 2);
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+            // コア発光
+            ctx.fillStyle = color;
+            ctx.globalAlpha = 0.3 + Math.abs(Math.sin(frame * 0.1)) * 0.4;
+            ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+
+            // --- 5. 高密度・連装砲塔ユニット ---
+            ctx.globalAlpha = 1.0;
             for (let i = 0; i < sides; i++) {
                 const a = (Math.PI * 2 / sides) * i;
                 ctx.save();
-                ctx.translate(Math.cos(a) * 45, Math.sin(a) * 45);
+                ctx.translate(Math.cos(a) * radius, Math.sin(a) * radius);
                 ctx.rotate(a);
-                ctx.strokeRect(-8, -8, 16, 16);
-                ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(20, 0); ctx.stroke();
+
+                // 基部の多段構造
+                ctx.lineWidth = 0.8;
+                ctx.strokeRect(-10, -12, 12, 24); // 大型基部
+                ctx.lineWidth = 0.5;
+                ctx.strokeRect(-14, -8, 4, 16);  // 後部冷却ユニット
+
+                // 複雑な砲身系 (三連装風)
+                ctx.lineWidth = 1.0;
+                ctx.beginPath();
+                // 上段
+                ctx.moveTo(2, -6); ctx.lineTo(24, -6); ctx.lineTo(24, -3); ctx.lineTo(2, -3);
+                // 中段（少し短く）
+                ctx.moveTo(2, -1.5); ctx.lineTo(18, -1.5); ctx.lineTo(18, 1.5); ctx.lineTo(2, 1.5);
+                // 下段
+                ctx.moveTo(2, 3); ctx.lineTo(24, 3); ctx.lineTo(24, 6); ctx.lineTo(2, 6);
+                ctx.stroke();
+
+                // 砲身の接続ボルト
+                ctx.strokeRect(10, -7, 2, 14);
+
                 ctx.restore();
             }
+
             ctx.restore();
         }
 
@@ -1652,14 +1837,46 @@
         }
 
         function checkStageClear() {
-            // enemiesKilled（撃破数）が目標値に達し、かつ画面内の敵が0になったらクリア
             if (!isStageClear && enemiesKilled >= enemiesToSpawn && enemies.length === 0) {
                 isStageClear = true;
-                ui.msg.style.display = 'block';
-                AudioSys.playBGM('clear');
-                // 4秒後に次のステージへ
-                setTimeout(() => { stage++; ui.stage.innerText = stage; startStage(); }, 4000);
+
+                // --- ★8ステージクリア判定 ---
+                if (stage === 8) {
+                    showEnding();
+                } else {
+                    // 通常のステージクリア
+                    ui.msg.style.display = 'block';
+                    AudioSys.playBGM('clear');
+                    setTimeout(() => {
+                        stage++;
+                        ui.stage.innerText = stage;
+                        startStage();
+                    }, 4000);
+                }
             }
+        }
+
+        // --- ★エンディング演出関数 ---
+        function showEnding() {
+            gameState = 'ENDING';
+            AudioSys.stopBGM();
+            AudioSys.playBGM('clear'); // 祝祭的な曲を流す
+
+            // 全エンティティ消去（爆発以外）
+            bullets = []; enemyBullets = []; enemies = [];
+
+            // 画面を白くフラッシュさせるエフェクト
+            createExplosion(player.x, player.y, '#fff', 200);
+
+            ui.endingHud.style.display = 'block';
+            ui.finalScore.innerText = "TOTAL SCORE: " + score.toString().padStart(6, '0');
+            ui.controls.style.display = 'none'; // 操作パネルを隠す
+
+            // タイトルへ戻るボタンの設定
+            ui.btnBackTitle.onclick = () => {
+                ui.endingHud.style.display = 'none';
+                returnToTitle();
+            };
         }
 
         // --- Draw ---
@@ -1976,63 +2193,132 @@
             ctx.rotate(e.angle);
             ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
 
-            // ダメージ時は白、通常時はボスの色
-            const drawColor = (e.flashTimer > 0) ? '#ffffff' : e.color;
+            const color = (e.flashTimer > 0) ? '#ffffff' : e.color;
             if (e.flashTimer > 0) e.flashTimer--;
 
+            ctx.strokeStyle = color;
+            ctx.shadowBlur = (e.flashTimer > 0) ? 30 : 12;
+            ctx.shadowColor = color;
+
             const sides = e.variant.sides;
+            const radius = 45;
 
-            ctx.strokeStyle = drawColor;
-            ctx.lineWidth = 2;
-            ctx.shadowBlur = (e.flashTimer > 0) ? 30 : 15; // 光っている時は輝きを強く
-            ctx.shadowColor = drawColor;
-
-            // --- 1. 外殻（多角形） ---
-            ctx.beginPath();
+            // --- 1. 極細の内部トラス・ハニカム構造 (密度4倍) ---
+            ctx.lineWidth = 0.3;
+            ctx.globalAlpha = 0.3;
             for (let i = 0; i < sides; i++) {
                 const a = (Math.PI * 2 / sides) * i;
-                const r = 45;
-                const px = Math.cos(a) * r;
-                const py = Math.sin(a) * r;
-                if (i === 0) ctx.moveTo(px, py);
-                else ctx.lineTo(px, py);
-            }
-            ctx.closePath();
-            ctx.stroke();
+                const nextA = (Math.PI * 2 / sides) * (i + 1);
 
-            // --- 2. 砲台（タレット）の描画 ---
-            for (let i = 0; i < sides; i++) {
-                const a = (Math.PI * 2 / sides) * i;
-                ctx.save();
-                ctx.translate(Math.cos(a) * 45, Math.sin(a) * 45);
-                ctx.rotate(a);
-                ctx.strokeRect(-8, -8, 16, 16);
+                // 放射状メインフレーム
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius); ctx.stroke();
+
+                // 頂点間を結ぶ補強リブ（多重）
+                [0.4, 0.6, 0.85].forEach(rMag => {
+                    ctx.beginPath();
+                    ctx.moveTo(Math.cos(a) * radius * rMag, Math.sin(a) * radius * rMag);
+                    ctx.lineTo(Math.cos(nextA) * radius * rMag, Math.sin(nextA) * radius * rMag);
+                    ctx.stroke();
+                });
+
+                // X字のクロス補強
                 ctx.beginPath();
-                ctx.moveTo(8, 0);
-                ctx.lineTo(20, 0);
+                ctx.moveTo(Math.cos(a) * radius * 0.4, Math.sin(a) * radius * 0.4);
+                ctx.lineTo(Math.cos(nextA) * radius * 0.85, Math.sin(nextA) * radius * 0.85);
                 ctx.stroke();
+            }
+
+            // --- 2. 五重の精密装甲レイヤー ---
+            ctx.globalAlpha = 1.0;
+            const armorParts = [
+                { r: radius, w: 1.8 },      // 最外殻
+                { r: radius - 2, w: 0.4 },  // 溝ライン
+                { r: radius - 4, w: 0.8 },  // セカンドプレート
+                { r: radius - 15, w: 1.0 }, // 内部メインリング
+                { r: radius - 18, w: 0.4 }  // 放熱スリット基部
+            ];
+
+            armorParts.forEach(part => {
+                ctx.lineWidth = part.w;
+                ctx.beginPath();
+                for (let i = 0; i <= sides; i++) {
+                    const a = (Math.PI * 2 / sides) * i;
+                    ctx.lineTo(Math.cos(a) * part.r, Math.sin(a) * part.r);
+                }
+                ctx.stroke();
+            });
+
+            // --- 3. メカニカル・ディテール（ボルトとスリット） ---
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i < sides; i++) {
+                const a = (Math.PI * 2 / sides) * i;
+                const midA = a + (Math.PI / sides);
+
+                // 頂点の「接合ボルト」
+                ctx.save();
+                ctx.translate(Math.cos(a) * (radius - 8), Math.sin(a) * (radius - 8));
+                ctx.strokeRect(-2, -2, 4, 4);
+                ctx.restore();
+
+                // 辺の上の「放熱フィン」
+                ctx.save();
+                ctx.rotate(midA);
+                for (let k = 0; k < 6; k++) {
+                    const lx = 35 - k * 3;
+                    ctx.beginPath(); ctx.moveTo(lx, -5); ctx.lineTo(lx, 5); ctx.stroke();
+                }
                 ctx.restore();
             }
 
-            // --- 3. 内部装飾 ---
-            ctx.beginPath();
+            // --- 4. ハイパー・コア・エンジン（多重回転） ---
+            ctx.save();
+            ctx.rotate(-e.angle * 4); // 高速逆回転
+            ctx.lineWidth = 0.6;
+            // 外周ギヤ
+            ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
+            // 十字フレーム
+            for (let m = 0; m < 4; m++) {
+                ctx.rotate(Math.PI / 2);
+                ctx.strokeRect(3, 3, 5, 5);
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(3, 3); ctx.stroke();
+            }
+            // 中心発光体
+            ctx.fillStyle = color;
+            ctx.globalAlpha = 0.4 + Math.sin(frame * 0.2) * 0.2;
+            ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+
+            // --- 5. 巨大三連装ヘビー・タレット ---
+            ctx.globalAlpha = 1.0;
             for (let i = 0; i < sides; i++) {
                 const a = (Math.PI * 2 / sides) * i;
-                ctx.moveTo(Math.cos(a) * 45, Math.sin(a) * 45);
-                ctx.lineTo(Math.cos(a) * 15, Math.sin(a) * 15);
-            }
-            ctx.stroke();
-            ctx.strokeRect(-12, -12, 24, 24);
+                ctx.save();
+                ctx.translate(Math.cos(a) * radius, Math.sin(a) * radius);
+                ctx.rotate(a);
 
-            // ダメージ表現（体力が減っている時）
-            if (e.hp < (e.variant.hp / 2) && Math.floor(frame / 4) % 2 === 0) {
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-                ctx.beginPath();
-                ctx.arc(0, 0, 45, 0, Math.PI * 2);
-                ctx.fill();
-            }
+                // タレット装甲
+                ctx.lineWidth = 0.8;
+                ctx.strokeRect(-10, -14, 12, 28);
+                ctx.strokeRect(-14, -10, 4, 20); // バッテリーユニット
 
+                // 三連砲身
+                ctx.lineWidth = 1.0;
+                [-7, 0, 7].forEach((y, idx) => {
+                    const bLen = idx === 1 ? 28 : 22; // 中央だけ長い
+                    ctx.beginPath();
+                    ctx.moveTo(2, y); ctx.lineTo(bLen, y);
+                    ctx.stroke();
+                    // 先端のフラッシュハイダー
+                    ctx.strokeRect(bLen - 2, y - 3, 4, 6);
+                });
+
+                // 砲塔側面のメカデコレーション
+                ctx.lineWidth = 0.4;
+                ctx.beginPath(); ctx.moveTo(-6, -18); ctx.lineTo(0, -14); ctx.moveTo(-6, 18); ctx.lineTo(0, 14); ctx.stroke();
+
+                ctx.restore();
+            }
             ctx.restore();
         }
 
