@@ -770,6 +770,9 @@
         const WALL_MARGIN = 5;
         // 通常ショットの最大強化レベル（1〜7）
         const MAX_WEAPON_LEVEL = 7; // 最大を7に変更
+
+        const MAX_STAGE = 8;
+
         // 背景グリッド線の間隔（小さいほど網目が細かくなる）
         const GRID_SPACING = 25;
 
@@ -1205,7 +1208,8 @@
 
             // BGM変更ロジック
             if (gameState === 'PLAYING') {
-                const bgmIndex = Math.floor((stage - 1) / 2);
+                // ★修正: ステージ8まで対応するため、剰余(%)を使ってBGMを選択
+                const bgmIndex = Math.floor((stage - 1) / 2) % BGM_FILES.stages.length;
                 AudioSys.playBGM('stage', bgmIndex);
             }
 
@@ -2236,7 +2240,7 @@
                 isStageClear = true;
 
                 // --- ★8ステージクリア判定 ---
-                if (stage === 1) {
+                if (stage === MAX_STAGE) {
                     showEnding();
                 } else {
                     // 通常のステージクリア
