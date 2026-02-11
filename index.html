@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>NEON GRAVITY: ORBITAL</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
-   
+
     <style>
         /* --- 基本レイアウト設定 --- */
         body {
@@ -235,7 +235,7 @@
         /* メニューボタン（START GAME等）のデザイン */
         .menu-btn {
             background: rgba(0, 255, 255, 0.1);
-            border: 2px solid #0ff;
+            border: 1px solid #0ff;
             color: #0ff;
             padding: 20px 50px;
             margin: 10px;
@@ -352,27 +352,106 @@
                 opacity: 0.5;
             }
         }
+
+        /* --- ランキング機能用 CSS (ここから追加) --- */
+        #ranking-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 150;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 50px;
+        }
+
+        /* ランキングテーブル */
+        #ranking-table {
+            width: 90%;
+            max-width: 600px;
+            border-collapse: collapse;
+            color: #fff;
+            font-family: 'Orbitron';
+            margin-bottom: 20px;
+        }
+
+            #ranking-table th {
+                border-bottom: 2px solid #0ff;
+                color: #0ff;
+                padding: 10px;
+            }
+
+            #ranking-table td {
+                border-bottom: 1px solid #333;
+                padding: 10px;
+            }
+
+        /* 順位ごとの色 */
+        .rank-1 {
+            color: #ffd700;
+            text-shadow: 0 0 10px #ffd700;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        /* 金 */
+        .rank-2 {
+            color: #c0c0c0;
+            text-shadow: 0 0 10px #c0c0c0;
+            font-weight: bold;
+        }
+        /* 銀 */
+        .rank-3 {
+            color: #cd7f32;
+            text-shadow: 0 0 10px #cd7f32;
+            font-weight: bold;
+        }
+        /* 銅 */
+
+        /* 名前入力エリア */
+        #name-input-area {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            position: absolute;
+            top: 55%;
+            width: 100%;
+            z-index: 200;
+        }
+
+        #player-name-input {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #0ff;
+            color: #fff;
+            font-family: 'Orbitron';
+            font-size: 24px;
+            padding: 10px;
+            text-align: center;
+            width: 250px;
+            outline: none;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px #0ff;
+        }
+
+            #player-name-input::placeholder {
+                color: #055;
+            }
     </style>
 
 </head>
 <body>
 
+    <canvas id="game"></canvas>
+
     <div id="ui">
         <div class="hud-row">
             <div id="info-box" style="display:flex; flex-direction:column; gap:8px;">
                 <div id="score-display">000000</div>
-
-                <div>
-                    <span class="hud-label">STAGE</span>
-                    <span id="stage-num">1</span>
-                </div>
-
-                <div>
-                    <span class="hud-label">WEAPON</span>
-                    <div id="weapon-display" style="height:12px; display:flex; align-items:center;">
-                    </div>
-                </div>
-
+                <div><span class="hud-label">STAGE</span><span id="stage-num">1</span></div>
+                <div><span class="hud-label">WEAPON</span><div id="weapon-display" style="height:12px; display:flex; align-items:center;"></div></div>
                 <div id="invuln-wrapper" style="display:none; margin-top: 2px;">
                     <span class="bar-label" style="color:#ff0; font-size:10px;">INVINCIBLE</span>
                     <div class="bar-frame" style="border-color:#ff0; background:rgba(40,40,0,0.5); width:80px; height:6px;">
@@ -380,14 +459,11 @@
                     </div>
                 </div>
             </div>
-
             <div id="gauge-box">
                 <span class="bar-label">SHIELD: <span id="shield-val" style="color:#fff; font-size:12px;">100</span></span>
                 <div class="bar-frame"><div id="shield-bar"></div></div>
-
                 <span class="bar-label enemy">ENEMY SWARM</span>
                 <div class="bar-frame enemy"><div id="enemy-bar"></div></div>
-
                 <div id="boss-ui-container" style="display:none; margin-top: 10px;">
                     <span class="bar-label" id="boss-name-label" style="color:#f00; font-size:10px;">BOSS: NAME</span>
                     <div id="boss-bar-frame" class="bar-frame" style="border-color:#f00;">
@@ -399,21 +475,57 @@
         <div id="warning-msg">GRAVITY CRITICAL</div>
         <div id="stage-msg">STAGE CLEAR</div>
 
-        <div id="ending-msg" style="display:none; position:absolute; top:30%; width:100%; text-align:center; z-index:200;">
+        <div id="ending-msg" style="display:none; position:absolute; top:20%; width:100%; text-align:center; z-index:200;">
             <h1 style="color:#fff; font-size:48px; text-shadow:0 0 30px #0ff; margin-bottom:10px;">MISSION COMPLETE</h1>
             <p style="color:#0ff; font-size:18px; letter-spacing:5px;">ALL SECTORS LIBERATED</p>
-            <div id="final-score" style="color:#fff; font-size:24px; margin-top:30px;">SCORE: 000000</div>
-            <div class="menu-btn" id="btn-back-to-title" style="margin: 40px auto; pointer-events:auto;">RETURN TO TITLE</div>
+            <div id="final-score" style="color:#fff; font-size:24px; margin:20px 0;">SCORE: 000000</div>
+            <div class="menu-btn" id="btn-back-to-title" style="margin: 20px auto; pointer-events:auto;">RETURN TO TITLE</div>
         </div>
-
     </div>
 
-    <div id="overlay">
-        <h1 style="color:#0ff; font-size:40px; margin-bottom:40px; text-shadow:0 0 20px #0ff; text-align:center;">NEON GRAVITY<br><span style="font-size:20px;color:#fff;">ORBITAL</span></h1>
-        <div class="menu-btn" id="btn-start">START GAME</div>
-        <div class="menu-btn" id="btn-ost">SOUNDTRACK</div>
-        <div class="menu-btn" id="btn-title" style="display:none;">TITLE</div>
-        <div style="font-size:12px;color:#888;margin-top:20px;">PC: [X] Bomb<br>MOBILE: Small Button to Bomb</div>
+    <div id="name-input-area" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:200; flex-direction:column; align-items:center; justify-content:center;">
+        <h2 id="result-score-display" style="color:#fff; font-size:32px; margin-bottom:20px;">SCORE: 0</h2>
+        <p style="color:#0ff; margin-bottom:10px;">REGISTER TO WORLD RANKING?</p>
+        <input type="text" id="player-name-input" placeholder="ENTER NAME" maxlength="10">
+        <div style="display:flex; gap:20px; margin-top:10px;">
+            <div class="menu-btn" id="submit-score-btn" style="min-width: 140px; padding: 10px;">SUBMIT</div>
+            <div class="menu-btn" id="skip-score-btn" style="min-width: 140px; padding: 10px; border-color:#555; color:#aaa;">SKIP</div>
+        </div>
+    </div>
+
+    <div id="overlay" style="display:flex;">
+        <h1 id="menu-title" style="color:#0ff; font-size:40px; margin-bottom:40px; text-shadow:0 0 20px #0ff; text-align:center;">
+            NEON GRAVITY<br><span style="font-size:20px;color:#fff;">ORBITAL</span>
+        </h1>
+
+        <div id="menu-buttons-container" style="display:flex; flex-direction:column; align-items:center;">
+            <div class="menu-btn" id="btn-start">START GAME</div>
+            <div class="menu-btn" id="btn-ranking">WORLD RANKING</div>
+            <div class="menu-btn" id="btn-ost">SOUNDTRACK</div>
+            <div class="menu-btn" id="btn-title" style="display:none;">TITLE</div>
+        </div>
+
+        <div id="menu-footer" style="font-size:12px;color:#888;margin-top:20px;">
+            PC: [X] Bomb | MOBILE: Small Button to Bomb
+        </div>
+    </div>
+
+
+    <div id="ranking-overlay">
+        <h1 style="color:#0ff; text-shadow:0 0 20px #0ff; margin-bottom: 20px;">TOP COMMANDERS</h1>
+        <div id="loading-ranking" style="color:#0ff; animation: blink 0.5s infinite;">CONNECTING...</div>
+        <table id="ranking-table" style="display:none;">
+            <thead>
+                <tr>
+                    <th style="width:50px;">RANK</th>
+                    <th style="text-align:left;">NAME</th>
+                    <th>STAGE</th>
+                    <th style="text-align:right;">SCORE</th>
+                </tr>
+            </thead>
+            <tbody id="ranking-list-body"></tbody>
+        </table>
+        <div class="menu-btn" id="close-ranking-btn">CLOSE</div>
     </div>
 
     <div id="pause-overlay">
@@ -433,7 +545,143 @@
         <div id="launch-btn">BOMB</div>
     </div>
 
-    <canvas id="game"></canvas>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // ★★★ ここをあなたのFirebase設定に書き換えてください ★★★
+        const firebaseConfig = {
+            apiKey: "AIzaSyCRjHe893FZopPErdjtgX8KJ8KPT_rmgnI",
+            authDomain: "stellar-gravity.firebaseapp.com",
+            projectId: "stellar-gravity",
+            storageBucket: "stellar-gravity.firebasestorage.app",
+            messagingSenderId: "936422140891",
+            appId: "1:936422140891:web:d4e55c30507570602515fe",
+            measurementId: "G-0FWP5X8T2T"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const SCORES_COLLECTION = "neon_gravity_scores";
+
+        // HTML Elements
+        const rankingOverlay = document.getElementById("ranking-overlay");
+        const rankingBody = document.getElementById("ranking-list-body");
+        const loadingEl = document.getElementById("loading-ranking");
+        const tableEl = document.getElementById("ranking-table");
+        const nameInputArea = document.getElementById("name-input-area");
+        const nameInput = document.getElementById("player-name-input");
+        const submitBtn = document.getElementById("submit-score-btn");
+
+        function escapeHtml(str) {
+            if (!str) return "";
+            return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+        }
+
+        window.showRanking = async function () {
+            rankingOverlay.style.display = "flex";
+            loadingEl.style.display = "block";
+            tableEl.style.display = "none";
+            rankingBody.innerHTML = "";
+
+            try {
+                const q = query(collection(db, SCORES_COLLECTION), orderBy("score", "desc"), limit(10));
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    rankingBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">NO DATA</td></tr>';
+                }
+
+                let rank = 1;
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const tr = document.createElement("tr");
+
+                    let rankClass = "";
+                    let rankText = "#" + rank;
+                    if (rank === 1) { rankClass = "rank-1"; rankText = "1ST"; }
+                    else if (rank === 2) { rankClass = "rank-2"; rankText = "2ND"; }
+                    else if (rank === 3) { rankClass = "rank-3"; rankText = "3RD"; }
+
+                    const stageVal = data.stage ? "ST." + data.stage : "-";
+
+                    tr.innerHTML = `
+                                                        <td class="${rankClass}" style="text-align:center;">${rankText}</td>
+                                                        <td style="text-align:left;">${escapeHtml(data.name)}</td>
+                                                        <td style="color:#aaa; text-align:center;">${stageVal}</td>
+                                                        <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
+                                                    `;
+                    rankingBody.appendChild(tr);
+                    rank++;
+                });
+
+                loadingEl.style.display = "none";
+                tableEl.style.display = "table";
+            } catch (e) {
+                console.error("Ranking Error:", e);
+                loadingEl.innerText = "CONNECTION ERROR";
+            }
+        };
+
+        window.submitScore = async function (score, stage) {
+            const name = nameInput.value.trim() || "PILOT";
+            submitBtn.innerText = "SENDING...";
+            submitBtn.style.pointerEvents = "none";
+
+            try {
+                await addDoc(collection(db, SCORES_COLLECTION), {
+                    name: name,
+                    score: score,
+                    stage: stage,
+                    timestamp: serverTimestamp()
+                });
+
+                // 保存処理
+                localStorage.setItem("neonGravity_last_name", name);
+
+                // 入力エリアを隠す
+                nameInputArea.style.display = "none";
+                submitBtn.innerText = "SUBMIT";
+                submitBtn.style.pointerEvents = "auto";
+
+                // --- 修正ポイント：送信成功後に「次のメニュー」を表示する ---
+                if (typeof window.proceedToNextMenu === "function") {
+                    window.proceedToNextMenu();
+                } else {
+                    // 万が一関数がない場合のフォールバック
+                    window.showRanking();
+                }
+
+            } catch (e) {
+                console.error("Submit Error:", e);
+                alert("Error sending score.");
+                submitBtn.innerText = "SUBMIT";
+                submitBtn.style.pointerEvents = "auto";
+            }
+        };
+
+        document.getElementById("skip-score-btn").onclick = () => {
+            if (typeof window.proceedToNextMenu === "function") {
+                window.proceedToNextMenu();
+            } else {
+                document.getElementById('name-input-area').style.display = 'none';
+            }
+        };
+
+        document.getElementById("btn-ranking").onclick = () => window.showRanking();
+        document.getElementById("close-ranking-btn").onclick = () => {
+            rankingOverlay.style.display = "none";
+        };
+        submitBtn.onclick = () => {
+            const s = window.finalGameScore || 0;
+            const st = window.finalGameStage || 1;
+            window.submitScore(s, st);
+        };
+
+        const saved = localStorage.getItem("neonGravity_last_name");
+        if (saved) nameInput.value = saved;
+    </script>
+
 
     <script>
         // --- ゲームバランス・グラフィック設定 ---
@@ -504,7 +752,7 @@
             WORMHOLE_CHANCE: 0.03   // 毎フレーム、新しいワームホールが発生する確率
         };
 
- 
+
 
         // --- アイテム・特殊状態の設定 ---
         // レーザーの持続時間（600フレーム = 10秒）
@@ -544,9 +792,9 @@
 
             bossContainer: document.getElementById('boss-ui-container'),
             bossNameLabel: document.getElementById('boss-name-label'),
-            bossBarFrame: document.getElementById('boss-bar-frame'), 
-            bossHpBarInline: document.getElementById('boss-hp-bar-inline'), 
-      
+            bossBarFrame: document.getElementById('boss-bar-frame'),
+            bossHpBarInline: document.getElementById('boss-hp-bar-inline'),
+
             endingHud: document.getElementById('ending-msg'),
             finalScore: document.getElementById('final-score'),
             btnBackTitle: document.getElementById('btn-back-to-title'),
@@ -558,7 +806,7 @@
         let score = 0, frame = 0, stage = 1;
         let spawnedCount = 0, enemiesToSpawn = 0, isStageClear = false;
         let dyingTimer = 0;
-        let enemiesKilled = 0; 
+        let enemiesKilled = 0;
         let isBossSpawned = false;
 
         const player = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, satellites: [], shield: 100, weaponLevel: 1, invuln: 0, laserTimer: 0 };
@@ -801,7 +1049,7 @@
         function resetGame() {
             // Variable Reset
             score = 0; stage = 1; frame = 0;
-            spawnedCount = 0; enemiesToSpawn = 0; isStageClear = false; 
+            spawnedCount = 0; enemiesToSpawn = 0; isStageClear = false;
             bullets = []; lasers = []; enemies = []; enemyBullets = []; particles = []; crystals = []; missiles = []; powerups = []; wormholes = []; scorePopups = []; rings = [];
 
             player.x = worldSize / 2; player.y = worldSize / 2;
@@ -810,7 +1058,7 @@
 
             // UI Reset
             ui.score.innerText = "000000"; ui.stage.innerText = "1";
-    
+
 
             ui.shieldBar.style.width = "100%"; ui.shieldBar.classList.remove('shield-critical');
             ui.shieldBar.style.backgroundColor = '#0ff';
@@ -832,15 +1080,24 @@
             ui.msg.style.display = 'none';
 
             ui.titleText.innerHTML = `NEON GRAVITY<br><span style="font-size:20px;color:#fff;">ORBITAL</span>`;
-            ui.titleText.style.color = '#0ff'; ui.titleText.style.textShadow = '0 0 20px #0ff';
+            ui.titleText.style.color = '#0ff';
+            ui.titleText.style.textShadow = '0 0 20px #0ff';
 
             ui.btnStart.innerText = 'START GAME';
-            ui.btnStart.style.borderColor = '#0ff'; ui.btnStart.style.color = '#0ff';
+            ui.btnStart.style.borderColor = '#0ff';
+            ui.btnStart.style.color = '#0ff';
             ui.btnStart.onclick = startGame;
 
             ui.btnOst.style.display = 'block';
             ui.btnTitle.style.display = 'none';
-            AudioSys.playBGM('title');
+
+            // ★タイトル画面なのでランキングボタンを再表示する
+            const btnRanking = document.getElementById('btn-ranking');
+            if (btnRanking) {
+                btnRanking.style.display = 'block';
+                btnRanking.style.borderColor = '#0ff';
+                btnRanking.style.color = '#0ff';
+            }
         }
 
         function startStage() {
@@ -850,7 +1107,7 @@
             // --- 変数のリセット ---
             spawnedCount = 0;
             isStageClear = false;
-            enemiesKilled = 0; 
+            enemiesKilled = 0;
             isBossSpawned = false;
             // --------------------
 
@@ -1022,19 +1279,48 @@
             gameState = 'GAMEOVER';
             AudioSys.stopBGM();
             ui.controls.style.display = 'none';
-            ui.overlay.style.display = 'flex';
 
+            // 送信用変数の更新
+            window.finalGameScore = score;
+            window.finalGameStage = stage;
+
+            // --- 第1段階：スコア登録画面のみを表示 ---
+            ui.overlay.style.display = 'none'; // タイトル（RETRY等）はまだ出さない
+
+            const nameArea = document.getElementById('name-input-area');
+            const scoreDisplay = document.getElementById('result-score-display');
+            if (scoreDisplay) scoreDisplay.innerText = `SCORE: ${score}`;
+
+            nameArea.style.display = 'flex';
+            document.getElementById('player-name-input').focus();
+        }
+
+        // 送信またはスキップした後に呼ばれる「次の画面」
+        function proceedToNextMenu() {
+            document.getElementById('name-input-area').style.display = 'none';
+
+            // --- 第2段階：RETRY / TITLE 選択画面 ---
+            ui.overlay.style.display = 'flex';
+            // 影の色を赤色 (#f00) に修正
             ui.titleText.innerHTML = `GAME OVER<br><span style="font-size:20px;color:#f00;">SCORE: ${score}</span>`;
-            ui.titleText.style.color = '#f00'; ui.titleText.style.textShadow = '0 0 20px #f00';
+            ui.titleText.style.color = '#f00';
+            ui.titleText.style.textShadow = '0 0 20px #f00'; 
 
             ui.btnStart.innerText = 'RETRY';
-            ui.btnStart.style.borderColor = '#f00'; ui.btnStart.style.color = '#f00';
-            ui.btnStart.onclick = (e) => { e.stopPropagation(); e.preventDefault(); resetGame(); };
+            ui.btnStart.style.borderColor = '#0ff';
+            ui.btnStart.style.color = '#0ff';
+            ui.btnStart.style.boxShadow = '0 0 15px rgba(255,0,0,0.3)';
+            ui.btnStart.onclick = () => resetGame();
 
             ui.btnOst.style.display = 'none';
             ui.btnTitle.style.display = 'block';
-            ui.btnTitle.style.borderColor = '#f00'; ui.btnTitle.style.color = '#f00';
-            ui.btnTitle.onclick = (e) => { e.stopPropagation(); e.preventDefault(); returnToTitle(); };
+            ui.btnTitle.style.borderColor = '#0ff';
+            ui.btnTitle.style.color = '#0ff';
+            ui.btnTitle.onclick = () => returnToTitle();
+
+            // ランキングボタンはこの画面では不要
+            const btnRanking = document.getElementById('btn-ranking');
+            if (btnRanking) btnRanking.style.display = 'none';
         }
 
         function update() {
@@ -1653,52 +1939,59 @@
 
         function updateEnemyBullets() {
             enemyBullets.forEach(eb => {
-                // --- ミサイルの追尾ロジック ---
+                // --- ミサイルの挙動制御 ---
                 if (eb.isMissile) {
+                    // 1. 初速の減衰（慣性による減速）
+                    // 発射直後は vx, vy が大きいので、徐々に空気抵抗のように減速させる
+                    eb.vx *= 0.96;
+                    eb.vy *= 0.96;
+
                     const dx = player.x - eb.x;
                     const dy = player.y - eb.y;
                     const dist = Math.hypot(dx, dy) || 0.001;
 
-                    // 旋回性能の計算
-                    eb.vx += (dx / dist) * 0.15 * SPEED_SCALE;
-                    eb.vy += (dy / dist) * 0.15 * SPEED_SCALE;
+                    // 2. 追尾力の適用
+                    // 減速してきたところで、徐々に自機に向かう加速を加える
+                    eb.vx += (dx / dist) * 0.25 * SPEED_SCALE;
+                    eb.vy += (dy / dist) * 0.25 * SPEED_SCALE;
 
-                    // 最高速度制限
+                    // 3. 巡航速度の制限
+                    // 現在のスピードに合わせて、最終的な巡航速度に抑える
                     const v = Math.hypot(eb.vx, eb.vy);
-                    const maxS = 6 * SPEED_SCALE;
-                    if (v > maxS) {
-                        eb.vx = (eb.vx / v) * maxS;
-                        eb.vy = (eb.vy / v) * maxS;
+                    const cruiseSpeed = 5 * SPEED_SCALE; // 今までのスピードに近い安定速度
+                    if (v > cruiseSpeed) {
+                        // 急激に落とさず、滑らかに巡航速度へ近づける
+                        eb.vx = (eb.vx / v) * (v * 0.9 + cruiseSpeed * 0.1);
+                        eb.vy = (eb.vy / v) * (v * 0.9 + cruiseSpeed * 0.1);
                     }
 
-                    // 煙演出
+                    // 煙演出（色味のある城/ボスの色）
                     if (frame % 2 === 0) {
                         particles.push({
                             x: eb.x, y: eb.y,
-                            vx: -eb.vx * 0.3, vy: -eb.vy * 0.3,
-                            color: eb.color, life: 0.3, size: 2
+                            vx: -eb.vx * 0.2, vy: -eb.vy * 0.2,
+                            color: eb.color, life: 0.3, size: 1.5
                         });
                     }
 
-                    // ★追加：プレイヤーの弾との当たり判定（撃ち落とし処理）
+                    // プレイヤーの弾との当たり判定（変更なし）
                     bullets.forEach(b => {
                         if (b.life > 0 && Math.hypot(b.x - eb.x, b.y - eb.y) < 20) {
-                            eb.life = 0; // ミサイル消滅
-                            b.life = 0;  // プレイヤーの弾も消滅
-                            score += 50; // 撃ち落としスコア
-                            createExplosion(eb.x, eb.y, eb.color, 15); // ミサイルの色の爆発
+                            eb.life = 0; b.life = 0;
+                            score += 50;
+                            createExplosion(eb.x, eb.y, eb.color, 15);
                             AudioSys.playSE('explode');
                         }
                     });
                 }
 
-                // --- 移動と壁・プレイヤーとの判定 ---
+                // --- 移動と判定の共通処理 ---
                 const oldX = eb.x;
                 const oldY = eb.y;
-
                 eb.x += eb.vx;
                 eb.y += eb.vy;
                 eb.life--;
+
 
                 if (gameState !== 'DYING' && player.invuln <= 0) {
                     const dx = eb.x - oldX;
@@ -1827,7 +2120,7 @@
 
             if (player.shield <= 0) {
                 gameState = 'DYING';
-      
+
                 dyingTimer = 120;
                 bullets = []; lasers = []; missiles = [];
                 createExplosion(player.x, player.y, '#0f8', 100);
@@ -1841,7 +2134,7 @@
                 isStageClear = true;
 
                 // --- ★8ステージクリア判定 ---
-                if (stage === 8) {
+                if (stage === 1) {
                     showEnding();
                 } else {
                     // 通常のステージクリア
@@ -1860,21 +2153,28 @@
         function showEnding() {
             gameState = 'ENDING';
             AudioSys.stopBGM();
-            AudioSys.playBGM('clear'); // 祝祭的な曲を流す
-
-            // 全エンティティ消去（爆発以外）
+            AudioSys.playBGM('clear');
             bullets = []; enemyBullets = []; enemies = [];
-
-            // 画面を白くフラッシュさせるエフェクト
             createExplosion(player.x, player.y, '#fff', 200);
 
             ui.endingHud.style.display = 'block';
             ui.finalScore.innerText = "TOTAL SCORE: " + score.toString().padStart(6, '0');
-            ui.controls.style.display = 'none'; // 操作パネルを隠す
+            ui.controls.style.display = 'none';
 
-            // タイトルへ戻るボタンの設定
+            window.finalGameScore = score;
+            window.finalGameStage = stage;
+
+            const nameInputArea = document.getElementById('name-input-area');
+            // スコア表示と戻るボタンの間にフォームを挿入
+            ui.endingHud.insertBefore(nameInputArea, ui.btnBackTitle);
+            nameInputArea.style.display = 'flex';
+            nameInputArea.style.position = 'static';
+
+            document.getElementById('player-name-input').focus();
+
             ui.btnBackTitle.onclick = () => {
                 ui.endingHud.style.display = 'none';
+                nameInputArea.style.display = 'none';
                 returnToTitle();
             };
         }
@@ -1990,7 +2290,7 @@
                         });
                     }
                 }
-                
+
                 // --- ★追加：無敵状態のバリアエフェクト ---
                 if (player.invuln > 0) {
                     ctx.save();
@@ -2193,133 +2493,122 @@
             ctx.rotate(e.angle);
             ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
 
-            const color = (e.flashTimer > 0) ? '#ffffff' : e.color;
-            if (e.flashTimer > 0) e.flashTimer--;
+            // --- 1. カラー・設定の構築 ---
+            const isDmg = e.flashTimer > 0;
+            if (isDmg) e.flashTimer--;
 
-            ctx.strokeStyle = color;
-            ctx.shadowBlur = (e.flashTimer > 0) ? 30 : 12;
-            ctx.shadowColor = color;
+            // 基本の色
+            const baseColor = e.color;
+            // 「色味のある白（城）」: HSLを使って明度(L)だけを90%まで引き上げた色を作る
+            // ※既存の色（#f0fなど）から自動で高輝度版を生成するロジック
+            const brightColor = `hsl(${getHue(baseColor)}, 100%, 70%)`;
+
+            // 描画に使用するメイン/サブカラー（ダメージ時は全体が明るくなる）
+            const mainStroke = isDmg ? brightColor : baseColor;
+            const subStroke = isDmg ? '#fff' : brightColor;
 
             const sides = e.variant.sides;
             const radius = 45;
 
-            // --- 1. 極細の内部トラス・ハニカム構造 (密度4倍) ---
-            ctx.lineWidth = 0.3;
-            ctx.globalAlpha = 0.3;
+            // --- 2. 内部精密構造（淡い高輝度カラー） ---
+            ctx.strokeStyle = subStroke;
+            ctx.lineWidth = 0.4;
+            ctx.globalAlpha = isDmg ? 1.0 : 0.6;
+            ctx.shadowBlur = isDmg ? 20 : 0;
+            ctx.shadowColor = subStroke;
+
             for (let i = 0; i < sides; i++) {
                 const a = (Math.PI * 2 / sides) * i;
                 const nextA = (Math.PI * 2 / sides) * (i + 1);
-
-                // 放射状メインフレーム
                 ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius); ctx.stroke();
-
-                // 頂点間を結ぶ補強リブ（多重）
-                [0.4, 0.6, 0.85].forEach(rMag => {
-                    ctx.beginPath();
-                    ctx.moveTo(Math.cos(a) * radius * rMag, Math.sin(a) * radius * rMag);
-                    ctx.lineTo(Math.cos(nextA) * radius * rMag, Math.sin(nextA) * radius * rMag);
-                    ctx.stroke();
-                });
-
-                // X字のクロス補強
                 ctx.beginPath();
-                ctx.moveTo(Math.cos(a) * radius * 0.4, Math.sin(a) * radius * 0.4);
-                ctx.lineTo(Math.cos(nextA) * radius * 0.85, Math.sin(nextA) * radius * 0.85);
+                ctx.moveTo(Math.cos(a) * radius * 0.6, Math.sin(a) * radius * 0.6);
+                ctx.lineTo(Math.cos(nextA) * radius * 0.6, Math.sin(nextA) * radius * 0.6);
                 ctx.stroke();
             }
 
-            // --- 2. 五重の精密装甲レイヤー ---
+            // --- 3. 装甲フレーム（メインカラー） ---
             ctx.globalAlpha = 1.0;
-            const armorParts = [
-                { r: radius, w: 1.8 },      // 最外殻
-                { r: radius - 2, w: 0.4 },  // 溝ライン
-                { r: radius - 4, w: 0.8 },  // セカンドプレート
-                { r: radius - 15, w: 1.0 }, // 内部メインリング
-                { r: radius - 18, w: 0.4 }  // 放熱スリット基部
-            ];
+            ctx.shadowBlur = isDmg ? 30 : 12;
+            ctx.shadowColor = mainStroke;
 
-            armorParts.forEach(part => {
-                ctx.lineWidth = part.w;
+            [radius, radius - 4, radius - 15].forEach((r, idx) => {
+                ctx.strokeStyle = (idx === 1) ? subStroke : mainStroke;
+                ctx.lineWidth = (idx === 0) ? 1.8 : 0.8;
                 ctx.beginPath();
                 for (let i = 0; i <= sides; i++) {
                     const a = (Math.PI * 2 / sides) * i;
-                    ctx.lineTo(Math.cos(a) * part.r, Math.sin(a) * part.r);
+                    ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
                 }
                 ctx.stroke();
             });
 
-            // --- 3. メカニカル・ディテール（ボルトとスリット） ---
-            ctx.lineWidth = 0.5;
-            for (let i = 0; i < sides; i++) {
-                const a = (Math.PI * 2 / sides) * i;
-                const midA = a + (Math.PI / sides);
-
-                // 頂点の「接合ボルト」
-                ctx.save();
-                ctx.translate(Math.cos(a) * (radius - 8), Math.sin(a) * (radius - 8));
-                ctx.strokeRect(-2, -2, 4, 4);
-                ctx.restore();
-
-                // 辺の上の「放熱フィン」
-                ctx.save();
-                ctx.rotate(midA);
-                for (let k = 0; k < 6; k++) {
-                    const lx = 35 - k * 3;
-                    ctx.beginPath(); ctx.moveTo(lx, -5); ctx.lineTo(lx, 5); ctx.stroke();
-                }
-                ctx.restore();
-            }
-
-            // --- 4. ハイパー・コア・エンジン（多重回転） ---
+            // --- 4. コアユニット（同系色グラデーション風） ---
             ctx.save();
-            ctx.rotate(-e.angle * 4); // 高速逆回転
-            ctx.lineWidth = 0.6;
-            // 外周ギヤ
-            ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
-            // 十字フレーム
-            for (let m = 0; m < 4; m++) {
-                ctx.rotate(Math.PI / 2);
-                ctx.strokeRect(3, 3, 5, 5);
-                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(3, 3); ctx.stroke();
-            }
-            // 中心発光体
-            ctx.fillStyle = color;
-            ctx.globalAlpha = 0.4 + Math.sin(frame * 0.2) * 0.2;
+            ctx.rotate(-e.angle * 4);
+            ctx.strokeStyle = subStroke;
+            ctx.strokeRect(-8, -8, 16, 16);
+            ctx.fillStyle = mainStroke;
+            ctx.globalAlpha = isDmg ? 1.0 : 0.5;
             ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
 
-            // --- 5. 巨大三連装ヘビー・タレット ---
-            ctx.globalAlpha = 1.0;
+            // --- 5. 砲塔ユニット ---
             for (let i = 0; i < sides; i++) {
                 const a = (Math.PI * 2 / sides) * i;
                 ctx.save();
                 ctx.translate(Math.cos(a) * radius, Math.sin(a) * radius);
                 ctx.rotate(a);
-
-                // タレット装甲
-                ctx.lineWidth = 0.8;
-                ctx.strokeRect(-10, -14, 12, 28);
-                ctx.strokeRect(-14, -10, 4, 20); // バッテリーユニット
-
-                // 三連砲身
-                ctx.lineWidth = 1.0;
-                [-7, 0, 7].forEach((y, idx) => {
-                    const bLen = idx === 1 ? 28 : 22; // 中央だけ長い
-                    ctx.beginPath();
-                    ctx.moveTo(2, y); ctx.lineTo(bLen, y);
-                    ctx.stroke();
-                    // 先端のフラッシュハイダー
-                    ctx.strokeRect(bLen - 2, y - 3, 4, 6);
-                });
-
-                // 砲塔側面のメカデコレーション
-                ctx.lineWidth = 0.4;
-                ctx.beginPath(); ctx.moveTo(-6, -18); ctx.lineTo(0, -14); ctx.moveTo(-6, 18); ctx.lineTo(0, 14); ctx.stroke();
-
+                ctx.strokeStyle = subStroke; ctx.lineWidth = 0.6; ctx.strokeRect(-8, -10, 10, 20);
+                ctx.strokeStyle = mainStroke; ctx.lineWidth = 1.2;
+                [-4, 4].forEach(y => { ctx.beginPath(); ctx.moveTo(2, y); ctx.lineTo(24, y); ctx.stroke(); });
                 ctx.restore();
             }
+
+            // --- 6. 強化ダメージエフェクト（火花とリング） ---
+            if (isDmg) {
+                // 【火花】
+                for (let i = 0; i < 4; i++) {
+                    const ang = Math.random() * Math.PI * 2;
+                    const spd = 4 + Math.random() * 10;
+                    particles.push({
+                        x: e.x + (Math.random() - 0.5) * 40,
+                        y: e.y + (Math.random() - 0.5) * 40,
+                        vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+                        color: Math.random() > 0.4 ? brightColor : baseColor,
+                        life: 0.5, size: 2 + Math.random() * 2
+                    });
+                }
+
+                // 【リング爆風】
+                // flashTimerが最大値の瞬間（＝当たった直後の1フレームだけ）にリングを出す
+                if (e.flashTimer === 4) { // flashTimerの初期値に合わせて調整
+                    rings.push({
+                        x: e.x,
+                        y: e.y,
+                        r: 10,           // 開始サイズ
+                        color: brightColor, // 「色味のある城」で光の輪を作る
+                        life: 0.5        // 消えるまでの時間
+                    });
+                }
+            }
             ctx.restore();
+        }
+
+        // 補助関数：色から色相(Hue)を取り出す（コードの最後の方に追加してください）
+        function getHue(color) {
+            if (color.startsWith('#')) {
+                // 簡易的な16進数→Hue変換（ボスの主要色に対応）
+                if (color === '#f0f') return 300; // マゼンタ
+                if (color === '#ffff00') return 60; // 黄
+                if (color === '#0f8') return 150; // エメラルド
+                if (color === '#0cc') return 180; // シアン
+                if (color === '#44f') return 240; // 青
+                if (color === '#f40') return 20;  // オレンジ赤
+                if (color === '#f08') return 330; // ローズ
+                if (color === '#fff') return 0;   // 白
+            }
+            return 0;
         }
 
         function drawTadpoleEnemy(ctx, e) {
@@ -2620,7 +2909,9 @@
         document.getElementById('btn-ost').onclick = openOST;
         document.getElementById('btn-back').onclick = closeOST;
 
+
         window.addEventListener('keydown', e => {
+            if (document.activeElement === document.getElementById('player-name-input')) return;
             if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyZ', 'KeyX'].includes(e.code)) e.preventDefault();
             input.keys[e.code] = true;
             if (gameState === 'TITLE' && e.code === 'Space') startGame();
