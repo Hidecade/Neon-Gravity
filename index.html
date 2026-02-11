@@ -593,10 +593,36 @@
                         n.connect(f); f.connect(g); n.start(t); n.stop(t + dur);
                     }
                 } else if (type === 'launch') {
-                    const o = this.ctx.createOscillator(); o.type = 'square';
-                    o.frequency.setValueAtTime(200, t); o.frequency.linearRampToValueAtTime(600, t + 0.4);
-                    g.gain.setValueAtTime(0.3, t); g.gain.linearRampToValueAtTime(0, t + 0.4);
-                    o.connect(g); o.start(t); o.stop(t + 0.4);
+                    // --- ズゾゾッという重厚なノイズ混じり音 ---
+                    if (this.noiseBuffer) {
+                        // ノイズ源（ザラザラ感）
+                        const n = this.ctx.createBufferSource();
+                        n.buffer = this.noiseBuffer;
+
+                        // 低音のうねり（サイン波）
+                        const o = this.ctx.createOscillator();
+                        o.type = 'sawtooth'; // 鋭い音
+
+                        const filter = this.ctx.createBiquadFilter();
+                        filter.type = 'lowpass';
+
+                        // 音程とフィルターの動き（急激に下げることで射出感を出す）
+                        o.frequency.setValueAtTime(400, t);
+                        o.frequency.exponentialRampToValueAtTime(40, t + 0.3);
+                        filter.frequency.setValueAtTime(1000, t);
+                        filter.frequency.exponentialRampToValueAtTime(100, t + 0.3);
+
+                        g.gain.setValueAtTime(0.4, t);
+                        g.gain.linearRampToValueAtTime(0, t + 0.3);
+
+                        n.connect(filter);
+                        o.connect(filter);
+                        filter.connect(g);
+
+                        n.start(t); n.stop(t + 0.3);
+                        o.start(t); o.stop(t + 0.3); RampToValueAtTime(0, t + 0.4);
+                        o.connect(g); o.start(t); o.stop(t + 0.4);
+                    }
                 } else if (type === 'powerup') {
                     const o = this.ctx.createOscillator(); o.type = 'sine';
                     o.frequency.setValueAtTime(600, t); o.frequency.linearRampToValueAtTime(1800, t + 0.2);
@@ -844,10 +870,14 @@
             } else if (type === 'cube') {
                 const r = Math.random();
                 let cubeDrop;
-                if (r < 0.15) cubeDrop = 'invincible'; // 15%で無敵
-                else if (r < 0.40) cubeDrop = 'laser'; // 25%でレーザー
-                else if (r < 0.70) cubeDrop = 'level'; // 30%でレベルアップ
-                else cubeDrop = 'crystal';             // 残りはクリスタル
+
+                // シールドが30%以下なら無敵アイテムの確率を2倍(15%→30%)にする
+                const invulnChance = player.shield <= 30 ? 0.30 : 0.05;
+
+                if (r < invulnChance) cubeDrop = 'invincible';
+                else if (r < 0.40) cubeDrop = 'laser';
+                else if (r < 0.70) cubeDrop = 'level';
+                else cubeDrop = 'crystal';
 
                 enemies.push({ x, y, vx, vy, hp: 2, speed: ENEMY_SPEEDS.CUBE * spd, color: '#0f0', type: 'cube', angle: 0, drop: cubeDrop, scale: 0.8, rotX: 0, rotY: 0 });
                 spawnedCount++;
@@ -1124,7 +1154,15 @@
         }
 
         function updateEntities() {
-            updatePlayerBullets(); updateLasers(); updateEnemies(); updateEnemyBullets(); updateCrystals(); updatePowerups(); updateMissiles(); updateParticlesAndRings(); updatePlayerStatus();
+            updatePlayerBullets();
+            updateLasers();
+            updateEnemies();
+            updateEnemyBullets();
+            updateCrystals();
+            updatePowerups();
+            updateMissiles();
+            updateParticlesAndRings();
+            updatePlayerStatus();
         }
 
         function updateLasers() {
@@ -1147,19 +1185,29 @@
                     }
                 });
 
-                // 2. ★追加：ホーミングミサイル（enemyBullets の isMissile）との判定
+                // 2. ★すべての敵弾（enemyBullets）との判定
                 enemyBullets.forEach(eb => {
-                    if (eb.isMissile) {
-                        const A = p1x - p2x; const B = p1y - p2y; const C = p2x * p1y - p1x * p2y;
-                        const dist = Math.abs(A * eb.y - B * eb.x + C) / Math.hypot(A, B);
-                        const dot = (eb.x - p1x) * (p2x - p1x) + (eb.y - p1y) * (p2y - p1y);
+                    // 点と線分の距離を計算
+                    const A = p1x - p2x; const B = p1y - p2y; const C = p2x * p1y - p1x * p2y;
+                    const dist = Math.abs(A * eb.y - B * eb.x + C) / Math.hypot(A, B);
+                    const dot = (eb.x - p1x) * (p2x - p1x) + (eb.y - p1y) * (p2y - p1y);
 
-                        // レーザーの幅の中にミサイルが入っているか判定
-                        if (dist < (l.width / 2 + 10) && dot > 0) {
-                            eb.life = 0; // ミサイルを即座に破壊
-                            score += 50; // スコア加算
-                            createExplosion(eb.x, eb.y, eb.color, 15); // 爆発エフェクト
+                    // レーザーの幅（l.width/2）に敵弾のサイズを考慮した範囲
+                    if (dist < (l.width / 2 + 5) && dot > 0) {
+                        eb.life = 0; // 弾を消滅させる
+
+                        // ミサイルの場合は爆発、普通の弾は火花
+                        if (eb.isMissile) {
+                            score += 50;
+                            createExplosion(eb.x, eb.y, eb.color, 15);
                             AudioSys.playSE('explode');
+                        } else {
+                            score += 10;
+                            particles.push({
+                                x: eb.x, y: eb.y,
+                                vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5,
+                                color: '#fff', life: 0.2
+                            });
                         }
                     }
                 });
@@ -1365,20 +1413,40 @@
         function checkPlayerCollision(e) {
             if (gameState === 'DYING' || gameState === 'GAMEOVER') return;
 
-            // 距離を計算
             const dist = Math.hypot(player.x - e.x, player.y - e.y);
-
-            // 敵の種類に応じた判定半径を取得
             let radius = 15;
             if (e.type === 'triangle') radius = ENEMY_HITBOX.TRIANGLE;
             else if (e.type === 'cube') radius = ENEMY_HITBOX.CUBE;
             else if (e.type === 'tadpole') radius = ENEMY_HITBOX.TADPOLE;
             else if (e.type === 'dragon') radius = ENEMY_HITBOX.DRAGON;
+            else if (e.type === 'boss') radius = 45; // ボスの判定サイズ
 
-            // スケール補正
-            const collisionDist = radius * (e.scale / 0.7);
+            const collisionDist = radius * (e.scale / 0.7) + (player.invuln > 0 ? 20 : 0);
 
             if (dist < collisionDist) {
+                // --- ★無敵バリア展開中の体当たり処理 ---
+                if (player.invuln > 0) {
+                    if (e.type === 'boss' || e.type === 'dragon') {
+                        // ボスやドラゴンの場合はHPを削る（多段ヒット）
+                        e.hp -= 0.5;
+                        if (e.type === 'boss') e.flashTimer = 5;
+                        // 火花エフェクト
+                        if (frame % 3 === 0) {
+                            createExplosion(e.x, e.y, '#ff0', 3);
+                            AudioSys.playSE('damage');
+                        }
+                    } else {
+                        // 雑魚敵は即死
+                        e.hp = 0;
+                        score += 100;
+                        createExplosion(e.x, e.y, e.color, 15);
+                        AudioSys.playSE('explode');
+                        distortGrid(e.x, e.y, 30, 60);
+                    }
+                    return; // 自分がダメージを受ける処理をスキップ
+                }
+
+                // --- 通常時のダメージ処理 ---
                 player.shield -= 0.5;
                 if (player.invuln <= 0) {
                     player.shield -= 10;
@@ -1498,7 +1566,7 @@
                     if (p.type === 'laser') { player.laserTimer = LASER_DURATION; rings.push({ x: player.x, y: player.y, r: 10, color: '#0ff', life: 1 }); rings.push({ x: player.x, y: player.y, r: 50, color: '#0ff', life: 1 }); }
                     else if (p.type === 'invincible') { player.invuln = 600; AudioSys.playSE('invincible'); }
                     else if (p.type === 'level') {
-                        player.weaponLevel = Math.min(5, player.weaponLevel + 1);
+                        player.weaponLevel = Math.min(MAX_WEAPON_LEVEL, player.weaponLevel + 1);
                     }
                 }
             });
@@ -1531,18 +1599,37 @@
         function destroyEnemy(e) {
             enemiesKilled++;
             createExplosion(e.x, e.y, e.color, 40);
-            if (e.type === 'dragon') { rings.push({ x: e.x, y: e.y, r: 10, color: '#f00', life: 1 }); rings.push({ x: e.x, y: e.y, r: 5, color: '#fff', life: 1 }); AudioSys.playSE('dragon_explode'); }
-            else { AudioSys.playSE('explode'); }
 
-            const pts = e.type === 'dragon' ? 1000 : 100;
+            // 効果音と特殊演出
+            if (e.type === 'dragon') {
+                rings.push({ x: e.x, y: e.y, r: 10, color: '#f00', life: 1 });
+                AudioSys.playSE('dragon_explode');
+            } else {
+                AudioSys.playSE('explode');
+            }
 
-            score += pts; ui.score.innerText = score.toString().padStart(6, '0');
+            const pts = (e.type === 'dragon' || e.type === 'boss') ? 1000 : 100;
+            score += pts;
+            ui.score.innerText = score.toString().padStart(6, '0');
             scorePopups.push({ x: e.x, y: e.y, text: pts, life: 40, alpha: 1, vy: -1 });
             distortGrid(e.x, e.y, 40, 80);
+
             if (e.noDrop || e.drop === 'none') return;
-            if (e.drop === 'laser') powerups.push({ x: e.x, y: e.y, type: 'laser', life: ITEM_LIFE });
-            else if (e.drop === 'invincible') powerups.push({ x: e.x, y: e.y, type: 'invincible', life: ITEM_LIFE });
-            else if (e.drop === 'level' || Math.random() < 0.05) powerups.push({ x: e.x, y: e.y, type: 'level', life: ITEM_LIFE });
+
+            // --- ★ここからドロップ調整ロジック ---
+            let finalDrop = e.drop;
+
+            // シールドが30%以下なら、通常のクリスタル（衛星）ドロップを低確率で「無敵」に上書き
+            if (player.shield <= 30 && finalDrop === 'crystal') {
+                if (Math.random() < 0.05) { // 15%の確率で救済措置発動
+                    finalDrop = 'invincible';
+                }
+            }
+
+            // ドロップ実行
+            if (finalDrop === 'laser') powerups.push({ x: e.x, y: e.y, type: 'laser', life: ITEM_LIFE });
+            else if (finalDrop === 'invincible') powerups.push({ x: e.x, y: e.y, type: 'invincible', life: ITEM_LIFE });
+            else if (finalDrop === 'level' || Math.random() < 0.05) powerups.push({ x: e.x, y: e.y, type: 'level', life: ITEM_LIFE });
             else crystals.push({ x: e.x, y: e.y, life: ITEM_LIFE });
         }
 
@@ -1645,6 +1732,101 @@
             ctx.shadowBlur = 0;
 
             if (gameState === 'PLAYING') {
+                // --- ★レベル最大時のオーラエフェクト ---
+                if (player.weaponLevel >= MAX_WEAPON_LEVEL) {
+                    ctx.save();
+                    ctx.translate(player.x, player.y);
+
+                    // 回転する三角形のオーラ（2枚重ねて逆回転させる）
+                    const auraSize = 35 * G_SCALE;
+                    ctx.lineWidth = 1.5;
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#0f8';
+
+                    for (let i = 0; i < 2; i++) {
+                        ctx.save();
+                        ctx.rotate(frame * (i === 0 ? 0.05 : -0.03)); // 2枚を別々の速さで回す
+                        ctx.strokeStyle = i === 0 ? 'rgba(0, 255, 136, 0.5)' : 'rgba(0, 255, 255, 0.3)';
+                        ctx.beginPath();
+                        // 六角形のオーラを描画
+                        for (let j = 0; j < 6; j++) {
+                            const ang = (Math.PI * 2 / 6) * j;
+                            const rx = Math.cos(ang) * (auraSize + Math.sin(frame * 0.1) * 3);
+                            const ry = Math.sin(ang) * (auraSize + Math.sin(frame * 0.1) * 3);
+                            if (j === 0) ctx.moveTo(rx, ry); else ctx.lineTo(rx, ry);
+                        }
+                        ctx.closePath();
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                    ctx.restore();
+
+                    // 自機の後ろに時々火花を散らす
+                    if (frame % 3 === 0) {
+                        const ra = Math.random() * Math.PI * 2;
+                        particles.push({
+                            x: player.x + Math.cos(ra) * 15,
+                            y: player.y + Math.sin(ra) * 15,
+                            vx: (Math.random() - 0.5) * 2,
+                            vy: (Math.random() - 0.5) * 2,
+                            color: '#0f8', life: 0.4, size: 1.5
+                        });
+                    }
+                }
+                
+                // --- ★追加：無敵状態のバリアエフェクト ---
+                if (player.invuln > 0) {
+                    ctx.save();
+                    ctx.translate(player.x, player.y);
+
+                    const bRadius = 40 * G_SCALE;
+                    const pulse = Math.sin(frame * 0.2) * 5;
+
+                    // バリアの外光（黄色いグロー）
+                    ctx.strokeStyle = '#ff0';
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#ff0';
+                    ctx.lineWidth = 2;
+
+                    // 1. メインの円形バリア
+                    ctx.beginPath();
+                    ctx.arc(0, 0, bRadius + pulse, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // 2. 高速回転する「ガードリング」
+                    ctx.rotate(frame * 0.1);
+                    ctx.setLineDash([15, 15]); // 点線にして回転させる
+                    ctx.beginPath();
+                    ctx.arc(0, 0, bRadius + pulse + 5, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]); // 元に戻す
+
+                    // 3. バリア表面を走る火花（ランダムな稲妻のような線）
+                    if (frame % 2 === 0) {
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 1;
+                        const ang1 = Math.random() * Math.PI * 2;
+                        const ang2 = ang1 + 0.5;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, bRadius + pulse, ang1, ang2);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+
+                    // バリアから漏れ出るエネルギー粒子
+                    if (frame % 2 === 0) {
+                        particles.push({
+                            x: player.x + (Math.random() - 0.5) * 60,
+                            y: player.y + (Math.random() - 0.5) * 60,
+                            vx: (Math.random() - 0.5) * 2,
+                            vy: (Math.random() - 0.5) * 2,
+                            color: '#ff0', life: 0.3, size: 1
+                        });
+                    }
+                }
+
+
+                // 以下、既存の自機本体の描画
                 ctx.save(); ctx.translate(player.x, player.y); ctx.rotate(player.angle); ctx.scale(G_SCALE, G_SCALE);
                 let shipColor = '#0f8'; if (player.invuln > 0) shipColor = '#ff0'; else if (player.laserTimer > 0) shipColor = '#0ff';
                 ctx.strokeStyle = shipColor; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = ctx.strokeStyle;
