@@ -1073,7 +1073,6 @@
             btnBackTitle: document.getElementById('btn-back-to-title'),
 
             btnNextResult: document.getElementById('btn-next-result'),
-            //closeRankingBtn: document.getElementById("close-ranking-btn"),
 
             submitBtn: document.getElementById("submit-score-btn"),
             skipScoreBtn: document.getElementById("skip-score-btn"),
@@ -1097,10 +1096,12 @@
         let bullets = [], lasers = [], enemies = [], enemyBullets = [], particles = [], crystals = [], missiles = [], powerups = [], wormholes = [], scorePopups = [], gridPoints = [], rings = [], stars = [];
 
         // --- Audio System ---
+
         const BGM_FILES = {
-            title: 'audio/Neo_Gravity_Title.mp3',
-            clear: 'audio/Neo_Gravity_Clear.mp3',
-            stages: ['audio/Neo_Gravity_00.mp3', 'audio/Neo_Gravity_01.mp3', 'audio/Neo_Gravity_02.mp3', 'audio/Neo_Gravity_03.mp3']
+            title: 'audio/Neon_Gravity_Title.mp3',
+            clear: 'audio/Neon_Gravity_Clear.mp3',
+            boss: 'audio/Neon_Gravity_Boss.mp3', 
+            stages: ['audio/Neon_Gravity_00.mp3', 'audio/Neon_Gravity_01.mp3', 'audio/Neon_Gravity_02.mp3', 'audio/Neon_Gravity_03.mp3']
         };
 
         const AudioSys = {
@@ -1127,17 +1128,22 @@
                 const g = this.ctx.createGain(); g.connect(this.ctx.destination);
 
                 if (type === 'shoot') {
-                    const o = this.ctx.createOscillator(); o.type = 'triangle';
-                    o.frequency.setValueAtTime(800, t); o.frequency.exponentialRampToValueAtTime(100, t + 0.1);
-                    g.gain.setValueAtTime(0.2, t); g.gain.linearRampToValueAtTime(0, t + 0.1);
-                    o.connect(g); o.start(t); o.stop(t + 0.1);
+                    const o = this.ctx.createOscillator();
+                    o.type = 'triangle';
+                    o.frequency.setValueAtTime(800, t);
+                    o.frequency.exponentialRampToValueAtTime(100, t + 0.1);
+                    g.gain.setValueAtTime(0.08, t);
+                    g.gain.linearRampToValueAtTime(0, t + 0.1);
+                    o.connect(g);
+                    o.start(t);
+                    o.stop(t + 0.1);
                 } else if (type === 'laser') {
                     const o = this.ctx.createOscillator(); o.type = 'sawtooth';
                     o.frequency.setValueAtTime(120, t); o.frequency.linearRampToValueAtTime(80, t + 0.15);
                     const mod = this.ctx.createOscillator(); mod.type = 'square'; mod.frequency.value = 500;
                     const modGain = this.ctx.createGain(); modGain.gain.value = 500;
                     mod.connect(modGain); modGain.connect(o.frequency); mod.start(t); mod.stop(t + 0.15);
-                    g.gain.setValueAtTime(0.15, t); g.gain.linearRampToValueAtTime(0, t + 0.15);
+                    g.gain.setValueAtTime(0.10, t); g.gain.linearRampToValueAtTime(0, t + 0.15);
                     o.connect(g); o.start(t); o.stop(t + 0.15);
                 } else if (type === 'explode' || type === 'dragon_explode') {
                     if (this.noiseBuffer) {
@@ -1146,7 +1152,7 @@
                         const startFreq = type === 'dragon_explode' ? 200 : 600;
                         const dur = type === 'dragon_explode' ? 1.5 : 0.5;
                         f.frequency.setValueAtTime(startFreq, t); f.frequency.exponentialRampToValueAtTime(20, t + dur);
-                        g.gain.setValueAtTime(type === 'dragon_explode' ? 0.8 : 0.6, t); g.gain.exponentialRampToValueAtTime(0.01, t + dur);
+                        g.gain.setValueAtTime(type === 'dragon_explode' ? 0.9 : 0.7, t); g.gain.exponentialRampToValueAtTime(0.01, t + dur);
                         n.connect(f); f.connect(g); n.start(t); n.stop(t + dur);
                     }
                 } else if (type === 'launch') {
@@ -1174,13 +1180,43 @@
                 } else if (type === 'damage') {
                     const o = this.ctx.createOscillator(); o.type = 'sawtooth';
                     o.frequency.setValueAtTime(150, t); o.frequency.linearRampToValueAtTime(50, t + 0.2);
-                    g.gain.setValueAtTime(0.4, t); g.gain.linearRampToValueAtTime(0, t + 0.2);
+                    g.gain.setValueAtTime(0.16, t); g.gain.linearRampToValueAtTime(0, t + 0.2);
                     o.connect(g); o.start(t); o.stop(t + 0.2);
                 } else if (type === 'invincible') {
                     const o = this.ctx.createOscillator(); o.type = 'sine';
                     o.frequency.setValueAtTime(300, t); o.frequency.linearRampToValueAtTime(800, t + 0.5);
                     g.gain.setValueAtTime(0.3, t); g.gain.linearRampToValueAtTime(0, t + 0.5);
                     o.connect(g); o.start(t); o.stop(t + 0.5);
+                } else if (type === 'boss_hit') {
+                    // --- 修正版：重厚な装甲に弾かれる音（ガキンッ！/ボゴォッ！） ---
+
+                    // 1. 矩形波（Square）で金属質の倍音は維持
+                    const o = this.ctx.createOscillator();
+                    o.type = 'square';
+
+                    // 2. ローパスフィルタに変更して、音の「太さ・重さ」を残す
+                    const f = this.ctx.createBiquadFilter();
+                    f.type = 'lowpass';
+                    f.Q.value = 8; // 叩いた時の「硬さ」を表現
+
+                    // 3. ピッチ：中低音域 (300Hz) から一気に下げることで打撃感を出す
+                    o.frequency.setValueAtTime(350, t);
+                    o.frequency.exponentialRampToValueAtTime(50, t + 0.15);
+
+                    // フィルタ：アタック音（高い成分）から急激に閉じて余韻をカット
+                    f.frequency.setValueAtTime(3000, t);
+                    f.frequency.exponentialRampToValueAtTime(100, t + 0.1);
+
+                    // 4. 音量：太い音なので少し大きめでもOK、減衰は早めに
+                    g.gain.setValueAtTime(0.08, t);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+
+                    // 接続
+                    o.connect(f);
+                    f.connect(g);
+
+                    o.start(t);
+                    o.stop(t + 0.15);
                 }
             },
             playBGM(key, idx = 0) {
@@ -1188,8 +1224,9 @@
                 let src;
                 if (key === 'title') src = BGM_FILES.title;
                 else if (key === 'clear') src = BGM_FILES.clear;
+                else if (key === 'boss') src = BGM_FILES.boss; 
                 else {
-                    // 曲リストの長さで割った余りを使うことで、ステージが進んでもループ再生される
+                    
                     const actualIdx = idx % BGM_FILES.stages.length;
                     src = BGM_FILES.stages[actualIdx];
                 }
@@ -1212,17 +1249,22 @@
             ui.ost.style.display = 'flex';
             const list = document.getElementById('track-list');
             list.innerHTML = '';
+
+            // ★ここに 'Boss Theme' を追加します
             const tracks = [
                 { n: 'Title Theme', k: 'title' },
                 { n: 'Stage 1', k: 'stage', i: 0 },
                 { n: 'Stage 2', k: 'stage', i: 1 },
                 { n: 'Stage 3', k: 'stage', i: 2 },
                 { n: 'Stage 4', k: 'stage', i: 3 },
+                { n: 'Boss Theme', k: 'boss' },   // <--- ★追加
                 { n: 'Clear Theme', k: 'clear' }
             ];
+
             tracks.forEach(t => {
                 const d = document.createElement('div'); d.className = 'track-item'; d.innerText = t.n;
                 d.onclick = () => {
+                    // playBGMは既に 'boss' キーに対応済みなので、これだけで再生されます
                     AudioSys.playBGM(t.k, t.i);
                     document.querySelectorAll('.track-item').forEach(e => e.classList.remove('playing'));
                     d.classList.add('playing');
@@ -1486,25 +1528,32 @@
                 const variant = BOSS_VARIANTS[variantIndex];
                 const bossHp = variant.hp + (stage - 1) * 10;
 
-                // --- ★修正：ボスのドロップ品をフラグに基づいて決定する ---
-                let bossDropItem = 'laser'; // デフォルトはレーザー（またはクリスタル）
+                // --- ボスのドロップ品をフラグに基づいて決定する（既存ロジック） ---
+                let bossDropItem = 'laser'; // デフォルト
 
                 // まだこのステージでレベルアップが出ていなければ、ボスが必ず落とす
                 if (!isShootItemDroppedInStage && player.weaponLevel < MAX_WEAPON_LEVEL) {
                     bossDropItem = 'level';
-                    isShootItemDroppedInStage = true; // ここでフラグを回収済みにする
+                    isShootItemDroppedInStage = true;
                 }
                 // -----------------------------------------------------
 
                 enemies.push({
-                    x: x, y: y, vx: vx * 0.2, vy: vy * 0.2,
+                    x: x, y: y,
+                    vx: vx * 0.2,
+                    vy: vy * 0.2,
                     hp: bossHp, maxHp: bossHp,
                     speed: 1.2 * variant.speedFactor * spd * stageMag,
                     color: variant.color,
                     type: 'boss', variant: variant, angle: 0,
-                    drop: bossDropItem, // ★修正した変数を適用
+                    drop: bossDropItem,
                     scale: 1.5 + (variant.sides * 0.1),
-                    fireTimer: 0, flashTimer: 0
+                    fireTimer: 0, flashTimer: 0,
+
+                    // --- ★追加：出現演出用のパラメータ ---
+                    spawnTimer: 0,       // 経過時間カウント用
+                    spawnMax: 150,       // 演出の長さ（フレーム数。150 = 約2.5秒）
+                    isSpawning: true     // 「出現中」フラグをONにする
                 });
                 spawnedCount++;
             } else if (type === 'asteroid') {
@@ -2040,7 +2089,7 @@
                         e.hp--;
                         if (e.type === 'boss') {
                             e.flashTimer = 5;
-                            AudioSys.playSE('damage');
+                            AudioSys.playSE('boss_hit');
                             for (let i = 0; i < 3; i++) {
                                 particles.push({
                                     x: b.x, y: b.y,
@@ -2173,6 +2222,20 @@
         }
 
         function updateBossAI(e) {
+            // --- ★追加：出現演出中の処理 ---
+            if (e.isSpawning) {
+                e.spawnTimer++;
+
+                // 演出完了判定
+                if (e.spawnTimer >= e.spawnMax) {
+                    e.isSpawning = false;
+                    // 実体化した瞬間に衝撃波（オプション）
+                    if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 200, 300);
+                }
+                return; // 出現中は移動・攻撃ロジックを実行しない
+            }
+            // ----------------------------
+
             // --- 1. 移動ロジック ---
             const dx = player.x - e.x, dy = player.y - e.y;
             const d = Math.hypot(dx, dy) || 0.001;
@@ -2525,6 +2588,9 @@
             const collisionDist = radius * (e.type === 'asteroid' ? 1 : (e.scale / 0.7)) + (player.invuln > 0 ? 20 : 0);
 
             if (dist < collisionDist) {
+                // ★追加：出現中のボスには当たらない
+                if (e.type === 'boss' && e.isSpawning) return;
+
                 // --- ★無敵バリア展開中、または最大レベルフェニックス時の体当たり処理 ---
                 if (player.invuln > 0) {
                     // アステロイド、ボス、ドラゴンの場合はHPを削る（多段ヒット）
@@ -3323,6 +3389,33 @@
         function drawBossEnemy(ctx, e) {
             ctx.save();
             ctx.translate(e.x, e.y);
+
+            // --- ★修正：シンプルな出現演出（ズームイン ＆ フェードイン） ---
+            if (e.isSpawning) {
+                // 進行度 (0.0 → 1.0)
+                const t = e.spawnTimer / e.spawnMax;
+
+                // イージング関数（動きに緩急をつける）
+                // 最初は速く、最後はゆっくり定着する "EaseOutCubic" 計算
+                const easeOut = 1 - Math.pow(1 - t, 3);
+
+                // 1. フェードイン（徐々に不透明に）
+                ctx.globalAlpha = t;
+
+                // 2. ズームイン（拡大）
+                // 0倍からスタートすると見えにくいので、0.1倍から1.0倍へ拡大
+                const zoom = 0.1 + (0.9 * easeOut);
+                ctx.scale(zoom, zoom);
+
+                // 3. 転送光（出現中は白くぼんやり光らせる）
+                ctx.shadowBlur = 50 * (1 - easeOut); // 出現完了に近づくほど光が収まる
+                ctx.shadowColor = '#fff';
+
+                // 実体化中は少しだけ明るく描画
+                ctx.globalCompositeOperation = 'lighter';
+            }
+            // ----------------------------
+
             ctx.rotate(e.angle);
             ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
 
