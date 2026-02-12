@@ -1659,7 +1659,7 @@
                     rotSpd: (Math.random() - 0.5) * 0.1, scale: finalScale,
                     drop: 'none'
                 });
-                spawnedCount++;
+                //spawnedCount++;
             } else if (type === 'hunter') {
                 enemies.push({
                     x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
@@ -3242,9 +3242,10 @@
         function updateScorePopups() { scorePopups.forEach(s => { s.y += s.vy; s.life--; s.alpha = s.life / 30; }); scorePopups = scorePopups.filter(s => s.life > 0); }
 
         function destroyEnemy(e) {
-            // --- ★修正：アステロイドだろうが何だろうが、壊したらカウントする ---
-            // これにより「倒したのに減らない」を防ぎます
-            enemiesKilled++;
+            // --- ★修正：ASTEROID以外の場合のみ撃破カウントを進める ---
+            if (e.type !== 'asteroid') {
+                enemiesKilled++;
+            }
 
             // --- 爆発エフェクトのカスタマイズ ---
             const particleCount = (e.type === 'boss') ? 120 : (e.type === 'asteroid' ? 30 : 40);
@@ -3332,26 +3333,24 @@
 
         function checkStageClear() {
             // 画面上の脅威チェック
+            // enemies配列の中にアステロイドも含まれているため、noEnemiesチェックでカバーされます
             const noEnemies = enemies.length === 0;
-            const noAsteroids = (typeof asteroids !== 'undefined') ? asteroids.length === 0 : true;
             const noBosses = (typeof bosses !== 'undefined') ? bosses.length === 0 : true;
             const noHomings = (typeof bossHomings !== 'undefined') ? bossHomings.length === 0 : true;
-            const noWormholes = wormholes.filter(w => w.active).length === 0; // ワームホールもない
 
-            // 1. ノルマ達成クリア
+            // ★重要：アステロイドが分裂して増えても、enemies.length が 0 になるまでクリアになりません
+
+            const noWormholes = wormholes.filter(w => w.active).length === 0;
+
+            // 1. ノルマ達成クリア (アステロイド以外の撃破数で判定)
             const normalClear = enemiesKilled >= enemiesToSpawn;
 
-            // 2. ★救済クリア：敵も穴もボスも弾もなく、出し切ってしまった(spawnedCount達成)か、詰んでいる場合
-            // spawnedCount >= enemiesToSpawn なら「もう出ない」のでクリア
-            // もしくは、敵が0でワームホールも0の状態が続いているならクリア
-            const fieldClean = noEnemies && noAsteroids && noBosses && noHomings && noWormholes;
+            // 2. 救済クリア (出し切ったはずなのに敵がいない場合)
+            const fieldClean = noEnemies && noBosses && noHomings && noWormholes;
             const spawnComplete = spawnedCount >= enemiesToSpawn;
 
-            // 判定：
-            // A. 通常クリア（ノルマ達成 ＆ 敵全滅）
-            // B. 強制クリア（出し切ったはずなのにカウントがズレている ＆ 敵全滅）
+            // 判定
             if (!isStageClear && fieldClean && (normalClear || spawnComplete)) {
-
                 isStageClear = true;
 
                 if (stage === MAX_STAGE) {
