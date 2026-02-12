@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
@@ -11,668 +12,668 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 
     <style>
-             /* =========================================================
+        /* =========================================================
                 1. グローバル基本設定
                 ========================================================= */
-             body {
-                 margin: 0; /* 余白を完全に除去 */
-                 background: #050505; /* ネオン表現に最適な暗い背景 */
-                 overflow: hidden; /* スクロールバーを非表示 */
-                 font-family: 'Orbitron', monospace; /* 近未来風フォント */
-                 color: #fff; /* 文字色の基本は白 */
+        body {
+            margin: 0; /* 余白を完全に除去 */
+            background: #050505; /* ネオン表現に最適な暗い背景 */
+            overflow: hidden; /* スクロールバーを非表示 */
+            font-family: 'Orbitron', monospace; /* 近未来風フォント */
+            color: #fff; /* 文字色の基本は白 */
 
-                 user-select: none; /* テキスト選択を禁止 */
-                 -webkit-user-select: none; /* iOS Safari向け */
-                 touch-action: none; /* スマホの標準ジェスチャ無効化 */
-                 -webkit-tap-highlight-color: transparent; /* タップ時の青枠を消す */
-             }
+            user-select: none; /* テキスト選択を禁止 */
+            -webkit-user-select: none; /* iOS Safari向け */
+            touch-action: none; /* スマホの標準ジェスチャ無効化 */
+            -webkit-tap-highlight-color: transparent; /* タップ時の青枠を消す */
+        }
 
-             /* =========================================================
+        /* =========================================================
                 2. キャンバスとメインUIコンテナ
                 ========================================================= */
-             canvas {
-                 display: block; /* 余計な隙間を防ぐ */
-                 position: absolute; /* 画面全体に固定 */
-                 top: 0;
-                 left: 0;
-                 z-index: 1; /* UIより背面に配置 */
-             }
+        canvas {
+            display: block; /* 余計な隙間を防ぐ */
+            position: absolute; /* 画面全体に固定 */
+            top: 0;
+            left: 0;
+            z-index: 1; /* UIより背面に配置 */
+        }
 
-             #ui {
-                 position: absolute; /* ゲーム画面に重ねる */
-                 top: 0;
-                 left: 0;
-                 width: 100%;
-                 height: 100%;
-                 pointer-events: none; /* 操作を下の要素へ通す */
-                 z-index: 20; /* キャンバスより前面 */
+        #ui {
+            position: absolute; /* ゲーム画面に重ねる */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* 操作を下の要素へ通す */
+            z-index: 20; /* キャンバスより前面 */
 
-                 display: flex;
-                 flex-direction: column; /* 縦方向に要素配置 */
-                 padding: 10px; /* 画面端からの余白 */
-                 box-sizing: border-box; /* パディング込みサイズ */
-             }
+            display: flex;
+            flex-direction: column; /* 縦方向に要素配置 */
+            padding: 10px; /* 画面端からの余白 */
+            box-sizing: border-box; /* パディング込みサイズ */
+        }
 
 
-             /* =========================================================
+        /* =========================================================
                 3. HUDレイアウト（スコア・ステージ・武器）
                 ========================================================= */
-             .hud-row {
-                 display: flex; /* 左右に要素を配置 */
-                 justify-content: space-between; /* 両端に寄せる */
-                 width: 100%;
-                 max-width: 800px; /* 大画面での最大幅 */
-                 margin: 0 auto; /* 中央寄せ */
-             }
+        .hud-row {
+            display: flex; /* 左右に要素を配置 */
+            justify-content: space-between; /* 両端に寄せる */
+            width: 100%;
+            max-width: 800px; /* 大画面での最大幅 */
+            margin: 0 auto; /* 中央寄せ */
+        }
 
-             #score-display {
-                 font-size: 24px; /* 大きめに表示 */
-                 color: #0ff; /* ネオン水色 */
-                 text-shadow: 0 0 10px #0ff; /* 発光エフェクト */
-                 letter-spacing: 0px; /* 数字の間隔 */
-                 margin-bottom: 5px;
-             }
+        #score-display {
+            font-size: 24px; /* 大きめに表示 */
+            color: #0ff; /* ネオン水色 */
+            text-shadow: 0 0 10px #0ff; /* 発光エフェクト */
+            letter-spacing: 0px; /* 数字の間隔 */
+            margin-bottom: 5px;
+        }
 
-             .sub-text {
-                 font-size: 12px; /* 補助ラベル用の小文字 */
-                 color: #aaa; /* 控えめな灰色 */
-                 font-weight: bold;
-             }
+        .sub-text {
+            font-size: 12px; /* 補助ラベル用の小文字 */
+            color: #aaa; /* 控えめな灰色 */
+            font-weight: bold;
+        }
 
-             .hud-label {
-                 font-size: 10px; /* ゲージ等の見出し */
-                 color: #aaa;
-                 display: block;
-                 margin-bottom: -2px;
-             }
+        .hud-label {
+            font-size: 10px; /* ゲージ等の見出し */
+            color: #aaa;
+            display: block;
+            margin-bottom: -2px;
+        }
 
-             #stage-num {
-                 font-size: 28px; /* ステージ番号を強調 */
-                 color: #fff;
-                 font-weight: bold;
-                 line-height: 1.0;
-                 text-shadow: 0 0 10px rgba(255,255,255,0.5); /* 白の発光 */
-             }
+        #stage-num {
+            font-size: 28px; /* ステージ番号を強調 */
+            color: #fff;
+            font-weight: bold;
+            line-height: 1.0;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5); /* 白の発光 */
+        }
 
-             /* =========================================================
+        /* =========================================================
         4. ゲージ・バーコンポーネント (整理済み)
         ========================================================= */
 
-             /* 左右のゲージコンテナ共通設定 */
-             #gauge-box, #info-box > div {
-                 pointer-events: auto;
-             }
+        /* 左右のゲージコンテナ共通設定 */
+        #gauge-box, #info-box > div {
+            pointer-events: auto;
+        }
 
-             #gauge-box {
-                 width: 120px; /* スリムな幅に統一 */
-                 text-align: right;
-             }
+        #gauge-box {
+            width: 120px; /* スリムな幅に統一 */
+            text-align: right;
+        }
 
-             /* 共通ラベル設定 */
-             .bar-label {
-                 font-size: 10px;
-                 letter-spacing: 1px;
-                 margin-bottom: 2px;
-                 display: block;
-                 color: #0ff; /* 基本は水色 */
-             }
+        /* 共通ラベル設定 */
+        .bar-label {
+            font-size: 10px;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+            display: block;
+            color: #0ff; /* 基本は水色 */
+        }
 
-                 /* 敵・ボス用のラベル色 */
-                 .bar-label.enemy, #boss-name-label {
-                     color: #f44;
-                 }
+            /* 敵・ボス用のラベル色 */
+            .bar-label.enemy, #boss-name-label {
+                color: #f44;
+            }
 
-             /* 共通ゲージ枠：すべての枠（左WEAPON/右SHIELD等）に適用 */
-             .bar-frame, .laser-bar-frame {
-                 width: 100%;
-                 height: 8px;
-                 border: 1.5px solid rgba(0, 255, 255, 0.5); /* 1.5pxに統一 */
-                 background: rgba(0, 20, 40, 0.8);
-                 margin-bottom: 6px;
-                 overflow: hidden;
-                 box-sizing: border-box; /* 枠線の太さを内側に含める */
-             }
+        /* 共通ゲージ枠：すべての枠（左WEAPON/右SHIELD等）に適用 */
+        .bar-frame, .laser-bar-frame {
+            width: 100%;
+            height: 8px;
+            border: 1.5px solid rgba(0, 255, 255, 0.5); /* 1.5pxに統一 */
+            background: rgba(0, 20, 40, 0.8);
+            margin-bottom: 6px;
+            overflow: hidden;
+            box-sizing: border-box; /* 枠線の太さを内側に含める */
+        }
 
-             /* 左側WEAPON用の特殊幅調整（もし必要なら） */
-             .laser-bar-frame {
-                 width: 80px;
-             }
+        /* 左側WEAPON用の特殊幅調整（もし必要なら） */
+        .laser-bar-frame {
+            width: 80px;
+        }
 
-             /* 敵・ボス用の枠色上書き */
-             .bar-frame.enemy, .bar-frame.boss {
-                 border-color: rgba(255, 68, 68, 0.5);
-             }
+        /* 敵・ボス用の枠色上書き */
+        .bar-frame.enemy, .bar-frame.boss {
+            border-color: rgba(255, 68, 68, 0.5);
+        }
 
-             /* ボス用の特殊枠色（さらに強調する場合） */
-             .bar-frame.boss {
-                 border-color: #f00;
-             }
+        /* ボス用の特殊枠色（さらに強調する場合） */
+        .bar-frame.boss {
+            border-color: #f00;
+        }
 
-             /* --- バー本体（中身）の共通・個別設定 --- */
+        /* --- バー本体（中身）の共通・個別設定 --- */
 
-             /* シールドバー */
-             #shield-bar {
-                 width: 100%;
-                 height: 100%;
-                 background: #0ff;
-                 transition: width 0.1s;
-                 box-shadow: 0 0 10px #0ff;
-             }
+        /* シールドバー */
+        #shield-bar {
+            width: 100%;
+            height: 100%;
+            background: #0ff;
+            transition: width 0.1s;
+            box-shadow: 0 0 10px #0ff;
+        }
 
-             /* 危険時のシールド点滅 */
-             .shield-critical {
-                 animation: blink 0.2s infinite;
-                 background: #f00 !important;
-             }
+        /* 危険時のシールド点滅 */
+        .shield-critical {
+            animation: blink 0.2s infinite;
+            background: #f00 !important;
+        }
 
-             /* 敵カウントバー */
-             #enemy-bar {
-                 width: 100%;
-                 height: 100%;
-                 background: #f44;
-                 transition: width 0.5s;
-             }
+        /* 敵カウントバー */
+        #enemy-bar {
+            width: 100%;
+            height: 100%;
+            background: #f44;
+            transition: width 0.5s;
+        }
 
-             /* ボスHPバー */
-             #boss-hp-bar-inline {
-                 width: 100%;
-                 height: 100%;
-                 background: #f00;
-                 box-shadow: 0 0 10px #f00;
-                 transition: width 0.2s, background-color 0.3s;
-             }
+        /* ボスHPバー */
+        #boss-hp-bar-inline {
+            width: 100%;
+            height: 100%;
+            background: #f00;
+            box-shadow: 0 0 10px #f00;
+            transition: width 0.2s, background-color 0.3s;
+        }
 
-             /* レーザー持続時間バー */
-             .laser-bar-fill {
-                 height: 100%;
-                 background: #0ff;
-                 box-shadow: 0 0 8px #0ff;
-             }
+        /* レーザー持続時間バー */
+        .laser-bar-fill {
+            height: 100%;
+            background: #0ff;
+            box-shadow: 0 0 8px #0ff;
+        }
 
-             /* 武器レベル表示用ブロック（ショットモード時） */
-             .w-block {
-                 width: 12px;
-                 height: 8px;
-                 margin-right: 3px;
-                 background: rgba(255,255,255,0.1);
-                 border: 1px solid #444;
-                 display: inline-block;
-             }
+        /* 武器レベル表示用ブロック（ショットモード時） */
+        .w-block {
+            width: 12px;
+            height: 8px;
+            margin-right: 3px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #444;
+            display: inline-block;
+        }
 
-                 .w-block.active {
-                     background: #0f0;
-                     border-color: #0f0;
-                     box-shadow: 0 0 5px #0f0;
-                 }
+            .w-block.active {
+                background: #0f0;
+                border-color: #0f0;
+                box-shadow: 0 0 5px #0f0;
+            }
 
-             /* ボスUIコンテナ表示制御 */
-             #boss-ui-container {
-                 display: none;
-                 margin-top: 10px;
-             }
+        /* ボスUIコンテナ表示制御 */
+        #boss-ui-container {
+            display: none;
+            margin-top: 10px;
+        }
 
-             /* =========================================================
+        /* =========================================================
                 5. ゲーム中メッセージ
                 ========================================================= */
-             #warning-msg {
-                 display: none; /* 初期は非表示 */
-                 position: absolute;
-                 top: 20%;
-                 width: 100%;
-                 text-align: center;
-                 color: #f00;
-                 font-size: 24px;
-                 animation: blink 0.2s infinite; /* 点滅警告 */
-             }
+        #warning-msg {
+            display: none; /* 初期は非表示 */
+            position: absolute;
+            top: 20%;
+            width: 100%;
+            text-align: center;
+            color: #f00;
+            font-size: 24px;
+            animation: blink 0.2s infinite; /* 点滅警告 */
+        }
 
-             #stage-msg {
-                 display: none;
-                 position: absolute;
-                 top: 35%;
-                 width: 100%;
-                 text-align: center;
-                 color: #fff;
-                 font-size: 40px;
-                 text-shadow: 0 0 20px #0ff;
-             }
+        #stage-msg {
+            display: none;
+            position: absolute;
+            top: 35%;
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            font-size: 40px;
+            text-shadow: 0 0 20px #0ff;
+        }
 
-             /* =========================================================
+        /* =========================================================
                 6. オーバーレイ（タイトル・ポーズ）
                 ========================================================= */
-             #overlay {
-                 position: absolute;
-                 top: 0;
-                 left: 0;
-                 width: 100%;
-                 height: 100%;
-                 background: rgba(0,0,0,0.85); /* 半透明の暗幕 */
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85); /* 半透明の暗幕 */
 
-                 display: flex;
-                 flex-direction: column;
-                 justify-content: center;
-                 align-items: center;
-                 z-index: 100;
-                 pointer-events: auto; /* 操作を受け付ける */
-             }
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            pointer-events: auto; /* 操作を受け付ける */
+        }
 
-             #pause-overlay {
-                 position: absolute;
-                 top: 0;
-                 left: 0;
-                 width: 100%;
-                 height: 100%;
-                 background: rgba(0,0,0,0.7);
-                 display: none; /* ポーズ時のみ表示 */
-                 flex-direction: column;
-                 justify-content: center;
-                 align-items: center;
-                 z-index: 105;
-                 pointer-events: auto;
-                 backdrop-filter: blur(5px); /* 背景ぼかし */
-             }
+        #pause-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none; /* ポーズ時のみ表示 */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 105;
+            pointer-events: auto;
+            backdrop-filter: blur(5px); /* 背景ぼかし */
+        }
 
 
-             /* =========================================================
+        /* =========================================================
                 7. 共通メニューボタン
                 ========================================================= */
-             .menu-btn {
-                 background: rgba(0,255,255,0.1); /* 半透明ネオン背景 */
-                 border: 1px solid #0ff;
-                 color: #0ff;
-                 padding: 10px 30px;
-                 margin: 8px;
-                 font-size: 22px;
-                 font-family: 'Orbitron';
-                 cursor: pointer;
-                 min-width: 240px;
-                 text-align: center;
-                 box-shadow: 0 0 15px rgba(0,255,255,0.3);
-             }
+        .menu-btn {
+            background: rgba(0,255,255,0.1); /* 半透明ネオン背景 */
+            border: 1px solid #0ff;
+            color: #0ff;
+            padding: 10px 30px;
+            margin: 8px;
+            font-size: 22px;
+            font-family: 'Orbitron';
+            cursor: pointer;
+            min-width: 240px;
+            text-align: center;
+            box-shadow: 0 0 15px rgba(0,255,255,0.3);
+        }
 
-                 .menu-btn:active {
-                     background: #0ff; /* 押下時に反転 */
-                     color: #000;
-                     transform: scale(0.95);
-                 }
+            .menu-btn:active {
+                background: #0ff; /* 押下時に反転 */
+                color: #000;
+                transform: scale(0.95);
+            }
 
 
-             /* =========================================================
+        /* =========================================================
                 8. OST（サウンドトラック画面）
                 ========================================================= */
-             #ost-ui {
-                 display: none; /* 初期は非表示 */
+        #ost-ui {
+            display: none; /* 初期は非表示 */
 
-                 position: fixed; /* 全画面固定 */
-                 top: 0;
-                 left: 0;
-                 width: 100%;
-                 height: 100%;
-                 background: #000;
-                 z-index: 110;
-                 flex-direction: column;
-                 align-items: center;
-                 justify-content: center;
-                 padding: 10px;
-                 box-sizing: border-box;
-                 pointer-events: auto;
-             }
+            position: fixed; /* 全画面固定 */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 110;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            box-sizing: border-box;
+            pointer-events: auto;
+        }
 
-             #ost-scroll-container {
-                 width: 90%;
-                 max-width: 500px;
-                 max-height: 60vh; /* 画面高さの60% */
+        #ost-scroll-container {
+            width: 90%;
+            max-width: 500px;
+            max-height: 60vh; /* 画面高さの60% */
 
-                 overflow-y: auto; /* スクロール可能 */
-                 margin: 10px 0;
-                 -webkit-overflow-scrolling: touch;
-             }
+            overflow-y: auto; /* スクロール可能 */
+            margin: 10px 0;
+            -webkit-overflow-scrolling: touch;
+        }
 
-             .track-item {
-                 padding: 15px 20px;
-                 width: 100%;
-                 border-bottom: 1px solid #333;
-                 color: #888;
-                 text-align: center;
-                 font-size: 16px;
-                 box-sizing: border-box;
-                 cursor: pointer;
-             }
+        .track-item {
+            padding: 15px 20px;
+            width: 100%;
+            border-bottom: 1px solid #333;
+            color: #888;
+            text-align: center;
+            font-size: 16px;
+            box-sizing: border-box;
+            cursor: pointer;
+        }
 
-                 .track-item.playing {
-                     color: #0ff;
-                     border-color: #0ff;
-                     text-shadow: 0 0 10px #0ff;
-                     background: rgba(0,255,255,0.05);
-                 }
+            .track-item.playing {
+                color: #0ff;
+                border-color: #0ff;
+                text-shadow: 0 0 10px #0ff;
+                background: rgba(0,255,255,0.05);
+            }
 
-             /* =========================================================
+        /* =========================================================
                 9. 操作コントローラー（ジョイスティック）
                 見た目のデザインと配置設定
                 ========================================================= */
 
-             /* 全体コンテナ */
-             #controls {
-                 position: absolute;
-                 top: 0;
-                 left: 0;
-                 width: 100%;
-                 height: 100%;
-                 z-index: 50;
-                 display: none;
-                 touch-action: none;
-                 pointer-events: auto;
-             }
+        /* 全体コンテナ */
+        #controls {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50;
+            display: none;
+            touch-action: none;
+            pointer-events: auto;
+        }
 
-             /* --- ジョイスティック：外枠（ベース） --- */
-             .joystick-area {
-                 position: absolute;
-                 width: 140px;
-                 height: 140px;
-                 border-radius: 50%;
-                 border: 1px solid rgba(0, 255, 255, 0.3);
-                 background: radial-gradient(circle, rgba(0, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.2) 70%);
-                 box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.1);
-                 display: flex;
-                 justify-content: center;
-                 align-items: center;
-                 pointer-events: none;
-             }
+        /* --- ジョイスティック：外枠（ベース） --- */
+        .joystick-area {
+            position: absolute;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.2) 70%);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+        }
 
-                 /* 外枠内の十字目盛り（装飾） */
-                 .joystick-area::before, .joystick-area::after {
-                     content: '';
-                     position: absolute;
-                     background: rgba(0, 255, 255, 0.2);
-                 }
+            /* 外枠内の十字目盛り（装飾） */
+            .joystick-area::before, .joystick-area::after {
+                content: '';
+                position: absolute;
+                background: rgba(0, 255, 255, 0.2);
+            }
 
-                 .joystick-area::before {
-                     width: 100%;
-                     height: 1px;
-                     background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
-                 }
+            .joystick-area::before {
+                width: 100%;
+                height: 1px;
+                background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+            }
 
-                 .joystick-area::after {
-                     width: 1px;
-                     height: 100%;
-                     background: linear-gradient(180deg, transparent, rgba(0, 255, 255, 0.2), transparent);
-                 }
+            .joystick-area::after {
+                width: 1px;
+                height: 100%;
+                background: linear-gradient(180deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+            }
 
-             /* --- ジョイスティック：つまみ（Knob） --- */
-             .knob {
-                 width: 60px;
-                 height: 60px;
-                 border-radius: 50%;
-                 background: rgba(0, 255, 255, 0.15);
-                 border: 2px solid #0ff;
-                 position: absolute;
-                 transform: translate(0,0);
-                 transition: transform 0.05s;
-                 box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
-                 z-index: 2;
-             }
+        /* --- ジョイスティック：つまみ（Knob） --- */
+        .knob {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(0, 255, 255, 0.15);
+            border: 2px solid #0ff;
+            position: absolute;
+            transform: translate(0,0);
+            transition: transform 0.05s;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+            z-index: 2;
+        }
 
-                 /* つまみ中心のドット */
-                 .knob::after {
-                     content: '';
-                     position: absolute;
-                     top: 50%;
-                     left: 50%;
-                     width: 12px;
-                     height: 12px;
-                     background: #fff;
-                     border-radius: 50%;
-                     transform: translate(-50%, -50%);
-                     box-shadow: 0 0 10px #fff;
-                 }
+            /* つまみ中心のドット */
+            .knob::after {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 12px;
+                height: 12px;
+                background: #fff;
+                border-radius: 50%;
+                transform: translate(-50%, -50%);
+                box-shadow: 0 0 10px #fff;
+            }
 
-             /* --- 特殊攻撃（BOMB/LAUNCH）ボタン --- */
-             #launch-btn {
-                 position: absolute;
-                 width: 80px;
-                 height: 80px;
-                 border-radius: 50%;
-                 background: rgba(255, 255, 0, 0.1);
-                 border: 2px solid #ff0;
-                 color: #ff0;
-                 font-family: 'Orbitron';
-                 font-weight: bold;
-                 display: flex;
-                 flex-direction: column;
-                 justify-content: center;
-                 align-items: center;
-                 font-size: 11px;
-                 letter-spacing: 1px;
-                 box-shadow: 0 0 15px rgba(255, 255, 0, 0.3), inset 0 0 10px rgba(255, 255, 0, 0.2);
-                 pointer-events: auto;
-                 text-shadow: 0 0 5px #ff0;
-             }
+        /* --- 特殊攻撃（BOMB/LAUNCH）ボタン --- */
+        #launch-btn {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 0, 0.1);
+            border: 2px solid #ff0;
+            color: #ff0;
+            font-family: 'Orbitron';
+            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 11px;
+            letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.3), inset 0 0 10px rgba(255, 255, 0, 0.2);
+            pointer-events: auto;
+            text-shadow: 0 0 5px #ff0;
+        }
 
-                 /* ボタン周りの回転リング */
-                 #launch-btn::before {
-                     content: '';
-                     position: absolute;
-                     width: 90px;
-                     height: 90px;
-                     border: 1px dashed rgba(255, 255, 0, 0.4);
-                     border-radius: 50%;
-                     animation: rotate 4s linear infinite;
-                 }
+            /* ボタン周りの回転リング */
+            #launch-btn::before {
+                content: '';
+                position: absolute;
+                width: 90px;
+                height: 90px;
+                border: 1px dashed rgba(255, 255, 0, 0.4);
+                border-radius: 50%;
+                animation: rotate 4s linear infinite;
+            }
 
-                 /* 押下時のフィードバック */
-                 #launch-btn.active {
-                     background: #ff0;
-                     color: #000;
-                     transform: scale(0.85);
-                     box-shadow: 0 0 30px #ff0;
-                     text-shadow: none;
-                 }
+            /* 押下時のフィードバック */
+            #launch-btn.active {
+                background: #ff0;
+                color: #000;
+                transform: scale(0.85);
+                box-shadow: 0 0 30px #ff0;
+                text-shadow: none;
+            }
 
-             /* =========================================================
+        /* =========================================================
                 9.2. デバイス別レイアウト（レスポンシブ）
                 ========================================================= */
 
-             /* --- デフォルト設定（横向き：Landscape） --- */
-             #stick-left {
-                 left: 20px;
-                 bottom: 40px;
-             }
+        /* --- デフォルト設定（横向き：Landscape） --- */
+        #stick-left {
+            left: 20px;
+            bottom: 40px;
+        }
 
-             #stick-right {
-                 right: 20px;
-                 bottom: 40px;
-             }
+        #stick-right {
+            right: 20px;
+            bottom: 40px;
+        }
 
-             #launch-btn {
-                 right: 20px;
-                 bottom: 100px;
-             }
+        #launch-btn {
+            right: 20px;
+            bottom: 100px;
+        }
 
-             /* --- 縦向き設定（Portrait） --- */
-             @media (orientation: portrait) {
-                 #stick-left {
-                     left: 20px;
-                     bottom: 50px;
-                 }
+        /* --- 縦向き設定（Portrait） --- */
+        @media (orientation: portrait) {
+            #stick-left {
+                left: 20px;
+                bottom: 50px;
+            }
 
-                 #stick-right {
-                     right: 20px;
-                     bottom: 50px;
-                 }
+            #stick-right {
+                right: 20px;
+                bottom: 50px;
+            }
 
-                 #launch-btn {
-                     right: 0px;
-                     bottom: 220px;
-                 }
-             }
+            #launch-btn {
+                right: 0px;
+                bottom: 220px;
+            }
+        }
 
-             /* 回転アニメーション */
-             @keyframes rotate {
-                 from {
-                     transform: rotate(0deg);
-                 }
+        /* 回転アニメーション */
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
 
-                 to {
-                     transform: rotate(360deg);
-                 }
-             }
-             /* =========================================================
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        /* =========================================================
                 10. ランキング画面
                 ========================================================= */
-             #ranking-overlay {
-                 display: none;
-                 position: fixed;
-                 top: 0;
-                 left: 0;
-                 width: 100%;
-                 height: 100%;
-                 background: rgba(0,0,0,0.95);
-                 z-index: 1000;
-                 flex-direction: column;
-                 align-items: center;
-                 justify-content: center;
-                 padding: 10px;
-                 box-sizing: border-box;
-             }
+        #ranking-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            box-sizing: border-box;
+        }
 
-             #ranking-scroll-container {
-                 width: 95%;
-                 max-width: 600px;
-                 max-height: 60vh;
-                 overflow-y: auto;
-                 margin: 10px 0;
-                 -webkit-overflow-scrolling: touch;
-             }
+        #ranking-scroll-container {
+            width: 95%;
+            max-width: 600px;
+            max-height: 60vh;
+            overflow-y: auto;
+            margin: 10px 0;
+            -webkit-overflow-scrolling: touch;
+        }
 
-             #ranking-table {
-                 width: 100%;
-                 border-collapse: collapse;
-                 color: #fff;
-                 font-family: 'Orbitron';
-                 font-size: 14px;
-             }
+        #ranking-table {
+            width: 100%;
+            border-collapse: collapse;
+            color: #fff;
+            font-family: 'Orbitron';
+            font-size: 14px;
+        }
 
-                 #ranking-table th {
-                     border-bottom: 1px solid #0ff;
-                     color: #0ff;
-                     padding: 10px;
-                 }
+            #ranking-table th {
+                border-bottom: 1px solid #0ff;
+                color: #0ff;
+                padding: 10px;
+            }
 
-                 #ranking-table td {
-                     border-bottom: 1px solid #333;
-                     padding: 8px 10px;
-                 }
+            #ranking-table td {
+                border-bottom: 1px solid #333;
+                padding: 8px 10px;
+            }
 
-             .rank-1 {
-                 color: #ffd700;
-                 text-shadow: 0 0 10px #ffd700;
-                 font-weight: bold;
-                 font-size: 1.2em;
-             }
+        .rank-1 {
+            color: #ffd700;
+            text-shadow: 0 0 10px #ffd700;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
 
-             .rank-2 {
-                 color: #c0c0c0;
-                 text-shadow: 0 0 10px #c0c0c0;
-                 font-weight: bold;
-             }
+        .rank-2 {
+            color: #c0c0c0;
+            text-shadow: 0 0 10px #c0c0c0;
+            font-weight: bold;
+        }
 
-             .rank-3 {
-                 color: #cd7f32;
-                 text-shadow: 0 0 10px #cd7f32;
-                 font-weight: bold;
-             }
+        .rank-3 {
+            color: #cd7f32;
+            text-shadow: 0 0 10px #cd7f32;
+            font-weight: bold;
+        }
 
 
-             /* =========================================================
+        /* =========================================================
                 11. 名前入力画面
                 ========================================================= */
-             #name-input-area {
-                 display: none;
-                 flex-direction: column;
-                 align-items: center;
-                 position: absolute;
-                 top: 55%;
-                 width: 100%;
-                 z-index: 200;
-             }
+        #name-input-area {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            position: absolute;
+            top: 55%;
+            width: 100%;
+            z-index: 200;
+        }
 
-             #player-name-input {
-                 background: rgba(0,0,0,0.8);
-                 border: 2px solid #0ff;
-                 color: #fff;
-                 font-family: 'Orbitron';
-                 font-size: 24px;
-                 padding: 10px;
-                 text-align: center;
-                 width: 250px;
-                 outline: none;
-                 margin-bottom: 10px;
-                 box-shadow: 0 0 10px #0ff;
-             }
+        #player-name-input {
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #0ff;
+            color: #fff;
+            font-family: 'Orbitron';
+            font-size: 24px;
+            padding: 10px;
+            text-align: center;
+            width: 250px;
+            outline: none;
+            margin-bottom: 10px;
+            box-shadow: 0 0 10px #0ff;
+        }
 
-                 #player-name-input::placeholder {
-                     color: #055;
-                 }
+            #player-name-input::placeholder {
+                color: #055;
+            }
 
 
-             /* =========================================================
+        /* =========================================================
                 12. エンディング画面
                 ========================================================= */
-             #ending-msg {
-                 display: none;
-                 position: fixed;
-                 top: 0;
-                 left: 0;
-                 width: 100%;
-                 height: 100%;
-                 background: rgba(0,0,0,0.9);
-                 z-index: 200;
-                 flex-direction: column;
-                 justify-content: center;
-                 align-items: center;
-                 pointer-events: auto;
-                 text-align: center;
-             }
+        #ending-msg {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 200;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            text-align: center;
+        }
 
-             #final-score-val {
-                 background: rgba(0,255,255,0.1);
-                 padding: 10px 30px;
-                 border-top: 1px solid rgba(0,255,255,0.3);
-                 border-bottom: 1px solid rgba(0,255,255,0.3);
-                 margin-bottom: 30px;
-             }
+        #final-score-val {
+            background: rgba(0,255,255,0.1);
+            padding: 10px 30px;
+            border-top: 1px solid rgba(0,255,255,0.3);
+            border-bottom: 1px solid rgba(0,255,255,0.3);
+            margin-bottom: 30px;
+        }
 
 
-             /* =========================================================
+        /* =========================================================
                 13. アニメーション定義
                 ========================================================= */
-             @keyframes blink {
-                 50% {
-                     opacity: 0.5; /* 半透明にして点滅 */
-                 }
-             }
+        @keyframes blink {
+            50% {
+                opacity: 0.5; /* 半透明にして点滅 */
+            }
+        }
 
-             /* =========================================================
+        /* =========================================================
                 14. ミニマップ
                 ========================================================= */
-             /* 中央レーダー（ミニマップ）の配置設定 */
-             #minimap-container {
-                 position: absolute;
-                 top: 10px;
-                 left: 50%;
-                 transform: translateX(-50%); /* 画面中央に固定 */
-                 width: 100px; /* 少し小さくして視界を確保 */
-                 height: 100px;
-                 border: 1px solid rgba(0, 255, 255, 0.5);
-                 background: rgba(0, 10, 20, 0.6);
-                 backdrop-filter: blur(2px); /* 背景を少しぼかして視認性アップ */
-                 z-index: 30;
-             }
+        /* 中央レーダー（ミニマップ）の配置設定 */
+        #minimap-container {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%); /* 画面中央に固定 */
+            width: 100px; /* 少し小さくして視界を確保 */
+            height: 100px;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            background: rgba(0, 10, 20, 0.6);
+            backdrop-filter: blur(2px); /* 背景を少しぼかして視認性アップ */
+            z-index: 30;
+        }
 
-             /* レーダー内のキャンバスもリサイズ */
-             #minimap-canvas {
-                 width: 100px;
-                 height: 100px;
-             }
+        /* レーダー内のキャンバスもリサイズ */
+        #minimap-canvas {
+            width: 100px;
+            height: 100px;
+        }
     </style>
 
 </head>
@@ -867,11 +868,11 @@
                         const stageVal = data.stage ? "ST." + data.stage : "-";
 
                         tr.innerHTML = `
-                                            <td class="${rankClass}" style="text-align:center;">${rankText}</td>
-                                            <td style="text-align:left;">${escapeHtml(data.name)}</td>
-                                            <td style="color:#aaa; text-align:center;">${stageVal}</td>
-                                            <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
-                                        `;
+                                                <td class="${rankClass}" style="text-align:center;">${rankText}</td>
+                                                <td style="text-align:left;">${escapeHtml(data.name)}</td>
+                                                <td style="color:#aaa; text-align:center;">${stageVal}</td>
+                                                <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
+                                            `;
                         rankingBody.appendChild(tr);
                         rank++;
                     });
@@ -971,8 +972,8 @@
             TRIANGLE: 4.8,  // 紫：高速で直線的な動き
             CUBE: 2.5,      // 緑：アイテムキャリア、動きは遅め
             TADPOLE: 10,    // 白：精子型、非常に素早い
-            DRAGON: 8,      // 赤：ボス、最高速度が高い
-            HUNTER: 16,     
+            DRAGON: 5,      // 赤：ボス、最高速度が高い
+            HUNTER: 7,
             HUNTER_ROT: 3,  // 接近時の回転速度
             ASTEROID: 3.5,  // 白：分裂する岩、慣性移動（★追加）
             BOSS_MISSILE: 24, // ★追加：ホーミング弾の最高速度
@@ -980,33 +981,37 @@
 
         // ドラゴンがプレイヤーを追尾する際の加速力（旋回性能に影響）
         const DRAGON_ACCELERATION = 0.2;
-        
+
+        // --- 敵の出現（スポーン）バランス設定 ---
+        const STAGE_ENEMY_COUNTS = [
+            60,  // Stage 1
+            80,  // Stage 2
+            20,  // Stage 3
+            120, // Stage 4
+            150, // Stage 5
+            190, // Stage 6
+            240, // Stage 7
+            300  // Stage 8 (Final)
+        ];
         // --- STAGE_ENEMIES 定義 ---
         // Cube（アイテム）は別途15%で出現するため、ここには書きません
         const STAGE_ENEMIES = {
             // ST1: 基本の突撃敵と、少し速い敵
-            1: ['hunter', 'hunter', 'triangle', 'tadpole'], 
-
+            1: ['triangle', 'triangle', 'triangle', 'dragon'],
             // ST2: 弾を撃つドラゴンを追加
-            2: ['triangle', 'tadpole', 'dragon'],
-
+            2: ['triangle', 'triangle', 'tadpole', 'dragon'],
             // ST3: 岩石地帯（岩多め）
-            3: ['asteroid', 'asteroid', 'asteroid', 'asteroid', 'tadpole'],
-
+            3: ['asteroid', 'asteroid', 'asteroid', 'tadpole'],
             // ST4: バランス型（岩は少なめ＝1つだけ入れる）
             4: ['triangle', 'triangle', 'tadpole', 'tadpole', 'dragon', 'dragon', 'asteroid'],
-
             // ST5: ★新敵 HUNTER 登場（岩少なめ）
             5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'asteroid'],
-
             // ST6: HUNTERの比率を上げ、激戦化
             6: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'hunter', 'asteroid'],
-
             // ST7: 総力戦（全種均等に近いが、強い敵多め）
             7: ['triangle', 'tadpole', 'dragon', 'dragon', 'hunter', 'hunter', 'asteroid'],
-
             // ST8: ボス戦（取り巻きはHUNTERとDRAGONのみで圧力をかける）
-            8: ['hunter', 'dragon'] 
+            8: ['hunter', 'dragon', 'asteroid', 'asteroid']
         };
 
         // --- ボスのバリエーション設定 ---
@@ -1047,11 +1052,9 @@
 
         // --- 敵の出現（スポーン）バランス設定 ---
         const SPAWN_SETTINGS = {
-            BASE_ENEMIES: 60,       // ステージ1の目標撃破数
-            ENEMIES_PER_STAGE: 30,  // ステージが進む毎に増える敵の数
-            MAX_WORMHOLES_BASE: 5,  // 画面内に同時に存在できるワームホールの基本数 maxWormholes = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage *1.5
+            MAX_WORMHOLES_BASE: 3,  // 画面内に同時に存在できるワームホールの基本数 maxWormholes = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage *1.5
             SPAWN_INTERVAL: 180,    // ワームホールから敵が出る間隔（60フレーム = 1秒）
-            WORMHOLE_CHANCE: 0.03   // 毎フレーム、新しいワームホールが発生する確率
+            WORMHOLE_CHANCE: 0.01   // 毎フレーム、新しいワームホールが発生する確率
         };
 
 
@@ -1131,7 +1134,7 @@
         const BGM_FILES = {
             title: 'audio/Neon_Gravity_Title.mp3',
             clear: 'audio/Neon_Gravity_Clear.mp3',
-            boss: 'audio/Neon_Gravity_Boss.mp3', 
+            boss: 'audio/Neon_Gravity_Boss.mp3',
             stages: ['audio/Neon_Gravity_00.mp3', 'audio/Neon_Gravity_01.mp3', 'audio/Neon_Gravity_02.mp3', 'audio/Neon_Gravity_03.mp3']
         };
 
@@ -1255,9 +1258,9 @@
                 let src;
                 if (key === 'title') src = BGM_FILES.title;
                 else if (key === 'clear') src = BGM_FILES.clear;
-                else if (key === 'boss') src = BGM_FILES.boss; 
+                else if (key === 'boss') src = BGM_FILES.boss;
                 else {
-                    
+
                     const actualIdx = idx % BGM_FILES.stages.length;
                     src = BGM_FILES.stages[actualIdx];
                 }
@@ -1272,6 +1275,7 @@
             pauseBGM() { if (this.bgmEl && !this.bgmEl.paused) this.bgmEl.pause(); },
             resumeBGM() { if (this.bgmEl && this.bgmEl.paused && this.currentSrc) this.bgmEl.play().catch(() => { }); }
         };
+
         // --- Menu Logic ---
         function openOST() {
             AudioSys.resume();
@@ -1420,7 +1424,12 @@
 
         function startStage() {
             // ステージごとの敵総数を計算
-            enemiesToSpawn = SPAWN_SETTINGS.BASE_ENEMIES + (stage * SPAWN_SETTINGS.ENEMIES_PER_STAGE);
+            if (stage <= STAGE_ENEMY_COUNTS.length) {
+                enemiesToSpawn = STAGE_ENEMY_COUNTS[stage - 1];
+            } else {
+                // 万が一設定したステージ数を超えた場合（ステージ9以降）は、最後の値を増やす等の処理
+                enemiesToSpawn = STAGE_ENEMY_COUNTS[STAGE_ENEMY_COUNTS.length - 1] + 50;
+            }
 
             // --- 変数のリセット ---
             spawnedCount = 0;
@@ -1490,11 +1499,14 @@
                     x: x, y: y, vx: vx, vy: vy,
                     hp: 8 + hpMag * 2,
                     speed: ENEMY_SPEEDS.DRAGON * spd * stageMag,
-                    color: '#f00', type: 'dragon', angle: 0, segments: [],
+                    color: '#c00', type: 'dragon', angle: 0, segments: [],
                     drop: 'none', // ドラゴン本体からは出さない（または任意の設定）
                     scale: 0.9, fireTimer: 0
                 });
-                for (let i = 0; i < 16; i++) enemies[enemies.length - 1].segments.push({ x: x, y: y, angle: 0 });
+                const segmentCount = 16;
+                for (let i = 0; i < segmentCount; i++) {
+                    enemies[enemies.length - 1].segments.push({ x: x, y: y, angle: 0 });
+                }
                 spawnedCount++;
             } else if (type === 'cube') {
                 // アイテムキャリア（Cube）はドロップ確定
@@ -1526,7 +1538,7 @@
                     x: x, y: y, vx: vx, vy: vy,
                     hp: 1 + Math.floor(hpMag * 0.5),
                     speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
-                    color: '#d0f', type: 'triangle', angle: initialAngle,
+                    color: '#0ff', type: 'triangle', angle: initialAngle,
                     drop: dropType, // リーダーがアイテムを持つ
                     scale: 0.7, isLeader: true, followers: [],
                     rotX: Math.random() * Math.PI, rotY: Math.random() * Math.PI, rotZ: Math.random() * Math.PI
@@ -1546,7 +1558,7 @@
                         x: x + rx, y: y + ry, vx, vy,
                         hp: 1,
                         speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
-                        color: '#d0f', type: 'triangle', angle: initialAngle,
+                        color: '#0ff', type: 'triangle', angle: initialAngle,
                         drop: 'none', // 取り巻きは出さない
                         scale: 0.7, leader: leader, formOffset: { x: offX, y: offY },
                         rotX: Math.random() * Math.PI, rotY: Math.random() * Math.PI, rotZ: Math.random() * Math.PI
@@ -1560,14 +1572,7 @@
                 const bossHp = variant.hp + (stage - 1) * 10;
 
                 // --- ボスのドロップ品をフラグに基づいて決定する（既存ロジック） ---
-                let bossDropItem = 'laser'; // デフォルト
-
-                // まだこのステージでレベルアップが出ていなければ、ボスが必ず落とす
-                if (!isShootItemDroppedInStage && player.weaponLevel < MAX_WEAPON_LEVEL) {
-                    bossDropItem = 'level';
-                    isShootItemDroppedInStage = true;
-                }
-                // -----------------------------------------------------
+                let bossDropItem = 'shield';
 
                 enemies.push({
                     x: x, y: y,
@@ -1615,9 +1620,9 @@
                 enemies.push({
                     x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
                     hp: 3 + Math.floor(hpMag * 1.5),
-                    speed: 3.0 * spd * stageMag,
+                    speed: ENEMY_SPEEDS.HUNTER * spd * stageMag,
                     color: '#f80',
-                    type: 'hunter', 
+                    type: 'hunter',
                     angle: 0,
                     drop: dropType,
                     scale: 1.2,
@@ -1847,20 +1852,20 @@
                         const remaining = enemiesToSpawn - spawnedCount;
                         const threshold = Math.floor(enemiesToSpawn / 5);
 
- // --- 修正版：敵の抽選ロジック（update関数内） ---
+                        // --- 修正版：敵の抽選ロジック（update関数内） ---
 
                         // 1. ボス出現判定（残り敵数が少なくなったら）
                         if (!isBossSpawned && remaining <= threshold) {
                             spawnEnemy(w.x, w.y, 'boss');
                             isBossSpawned = true;
-                        } 
+                        }
                         else {
                             // 2. 通常の敵出現ロジック
-                            
+
                             // A. まず15%の確率でアイテムキャリア(Cube)を出す（全ステージ共通）
                             if (Math.random() < 0.15) {
                                 spawnEnemy(w.x, w.y, 'cube');
-                            } 
+                            }
                             // B. それ以外は、ステージごとの敵リストから抽選
                             else {
                                 // 定義されていないステージ（クリア後など）は、最も激しい7面のリストを使う
@@ -2175,7 +2180,7 @@
                         case 'triangle': updateTriangleAI(e); break;
                         case 'cube': updateCubeAI(e); break;
                         case 'boss': updateBossAI(e); break;
-                        case 'asteroid': updateAsteroidAI(e); break; 
+                        case 'asteroid': updateAsteroidAI(e); break;
                         case 'hunter': updateHunterAI(e); break;
                     }
                 }
@@ -2280,15 +2285,15 @@
         }
 
         // ★新設：ハンターのAI関数
-// ★定数対応版：HunterのAI関数
+        // ★定数対応版：HunterのAI関数
         function updateHunterAI(e) {
             const dx = player.x - e.x;
             const dy = player.y - e.y;
             const dist = Math.hypot(dx, dy) || 0.001;
-            
+
             // 定数から基本スピードを取得（SPEED_SCALEは既に掛かっている前提か、ここで掛けるか）
             // 今回は e.speed (生成時に計算済み) をベースにします
-            const baseSpd = e.speed; 
+            const baseSpd = e.speed;
 
             e.actionTimer++;
 
@@ -2299,7 +2304,7 @@
 
                 // プレイヤーに向かって加速
                 // 加速度も baseSpd に比例させることで、ステージが進んで速くなっても挙動が安定します
-                const acc = baseSpd * 0.1; 
+                const acc = baseSpd * 0.1;
                 e.vx += (dx / dist) * acc;
                 e.vy += (dy / dist) * acc;
 
@@ -2308,7 +2313,7 @@
                     e.actionTimer = 0;
                     e.burstCount = 0;
                 }
-            } 
+            }
             // --- 状態2: 攻撃 (ATTACK) ---
             else if (e.state === 'attack') {
                 e.vx *= 0.85;
@@ -2316,14 +2321,14 @@
 
                 const targetAngle = Math.atan2(dy, dx);
                 let diff = targetAngle - e.angle;
-                while (diff <= -Math.PI) diff += Math.PI*2;
-                while (diff > Math.PI) diff -= Math.PI*2;
+                while (diff <= -Math.PI) diff += Math.PI * 2;
+                while (diff > Math.PI) diff -= Math.PI * 2;
                 e.angle += diff * 0.2;
 
                 if (e.actionTimer > 20 && e.actionTimer % 10 === 0 && e.burstCount < 3) {
                     // 弾速も定数の影響を受ける
                     const bulletSpd = BULLET_SETTINGS.ENEMY_SPEED * 1.3 * SPEED_SCALE;
-                    
+
                     enemyBullets.push({
                         x: e.x, y: e.y,
                         vx: Math.cos(e.angle) * bulletSpd,
@@ -2331,7 +2336,7 @@
                         life: BULLET_SETTINGS.ENEMY_LIFE,
                         color: '#f80'
                     });
-                    
+
                     // 反動
                     e.vx -= Math.cos(e.angle) * (baseSpd * 0.5);
                     e.vy -= Math.sin(e.angle) * (baseSpd * 0.5);
@@ -2365,7 +2370,7 @@
             let maxLimit = baseSpd;
             if (e.state === 'approach') maxLimit = baseSpd * 1.5;
             if (e.state === 'retreat') maxLimit = baseSpd * 1.2;
-            
+
             if (currentSpeed > maxLimit) {
                 e.vx = (e.vx / currentSpeed) * maxLimit;
                 e.vy = (e.vy / currentSpeed) * maxLimit;
@@ -2998,6 +3003,24 @@
                             life: 60, alpha: 1, vy: -1.2
                         });
                     }
+                    else if (p.type === 'shield') {
+                        // 10ポイント回復（上限100を超えないように）
+                        player.shield = Math.min(100, player.shield + 10);
+
+                        // バーの表示更新
+                        ui.shieldBar.style.width = Math.max(0, player.shield) + "%";
+                        if (player.shield < 30) ui.shieldBar.classList.add('shield-critical');
+                        else ui.shieldBar.classList.remove('shield-critical');
+                        if (ui.shieldVal) ui.shieldVal.innerText = Math.floor(player.shield);
+
+                        // ポップアップ表示
+                        scorePopups.push({
+                            x: player.x,
+                            y: player.y - 20,
+                            text: "SHIELD +10",
+                            life: 60, alpha: 1, vy: -1.2
+                        });
+                    }
                 }
             });
             // 取得済み(life=0)または時間切れのものを削除
@@ -3167,6 +3190,9 @@
             } else if (e.drop === 'crystal') {
                 crystals.push({ ...itemProps, life: ITEM_LIFE });
             }
+            else if (e.drop === 'shield') {
+                powerups.push({ ...itemProps, type: 'shield', life: ITEM_LIFE });
+            }
         }
 
         function damage(v) {
@@ -3294,7 +3320,7 @@
                 else if (e.type === 'cube') drawCubeEnemy(ctx, e);
                 else if (e.type === 'tadpole') drawTadpoleEnemy(ctx, e);
                 else if (e.type === 'boss') drawBossEnemy(ctx, e);
-                else if (e.type === 'asteroid') drawAsteroidEnemy(ctx, e);else if (e.type === 'hunter') drawHunterEnemy(ctx, e);
+                else if (e.type === 'asteroid') drawAsteroidEnemy(ctx, e); else if (e.type === 'hunter') drawHunterEnemy(ctx, e);
             });
 
             // 敵の弾の描画ループ
@@ -3368,21 +3394,59 @@
             drawLasers();
             ctx.fillStyle = '#0f8'; bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, Math.PI * 2); ctx.fill(); });
 
-            ctx.fillStyle = '#0f0';
+            // --- 1. クリスタルの描画（暗い緑） ---
+            ctx.fillStyle = '#008000'; // Dark Green
             crystals.forEach(c => {
                 ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(frame * 0.1);
                 const scale = c.life > 60 ? 1 : c.life / 60; ctx.scale(scale, scale);
-                ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(4, 0); ctx.lineTo(0, 6); ctx.lineTo(-4, 0); ctx.fill(); ctx.restore();
+                // 形状はひし形のまま
+                ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(4, 0); ctx.lineTo(0, 6); ctx.lineTo(-4, 0); ctx.fill();
+
+                // もし「C」という文字にしたい場合は上記2行を消して以下を使ってください
+                // ctx.fillStyle = '#008000'; ctx.font = '10px monospace'; ctx.fillText('C', 0, 0);
+
+                ctx.restore();
             });
 
+            // --- 2. パワーアップアイテムの描画（指定の文字と色） ---
             powerups.forEach(p => {
-                if (p.type === 'laser') ctx.strokeStyle = '#0ff'; else if (p.type === 'level') ctx.strokeStyle = '#0f0'; else ctx.strokeStyle = '#fd0';
-                ctx.save(); ctx.translate(p.x, p.y);
-                const scale = p.life > 60 ? 1 : p.life / 60; ctx.scale(scale, scale);
-                ctx.lineWidth = 2; ctx.strokeRect(-8, -8, 16, 16);
-                ctx.fillStyle = ctx.strokeStyle; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                let char = 'S'; if (p.type === 'level') char = 'L'; else if (p.type === 'laser') char = 'B';
-                ctx.fillText(char, 0, 0); ctx.restore();
+                let char = '?';
+                let color = '#fff';
+
+                // タイプごとの色と文字の設定
+                if (p.type === 'laser') {
+                    color = '#aff'; // Laser: 青
+                    char = 'L';
+                } else if (p.type === 'level') {
+                    color = '#0f0'; // Level Up: 明るい緑
+                    char = 'W';     // Weapon? Shot? (W指定)
+                } else if (p.type === 'invincible') {
+                    color = '#ff0'; // Invincible: 黄
+                    char = 'I';
+                } else if (p.type === 'shield') {
+                    color = '#0ff'; // Shield: 青（少し濃い目にして区別）
+                    char = 'S';
+                }
+
+                ctx.strokeStyle = color;
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                const scale = p.life > 60 ? 1 : p.life / 60;
+                ctx.scale(scale, scale);
+
+                // 枠線の描画
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-8, -8, 16, 16);
+
+                // 文字の描画
+                ctx.fillStyle = color;
+                ctx.font = 'bold 12px monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(char, 0, 0);
+
+                ctx.restore();
             });
 
             ctx.fillStyle = '#fd0'; missiles.forEach(m => { ctx.beginPath(); ctx.arc(m.x, m.y, 4 * G_SCALE, 0, Math.PI * 2); ctx.fill(); });
@@ -3542,23 +3606,34 @@
             ctx.shadowBlur = 0;
         }
 
-        // ★新設：ハンターの描画関数（棘のある星型）
+        
         function drawHunterEnemy(ctx, e) {
             ctx.save();
             ctx.translate(e.x, e.y);
             ctx.rotate(e.angle);
             ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
 
-            // 射撃予備動作中は赤く光る
+            // 射撃予備動作中はより強く光る
             const isAiming = (e.state === 'aim');
-            const color = isAiming ? '#fff' : e.color;
-            
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            ctx.shadowBlur = isAiming ? 20 : 10;
-            ctx.shadowColor = e.color;
 
-            // 星型（手裏剣のような形）を描く
+            // --- カラー定義 ---
+            // 中心のハイライト色（通常は黄色っぽく、狙うと白っぽく）
+            const coreColor = isAiming ? '#FFFFDD' : '#FFD700'; // Gold
+            // ベースとなる明るいオレンジ
+            const baseColor = '#FF8C00'; // DarkOrange
+            // 外側の影となる濃いオレンジ
+            const edgeColor = '#BF3622'; // Deep Orange
+
+            // 発光の色（周囲への照り返し）
+            const glowColor = isAiming ? '#FFA500' : '#FF4500'; // Orange / OrangeRed
+
+            // --- 本体の描画 ---
+
+            // 1. 強烈なオレンジ色の発光を設定
+            ctx.shadowBlur = isAiming ? 35 : 20;
+            ctx.shadowColor = glowColor;
+
+            // パスの定義（形状は元のまま）
             ctx.beginPath();
             for (let i = 0; i < 4; i++) {
                 const angle = (Math.PI / 2) * i;
@@ -3566,27 +3641,74 @@
                 ctx.lineTo(Math.cos(angle) * 15, Math.sin(angle) * 15);
                 // 内側の点（くぼみ）
                 ctx.lineTo(Math.cos(angle + 0.4) * 6, Math.sin(angle + 0.4) * 6);
-                ctx.lineTo(Math.cos(angle + 0.8) * 15, Math.sin(angle + 0.8) * 15); // 次の頂点の手前装飾
+                // 次の頂点の手前装飾
+                ctx.lineTo(Math.cos(angle + 0.8) * 15, Math.sin(angle + 0.8) * 15);
             }
             ctx.closePath();
+
+            // 2. 立体的なグラデーションで塗りつぶす
+            // 中心から外側に向かう放射状グラデーション
+            const bodyGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, 15);
+            bodyGrad.addColorStop(0, coreColor);    // 中心：ハイライト
+            bodyGrad.addColorStop(0.5, baseColor);  // 中間：ベース色
+            bodyGrad.addColorStop(1, edgeColor);    // 外側：シェーディング
+
+            ctx.fillStyle = bodyGrad;
+            // 塗りつぶし時は、輪郭がぼやけすぎないよう影を一時的に弱める
+            const currentShadowBlur = ctx.shadowBlur;
+            ctx.shadowBlur = 5;
+            ctx.fill();
+            ctx.shadowBlur = currentShadowBlur; // 影を戻す
+
+            // 3. 発光するワイヤーフレームで縁取り
+            // 狙っている時は白く、通常は黄色い線で輪郭を強調
+            ctx.strokeStyle = isAiming ? '#FFFFFF' : '#FFECB3';
+            ctx.lineWidth = 2;
             ctx.stroke();
 
-            // 中央の目
-            ctx.fillStyle = isAiming ? '#f00' : '#000';
+            // --- 中央の目 ---
+            // 目も少し立体的に光らせる
+            const eyeGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 4);
+            if (isAiming) {
+                // 狙っている時：赤く鋭く光る
+                eyeGrad.addColorStop(0, '#FFEEEE');
+                eyeGrad.addColorStop(0.5, '#FF0000');
+                eyeGrad.addColorStop(1, '#8B0000');
+            } else {
+                // 通常時：暗く無機質に
+                eyeGrad.addColorStop(0, '#555555');
+                eyeGrad.addColorStop(1, '#000000');
+            }
+            ctx.fillStyle = eyeGrad;
+            ctx.shadowBlur = 0; // 目はくっきりと
             ctx.beginPath();
             ctx.arc(0, 0, 4, 0, Math.PI * 2);
             ctx.fill();
+
+            // 目の縁取り
+            ctx.strokeStyle = isAiming ? '#FF4444' : '#333333';
+            ctx.lineWidth = 1;
             ctx.stroke();
 
-            // 狙っている時の照準線（レーザーサイト）
+            // --- 狙っている時の照準線（レーザーサイト） ---
             if (isAiming) {
-                ctx.globalAlpha = 0.5;
-                ctx.strokeStyle = '#f00';
-                ctx.setLineDash([5, 5]);
-                ctx.lineWidth = 1;
+                // 本体の強い光に合わせてレーザーも強化
+                ctx.shadowBlur = 25;
+                ctx.shadowColor = '#FF0000';
+
+                ctx.globalAlpha = 0.8;
+                // 根本が白く、先端に向かって赤く消えていくグラデーション
+                const laserGrad = ctx.createLinearGradient(15, 0, 250, 0);
+                laserGrad.addColorStop(0, '#FFFFFF');      // 根本は高エネルギー
+                laserGrad.addColorStop(0.1, '#FF4500');    // すぐに赤熱
+                laserGrad.addColorStop(1, 'rgba(255, 0, 0, 0)'); // 先端は消える
+
+                ctx.strokeStyle = laserGrad;
+                ctx.setLineDash([8, 4]); // 点線の間隔を少し広げる
+                ctx.lineWidth = 2.5;     // 線を太く
                 ctx.beginPath();
                 ctx.moveTo(15, 0);
-                ctx.lineTo(200, 0); // 視線
+                ctx.lineTo(250, 0); // 視線を少し長く
                 ctx.stroke();
             }
 
@@ -3787,7 +3909,7 @@
 
             // ワイヤーフレームの設定
             ctx.strokeStyle = neonCyan;
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 2;
             ctx.shadowBlur = 15;
             ctx.shadowColor = neonCyan;
 
@@ -3812,13 +3934,13 @@
 
             // --- 先端ユニット「＜＜」部分 ---
             ctx.beginPath();
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2.5;
             ctx.moveTo(35, -14); ctx.lineTo(52, 0); ctx.lineTo(35, 14); // 外側の ＜
             ctx.stroke();
 
             ctx.save();
             ctx.strokeStyle = lightCyan;
-            ctx.lineWidth = 1.2;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.moveTo(25, -9); ctx.lineTo(42, 0); ctx.lineTo(25, 9);   // 内側の ＜
             ctx.stroke();
@@ -3838,18 +3960,99 @@
         }
 
         function drawDragonEnemy(ctx, e) {
-            ctx.save(); ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE); ctx.strokeStyle = e.color; ctx.lineWidth = 2;
+            ctx.save();
+
+            const finalScale = e.scale * G_SCALE;
+            ctx.scale(finalScale, finalScale);
+
+            ctx.strokeStyle = e.color;
+            ctx.lineWidth = 3.5;
+            ctx.shadowBlur = 1;
+            ctx.shadowColor = e.color;
+
+            // --- 1. 胴体セグメントの描画 ---
+            const gapFactor = 1.7;
+
             e.segments.forEach((s, i) => {
-                ctx.save(); ctx.translate(s.x / (e.scale * G_SCALE), s.y / (e.scale * G_SCALE)); ctx.rotate(s.angle);
-                ctx.beginPath(); ctx.arc(0, 0, (12 - i * 0.5) * 0.8, 0, Math.PI * 2); ctx.stroke();
-                ctx.beginPath(); const wingSize = (15 - i * 0.5); ctx.moveTo(0, 0); ctx.lineTo(-5, wingSize); ctx.moveTo(0, 0); ctx.lineTo(-5, -wingSize); ctx.stroke();
+                ctx.save();
+                const dx = (s.x - e.x) * gapFactor;
+                const dy = (s.y - e.y) * gapFactor;
+
+                ctx.translate((e.x + dx) / finalScale, (e.y + dy) / finalScale);
+                ctx.rotate(s.angle);
+
+                const sizeMod = Math.max(0.4, 1 - (i * 0.04));
+                const cylinderRadius = 20 * sizeMod;
+
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 10 * sizeMod, cylinderRadius, 0, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, -cylinderRadius);
+                ctx.lineTo(-15 * sizeMod, -cylinderRadius - (12 * sizeMod));
+                ctx.moveTo(0, cylinderRadius);
+                ctx.lineTo(-15 * sizeMod, cylinderRadius + (12 * sizeMod));
+                ctx.stroke();
+
+                ctx.save();
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                [0.8, 0.4, -0.4, -0.8].forEach(off => {
+                    ctx.moveTo(-6 * sizeMod, cylinderRadius * off);
+                    ctx.lineTo(6 * sizeMod, cylinderRadius * off);
+                });
+                ctx.stroke();
+                ctx.restore();
+
                 ctx.restore();
             });
-            ctx.save(); ctx.translate(e.x / (e.scale * G_SCALE), e.y / (e.scale * G_SCALE)); ctx.rotate(e.angle);
-            ctx.beginPath(); ctx.moveTo(25, 0); ctx.lineTo(5, 12); ctx.lineTo(-10, 8); ctx.lineTo(-10, -8); ctx.lineTo(5, -12); ctx.closePath(); ctx.stroke();
-            ctx.restore(); ctx.restore();
-        }
 
+            // --- 2. 頭部ユニット ---
+            ctx.save();
+            ctx.translate(e.x / finalScale, e.y / finalScale);
+            ctx.rotate(e.angle);
+
+            // リングの描画
+            for (let k = 0; k < 3; k++) {
+                const rPos = k * 8;
+                const rSize = 22 - k * 4;
+                ctx.beginPath();
+                ctx.ellipse(rPos, 0, 6, rSize, 0, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.save();
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(rPos, -rSize); ctx.lineTo(rPos + 8, -rSize + 2);
+                ctx.moveTo(rPos, rSize); ctx.lineTo(rPos + 8, rSize - 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // --- ★ 追加：中心の白いコア ---
+            ctx.save();
+            // コア自体の強い発光（白）
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#f88";
+            ctx.fillStyle = "#f88";
+            ctx.beginPath();
+            // 少し奥（リングの間）にあるように配置
+            ctx.arc(8, 0, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 外側に漏れるメインカラーの光
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = e.color;
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath();
+            ctx.arc(8, 0, 9, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.restore();
+            ctx.restore();
+        }
         function drawAsteroidEnemy(ctx, e) {
             ctx.save();
             ctx.translate(e.x, e.y);
@@ -3938,48 +4141,57 @@
             ctx.fill();
         }
 
-        // 無敵状態のバリアエフェクトを描画する
+        // 無敵状態のバリアエフェクト（3D球体風）
         function drawInvulnBarrier(ctx, p) {
             ctx.save();
             ctx.translate(p.x, p.y);
 
-            const bRadius = 40 * G_SCALE;
-            const pulse = Math.sin(frame * 0.2) * 5;
+            const bRadius = 45 * G_SCALE;
+            // バリア全体の「呼吸」のようなパルス
+            const pulse = Math.sin(frame * 0.1) * 3;
+            const r = bRadius + pulse;
 
-            // バリアの外光（黄色いグロー）
+            // 基本カラー設定
             ctx.strokeStyle = '#ff0';
-            ctx.shadowBlur = 20;
+            ctx.shadowBlur = 15;
             ctx.shadowColor = '#ff0';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 1.5;
+            ctx.globalCompositeOperation = 'lighter'; // 光を重ねる
 
-            // 1. メインの円形バリア
-            ctx.beginPath();
-            ctx.arc(0, 0, bRadius + pulse, 0, Math.PI * 2);
-            ctx.stroke();
+            // --- 1. 球体を構成する3つの回転リングを描画 ---
+            // 3つの円を角度を変えて配置し、それぞれを「押しつぶす(scale)」ことで回転を表現
+            for (let i = 0; i < 3; i++) {
+                ctx.save();
 
-            // 2. 高速回転する「ガードリング」
-            ctx.save();
-            ctx.rotate(frame * 0.1);
-            ctx.setLineDash([15, 15]); // 点線にして回転させる
-            ctx.beginPath();
-            ctx.arc(0, 0, bRadius + pulse + 5, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.restore();
+                // リングごとの角度ズレ（0度, 60度, 120度）
+                ctx.rotate((Math.PI / 3) * i);
 
-            // 3. バリア表面を走る火花（ランダムな稲妻のような線）
-            if (frame % 2 === 0) {
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1;
-                const ang1 = Math.random() * Math.PI * 2;
-                const ang2 = ang1 + 0.5;
+                // 擬似3D回転：Y軸方向のスケールを -1 ～ 1 の間で往復させる
+                // i * 2 を足すことで、リングごとに回転のタイミングをずらす
+                const scaleY = Math.sin(frame * 0.05 + i * 2);
+                ctx.scale(1, scaleY);
+
                 ctx.beginPath();
-                ctx.arc(0, 0, bRadius + pulse, ang1, ang2);
+                ctx.arc(0, 0, r, 0, Math.PI * 2);
                 ctx.stroke();
+
+                ctx.restore();
             }
 
+            // --- 2. 輪郭の薄い円（球体の外郭） ---
+            ctx.globalAlpha = 0.3;
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // --- 3. 内部の薄い塗りつぶし ---
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.1)';
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+
             ctx.restore();
 
-            // 4. バリアから漏れ出るエネルギー粒子の生成
+            // --- 4. バリアから漏れ出るエネルギー粒子 ---
             if (frame % 2 === 0) {
                 particles.push({
                     x: p.x + (Math.random() - 0.5) * 60,
