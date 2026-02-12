@@ -313,10 +313,12 @@
                 background: rgba(0,255,255,0.05);
             }
 
-
         /* =========================================================
            9. 操作コントローラー（ジョイスティック）
+           見た目のデザインと配置設定
            ========================================================= */
+
+        /* 全体コンテナ */
         #controls {
             position: absolute;
             top: 0;
@@ -329,13 +331,12 @@
             pointer-events: auto;
         }
 
-        /* ジョイスティックの外枠（ベース） */
+        /* --- ジョイスティック：外枠（ベース） --- */
         .joystick-area {
             position: absolute;
-            width: 140px; /* 少し大きく */
+            width: 140px;
             height: 140px;
             border-radius: 50%;
-            /* ネオンブルーの二重円エフェクト */
             border: 1px solid rgba(0, 255, 255, 0.3);
             background: radial-gradient(circle, rgba(0, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.2) 70%);
             box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.1);
@@ -345,24 +346,26 @@
             pointer-events: none;
         }
 
-            /* 外枠内の十字目盛り */
-            .joystick-area::before {
+            /* 外枠内の十字目盛り（装飾） */
+            .joystick-area::before, .joystick-area::after {
                 content: '';
                 position: absolute;
+                background: rgba(0, 255, 255, 0.2);
+            }
+
+            .joystick-area::before {
                 width: 100%;
                 height: 1px;
                 background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
             }
 
             .joystick-area::after {
-                content: '';
-                position: absolute;
                 width: 1px;
                 height: 100%;
                 background: linear-gradient(180deg, transparent, rgba(0, 255, 255, 0.2), transparent);
             }
 
-        /* スティックのつまみ */
+        /* --- ジョイスティック：つまみ（Knob） --- */
         .knob {
             width: 60px;
             height: 60px;
@@ -376,7 +379,7 @@
             z-index: 2;
         }
 
-            /* つまみの中心のドット */
+            /* つまみ中心のドット */
             .knob::after {
                 content: '';
                 position: absolute;
@@ -390,10 +393,10 @@
                 box-shadow: 0 0 10px #fff;
             }
 
-        /* 特殊攻撃（BOMB）ボタン */
+        /* --- 特殊攻撃（BOMB/LAUNCH）ボタン --- */
         #launch-btn {
             position: absolute;
-            width: 80px; /* サイズアップ */
+            width: 80px;
             height: 80px;
             border-radius: 50%;
             background: rgba(255, 255, 0, 0.1);
@@ -412,7 +415,7 @@
             text-shadow: 0 0 5px #ff0;
         }
 
-            /* BOMBボタンの装飾リング */
+            /* ボタン周りの回転リング */
             #launch-btn::before {
                 content: '';
                 position: absolute;
@@ -423,6 +426,54 @@
                 animation: rotate 4s linear infinite;
             }
 
+            /* 押下時のフィードバック */
+            #launch-btn.active {
+                background: #ff0;
+                color: #000;
+                transform: scale(0.85);
+                box-shadow: 0 0 30px #ff0;
+                text-shadow: none;
+            }
+
+        /* =========================================================
+           9.2. デバイス別レイアウト（レスポンシブ）
+           ========================================================= */
+
+        /* --- デフォルト設定（横向き：Landscape） --- */
+        #stick-left {
+            left: 20px;
+            bottom: 40px;
+        }
+
+        #stick-right {
+            right: 20px;
+            bottom: 40px;
+        }
+
+        #launch-btn {
+            right: 20px;
+            bottom: 100px;
+        }
+
+        /* --- 縦向き設定（Portrait） --- */
+        @media (orientation: portrait) {
+            #stick-left {
+                left: 20px;
+                bottom: 50px;
+            }
+
+            #stick-right {
+                right: 20px;
+                bottom: 50px;
+            }
+
+            #launch-btn {
+                right: 0px;
+                bottom: 220px;
+            }
+        }
+
+        /* 回転アニメーション */
         @keyframes rotate {
             from {
                 transform: rotate(0deg);
@@ -432,16 +483,6 @@
                 transform: rotate(360deg);
             }
         }
-
-        /* ボタン使用時のフィードバック */
-        #launch-btn.active {
-            background: #ff0;
-            color: #000;
-            transform: scale(0.85);
-            box-shadow: 0 0 30px #ff0;
-            text-shadow: none;
-        }
-
         /* =========================================================
            10. ランキング画面
            ========================================================= */
@@ -977,7 +1018,7 @@
         let enemiesKilled = 0;
         let isBossSpawned = false;
 
-        const player = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, satellites: [], shield: 100, weaponLevel: 1, invuln: 0, laserTimer: 0 };
+        const player = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, satellites: [], shield: 100, weaponLevel: 1, invuln: 0, laserTimer: 0, history: [] };
         const input = { move: { x: 0, y: 0, active: false }, aim: { x: 0, y: 0, active: false }, keys: {} };
         let bullets = [], lasers = [], enemies = [], enemyBullets = [], particles = [], crystals = [], missiles = [], powerups = [], wormholes = [], scorePopups = [], gridPoints = [], rings = [], stars = [];
 
@@ -1154,17 +1195,6 @@
             const size = Math.max(width, height) * 1.5;
             worldSize = size;
 
-            // Controls Layout
-            const isPortrait = height > width;
-            if (isPortrait) {
-                ui.stickL.style.left = '40px'; ui.stickL.style.bottom = '50px'; ui.stickL.style.right = 'auto';
-                ui.stickR.style.right = '40px'; ui.stickR.style.bottom = '50px'; ui.stickR.style.left = 'auto';
-                ui.launchBtn.style.right = '40px'; ui.launchBtn.style.bottom = '180px';
-            } else {
-                ui.stickL.style.left = '20px'; ui.stickL.style.bottom = '40px';
-                ui.stickR.style.right = '20px'; ui.stickR.style.bottom = '40px';
-                ui.launchBtn.style.right = '20px'; ui.launchBtn.style.bottom = '170px';
-            }
             initGrid();
             initStars();
         }
@@ -1498,6 +1528,7 @@
             ui.btnStart.style.display = 'block';
             ui.btnStart.style.borderColor = titleColor;
             ui.btnStart.style.color = titleColor;
+
             ui.btnStart.onclick = () => resetGame();
 
             ui.btnTitle.style.display = 'block';
@@ -1505,7 +1536,7 @@
             ui.btnTitle.style.color = titleColor;
             ui.btnTitle.onclick = () => returnToTitle();
 
-            // ★修正ポイント：ランキングボタンとOSTボタンを非表示にする
+            // ランキングボタンとOSTボタンを非表示にする
             const btnRanking = document.getElementById('btn-ranking');
             if (btnRanking) btnRanking.style.display = 'none';
             if (ui.btnOst) ui.btnOst.style.display = 'none';
@@ -1522,6 +1553,17 @@
             const mag = Math.hypot(mx, my); if (mag > 1) { mx /= mag; my /= mag; }
             player.vx = mx * 7.8 * SPEED_SCALE; player.vy = my * 7.8 * SPEED_SCALE;
             player.x += player.vx; player.y += player.vy;
+
+
+            // 現在の座標と角度を履歴の先頭に追加
+            player.history.unshift({ x: player.x, y: player.y, angle: player.angle });
+
+            // 履歴が10件を超えたら一番古いものを削除（10が残像の長さになります）
+            if (player.history.length > 10) {
+                player.history.pop();
+            }
+
+
             if (player.x < WALL_MARGIN) player.x = WALL_MARGIN; if (player.x > worldSize - WALL_MARGIN) player.x = worldSize - WALL_MARGIN;
             if (player.y < WALL_MARGIN) player.y = WALL_MARGIN; if (player.y > worldSize - WALL_MARGIN) player.y = worldSize - WALL_MARGIN;
             camera.x = player.x - width / 2; camera.y = player.y - height / 2;
@@ -1699,47 +1741,64 @@
         function updateLasers() {
             lasers.forEach(l => {
                 l.life--;
-                const len = 2000;
+                const maxLen = 2000;
+                let currentLen = maxLen; // 実際に描画する長さ
+
                 const p1x = l.x;
                 const p1y = l.y;
-                const p2x = l.x + Math.cos(l.angle) * len;
-                const p2y = l.y + Math.sin(l.angle) * len;
 
-                // 1. 敵機（enemies）との判定
+                // 1. まずBOSS（または特定の敵）との衝突判定を行い、レーザーを遮断する
                 enemies.forEach(e => {
-                    const A = p1x - p2x; const B = p1y - p2y; const C = p2x * p1y - p1x * p2y;
-                    const dist = Math.abs(A * e.y - B * e.x + C) / Math.hypot(A, B);
-                    const dot = (e.x - p1x) * (p2x - p1x) + (e.y - p1y) * (p2y - p1y);
-                    if (dist < (l.width / 2 + 15 * e.scale) && dot > 0) {
+                    const dx = e.x - p1x;
+                    const dy = e.y - p1y;
+                    const distToEnemy = Math.hypot(dx, dy);
+
+                    // 敵の方向とレーザーの方向が一致しているか（ベクトルの内積）
+                    const angleToEnemy = Math.atan2(dy, dx);
+                    let diff = Math.abs(l.angle - angleToEnemy);
+                    if (diff > Math.PI) diff = Math.PI * 2 - diff;
+
+                    // 角度が近く、かつ射程圏内の場合
+                    if (diff < 0.2 && distToEnemy < maxLen) {
+                        const hitRadius = (e.type === 'boss' ? 45 : 15) * e.scale;
+
+                        // BOSSの場合、レーザーをそこで止める
+                        if (e.type === 'boss') {
+                            currentLen = Math.min(currentLen, distToEnemy);
+                            e.flashTimer = 5; // BOSSを光らせる
+                        }
+
+                        // ダメージ処理とエフェクト
                         e.hp -= 0.5;
-                        if (frame % 4 === 0) particles.push({ x: e.x, y: e.y, vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2, color: '#0ff', life: 0.5 });
+                        if (frame % 2 === 0) {
+                            createExplosion(e.x, e.y, e.color, 2); // 火花を散らす
+                            // ヒット地点に火花を出す場合は以下
+                            const hitX = p1x + Math.cos(l.angle) * distToEnemy;
+                            const hitY = p1y + Math.sin(l.angle) * distToEnemy;
+                            particles.push({
+                                x: hitX, y: hitY,
+                                vx: (Math.random() - 0.5) * 10,
+                                vy: (Math.random() - 0.5) * 10,
+                                color: '#fff', life: 0.2, size: 2
+                            });
+                        }
                     }
                 });
 
-                // 2. ★すべての敵弾（enemyBullets）との判定
+                // 2. 実際に描画される長さをレーザーオブジェクトに保持（drawLasersで使用）
+                l.renderLen = currentLen;
+
+                // 3. 敵弾（enemyBullets）の消去判定（currentLenより遠い弾は消さない）
                 enemyBullets.forEach(eb => {
-                    // 点と線分の距離を計算
-                    const A = p1x - p2x; const B = p1y - p2y; const C = p2x * p1y - p1x * p2y;
-                    const dist = Math.abs(A * eb.y - B * eb.x + C) / Math.hypot(A, B);
-                    const dot = (eb.x - p1x) * (p2x - p1x) + (eb.y - p1y) * (p2y - p1y);
+                    const A = p1x - (p1x + Math.cos(l.angle) * currentLen);
+                    const B = p1y - (p1y + Math.sin(l.angle) * currentLen);
+                    const C = (p1x + Math.cos(l.angle) * currentLen) * p1y - p1x * (p1y + Math.sin(l.angle) * currentLen);
+                    const dist = Math.abs(A * eb.y - B * eb.x + C) / (Math.hypot(A, B) || 1);
+                    const dot = (eb.x - p1x) * Math.cos(l.angle) + (eb.y - p1y) * Math.sin(l.angle);
 
-                    // レーザーの幅（l.width/2）に敵弾のサイズを考慮した範囲
-                    if (dist < (l.width / 2 + 5) && dot > 0) {
-                        eb.life = 0; // 弾を消滅させる
-
-                        // ミサイルの場合は爆発、普通の弾は火花
-                        if (eb.isMissile) {
-                            score += 50;
-                            createExplosion(eb.x, eb.y, eb.color, 15);
-                            AudioSys.playSE('explode');
-                        } else {
-                            score += 10;
-                            particles.push({
-                                x: eb.x, y: eb.y,
-                                vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5,
-                                color: '#fff', life: 0.2
-                            });
-                        }
+                    if (dist < (l.width / 2 + 5) && dot > 0 && dot < currentLen) {
+                        eb.life = 0;
+                        score += 10;
                     }
                 });
             });
@@ -2433,6 +2492,42 @@
             ctx.shadowBlur = 0;
 
             if (gameState === 'PLAYING') {
+                // --- 残像（トレイル）の描画処理 ---
+                player.history.forEach((pos, i) => {
+                    // i=0 は現在の自機と同じ位置なのでスキップ
+                    if (i === 0) return;
+
+                    ctx.save();
+                    ctx.translate(pos.x, pos.y);
+                    ctx.rotate(pos.angle);
+                    ctx.scale(G_SCALE, G_SCALE);
+
+                    // 配列の後ろに行くほど（古いほど）透明にする
+                    const alpha = 0.4 * (1 - i / player.history.length);
+                    ctx.globalAlpha = alpha;
+
+                    // 残像の色を状態に合わせて設定
+                    let trailColor = '#0f8';
+                    if (player.invuln > 0) trailColor = '#ff0';
+                    else if (player.laserTimer > 0) trailColor = '#0ff';
+
+                    ctx.strokeStyle = trailColor;
+                    ctx.lineWidth = 1.5;
+                    ctx.shadowBlur = 5;
+                    ctx.shadowColor = trailColor;
+
+                    // 自機の形を描画（本体より少し簡略化してもOK）
+                    ctx.beginPath();
+                    ctx.moveTo(20, 0);
+                    ctx.lineTo(-10, 10);
+                    ctx.lineTo(-5, 0);
+                    ctx.lineTo(-10, -10);
+                    ctx.closePath();
+                    ctx.stroke();
+
+                    ctx.restore();
+                });
+
                 // --- ★レベル最大時のオーラエフェクト ---
                 if (player.weaponLevel >= MAX_WEAPON_LEVEL) {
                     ctx.save();
@@ -2572,16 +2667,52 @@
 
         function drawLasers() {
             lasers.forEach(l => {
-                ctx.save(); ctx.translate(l.x, l.y); ctx.rotate(l.angle);
-                ctx.globalCompositeOperation = 'lighter'; ctx.shadowBlur = 15; ctx.shadowColor = '#0ff'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 1.5;
-                const len = 2000; const segments = 20; const segLen = len / segments; const jitter = 15 * (l.life / 5);
-                ctx.beginPath(); ctx.moveTo(0, 0); for (let i = 1; i <= segments; i++) { const px = i * segLen; const py = (Math.random() - 0.5) * jitter * 2; ctx.lineTo(px, py); } ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, -l.width / 4); for (let i = 1; i <= segments; i++) { const px = i * segLen; const py = -l.width / 4 + (Math.random() - 0.5) * (jitter / 2); ctx.lineTo(px, py); } ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, l.width / 4); for (let i = 1; i <= segments; i++) { const px = i * segLen; const py = l.width / 4 + (Math.random() - 0.5) * (jitter / 2); ctx.lineTo(px, py); } ctx.stroke();
-                if (Math.random() > 0.2) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, (Math.random() - 0.5) * 5); ctx.stroke(); }
+                ctx.save();
+                ctx.translate(l.x, l.y);
+                ctx.rotate(l.angle);
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#0ff';
+                ctx.strokeStyle = '#0ff';
+                ctx.lineWidth = 1.5;
+
+                // 修正：固定値 2000 ではなく、計算された l.renderLen を使う
+                const len = l.renderLen || 2000;
+
+                const segments = 20;
+                const segLen = len / segments;
+                const jitter = 15 * (l.life / 5);
+
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                for (let i = 1; i <= segments; i++) {
+                    const px = i * segLen;
+                    const py = (Math.random() - 0.5) * jitter * 2;
+                    ctx.lineTo(px, py);
+                }
+                ctx.stroke();
+
+                // 芯の白い線
+                if (Math.random() > 0.2) {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(len, (Math.random() - 0.5) * 5);
+                    ctx.stroke();
+                }
+
+                // ヒット地点の光（BOSSに当たっている時）
+                if (len < 1900) {
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(len, 0, 10 + Math.random() * 10, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
                 ctx.restore();
             });
-            ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0;
+            ctx.globalCompositeOperation = 'source-over';
         }
 
         function drawTriangleEnemy(ctx, e) {
