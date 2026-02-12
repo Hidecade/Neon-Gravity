@@ -95,75 +95,101 @@
         }
 
         /* =========================================================
-           4. ゲージ・バーコンポーネント
-           ========================================================= */
+   4. ゲージ・バーコンポーネント (整理済み)
+   ========================================================= */
+
+        /* 左右のゲージコンテナ共通設定 */
+        #gauge-box, #info-box > div {
+            pointer-events: auto;
+        }
+
         #gauge-box {
-            width: 100px; /* 右側ゲージ領域の幅 */
+            width: 90px; /* スリムな幅に統一 */
             text-align: right;
-            pointer-events: auto; /* 必要に応じ操作可能 */
         }
 
+        /* 共通ラベル設定 */
         .bar-label {
-            font-size: 10px; /* ゲージ名の文字サイズ */
-            color: #0ff; /* 基本は水色 */
-            display: block;
+            font-size: 10px;
+            letter-spacing: 1px;
             margin-bottom: 2px;
+            display: block;
+            color: #0ff; /* 基本は水色 */
         }
 
-        .bar-frame {
-            width: 100%; /* ゲージの枠 */
+            /* 敵・ボス用のラベル色 */
+            .bar-label.enemy, #boss-name-label {
+                color: #f44;
+            }
+
+        /* 共通ゲージ枠：すべての枠（左WEAPON/右SHIELD等）に適用 */
+        .bar-frame, .laser-bar-frame {
+            width: 100%;
             height: 8px;
-            border: 1px solid #0ff;
-            background: rgba(0,20,40,0.8); /* 半透明の背景 */
-            margin-bottom: 4px;
+            border: 1.5px solid rgba(0, 255, 255, 0.5); /* 1.5pxに統一 */
+            background: rgba(0, 20, 40, 0.8);
+            margin-bottom: 6px;
+            overflow: hidden;
+            box-sizing: border-box; /* 枠線の太さを内側に含める */
         }
 
-        /* --- シールドゲージ --- */
+        /* 左側WEAPON用の特殊幅調整（もし必要なら） */
+        .laser-bar-frame {
+            width: 80px;
+        }
+
+        /* 敵・ボス用の枠色上書き */
+        .bar-frame.enemy, .bar-frame.boss {
+            border-color: rgba(255, 68, 68, 0.5);
+        }
+
+        /* ボス用の特殊枠色（さらに強調する場合） */
+        .bar-frame.boss {
+            border-color: #f00;
+        }
+
+        /* --- バー本体（中身）の共通・個別設定 --- */
+
+        /* シールドバー */
         #shield-bar {
-            width: 100%; /* 残量によりJSで可変 */
+            width: 100%;
             height: 100%;
             background: #0ff;
-            transition: width 0.1s; /* 滑らかに減少 */
+            transition: width 0.1s;
             box-shadow: 0 0 10px #0ff;
         }
 
+        /* 危険時のシールド点滅 */
         .shield-critical {
-            animation: blink 0.2s infinite; /* 点滅アニメ */
-            background: #f00 !important; /* 危険時は赤 */
+            animation: blink 0.2s infinite;
+            background: #f00 !important;
         }
 
-        /* --- 敵ゲージ --- */
-        .bar-label.enemy {
-            color: #f00; /* 赤で表示 */
-        }
-
-        .bar-frame.enemy {
-            border-color: #f00;
-            background: rgba(40,0,0,0.8);
-        }
-
+        /* 敵カウントバー */
         #enemy-bar {
             width: 100%;
             height: 100%;
+            background: #f44;
+            transition: width 0.5s;
+        }
+
+        /* ボスHPバー */
+        #boss-hp-bar-inline {
+            width: 100%;
+            height: 100%;
             background: #f00;
-            transition: width 0.5s; /* ゆっくり変化 */
+            box-shadow: 0 0 10px #f00;
+            transition: width 0.2s, background-color 0.3s;
         }
 
-        /* --- レーザー持続時間ゲージ --- */
-        .laser-bar-frame {
-            width: 80px;
-            height: 8px;
-            border: 1px solid #0ff;
-            background: rgba(0,20,40,0.5);
-        }
-
+        /* レーザー持続時間バー */
         .laser-bar-fill {
             height: 100%;
             background: #0ff;
             box-shadow: 0 0 8px #0ff;
         }
 
-        /* --- 武器レベル表示ブロック --- */
+        /* 武器レベル表示用ブロック（ショットモード時） */
         .w-block {
             width: 12px;
             height: 8px;
@@ -174,77 +200,15 @@
         }
 
             .w-block.active {
-                background: #0f0; /* レベルアップ時は緑 */
+                background: #0f0;
                 border-color: #0f0;
                 box-shadow: 0 0 5px #0f0;
             }
 
-        /* 右上全体のコンテナ */
-        #gauge-box {
-            width: 90px; /* さらに少しスリムに */
-            text-align: right;
-            pointer-events: auto;
-        }
-
-        /* ラベルの調整（数値を消したので少し小さくして洗練させる） */
-        .bar-label {
-            font-size: 10px;
-            letter-spacing: 1px;
-            margin-bottom: 2px;
-            display: block;
-            color: #0ff;
-        }
-
-        /* シールド数値のテキスト */
-        #shield-val {
-            color: #fff;
-            font-size: 12px;
-        }
-
-        /* ゲージ枠（より細くシャープに） */
-        .bar-frame {
-            width: 100%;
-            height: 8px; 
-            border: 1px solid rgba(0, 255, 255, 0.5);
-            background: rgba(0, 20, 40, 0.8);
-            margin-bottom: 6px;
-            overflow: hidden; /* 中身のはみ出し防止 */
-        }
-
-        /* 敵・ボス用ラベルの色 */
-        .bar-label.enemy, #boss-name-label {
-            color: #f44;
-        }
-
-            /* 敵ゲージ用の枠（赤） */
-            .bar-frame.enemy, .bar-frame.boss {
-                border-color: rgba(255, 68, 68, 0.5);
-            }
-
-        /* ボスUIコンテナ */
+        /* ボスUIコンテナ表示制御 */
         #boss-ui-container {
-            display: none; /* JSで制御 */
+            display: none;
             margin-top: 10px;
-        }
-
-        /* ボスのラベル */
-        #boss-name-label {
-            color: #f00;
-            font-size: 10px;
-        }
-
-        /* ボス用の枠 */
-        .bar-frame.boss {
-            border-color: #f00;
-        }
-
-        /* ボスHPバー本体（中身） */
-        #boss-hp-bar-inline {
-            width: 100%;
-            height: 100%;
-            background: #f00;
-            box-shadow: 0 0 10px #f00;
-            transition: width 0.2s, background-color 0.3s;
         }
 
         /* =========================================================
@@ -903,11 +867,11 @@
                         const stageVal = data.stage ? "ST." + data.stage : "-";
 
                         tr.innerHTML = `
-                                    <td class="${rankClass}" style="text-align:center;">${rankText}</td>
-                                    <td style="text-align:left;">${escapeHtml(data.name)}</td>
-                                    <td style="color:#aaa; text-align:center;">${stageVal}</td>
-                                    <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
-                                `;
+                                        <td class="${rankClass}" style="text-align:center;">${rankText}</td>
+                                        <td style="text-align:left;">${escapeHtml(data.name)}</td>
+                                        <td style="color:#aaa; text-align:center;">${stageVal}</td>
+                                        <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
+                                    `;
                         rankingBody.appendChild(tr);
                         rank++;
                     });
@@ -1004,10 +968,12 @@
 
         // --- 敵の移動速度設定 ---
         const ENEMY_SPEEDS = {
-            TRIANGLE: 4.8, // 紫：高速で直線的な動き
-            CUBE: 2.5,     // 緑：アイテムキャリア、動きは遅め
+            TRIANGLE: 4.8,  // 紫：高速で直線的な動き
+            CUBE: 2.5,      // 緑：アイテムキャリア、動きは遅め
             TADPOLE: 10,    // 白：精子型、非常に素早い
             DRAGON: 8,      // 赤：ボス、最高速度が高い
+            ASTEROID: 3.5,  // 白：分裂する岩、慣性移動（★追加）
+            BOSS_MISSILE: 24, // ★追加：ホーミング弾の最高速度
         };
 
         // ドラゴンがプレイヤーを追尾する際の加速力（旋回性能に影響）
@@ -1124,6 +1090,7 @@
         let dyingTimer = 0;
         let enemiesKilled = 0;
         let isBossSpawned = false;
+        let isShootItemDroppedInStage = false;
 
         const player = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, satellites: [], shield: 100, weaponLevel: 1, invuln: 0, laserTimer: 0, history: [] };
         const input = { move: { x: 0, y: 0, active: false }, aim: { x: 0, y: 0, active: false }, keys: {} };
@@ -1414,6 +1381,7 @@
             isStageClear = false;
             enemiesKilled = 0;
             isBossSpawned = false;
+            isShootItemDroppedInStage = false;
             // --------------------
 
             ui.msg.style.display = 'none';
@@ -1444,12 +1412,8 @@
             distortGrid(wormholes[wormholes.length - 1].x, wormholes[wormholes.length - 1].y, 50, 150);
         }
 
-        function spawnEnemy(x, y, type) {
+        function spawnEnemy(x, y, type, size = 1) {
             const spd = SPEED_SCALE;
-
-            // 難易度設定: 現在のステージに応じた倍率を計算
-            // stageMag: 速度倍率 (1.0, 1.08, 1.16...)
-            // hpMag: HP増加量 (0, 0.5, 1.0...)
             const stageMag = 1.0 + (stage - 1) * DIFFICULTY_CONFIG.SPEED_INC;
             const hpMag = (stage - 1) * DIFFICULTY_CONFIG.HP_INC;
 
@@ -1458,42 +1422,53 @@
             const vx = Math.cos(angle) * bSpd; const vy = Math.sin(angle) * bSpd;
             const rnd = Math.random();
 
-            let dropType = rnd < 0.1 ? 'laser' : rnd < 0.3 ? 'level' : 'crystal';
+            // アイテムドロップ決定ロジック
+            let dropType = 'crystal'; // デフォルト
+
+            // 1. レベルアップアイテム (1ステージ1個、最大レベル未満)
+            if (!isShootItemDroppedInStage && player.weaponLevel < MAX_WEAPON_LEVEL && rnd < 0.15) {
+                dropType = 'level';
+                isShootItemDroppedInStage = true; // 生成した時点でフラグを立てる
+            }
+            // 2. レーザーアイテム (出現率を3%に抑制)
+            else if (rnd < 0.03) {
+                dropType = 'laser';
+            }
+            // 3. 無敵アイテム (低確率、またはシールドが減っている時に少し出やすく)
+            else if (rnd < (player.shield < 40 ? 0.05 : 0.01)) {
+                dropType = 'invincible';
+            }
 
             if (type === 'dragon') {
-                // speed と hp に倍率を適用
-                let e = {
+                enemies.push({
                     x: x, y: y, vx: vx, vy: vy,
-                    hp: 8 + hpMag * 2, // ドラゴンはHP高めなので補正を大きく
+                    hp: 8 + hpMag * 2,
                     speed: ENEMY_SPEEDS.DRAGON * spd * stageMag,
-                    color: '#f00', type: 'dragon', angle: 0, segments: [], drop: 'none', scale: 0.9, fireTimer: 0
-                };
-                for (let i = 0; i < 16; i++) e.segments.push({ x: x, y: y, angle: 0 });
-                enemies.push(e); spawnedCount++;
+                    color: '#f00', type: 'dragon', angle: 0, segments: [],
+                    drop: 'none', // ドラゴン本体からは出さない（または任意の設定）
+                    scale: 0.9, fireTimer: 0
+                });
+                for (let i = 0; i < 16; i++) enemies[enemies.length - 1].segments.push({ x: x, y: y, angle: 0 });
+                spawnedCount++;
             } else if (type === 'cube') {
-                const r = Math.random();
-                let cubeDrop;
-                const invulnChance = player.shield <= 30 ? 0.30 : 0.05;
-                if (r < invulnChance) cubeDrop = 'invincible';
-                else if (r < 0.40) cubeDrop = 'laser';
-                else if (r < 0.70) cubeDrop = 'level';
-                else cubeDrop = 'crystal';
-
-                // speed と hp に倍率を適用
+                // アイテムキャリア（Cube）はドロップ確定
                 enemies.push({
                     x, y, vx, vy,
                     hp: 2 + Math.floor(hpMag),
                     speed: ENEMY_SPEEDS.CUBE * spd * stageMag,
-                    color: '#0f0', type: 'cube', angle: 0, drop: cubeDrop, scale: 0.8, rotX: 0, rotY: 0
+                    color: '#0f0', type: 'cube', angle: 0,
+                    drop: dropType, // ここで決定したドロップを適用
+                    scale: 0.8, rotX: 0, rotY: 0
                 });
                 spawnedCount++;
             } else if (type === 'tadpole') {
-                // speed に倍率を適用 (tadpoleはHP1固定が多いためそのまま)
                 enemies.push({
                     x: x, y: y, vx: vx, vy: vy,
                     hp: 1,
                     speed: ENEMY_SPEEDS.TADPOLE * spd * stageMag,
-                    color: '#fff', type: 'tadpole', angle: 0, drop: 'none', scale: 0.6, history: []
+                    color: '#fff', type: 'tadpole', angle: 0,
+                    drop: 'none', // 雑魚は出さない
+                    scale: 0.6, history: []
                 });
                 spawnedCount++;
             } else if (type === 'triangle') {
@@ -1501,12 +1476,14 @@
                 const form = forms[Math.floor(Math.random() * forms.length)];
                 const initialAngle = Math.atan2(vy, vx);
 
-                // リーダーの速度に stageMag を適用
                 const leader = {
                     x: x, y: y, vx: vx, vy: vy,
                     hp: 1 + Math.floor(hpMag * 0.5),
                     speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
-                    color: '#d0f', type: 'triangle', angle: initialAngle, drop: dropType, scale: 0.7, isLeader: true, followers: [], rotX: Math.random() * Math.PI, rotY: Math.random() * Math.PI, rotZ: Math.random() * Math.PI
+                    color: '#d0f', type: 'triangle', angle: initialAngle,
+                    drop: dropType, // リーダーがアイテムを持つ
+                    scale: 0.7, isLeader: true, followers: [],
+                    rotX: Math.random() * Math.PI, rotY: Math.random() * Math.PI, rotZ: Math.random() * Math.PI
                 };
                 enemies.push(leader); spawnedCount++;
 
@@ -1519,39 +1496,58 @@
                     const rx = offX * Math.cos(initialAngle) - offY * Math.sin(initialAngle);
                     const ry = offX * Math.sin(initialAngle) + offY * Math.cos(initialAngle);
 
-                    // フォロワーの速度に stageMag を適用
-                    let e = {
+                    enemies.push({
                         x: x + rx, y: y + ry, vx, vy,
                         hp: 1,
                         speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
-                        color: '#d0f', type: 'triangle', angle: initialAngle, drop: 'none', scale: 0.7, leader: leader, formOffset: { x: offX, y: offY }, rotX: Math.random() * Math.PI, rotY: Math.random() * Math.PI, rotZ: Math.random() * Math.PI
-                    };
-                    enemies.push(e); leader.followers.push(e); spawnedCount++;
+                        color: '#d0f', type: 'triangle', angle: initialAngle,
+                        drop: 'none', // 取り巻きは出さない
+                        scale: 0.7, leader: leader, formOffset: { x: offX, y: offY },
+                        rotX: Math.random() * Math.PI, rotY: Math.random() * Math.PI, rotZ: Math.random() * Math.PI
+                    });
+                    leader.followers.push(enemies[enemies.length - 1]);
+                    spawnedCount++;
                 }
             } else if (type === 'boss') {
                 const variantIndex = (stage - 1) % BOSS_VARIANTS.length;
                 const variant = BOSS_VARIANTS[variantIndex];
-
-                // ボスの基本HPにステージ補正を上乗せ
                 const bossHp = variant.hp + (stage - 1) * 10;
 
                 enemies.push({
-                    x: x, y: y,
-                    vx: vx * 0.2, vy: vy * 0.2,
-                    hp: bossHp,
-                    maxHp: bossHp,
-                    // ボスの移動速度にも stageMag を適用
+                    x: x, y: y, vx: vx * 0.2, vy: vy * 0.2,
+                    hp: bossHp, maxHp: bossHp,
                     speed: 1.2 * variant.speedFactor * spd * stageMag,
                     color: variant.color,
-                    type: 'boss',
-                    variant: variant,
-                    angle: 0,
-                    drop: 'level',
+                    type: 'boss', variant: variant, angle: 0,
+                    drop: 'level', // ボスはレベルアップ確定、または任意
                     scale: 1.5 + (variant.sides * 0.1),
-                    fireTimer: 0,
-                    flashTimer: 0
+                    fireTimer: 0, flashTimer: 0
                 });
                 spawnedCount++;
+            } else if (type === 'asteroid') {
+                const sizeFactor = 1.0 + (stage - 1) * 0.1;
+                const hp = (size === 1 ? 4 : size === 2 ? 2 : 1) + Math.floor((stage - 1) * 0.5);
+                const baseScale = size === 1 ? 1.8 : size === 2 ? 1.1 : 0.6;
+                const finalScale = baseScale * sizeFactor;
+
+                // moveSpeed には既に spd (SPEED_SCALE) が含まれています
+                const moveSpeed = (ENEMY_SPEEDS.ASTEROID * 0.7) * (1 + size * 0.4) * spd * stageMag;
+
+                const ang = Math.random() * Math.PI * 2;
+
+                enemies.push({
+                    x, y,
+                    // ★修正：ここで moveSpeed を掛けて「移動ベクトル」にする
+                    vx: Math.cos(ang) * moveSpeed,
+                    vy: Math.sin(ang) * moveSpeed,
+
+                    hp: hp,
+                    speed: moveSpeed,
+                    color: '#fff',
+                    type: 'asteroid', size: size, angle: Math.random() * Math.PI * 2,
+                    rotSpd: (Math.random() - 0.5) * 0.1, scale: finalScale,
+                    drop: 'none'
+                });
             }
         }
 
@@ -1738,10 +1734,11 @@
                             isBossSpawned = true;
                         } else {
                             const r = Math.random();
-                            if (r < 0.20) spawnEnemy(w.x, w.y, 'dragon');
-                            else if (r < 0.35) spawnEnemy(w.x, w.y, 'cube');
-                            else if (r < 0.65) spawnEnemy(w.x, w.y, 'tadpole');
-                            else spawnEnemy(w.x, w.y, 'triangle');
+                            if (r < 0.15) spawnEnemy(w.x, w.y, 'dragon');    // 15%
+                            else if (r < 0.30) spawnEnemy(w.x, w.y, 'cube'); // 15%
+                            else if (r < 0.45) spawnEnemy(w.x, w.y, 'asteroid'); // ★15%：アステロイド
+                            else if (r < 0.70) spawnEnemy(w.x, w.y, 'tadpole');  // 25%
+                            else spawnEnemy(w.x, w.y, 'triangle');           // 30%
                         }
                     }
                     if (w.life <= 0) w.active = false;
@@ -1787,7 +1784,7 @@
 
                 ui.bossBarFrame.style.borderColor = bColor;
                 ui.bossNameLabel.style.color = bColor;
-                ui.bossNameLabel.innerText = "BOSS: " + currentBoss.variant.name;
+                ui.bossNameLabel.innerText = currentBoss.variant.name;
 
                 // ピンチ時の点滅演出
                 if (hpPct < 25 && frame % 10 < 5) {
@@ -1963,12 +1960,26 @@
 
         function updatePlayerBullets() {
             bullets.forEach(b => {
-                b.x += b.vx; b.y += b.vy; b.life--;
+                b.x += b.vx;
+                b.y += b.vy;
+                b.life--;
+
+                // --- ★追加：ワールド境界との衝突判定 ---
+                if (b.x < WALL_MARGIN || b.x > worldSize - WALL_MARGIN ||
+                    b.y < WALL_MARGIN || b.y > worldSize - WALL_MARGIN) {
+
+                    const impactX = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, b.x));
+                    const impactY = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, b.y));
+
+                    createWallImpact(impactX, impactY, '#0f8'); // 自機弾の色
+                    b.life = 0; // 消滅させる
+                }
+
+                // 敵との当たり判定（既存通り）
                 enemies.forEach(e => {
                     if (Math.hypot(b.x - e.x, b.y - e.y) < 30 * e.scale) {
                         b.life = 0;
                         e.hp--;
-                        // ボスへのダメージ演出
                         if (e.type === 'boss') {
                             e.flashTimer = 5;
                             AudioSys.playSE('damage');
@@ -1989,19 +2000,49 @@
 
         function updateEnemies() {
             enemies.forEach(e => {
-                if (e.leader && e.leader.hp > 0) { updateFormationMovement(e); if (e.type === 'triangle') { e.rotX += 0.08; e.rotY += 0.12; e.rotZ += 0.05; } }
-                else {
+                // --- 移動・AI更新 ---
+                if (e.leader && e.leader.hp > 0) {
+                    updateFormationMovement(e);
+                    if (e.type === 'triangle') { e.rotX += 0.08; e.rotY += 0.12; e.rotZ += 0.05; }
+                } else {
                     switch (e.type) {
                         case 'dragon': updateDragonAI(e); break;
                         case 'tadpole': updateTadpoleAI(e); break;
                         case 'triangle': updateTriangleAI(e); break;
                         case 'cube': updateCubeAI(e); break;
                         case 'boss': updateBossAI(e); break;
+                        case 'asteroid': updateAsteroidAI(e); break; // ★追加
                     }
                 }
-                applySeparation(e); applyWorldBoundary(e); checkPlayerCollision(e); checkSatelliteCollision(e);
-                if (e.hp <= 0) destroyEnemy(e);
+
+                // --- 共通処理 ---
+                applySeparation(e);
+                applyAsteroidCollisions(e);
+                applyWorldBoundary(e);
+                checkPlayerCollision(e);
+                checkSatelliteCollision(e);
+
+                // --- 破壊判定 ---
+                if (e.hp <= 0) {
+                    // ★アステロイド専用：分裂ロジック
+                    if (e.type === 'asteroid' && e.size < 3) {
+                        // 分裂する破片の数（2つに分かれる）
+                        for (let i = 0; i < 2; i++) {
+                            // 分裂時は少し勢いよく外側へ飛ばす
+                            const splitAngle = Math.random() * Math.PI * 2;
+                            const splitSpeed = 2.0;
+                            const vx = Math.cos(splitAngle) * splitSpeed;
+                            const vy = Math.sin(splitAngle) * splitSpeed;
+
+                            // 次のサイズ(e.size + 1)を指定してスポーン
+                            spawnEnemy(e.x, e.y, 'asteroid', e.size + 1);
+                        }
+                    }
+                    destroyEnemy(e);
+                }
             });
+
+            // 死んだ敵を除去
             enemies = enemies.filter(e => e.hp > 0);
         }
 
@@ -2038,7 +2079,7 @@
                 e.fireTimer = 0;
 
                 // ここで直接、現在のステージに応じた弾速を計算
-                const currentEnemyBulletSpd = BULLET_SETTINGS.ENEMY_SPEED * spd * (1 + (stage - 1) * DIFFICULTY_CONFIG.BULLET_SPEED_INC);
+               const currentEnemyBulletSpd = BULLET_SETTINGS.ENEMY_SPEED * SPEED_SCALE * (1 + (stage - 1) * DIFFICULTY_CONFIG.BULLET_SPEED_INC);
 
                 enemyBullets.push({
                     x: e.x,
@@ -2122,7 +2163,8 @@
                         const a = e.angle + (Math.PI * 2 / sides) * i;
                         enemyBullets.push({
                             x: e.x + Math.cos(a) * 60, y: e.y + Math.sin(a) * 60,
-                            vx: Math.cos(a) * 3.5, vy: Math.sin(a) * 3.5,
+                            vx: Math.cos(a) * ENEMY_SPEEDS.BOSS_MISSILE * SPEED_SCALE,
+                            vy: Math.sin(a) * ENEMY_SPEEDS.BOSS_MISSILE * SPEED_SCALE,
                             life: 300, isMissile: true, color: e.color
                         });
                     }
@@ -2139,6 +2181,85 @@
 
             e.angle += rotationSpeed;
             if (e.fireTimer >= maxCycle) e.fireTimer = 0;
+        }
+
+        function updateAsteroidAI(e) {
+            // 等速直線運動
+            e.x += e.vx * e.speed;
+            e.y += e.vy * e.speed;
+
+            // 自転
+            e.angle += e.rotSpd;
+
+            // 画面端で跳ね返るか、ループさせる（世界観に合わせて）
+            if (e.x < 0 || e.x > worldSize) e.vx *= -1;
+            if (e.y < 0 || e.y > worldSize) e.vy *= -1;
+        }
+
+        function applyAsteroidCollisions(e) {
+            if (e.type !== 'asteroid') return;
+
+            enemies.forEach(other => {
+                // 自分自身、または死んでいる敵、アステロイド以外の敵は無視
+                if (e === other || other.hp <= 0 || other.type !== 'asteroid') return;
+
+                const dx = other.x - e.x;
+                const dy = other.y - e.y;
+                const dist = Math.hypot(dx, dy) || 0.001;
+
+                // --- 判定半径の動的な計算 ---
+                // 基本半径20pxにそれぞれのscaleを掛け、さらに描画倍率G_SCALEを考慮
+                const r1 = 20 * e.scale * G_SCALE;
+                const r2 = 20 * other.scale * G_SCALE;
+                const minDist = r1 + r2;
+
+                if (dist < minDist) {
+                    // --- 1. 重なり（めり込み）の解消 ---
+                    const overlap = minDist - dist;
+                    const nx = dx / dist; // 法線ベクトルx
+                    const ny = dy / dist; // 法線ベクトルy
+
+                    // サイズ（scale）を重みとして、小さい方がより大きく弾かれるように調整
+                    // (質量 = scaleの2乗に比例すると仮定するとよりリアルですが、シンプルにscale比で計算)
+                    const totalScale = e.scale + other.scale;
+                    const ratioE = other.scale / totalScale;
+                    const ratioOther = e.scale / totalScale;
+
+                    e.x -= nx * overlap * ratioE;
+                    e.y -= ny * overlap * ratioE;
+                    other.x += nx * overlap * ratioOther;
+                    other.y += ny * overlap * ratioOther;
+
+                    // --- 2. 速度ベクトルの反射（弾性衝突） ---
+                    // 相対速度
+                    const rvx = other.vx - e.vx;
+                    const rvy = other.vy - e.vy;
+
+                    // 法線方向の速度成分（内積）
+                    const velAlongNormal = rvx * nx + rvy * ny;
+
+                    // 既に離れようとしている（ベクトルが外向き）場合は処理しない
+                    if (velAlongNormal > 0) return;
+
+                    // 反発係数 (0.6〜0.8くらいが岩らしくて自然です)
+                    const restitution = 0.7;
+                    const j = -(1 + restitution) * velAlongNormal;
+
+                    // 質量比に基づいた速度変化（大きい岩ほど動きにくい）
+                    e.vx -= j * nx * ratioE;
+                    e.vy -= j * ny * ratioE;
+                    other.vx += j * nx * ratioOther;
+                    other.vy += j * ny * ratioOther;
+
+                    // --- 3. 衝突時の火花演出 ---
+                    // 激しくぶつかった時だけ火花を出す
+                    if (Math.abs(velAlongNormal) > 1 && frame % 2 === 0) {
+                        const midX = (e.x + other.x) / 2;
+                        const midY = (e.y + other.y) / 2;
+                        createExplosion(midX, midY, '#fff', 2);
+                    }
+                }
+            });
         }
 
         // --- ボス描画 ---
@@ -2323,29 +2444,44 @@
             if (gameState === 'DYING' || gameState === 'GAMEOVER') return;
 
             const dist = Math.hypot(player.x - e.x, player.y - e.y);
-            let radius = 15;
-            if (e.type === 'triangle') radius = ENEMY_HITBOX.TRIANGLE;
-            else if (e.type === 'cube') radius = ENEMY_HITBOX.CUBE;
-            else if (e.type === 'tadpole') radius = ENEMY_HITBOX.TADPOLE;
-            else if (e.type === 'dragon') radius = ENEMY_HITBOX.DRAGON;
-            else if (e.type === 'boss') radius = 45; // ボスの判定サイズ
 
-            const collisionDist = radius * (e.scale / 0.7) + (player.invuln > 0 ? 20 : 0);
+            // --- 当たり判定半径の決定 ---
+            let radius = 15;
+            if (e.type === 'asteroid') {
+                // 岩の基本半径20pxに、ステージ補正等で大きくなったscaleを掛ける
+                radius = 20 * e.scale;
+            } else if (e.type === 'triangle') {
+                radius = ENEMY_HITBOX.TRIANGLE;
+            } else if (e.type === 'cube') {
+                radius = ENEMY_HITBOX.CUBE;
+            } else if (e.type === 'tadpole') {
+                radius = ENEMY_HITBOX.TADPOLE;
+            } else if (e.type === 'dragon') {
+                radius = ENEMY_HITBOX.DRAGON;
+            } else if (e.type === 'boss') {
+                radius = 45; // ボスの判定サイズ
+            }
+
+            // 衝突境界距離の計算（G_SCALEを考慮しつつ、無敵バリア時は判定を広げる）
+            // scale/0.7 の補正をアステロイド以外にも適用
+            const collisionDist = radius * (e.type === 'asteroid' ? 1 : (e.scale / 0.7)) + (player.invuln > 0 ? 20 : 0);
 
             if (dist < collisionDist) {
-                // --- ★無敵バリア展開中の体当たり処理 ---
+                // --- ★無敵バリア展開中、または最大レベルフェニックス時の体当たり処理 ---
                 if (player.invuln > 0) {
-                    if (e.type === 'boss' || e.type === 'dragon') {
-                        // ボスやドラゴンの場合はHPを削る（多段ヒット）
+                    // アステロイド、ボス、ドラゴンの場合はHPを削る（多段ヒット）
+                    if (e.type === 'boss' || e.type === 'dragon' || e.type === 'asteroid') {
                         e.hp -= 0.5;
                         if (e.type === 'boss') e.flashTimer = 5;
-                        // 火花エフェクト
+
+                        // 火花エフェクト（アステロイドなら白、それ以外なら黄色）
                         if (frame % 3 === 0) {
-                            createExplosion(e.x, e.y, '#ff0', 3);
+                            const sparkColor = e.type === 'asteroid' ? '#fff' : '#ff0';
+                            createExplosion(e.x, e.y, sparkColor, 3);
                             AudioSys.playSE('damage');
                         }
                     } else {
-                        // 雑魚敵は即死
+                        // その他の雑魚敵は即死
                         e.hp = 0;
                         score += 100;
                         createExplosion(e.x, e.y, e.color, 15);
@@ -2376,11 +2512,43 @@
         }
 
         function updateEnemyBullets() {
+            // ステージごとの弾速上昇率を計算
+            const bulletStageMag = 1.0 + (stage - 1) * DIFFICULTY_CONFIG.BULLET_SPEED_INC;
+
             enemyBullets.forEach(eb => {
-                // --- ミサイルの挙動制御 ---
-                if (eb.isMissile) {
-                    // 1. 初速の減衰（慣性による減速）
-                    // 発射直後は vx, vy が大きいので、徐々に空気抵抗のように減速させる
+                const oldX = eb.x;
+                const oldY = eb.y;
+
+                // 1. 移動処理
+                eb.x += eb.vx;
+                eb.y += eb.vy;
+                eb.life--;
+
+                // --- ★追加：ワールド境界との衝突判定 ---
+                // WALL_MARGINは画面端の余裕。worldSizeはエリアの最大値
+                if (eb.x < WALL_MARGIN || eb.x > worldSize - WALL_MARGIN ||
+                    eb.y < WALL_MARGIN || eb.y > worldSize - WALL_MARGIN) {
+
+                    // 当たった座標をクランプして特定
+                    const impactX = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, eb.x));
+                    const impactY = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, eb.y));
+
+                    if (eb.isMissile) {
+                        // ミサイルは壁でドゴォンと爆発
+                        createExplosion(impactX, impactY, eb.color, 12);
+                        AudioSys.playSE('explode');
+                        distortGrid(impactX, impactY, 20, 40); // グリッドを少し歪ませる
+                    } else {
+                        // 通常弾はパチッと火花
+                        createWallImpact(impactX, impactY, eb.color || '#f00');
+                    }
+                    eb.life = 0; // 弾を消滅させる
+                    return; // この弾の以降の処理（当たり判定等）をスキップ
+                }
+
+                // --- ミサイルの挙動制御 (既存ロジック) ---
+                if (eb.isMissile && eb.life > 0) {
+                    // 初速の減衰
                     eb.vx *= 0.96;
                     eb.vy *= 0.96;
 
@@ -2388,22 +2556,19 @@
                     const dy = player.y - eb.y;
                     const dist = Math.hypot(dx, dy) || 0.001;
 
-                    // 2. 追尾力の適用
-                    // 減速してきたところで、徐々に自機に向かう加速を加える
+                    // 追尾力の適用
                     eb.vx += (dx / dist) * 0.25 * SPEED_SCALE;
                     eb.vy += (dy / dist) * 0.25 * SPEED_SCALE;
 
-                    // 3. 巡航速度の制限
-                    // 現在のスピードに合わせて、最終的な巡航速度に抑える
+                    // 巡航速度の制限
                     const v = Math.hypot(eb.vx, eb.vy);
-                    const cruiseSpeed = 5 * SPEED_SCALE; // 今までのスピードに近い安定速度
+                    const cruiseSpeed = ENEMY_SPEEDS.BOSS_MISSILE * SPEED_SCALE * bulletStageMag;
                     if (v > cruiseSpeed) {
-                        // 急激に落とさず、滑らかに巡航速度へ近づける
                         eb.vx = (eb.vx / v) * (v * 0.9 + cruiseSpeed * 0.1);
                         eb.vy = (eb.vy / v) * (v * 0.9 + cruiseSpeed * 0.1);
                     }
 
-                    // 煙演出（色味のある城/ボスの色）
+                    // 煙演出
                     if (frame % 2 === 0) {
                         particles.push({
                             x: eb.x, y: eb.y,
@@ -2412,7 +2577,7 @@
                         });
                     }
 
-                    // プレイヤーの弾との当たり判定（変更なし）
+                    // プレイヤーの弾との当たり判定（既存）
                     bullets.forEach(b => {
                         if (b.life > 0 && Math.hypot(b.x - eb.x, b.y - eb.y) < 20) {
                             eb.life = 0; b.life = 0;
@@ -2423,18 +2588,11 @@
                     });
                 }
 
-                // --- 移動と判定の共通処理 ---
-                const oldX = eb.x;
-                const oldY = eb.y;
-                eb.x += eb.vx;
-                eb.y += eb.vy;
-                eb.life--;
-
-
-                if (gameState !== 'DYING' && player.invuln <= 0) {
+                // --- プレイヤーとの判定処理 (既存ロジック) ---
+                if (eb.life > 0 && gameState !== 'DYING' && player.invuln <= 0) {
                     const dx = eb.x - oldX;
                     const dy = eb.y - oldY;
-                    const t = ((player.x - oldX) * dx + (player.y - oldY) * dy) / (dx * dx + dy * dy);
+                    const t = ((player.x - oldX) * dx + (player.y - oldY) * dy) / (dx * dx + dy * dy || 1);
                     const closestT = Math.max(0, Math.min(1, t));
                     const closestX = oldX + closestT * dx;
                     const closestY = oldY + closestT * dy;
@@ -2449,6 +2607,8 @@
                     }
                 }
             });
+
+            // 寿命切れや激突した弾を削除
             enemyBullets = enemyBullets.filter(eb => eb.life > 0);
         }
 
@@ -2475,27 +2635,117 @@
 
         function updatePowerups() {
             powerups.forEach(p => {
-                p.life--;
-                const d = Math.hypot(player.x - p.x, player.y - p.y);
-                if (d < 30) {
-                    p.life = 0; AudioSys.playSE('powerup');
-                    if (p.type === 'laser') { player.laserTimer = LASER_DURATION; rings.push({ x: player.x, y: player.y, r: 10, color: '#0ff', life: 1 }); rings.push({ x: player.x, y: player.y, r: 50, color: '#0ff', life: 1 }); }
-                    else if (p.type === 'invincible') { player.invuln = 600; AudioSys.playSE('invincible'); }
+                // --- 1. 消失防止と寿命の更新 ---
+                // レベルアップアイテム以外は寿命を減らす
+                if (p.type !== 'level') {
+                    p.life--;
+                }
+
+                // 自機との距離と方向ベクトルを計算
+                const dx = player.x - p.x;
+                const dy = player.y - p.y;
+                const dist = Math.hypot(dx, dy) || 0.001;
+
+                // --- 2. レベルアップアイテム専用：吸い寄せロジック ---
+                if (p.type === 'level') {
+                    // 遠くても確実に自機へ向かう（距離に応じた加速）
+                    const pullSpeed = (2.0 + (dist * 0.04)) * SPEED_SCALE;
+                    const moveAmount = Math.min(dist, pullSpeed);
+
+                    p.x += (dx / dist) * moveAmount;
+                    p.y += (dy / dist) * moveAmount;
+
+                    // 飛んでいる間、キラキラしたパーティクルを出す演出
+                    if (frame % 3 === 0) {
+                        particles.push({
+                            x: p.x, y: p.y,
+                            vx: (Math.random() - 0.5) * 2,
+                            vy: (Math.random() - 0.5) * 2,
+                            color: '#0f8', life: 0.3, size: 1.5
+                        });
+                    }
+                }
+
+                // --- 3. 回収判定 ---
+                if (dist < 30) {
+                    p.life = 0;
+                    AudioSys.playSE('powerup');
+
+                    if (p.type === 'laser') {
+                        player.laserTimer = LASER_DURATION;
+                        rings.push({ x: player.x, y: player.y, r: 10, color: '#0ff', life: 1 });
+                        rings.push({ x: player.x, y: player.y, r: 50, color: '#0ff', life: 1 });
+                    }
+                    else if (p.type === 'invincible') {
+                        player.invuln = 600;
+                        AudioSys.playSE('invincible');
+                    }
                     else if (p.type === 'level') {
                         player.weaponLevel = Math.min(MAX_WEAPON_LEVEL, player.weaponLevel + 1);
+                        // スコアポップアップと同じ仕組みで「LEVEL UP!」と表示
+                        scorePopups.push({
+                            x: player.x,
+                            y: player.y - 20,
+                            text: "LEVEL UP!",
+                            life: 60, alpha: 1, vy: -1.2
+                        });
                     }
                 }
             });
+            // 取得済み(life=0)または時間切れのものを削除
             powerups = powerups.filter(p => p.life > 0);
         }
 
         function updateMissiles() {
             missiles.forEach(m => {
-                if (!m.target || !enemies.includes(m.target)) { let min = 9999; enemies.forEach(e => { const d = Math.hypot(e.x - m.x, e.y - m.y); if (d < min) { min = d; m.target = e; } }); }
-                if (m.target) { const ta = Math.atan2(m.target.y - m.y, m.target.x - m.x); m.vx += Math.cos(ta) * 0.5; m.vy += Math.sin(ta) * 0.5; }
-                const s = Math.hypot(m.vx, m.vy); if (s > 0.001) { m.vx = (m.vx / s) * m.speed; m.vy = (m.vy / s) * m.speed; }
-                m.x += m.vx; m.y += m.vy; m.life--;
-                enemies.forEach(e => { if (Math.hypot(e.x - m.x, e.y - m.y) < 30) { e.hp -= 10; m.life = 0; } });
+                // ターゲットの選定ロジック（既存）
+                if (!m.target || !enemies.includes(m.target)) {
+                    let min = 9999;
+                    enemies.forEach(e => {
+                        const d = Math.hypot(e.x - m.x, e.y - m.y);
+                        if (d < min) { min = d; m.target = e; }
+                    });
+                }
+
+                // 追尾ロジック（既存）
+                if (m.target) {
+                    const ta = Math.atan2(m.target.y - m.y, m.target.x - m.x);
+                    m.vx += Math.cos(ta) * 0.5; m.vy += Math.sin(ta) * 0.5;
+                }
+
+                const s = Math.hypot(m.vx, m.vy);
+                if (s > 0.001) { m.vx = (m.vx / s) * m.speed; m.vy = (m.vy / s) * m.speed; }
+                m.x += m.vx; m.y += m.vy;
+                m.life--;
+
+                // --- ★修正：ワールド境界（壁）に当たった時の処理 ---
+                if (m.x < WALL_MARGIN || m.x > worldSize - WALL_MARGIN ||
+                    m.y < WALL_MARGIN || m.y > worldSize - WALL_MARGIN) {
+                    const impactX = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, m.x));
+                    const impactY = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, m.y));
+                    createExplosion(impactX, impactY, '#fd0', 10);
+                    AudioSys.playSE('explode');
+                    m.life = 0;
+                    return;
+                }
+
+                // --- ★修正：敵との当たり判定（アステロイドのサイズを考慮） ---
+                enemies.forEach(e => {
+                    if (e.hp <= 0) return;
+
+                    // 敵のタイプに合わせて判定距離を変える（アステロイドは scale を参照）
+                    const hitRadius = (e.type === 'asteroid' ? 25 * e.scale : 30);
+
+                    if (Math.hypot(e.x - m.x, e.y - m.y) < hitRadius) {
+                        e.hp -= 15; // ミサイルの威力
+                        m.life = 0;
+                        createExplosion(m.x, m.y, '#fd0', 8);
+                        AudioSys.playSE('explode');
+                        distortGrid(m.x, m.y, 20, 50);
+                    }
+                });
+
+                // 航跡パーティクル
                 particles.push({ x: m.x, y: m.y, vx: (Math.random() - 0.5), vy: (Math.random() - 0.5), color: '#fd0', life: 0.3 });
             });
             missiles = missiles.filter(m => m.life > 0);
@@ -2513,58 +2763,74 @@
         function updateScorePopups() { scorePopups.forEach(s => { s.y += s.vy; s.life--; s.alpha = s.life / 30; }); scorePopups = scorePopups.filter(s => s.life > 0); }
 
         function destroyEnemy(e) {
-            enemiesKilled++;
+            // ASTEROID以外の場合のみ撃破カウントを進める
+            if (e.type !== 'asteroid') {
+                enemiesKilled++;
+            }
 
-            // --- 爆発エフェクトの呼び出し ---
-            // BOSSの場合はパーティクル数を増やして（100個）、より派手にする
-            const particleCount = (e.type === 'boss') ? 100 : 40;
-            createExplosion(e.x, e.y, e.color, particleCount);
+            // --- 爆発エフェクトのカスタマイズ ---
+            const particleCount = (e.type === 'boss') ? 120 : (e.type === 'asteroid' ? 30 : 40);
+            for (let i = 0; i < particleCount; i++) {
+                let pColor;
+                const rand = Math.random();
+                if (e.type === 'asteroid') {
+                    if (rand < 0.85) pColor = '#ffffff';
+                    else if (rand < 0.95) pColor = '#888888';
+                    else pColor = '#ffaa00';
+                } else {
+                    if (rand < 0.85) pColor = e.color;
+                    else if (rand < 0.95) pColor = '#ffffff';
+                    else pColor = '#ffff00';
+                }
+                createExplosion(e.x, e.y, pColor, 1);
+            }
 
             // --- 効果音と特殊演出 ---
             if (e.type === 'boss') {
-                // BOSS撃破：多層リング演出（ボスの色、白、オレンジ）
                 rings.push({ x: e.x, y: e.y, r: 10, color: e.color, life: 1.5 });
                 rings.push({ x: e.x, y: e.y, r: 25, color: '#ffffff', life: 1.0 });
-                rings.push({ x: e.x, y: e.y, r: 5, color: '#ffcc00', life: 1.2 });
-
+                rings.push({ x: e.x, y: e.y, r: 50, color: e.color, life: 0.8 });
                 AudioSys.playSE('dragon_explode');
-                // 画面揺れ（もしscreenShake変数を実装済みなら）
                 if (typeof screenShake !== 'undefined') screenShake = 40;
-
-                // グリッドを大きく歪ませる
                 distortGrid(e.x, e.y, 100, 200);
             } else if (e.type === 'dragon') {
-                rings.push({ x: e.x, y: e.y, r: 10, color: '#f00', life: 1 });
+                rings.push({ x: e.x, y: e.y, r: 15, color: e.color, life: 1 });
                 AudioSys.playSE('dragon_explode');
                 distortGrid(e.x, e.y, 40, 80);
+            } else if (e.type === 'asteroid') {
+                AudioSys.playSE('explode');
+                distortGrid(e.x, e.y, 20, 40);
             } else {
                 AudioSys.playSE('explode');
                 distortGrid(e.x, e.y, 30, 60);
             }
 
             // スコア処理
-            const pts = (e.type === 'dragon' || e.type === 'boss') ? 1000 : 100;
+            const pts = (e.type === 'dragon' || e.type === 'boss') ? 1000 : (e.type === 'asteroid' ? 150 : 100);
             score += pts;
             ui.score.innerText = score.toString().padStart(6, '0');
             scorePopups.push({ x: e.x, y: e.y, text: pts, life: 40, alpha: 1, vy: -1 });
 
-            if (e.noDrop || e.drop === 'none') return;
+            // --- アイテムドロップ処理（spawnEnemyでの決定に従うのみ） ---
+            if (e.noDrop || e.drop === 'none' || e.type === 'asteroid') return;
 
-            // --- ドロップ調整ロジック ---
-            let finalDrop = e.drop;
+            // 出現時の共通設定（ふわっと飛び出す初速）
+            const itemProps = {
+                x: e.x,
+                y: e.y,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4
+            };
 
-            // シールドが30%以下なら、通常のクリスタルドロップを低確率で「無敵」に上書き
-            if (player.shield <= 30 && finalDrop === 'crystal') {
-                if (Math.random() < 0.05) {
-                    finalDrop = 'invincible';
-                }
+            if (e.drop === 'level') {
+                powerups.push({ ...itemProps, type: 'level', life: 999999 });
+            } else if (e.drop === 'laser') {
+                powerups.push({ ...itemProps, type: 'laser', life: ITEM_LIFE });
+            } else if (e.drop === 'invincible') {
+                powerups.push({ ...itemProps, type: 'invincible', life: ITEM_LIFE });
+            } else if (e.drop === 'crystal') {
+                crystals.push({ ...itemProps, life: ITEM_LIFE });
             }
-
-            // ドロップ実行
-            if (finalDrop === 'laser') powerups.push({ x: e.x, y: e.y, type: 'laser', life: ITEM_LIFE });
-            else if (finalDrop === 'invincible') powerups.push({ x: e.x, y: e.y, type: 'invincible', life: ITEM_LIFE });
-            else if (finalDrop === 'level' || Math.random() < 0.05) powerups.push({ x: e.x, y: e.y, type: 'level', life: ITEM_LIFE });
-            else crystals.push({ x: e.x, y: e.y, life: ITEM_LIFE });
         }
 
         function damage(v) {
@@ -2586,17 +2852,28 @@
         }
 
         function checkStageClear() {
-            if (!isStageClear && enemiesKilled >= enemiesToSpawn && enemies.length === 0) {
+            // アステロイド以外の「倒すべき敵」が残っているか数える
+            const essentialEnemies = enemies.filter(e => e.type !== 'asteroid');
+
+            // 1. まだクリア判定前であること
+            // 2. 規定の出現ノルマ（enemiesToSpawn）をすべて撃破済みであること
+            // 3. 画面上にアステロイド以外の敵（essentialEnemies）が残っていないこと
+            if (!isStageClear && enemiesKilled >= enemiesToSpawn && essentialEnemies.length === 0) {
                 isStageClear = true;
 
                 // --- ★8ステージクリア判定 ---
                 if (stage === MAX_STAGE) {
                     showEnding();
                 } else {
-                    // 通常のステージクリア
+                    // 通常のステージクリア演出
                     ui.msg.style.display = 'block';
                     AudioSys.playBGM('clear');
+
                     setTimeout(() => {
+                        // 次のステージへ進む前に、画面に残っているアステロイドを全消去
+                        // これにより、次ステージ開始時に古い岩が邪魔になるのを防ぎます
+                        enemies = [];
+
                         stage++;
                         ui.stage.innerText = stage;
                         startStage();
@@ -2681,6 +2958,7 @@
                 else if (e.type === 'cube') drawCubeEnemy(ctx, e);
                 else if (e.type === 'tadpole') drawTadpoleEnemy(ctx, e);
                 else if (e.type === 'boss') drawBossEnemy(ctx, e);
+                else if (e.type === 'asteroid') drawAsteroidEnemy(ctx, e);
             });
 
             // 敵の弾の描画ループ
@@ -2738,7 +3016,7 @@
                 });
 
                 // 1. 最大レベルなら碧き不死鳥を纏う
-                if (player.weaponLevel >= MAX_WEAPON_LEVEL) {
+                if (player.weaponLevel >= MAX_WEAPON_LEVEL - 1) {
                     drawEmeraldPhoenix(ctx, player);
                 }
 
@@ -3158,6 +3436,46 @@
             ctx.restore(); ctx.restore();
         }
 
+        function drawAsteroidEnemy(ctx, e) {
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            ctx.rotate(e.angle);
+
+            // スケールを適用
+            const s = e.scale * G_SCALE;
+            ctx.scale(s, s);
+
+            // ネオンホワイトのワイヤーフレーム設定
+            ctx.strokeStyle = '#fff';
+
+            // ★ポイント: 小さくなっても線の太さを維持する計算
+            // スケール s で割ることで、画面上の見た目の太さを常に一定（約1.5px）に保ちます
+            ctx.lineWidth = 1.5 / s;
+
+            ctx.shadowBlur = 12 / s; // 発光もスケールに合わせて調整
+            ctx.shadowColor = '#fff';
+
+            ctx.beginPath();
+            // 岩の形状（e.sizeをシードにして形状を固定）
+            for (let i = 0; i < 8; i++) {
+                const r = 22 * (0.8 + Math.sin(i * 2.1 + e.size * 5) * 0.25);
+                const ang = (Math.PI * 2 / 8) * i;
+                const tx = Math.cos(ang) * r;
+                const ty = Math.sin(ang) * r;
+                if (i === 0) ctx.moveTo(tx, ty); else ctx.lineTo(tx, ty);
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // 内部の亀裂（これも線の太さを維持）
+            ctx.globalAlpha = 0.2;
+            ctx.beginPath();
+            ctx.moveTo(-10, -5); ctx.lineTo(5, 8);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
         // 通常の敵弾を描画する関数
         function drawNormalBullet(ctx, eb) {
             ctx.rotate(frame * 0.15);
@@ -3454,6 +3772,24 @@
             miniMapCtx.shadowBlur = 0;
         }
 
+        function createWallImpact(x, y, color) {
+            // 壁に当たった際のエネルギーの火花
+            for (let i = 0; i < 6; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = (Math.random() * 5 + 2) * SPEED_SCALE * 15; // 弾の勢いを表現
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    color: color,
+                    size: 1.5 * G_SCALE,
+                    life: 0.3 + Math.random() * 0.2
+                });
+            }
+            // 小さな光のリング
+            rings.push({ x: x, y: y, r: 2, color: color, life: 0.3 });
+        }
+
         function updateGrid() {
             // スクロール時の乱れを防ぐため、計算バッファ（10）を追加
             const buffer = 10;
@@ -3508,15 +3844,13 @@
                 let color;
                 const rnd = Math.random();
 
-                // 50%はボスの色、25%は火花の色（白・黄）、残りはランダムネオン
-                if (rnd < 0.5) {
+                // --- 色の決定ロジックを整理 ---
+                if (rnd < 0.85) {
+                    // 85% は指定されたベースカラー（敵の色）
                     color = baseColor;
-                } else if (rnd < 0.75) {
-                    const fireColors = ['#ffffff', '#ffdd00', '#ff8800'];
-                    color = fireColors[Math.floor(Math.random() * fireColors.length)];
                 } else {
-                    const neonColors = ['#0ff', '#f0f', '#0f0', '#ffff00'];
-                    color = neonColors[Math.floor(Math.random() * neonColors.length)];
+                    // 残り 15% は「白」または「高輝度な黄色」のみに絞る（火花表現）
+                    color = Math.random() > 0.5 ? '#ffffff' : '#ffff00';
                 }
 
                 particles.push({
