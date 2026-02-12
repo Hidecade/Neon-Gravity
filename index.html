@@ -986,7 +986,7 @@
         const STAGE_ENEMY_COUNTS = [
             60,  // Stage 1
             80,  // Stage 2
-            20,  // Stage 3
+            30,  // Stage 3
             120, // Stage 4
             150, // Stage 5
             190, // Stage 6
@@ -1054,7 +1054,7 @@
         const SPAWN_SETTINGS = {
             MAX_WORMHOLES_BASE: 3,  // 画面内に同時に存在できるワームホールの基本数 maxWormholes = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage *1.5
             SPAWN_INTERVAL: 180,    // ワームホールから敵が出る間隔（60フレーム = 1秒）
-            WORMHOLE_CHANCE: 0.01   // 毎フレーム、新しいワームホールが発生する確率
+            WORMHOLE_CHANCE: 0.02   // 毎フレーム、新しいワームホールが発生する確率
         };
 
 
@@ -1503,7 +1503,7 @@
                     drop: 'none', // ドラゴン本体からは出さない（または任意の設定）
                     scale: 0.9, fireTimer: 0
                 });
-                const segmentCount = 16;
+                const segmentCount = 12;
                 for (let i = 0; i < segmentCount; i++) {
                     enemies[enemies.length - 1].segments.push({ x: x, y: y, angle: 0 });
                 }
@@ -3252,13 +3252,24 @@
         }
 
         function checkStageClear() {
-            // アステロイド以外の「倒すべき敵」が残っているか数える
-            const essentialEnemies = enemies.filter(e => e.type !== 'asteroid');
+            // --- ★修正：画面上の全ての「脅威」をチェック ---
+            // 1. 通常の敵（enemies）
+            // 2. 小惑星（asteroids）※もし別の配列で管理している場合
+            // 3. ボス（bosses）
+            // 4. ボスのホーミング弾（bossHomings）
+
+            // 全ての脅威配列が空であることを確認
+            const noEnemies = enemies.length === 0;
+            const noAsteroids = (typeof asteroids !== 'undefined') ? asteroids.length === 0 : true;
+            const noBosses = (typeof bosses !== 'undefined') ? bosses.length === 0 : true;
+            const noHomings = (typeof bossHomings !== 'undefined') ? bossHomings.length === 0 : true;
 
             // 1. まだクリア判定前であること
-            // 2. 規定の出現ノルマ（enemiesToSpawn）をすべて撃破済みであること
-            // 3. 画面上にアステロイド以外の敵（essentialEnemies）が残っていないこと
-            if (!isStageClear && enemiesKilled >= enemiesToSpawn && essentialEnemies.length === 0) {
+            // 2. 規定の出現ノルマをすべて消化済みであること
+            // 3. 画面上に敵、岩、ボス、弾が一切残っていないこと
+            if (!isStageClear && enemiesKilled >= enemiesToSpawn &&
+                noEnemies && noAsteroids && noBosses && noHomings) {
+
                 isStageClear = true;
 
                 // --- ★8ステージクリア判定 ---
@@ -3270,10 +3281,7 @@
                     AudioSys.playBGM('clear');
 
                     setTimeout(() => {
-                        // 次のステージへ進む前に、画面に残っているアステロイドを全消去
-                        // これにより、次ステージ開始時に古い岩が邪魔になるのを防ぎます
-                        enemies = [];
-
+                        // 次のステージへ
                         stage++;
                         ui.stage.innerText = stage;
                         startStage();
