@@ -1534,23 +1534,54 @@
                 const form = forms[Math.floor(Math.random() * forms.length)];
                 const initialAngle = Math.atan2(vy, vx);
 
+                // --- ★追加：フォーメーションの種類（色）を決定 ---
+                const formationTypes = ['blue', 'purple', 'yellow'];
+                const currentFormationType = formationTypes[Math.floor(Math.random() * formationTypes.length)];
+
+                // 色定数の定義
+                const colorMap = {
+                    blue: '#00f0ff',
+                    purple: '#bf00ff',
+                    yellow: '#00aaff'
+                };
+                const selectedColor = colorMap[currentFormationType];
+
+                // リーダーの生成
                 const leader = {
                     x: x, y: y, vx: vx, vy: vy,
                     hp: 1 + Math.floor(hpMag * 0.5),
                     speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
-                    color: '#0ff', type: 'triangle', angle: initialAngle,
-                    drop: dropType, // リーダーがアイテムを持つ
-                    scale: 0.7, isLeader: true, followers: [],
-                    rotX: Math.random() * Math.PI, rotY: Math.random() * Math.PI, rotZ: Math.random() * Math.PI
+                    color: selectedColor, // 決定された色を適用
+                    type: 'triangle',
+                    formationType: currentFormationType, // draw関数で使う識別子
+                    angle: initialAngle,
+                    drop: dropType,
+                    scale: 0.7,
+                    isLeader: true,
+                    followers: [],
+                    rotX: Math.random() * Math.PI,
+                    rotY: Math.random() * Math.PI,
+                    rotZ: Math.random() * Math.PI
                 };
-                enemies.push(leader); spawnedCount++;
+                enemies.push(leader);
+                spawnedCount++;
 
+                // 取り巻きの生成
                 for (let i = 1; i <= 4; i++) {
                     if (spawnedCount >= enemiesToSpawn) break;
+
                     let offX = 0, offY = 0;
-                    if (form === 'V') { offX = Math.ceil(i / 2) * -30; offY = (i % 2 === 0 ? 1 : -1) * Math.ceil(i / 2) * 20; }
-                    else if (form === 'line') { offX = -Math.ceil(i / 2) * 45; }
-                    else { const a = (Math.PI * 2 / 5) * i; offX = Math.cos(a) * 40; offY = Math.sin(a) * 40; }
+                    if (form === 'V') {
+                        offX = Math.ceil(i / 2) * -30;
+                        offY = (i % 2 === 0 ? 1 : -1) * Math.ceil(i / 2) * 20;
+                    } else if (form === 'line') {
+                        offX = -Math.ceil(i / 2) * 45;
+                    } else {
+                        const a = (Math.PI * 2 / 5) * i;
+                        offX = Math.cos(a) * 40;
+                        offY = Math.sin(a) * 40;
+                    }
+
                     const rx = offX * Math.cos(initialAngle) - offY * Math.sin(initialAngle);
                     const ry = offX * Math.sin(initialAngle) + offY * Math.cos(initialAngle);
 
@@ -1558,10 +1589,17 @@
                         x: x + rx, y: y + ry, vx, vy,
                         hp: 1,
                         speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
-                        color: '#0ff', type: 'triangle', angle: initialAngle,
-                        drop: 'none', // 取り巻きは出さない
-                        scale: 0.7, leader: leader, formOffset: { x: offX, y: offY },
-                        rotX: Math.random() * Math.PI, rotY: Math.random() * Math.PI, rotZ: Math.random() * Math.PI
+                        color: selectedColor, // リーダーと同じ色を適用
+                        type: 'triangle',
+                        formationType: currentFormationType, // 取り巻きにも持たせる
+                        angle: initialAngle,
+                        drop: 'none',
+                        scale: 0.7,
+                        leader: leader,
+                        formOffset: { x: offX, y: offY },
+                        rotX: Math.random() * Math.PI,
+                        rotY: Math.random() * Math.PI,
+                        rotZ: Math.random() * Math.PI
                     });
                     leader.followers.push(enemies[enemies.length - 1]);
                     spawnedCount++;
