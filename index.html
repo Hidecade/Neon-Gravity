@@ -972,12 +972,42 @@
             CUBE: 2.5,      // 緑：アイテムキャリア、動きは遅め
             TADPOLE: 10,    // 白：精子型、非常に素早い
             DRAGON: 8,      // 赤：ボス、最高速度が高い
+            HUNTER: 16,     
+            HUNTER_ROT: 3,  // 接近時の回転速度
             ASTEROID: 3.5,  // 白：分裂する岩、慣性移動（★追加）
             BOSS_MISSILE: 24, // ★追加：ホーミング弾の最高速度
         };
 
         // ドラゴンがプレイヤーを追尾する際の加速力（旋回性能に影響）
         const DRAGON_ACCELERATION = 0.2;
+        
+        // --- STAGE_ENEMIES 定義 ---
+        // Cube（アイテム）は別途15%で出現するため、ここには書きません
+        const STAGE_ENEMIES = {
+            // ST1: 基本の突撃敵と、少し速い敵
+            1: ['hunter', 'hunter', 'triangle', 'tadpole'], 
+
+            // ST2: 弾を撃つドラゴンを追加
+            2: ['triangle', 'tadpole', 'dragon'],
+
+            // ST3: 岩石地帯（岩多め）
+            3: ['asteroid', 'asteroid', 'asteroid', 'asteroid', 'tadpole'],
+
+            // ST4: バランス型（岩は少なめ＝1つだけ入れる）
+            4: ['triangle', 'triangle', 'tadpole', 'tadpole', 'dragon', 'dragon', 'asteroid'],
+
+            // ST5: ★新敵 HUNTER 登場（岩少なめ）
+            5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'asteroid'],
+
+            // ST6: HUNTERの比率を上げ、激戦化
+            6: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'hunter', 'asteroid'],
+
+            // ST7: 総力戦（全種均等に近いが、強い敵多め）
+            7: ['triangle', 'tadpole', 'dragon', 'dragon', 'hunter', 'hunter', 'asteroid'],
+
+            // ST8: ボス戦（取り巻きはHUNTERとDRAGONのみで圧力をかける）
+            8: ['hunter', 'dragon'] 
+        };
 
         // --- ボスのバリエーション設定 ---
         const BOSS_VARIANTS = [
@@ -997,6 +1027,7 @@
             CUBE: 15,
             TADPOLE: 18,
             DRAGON: 25,
+            HUNTER: 20,    // ★追加：星型なので少し大きめに設定
             BULLET: 8      // 敵が撃ってくる赤い弾の判定サイズ
         };
 
@@ -1027,7 +1058,7 @@
 
         // --- アイテム・特殊状態の設定 ---
         // レーザーの持続時間（600フレーム = 10秒）
-        const LASER_DURATION = 600;
+        const LASER_DURATION = 400;
         // 出現したアイテムが点滅して消えるまでの時間
         const ITEM_LIFE = 240;
 
@@ -1580,6 +1611,21 @@
                     rotSpd: (Math.random() - 0.5) * 0.1, scale: finalScale,
                     drop: 'none'
                 });
+            } else if (type === 'hunter') {
+                enemies.push({
+                    x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
+                    hp: 3 + Math.floor(hpMag * 1.5),
+                    speed: 3.0 * spd * stageMag,
+                    color: '#f80',
+                    type: 'hunter', 
+                    angle: 0,
+                    drop: dropType,
+                    scale: 1.2,
+                    actionTimer: 0,
+                    state: 'approach', // 初期状態を 'approach' (接近) に設定
+                    burstCount: 0      // ★追加：連射数カウント用
+                });
+                spawnedCount++;
             }
         }
 
@@ -1801,16 +1847,27 @@
                         const remaining = enemiesToSpawn - spawnedCount;
                         const threshold = Math.floor(enemiesToSpawn / 5);
 
+ // --- 修正版：敵の抽選ロジック（update関数内） ---
+
+                        // 1. ボス出現判定（残り敵数が少なくなったら）
                         if (!isBossSpawned && remaining <= threshold) {
                             spawnEnemy(w.x, w.y, 'boss');
                             isBossSpawned = true;
-                        } else {
-                            const r = Math.random();
-                            if (r < 0.15) spawnEnemy(w.x, w.y, 'dragon');    // 15%
-                            else if (r < 0.30) spawnEnemy(w.x, w.y, 'cube'); // 15%
-                            else if (r < 0.45) spawnEnemy(w.x, w.y, 'asteroid'); // ★15%：アステロイド
-                            else if (r < 0.70) spawnEnemy(w.x, w.y, 'tadpole');  // 25%
-                            else spawnEnemy(w.x, w.y, 'triangle');           // 30%
+                        } 
+                        else {
+                            // 2. 通常の敵出現ロジック
+                            
+                            // A. まず15%の確率でアイテムキャリア(Cube)を出す（全ステージ共通）
+                            if (Math.random() < 0.15) {
+                                spawnEnemy(w.x, w.y, 'cube');
+                            } 
+                            // B. それ以外は、ステージごとの敵リストから抽選
+                            else {
+                                // 定義されていないステージ（クリア後など）は、最も激しい7面のリストを使う
+                                const currentPool = STAGE_ENEMIES[stage] || STAGE_ENEMIES[7];
+                                const randomType = currentPool[Math.floor(Math.random() * currentPool.length)];
+                                spawnEnemy(w.x, w.y, randomType);
+                            }
                         }
                     }
                     if (w.life <= 0) w.active = false;
@@ -2118,7 +2175,8 @@
                         case 'triangle': updateTriangleAI(e); break;
                         case 'cube': updateCubeAI(e); break;
                         case 'boss': updateBossAI(e); break;
-                        case 'asteroid': updateAsteroidAI(e); break; // ★追加
+                        case 'asteroid': updateAsteroidAI(e); break; 
+                        case 'hunter': updateHunterAI(e); break;
                     }
                 }
 
@@ -2219,6 +2277,102 @@
             e.vx += (dx / d) * 0.2 * SPEED_SCALE; e.vy += (dy / d) * 0.2 * SPEED_SCALE;
             const cv = Math.hypot(e.vx, e.vy); if (cv > e.speed) { e.vx = (e.vx / cv) * e.speed; e.vy = (e.vy / cv) * e.speed; }
             e.x += e.vx; e.y += e.vy; e.rotX += 0.03; e.rotY += 0.04;
+        }
+
+        // ★新設：ハンターのAI関数
+// ★定数対応版：HunterのAI関数
+        function updateHunterAI(e) {
+            const dx = player.x - e.x;
+            const dy = player.y - e.y;
+            const dist = Math.hypot(dx, dy) || 0.001;
+            
+            // 定数から基本スピードを取得（SPEED_SCALEは既に掛かっている前提か、ここで掛けるか）
+            // 今回は e.speed (生成時に計算済み) をベースにします
+            const baseSpd = e.speed; 
+
+            e.actionTimer++;
+
+            // --- 状態1: 高速接近 (APPROACH) ---
+            if (e.state === 'approach') {
+                // 定数 HUNTER_ROT があれば使用、なければ直書き
+                e.angle += ENEMY_SPEEDS.HUNTER_ROT;
+
+                // プレイヤーに向かって加速
+                // 加速度も baseSpd に比例させることで、ステージが進んで速くなっても挙動が安定します
+                const acc = baseSpd * 0.1; 
+                e.vx += (dx / dist) * acc;
+                e.vy += (dy / dist) * acc;
+
+                if (dist < 180) {
+                    e.state = 'attack';
+                    e.actionTimer = 0;
+                    e.burstCount = 0;
+                }
+            } 
+            // --- 状態2: 攻撃 (ATTACK) ---
+            else if (e.state === 'attack') {
+                e.vx *= 0.85;
+                e.vy *= 0.85;
+
+                const targetAngle = Math.atan2(dy, dx);
+                let diff = targetAngle - e.angle;
+                while (diff <= -Math.PI) diff += Math.PI*2;
+                while (diff > Math.PI) diff -= Math.PI*2;
+                e.angle += diff * 0.2;
+
+                if (e.actionTimer > 20 && e.actionTimer % 10 === 0 && e.burstCount < 3) {
+                    // 弾速も定数の影響を受ける
+                    const bulletSpd = BULLET_SETTINGS.ENEMY_SPEED * 1.3 * SPEED_SCALE;
+                    
+                    enemyBullets.push({
+                        x: e.x, y: e.y,
+                        vx: Math.cos(e.angle) * bulletSpd,
+                        vy: Math.sin(e.angle) * bulletSpd,
+                        life: BULLET_SETTINGS.ENEMY_LIFE,
+                        color: '#f80'
+                    });
+                    
+                    // 反動
+                    e.vx -= Math.cos(e.angle) * (baseSpd * 0.5);
+                    e.vy -= Math.sin(e.angle) * (baseSpd * 0.5);
+
+                    AudioSys.playSE('shoot');
+                    e.burstCount++;
+                }
+
+                if (e.burstCount >= 3 && e.actionTimer > 60) {
+                    e.state = 'retreat';
+                    e.actionTimer = 0;
+                }
+            }
+            // --- 状態3: 離脱 (RETREAT) ---
+            else if (e.state === 'retreat') {
+                e.angle -= 0.2;
+
+                const escapeAcc = baseSpd * 0.08;
+                e.vx -= (dx / dist) * escapeAcc;
+                e.vy -= (dy / dist) * escapeAcc;
+
+                if (dist > 450 || e.actionTimer > 120) {
+                    e.state = 'approach';
+                    e.actionTimer = 0;
+                }
+            }
+
+            // --- 速度制限（ここが定数活用のキモ） ---
+            const currentSpeed = Math.hypot(e.vx, e.vy);
+            // 状態に合わせて制限速度を可変にする（接近時は基本の1.5倍まで許容）
+            let maxLimit = baseSpd;
+            if (e.state === 'approach') maxLimit = baseSpd * 1.5;
+            if (e.state === 'retreat') maxLimit = baseSpd * 1.2;
+            
+            if (currentSpeed > maxLimit) {
+                e.vx = (e.vx / currentSpeed) * maxLimit;
+                e.vy = (e.vy / currentSpeed) * maxLimit;
+            }
+
+            e.x += e.vx;
+            e.y += e.vy;
         }
 
         function updateBossAI(e) {
@@ -2579,6 +2733,8 @@
                 radius = ENEMY_HITBOX.TADPOLE;
             } else if (e.type === 'dragon') {
                 radius = ENEMY_HITBOX.DRAGON;
+            } else if (e.type === 'hunter') {
+                radius = ENEMY_HITBOX.HUNTER;
             } else if (e.type === 'boss') {
                 radius = 45; // ボスの判定サイズ
             }
@@ -3015,7 +3171,7 @@
 
         function damage(v) {
             player.shield -= v;
-            player.invuln = 5;
+            player.invuln = 60;
             ui.shieldBar.style.width = Math.max(0, player.shield) + "%";
             AudioSys.playSE('damage');
             distortGrid(player.x, player.y, 50, 100);
@@ -3138,7 +3294,7 @@
                 else if (e.type === 'cube') drawCubeEnemy(ctx, e);
                 else if (e.type === 'tadpole') drawTadpoleEnemy(ctx, e);
                 else if (e.type === 'boss') drawBossEnemy(ctx, e);
-                else if (e.type === 'asteroid') drawAsteroidEnemy(ctx, e);
+                else if (e.type === 'asteroid') drawAsteroidEnemy(ctx, e);else if (e.type === 'hunter') drawHunterEnemy(ctx, e);
             });
 
             // 敵の弾の描画ループ
@@ -3384,6 +3540,57 @@
 
             ctx.restore();
             ctx.shadowBlur = 0;
+        }
+
+        // ★新設：ハンターの描画関数（棘のある星型）
+        function drawHunterEnemy(ctx, e) {
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            ctx.rotate(e.angle);
+            ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
+
+            // 射撃予備動作中は赤く光る
+            const isAiming = (e.state === 'aim');
+            const color = isAiming ? '#fff' : e.color;
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = isAiming ? 20 : 10;
+            ctx.shadowColor = e.color;
+
+            // 星型（手裏剣のような形）を描く
+            ctx.beginPath();
+            for (let i = 0; i < 4; i++) {
+                const angle = (Math.PI / 2) * i;
+                // 外側の点
+                ctx.lineTo(Math.cos(angle) * 15, Math.sin(angle) * 15);
+                // 内側の点（くぼみ）
+                ctx.lineTo(Math.cos(angle + 0.4) * 6, Math.sin(angle + 0.4) * 6);
+                ctx.lineTo(Math.cos(angle + 0.8) * 15, Math.sin(angle + 0.8) * 15); // 次の頂点の手前装飾
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // 中央の目
+            ctx.fillStyle = isAiming ? '#f00' : '#000';
+            ctx.beginPath();
+            ctx.arc(0, 0, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 狙っている時の照準線（レーザーサイト）
+            if (isAiming) {
+                ctx.globalAlpha = 0.5;
+                ctx.strokeStyle = '#f00';
+                ctx.setLineDash([5, 5]);
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(15, 0);
+                ctx.lineTo(200, 0); // 視線
+                ctx.stroke();
+            }
+
+            ctx.restore();
         }
 
         function drawBossEnemy(ctx, e) {
