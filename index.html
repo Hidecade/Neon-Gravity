@@ -1576,7 +1576,8 @@
                         offX = Math.ceil(i / 2) * -30;
                         offY = (i % 2 === 0 ? 1 : -1) * Math.ceil(i / 2) * 20;
                     } else if (form === 'line') {
-                        offX = -Math.ceil(i / 2) * 45;
+                        offX = -i * 45; // 単純に i を掛けて、等間隔に後ろへ並べる
+                        offY = 0;       // 一直線なのでYはずらさない
                     } else {
                         const a = (Math.PI * 2 / 5) * i;
                         offX = Math.cos(a) * 40;
@@ -1658,6 +1659,7 @@
                     rotSpd: (Math.random() - 0.5) * 0.1, scale: finalScale,
                     drop: 'none'
                 });
+                spawnedCount++;
             } else if (type === 'hunter') {
                 enemies.push({
                     x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
@@ -1881,9 +1883,19 @@
             const fireInterval = player.laserTimer > 0 ? 4 : 6;
             if ((input.aim.active || input.keys['Space'] || input.keys['KeyZ']) && frame % fireInterval === 0) fire();
 
-            // ワームホールと敵の生成
+            // --- ★修正：ワームホール生成ロジックの強化 ---
             const maxWormholes = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage * 1.5;
-            if (spawnedCount < enemiesToSpawn && wormholes.filter(w => w.active).length < maxWormholes && Math.random() < SPAWN_SETTINGS.WORMHOLE_CHANCE) {
+            const activeWormholes = wormholes.filter(w => w.active).length;
+
+            // 基本の生成条件
+            let shouldSpawnWormhole = spawnedCount < enemiesToSpawn && activeWormholes < maxWormholes && Math.random() < SPAWN_SETTINGS.WORMHOLE_CHANCE;
+
+            // ★救済措置：敵もワームホールもいないのに、まだ出すべき敵が残っている場合は強制生成
+            if (enemies.length === 0 && activeWormholes === 0 && spawnedCount < enemiesToSpawn) {
+                shouldSpawnWormhole = true;
+            }
+
+            if (shouldSpawnWormhole) {
                 spawnWormhole();
             }
 
@@ -1894,23 +1906,13 @@
                         const remaining = enemiesToSpawn - spawnedCount;
                         const threshold = Math.floor(enemiesToSpawn / 5);
 
-                        // --- 修正版：敵の抽選ロジック（update関数内） ---
-
-                        // 1. ボス出現判定（残り敵数が少なくなったら）
                         if (!isBossSpawned && remaining <= threshold) {
                             spawnEnemy(w.x, w.y, 'boss');
                             isBossSpawned = true;
-                        }
-                        else {
-                            // 2. 通常の敵出現ロジック
-
-                            // A. まず15%の確率でアイテムキャリア(Cube)を出す（全ステージ共通）
+                        } else {
                             if (Math.random() < 0.15) {
                                 spawnEnemy(w.x, w.y, 'cube');
-                            }
-                            // B. それ以外は、ステージごとの敵リストから抽選
-                            else {
-                                // 定義されていないステージ（クリア後など）は、最も激しい7面のリストを使う
+                            } else {
                                 const currentPool = STAGE_ENEMIES[stage] || STAGE_ENEMIES[7];
                                 const randomType = currentPool[Math.floor(Math.random() * currentPool.length)];
                                 spawnEnemy(w.x, w.y, randomType);
@@ -1918,7 +1920,7 @@
                         }
                     }
                     if (w.life <= 0) w.active = false;
-                    // ワームホールの斥力
+
                     const dx = player.x - w.x; const dy = player.y - w.y;
                     const d = Math.hypot(dx, dy) || 0.01;
                     if (d < 180) { const f = 500 / (d + 1); player.x += (dx / d) * f * 0.01; player.y += (dy / d) * f * 0.01; }
@@ -1939,11 +1941,8 @@
             updateGrid();
             updateScorePopups();
             checkStageClear();
-
-            // ★UI表示の更新を一括実行
             updateUI();
         }
-
 
 
         function updateUI() {
@@ -2233,6 +2232,7 @@
                     }
                 }
 
+    
                 // --- 共通処理 ---
                 applySeparation(e);
                 applyAsteroidCollisions(e);
@@ -2318,7 +2318,6 @@
             // --- 1. 出現・展開アニメーション (全員共通) ---
             if (e.isWarping) {
                 e.warpPercent = (e.warpPercent || 0) + 0.015;
-
                 if (e.warpPercent >= 1) {
                     e.warpPercent = 1;
                     e.isWarping = false;
@@ -2330,52 +2329,69 @@
 
             // --- 2. 座標と移動の計算 ---
             if (!e.isLeader && e.leader && e.leader.hp > 0) {
-                // 【副機】リーダーの位置を基準に動く
-                const angle = e.leader.angle || 0;
+                // 【副機】
+                // リーダーの角度がNaNなら0扱いにする（安全対策）
+                const angle = Number.isFinite(e.leader.angle) ? e.leader.angle : 0;
 
                 const targetRx = e.formOffset.x * Math.cos(angle) - e.formOffset.y * Math.sin(angle);
                 const targetRy = e.formOffset.x * Math.sin(angle) + e.formOffset.y * Math.cos(angle);
 
-                // 点から広がる動き
                 const ratio = e.isWarping ? e.warpPercent : 1.0;
 
                 e.x = e.leader.x + targetRx * ratio;
                 e.y = e.leader.y + targetRy * ratio;
                 e.angle = angle;
-
-                e.vx = e.leader.vx;
-                e.vy = e.leader.vy;
+                e.vx = e.leader.vx || 0;
+                e.vy = e.leader.vy || 0;
 
             } else {
                 // 【リーダー機】
+                const dx = player.x - e.x;
+                const dy = player.y - e.y;
 
-                // ★修正ポイント：出現中(isWarping)は動かないようにする
                 if (e.isWarping) {
-                    // 強いブレーキをかけて穴の中心に留める
+                    // --- 出現中の挙動 ---
+
+                    // 1. 移動にはブレーキをかけ、穴の中心付近に留める
                     e.vx *= 0.5;
                     e.vy *= 0.5;
-                    // ※完全に停止させたい場合は e.vx = 0; e.vy = 0; にしてください
+
+                    // 2. ★追加：その場でプレイヤーの方へ旋回（ロックオン）する
+                    const targetAngle = Math.atan2(dy, dx);
+
+                    // 現在の角度との差分を計算してスムーズに回す
+                    let diff = targetAngle - e.angle;
+                    // -PI ~ PI の範囲に正規化（最短距離で回るため）
+                    while (diff <= -Math.PI) diff += Math.PI * 2;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+
+                    e.angle += diff * 0.1; // 0.1 は旋回速度（お好みで調整）
+
                 } else {
-                    // 出現完了後のみ、プレイヤーを追跡開始
-                    const dx = player.x - e.x, dy = player.y - e.y;
+                    // --- 通常時の挙動 ---
                     const d = Math.hypot(dx, dy) || 0.001;
 
+                    // プレイヤーへ向かって加速
                     e.vx += (dx / d) * 0.2 * SPEED_SCALE;
                     e.vy += (dy / d) * 0.2 * SPEED_SCALE;
+
+                    // 速度制限
+                    const cv = Math.hypot(e.vx, e.vy);
+                    if (cv > 0.0001 && cv > e.speed) {
+                        e.vx = (e.vx / cv) * e.speed;
+                        e.vy = (e.vy / cv) * e.speed;
+                    }
+
+                    // 通常時は「進行方向」を向く
+                    e.angle = Math.atan2(e.vy, e.vx);
                 }
 
-                // 速度制限
-                const cv = Math.hypot(e.vx, e.vy);
-                if (cv > e.speed) {
-                    e.vx = (e.vx / cv) * e.speed;
-                    e.vy = (e.vy / cv) * e.speed;
-                }
+                // 座標更新
                 e.x += e.vx;
                 e.y += e.vy;
-                e.angle = Math.atan2(e.vy, e.vx);
             }
 
-            // --- 3. 3D回転演出 ---
+            // --- 3. 演出更新 ---
             e.rotX += 0.08;
             e.rotY += 0.12;
             e.rotZ += 0.05;
@@ -2540,8 +2556,8 @@
                 // 発射の瞬間（fireTime ぴったり）に弾を生成
                 if (e.fireTimer === fireTime) {
                     const sides = e.variant.sides;
-                    camera.x += (Math.random() - 0.5) * 30; // 強い衝撃
-                    camera.y += (Math.random() - 0.5) * 30;
+                    //camera.x += (Math.random() - 0.5) * 30; // 強い衝撃
+                    //camera.y += (Math.random() - 0.5) * 30;
 
                     for (let i = 0; i < sides; i++) {
                         const a = e.angle + (Math.PI * 2 / sides) * i;
@@ -3226,14 +3242,14 @@
         function updateScorePopups() { scorePopups.forEach(s => { s.y += s.vy; s.life--; s.alpha = s.life / 30; }); scorePopups = scorePopups.filter(s => s.life > 0); }
 
         function destroyEnemy(e) {
-            // ASTEROID以外の場合のみ撃破カウントを進める
-            if (e.type !== 'asteroid') {
-                enemiesKilled++;
-            }
+            // --- ★修正：アステロイドだろうが何だろうが、壊したらカウントする ---
+            // これにより「倒したのに減らない」を防ぎます
+            enemiesKilled++;
 
             // --- 爆発エフェクトのカスタマイズ ---
             const particleCount = (e.type === 'boss') ? 120 : (e.type === 'asteroid' ? 30 : 40);
             for (let i = 0; i < particleCount; i++) {
+                // (中略：エフェクトのコードはそのまま)
                 let pColor;
                 const rand = Math.random();
                 if (e.type === 'asteroid') {
@@ -3250,14 +3266,25 @@
 
             // --- 効果音と特殊演出 ---
             if (e.type === 'boss') {
-                rings.push({ x: e.x, y: e.y, r: 10, color: e.color, life: 1.5 });
-                rings.push({ x: e.x, y: e.y, r: 25, color: '#ffffff', life: 1.0 });
-                rings.push({ x: e.x, y: e.y, r: 50, color: e.color, life: 0.8 });
+                // (中略)
                 AudioSys.playSE('dragon_explode');
                 if (typeof screenShake !== 'undefined') screenShake = 40;
                 distortGrid(e.x, e.y, 100, 200);
+
+                // --- ★追加：ボス撃破時にホーミング弾(Missile)を全消去 ---
+                // 1. 残っているミサイルの場所で小さな爆発を起こす（演出）
+                enemyBullets.forEach(b => {
+                    if (b.isMissile) {
+                        createExplosion(b.x, b.y, b.color, 5); // 小さな爆発
+                    }
+                });
+
+                // 2. 配列からミサイルを除外する（消滅）
+                enemyBullets = enemyBullets.filter(b => !b.isMissile);
+                // ----------------------------------------------------
+
             } else if (e.type === 'dragon') {
-                rings.push({ x: e.x, y: e.y, r: 15, color: e.color, life: 1 });
+                // (中略)
                 AudioSys.playSE('dragon_explode');
                 distortGrid(e.x, e.y, 40, 80);
             } else if (e.type === 'asteroid') {
@@ -3274,29 +3301,15 @@
             ui.score.innerText = score.toString().padStart(6, '0');
             scorePopups.push({ x: e.x, y: e.y, text: pts, life: 40, alpha: 1, vy: -1 });
 
-            // --- アイテムドロップ処理（spawnEnemyでの決定に従うのみ） ---
+            // (中略：ドロップ処理はそのまま)
             if (e.noDrop || e.drop === 'none' || e.type === 'asteroid') return;
-
-            // 出現時の共通設定（ふわっと飛び出す初速）
-            const itemProps = {
-                x: e.x,
-                y: e.y,
-                vx: (Math.random() - 0.5) * 4,
-                vy: (Math.random() - 0.5) * 4
-            };
-
-            if (e.drop === 'level') {
-                powerups.push({ ...itemProps, type: 'level', life: 999999 });
-            } else if (e.drop === 'laser') {
-                powerups.push({ ...itemProps, type: 'laser', life: ITEM_LIFE });
-            } else if (e.drop === 'invincible') {
-                powerups.push({ ...itemProps, type: 'invincible', life: ITEM_LIFE });
-            } else if (e.drop === 'crystal') {
-                crystals.push({ ...itemProps, life: ITEM_LIFE });
-            }
-            else if (e.drop === 'shield') {
-                powerups.push({ ...itemProps, type: 'shield', life: ITEM_LIFE });
-            }
+            // ...以下ドロップ生成コード...
+            const itemProps = { x: e.x, y: e.y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4 };
+            if (e.drop === 'level') powerups.push({ ...itemProps, type: 'level', life: 999999 });
+            else if (e.drop === 'laser') powerups.push({ ...itemProps, type: 'laser', life: ITEM_LIFE });
+            else if (e.drop === 'invincible') powerups.push({ ...itemProps, type: 'invincible', life: ITEM_LIFE });
+            else if (e.drop === 'crystal') crystals.push({ ...itemProps, life: ITEM_LIFE });
+            else if (e.drop === 'shield') powerups.push({ ...itemProps, type: 'shield', life: ITEM_LIFE });
         }
 
         function damage(v) {
@@ -3318,36 +3331,36 @@
         }
 
         function checkStageClear() {
-            // --- ★修正：画面上の全ての「脅威」をチェック ---
-            // 1. 通常の敵（enemies）
-            // 2. 小惑星（asteroids）※もし別の配列で管理している場合
-            // 3. ボス（bosses）
-            // 4. ボスのホーミング弾（bossHomings）
-
-            // 全ての脅威配列が空であることを確認
+            // 画面上の脅威チェック
             const noEnemies = enemies.length === 0;
             const noAsteroids = (typeof asteroids !== 'undefined') ? asteroids.length === 0 : true;
             const noBosses = (typeof bosses !== 'undefined') ? bosses.length === 0 : true;
             const noHomings = (typeof bossHomings !== 'undefined') ? bossHomings.length === 0 : true;
+            const noWormholes = wormholes.filter(w => w.active).length === 0; // ワームホールもない
 
-            // 1. まだクリア判定前であること
-            // 2. 規定の出現ノルマをすべて消化済みであること
-            // 3. 画面上に敵、岩、ボス、弾が一切残っていないこと
-            if (!isStageClear && enemiesKilled >= enemiesToSpawn &&
-                noEnemies && noAsteroids && noBosses && noHomings) {
+            // 1. ノルマ達成クリア
+            const normalClear = enemiesKilled >= enemiesToSpawn;
+
+            // 2. ★救済クリア：敵も穴もボスも弾もなく、出し切ってしまった(spawnedCount達成)か、詰んでいる場合
+            // spawnedCount >= enemiesToSpawn なら「もう出ない」のでクリア
+            // もしくは、敵が0でワームホールも0の状態が続いているならクリア
+            const fieldClean = noEnemies && noAsteroids && noBosses && noHomings && noWormholes;
+            const spawnComplete = spawnedCount >= enemiesToSpawn;
+
+            // 判定：
+            // A. 通常クリア（ノルマ達成 ＆ 敵全滅）
+            // B. 強制クリア（出し切ったはずなのにカウントがズレている ＆ 敵全滅）
+            if (!isStageClear && fieldClean && (normalClear || spawnComplete)) {
 
                 isStageClear = true;
 
-                // --- ★8ステージクリア判定 ---
                 if (stage === MAX_STAGE) {
                     showEnding();
                 } else {
-                    // 通常のステージクリア演出
                     ui.msg.style.display = 'block';
                     AudioSys.playBGM('clear');
 
                     setTimeout(() => {
-                        // 次のステージへ
                         stage++;
                         ui.stage.innerText = stage;
                         startStage();
@@ -4172,7 +4185,11 @@
                 const dy = (s.y - e.y) * gapFactor;
 
                 ctx.translate((e.x + dx) / finalScale, (e.y + dy) / finalScale);
-                ctx.rotate(s.angle);
+
+                // ★修正：回転させない（常に画面に対して上向きなら rotate(0) 相当）
+                // もし「頭と同じ向き」にしたいなら ctx.rotate(e.angle); にしますが、
+                // 「曲がるときに横向きになるのを防ぐ＝上向き固定」と解釈して回転を削除します。
+                // ctx.rotate(s.angle); // ← この行を削除またはコメントアウト
 
                 const sizeMod = Math.max(0.4, 1 - (i * 0.04));
                 const cylinderRadius = 20 * sizeMod;
@@ -4204,6 +4221,8 @@
             // --- 2. 頭部ユニット ---
             ctx.save();
             ctx.translate(e.x / finalScale, e.y / finalScale);
+            // 頭部は進行方向を向く必要があるならそのまま。
+            // もし頭部も上向き固定ならここも削除しますが、通常は頭は向くはずです。
             ctx.rotate(e.angle);
 
             // リングの描画
@@ -4246,6 +4265,7 @@
             ctx.restore();
             ctx.restore();
         }
+
         function drawAsteroidEnemy(ctx, e) {
             ctx.save();
             ctx.translate(e.x, e.y);
