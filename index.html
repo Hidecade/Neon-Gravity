@@ -959,70 +959,44 @@
 
     <script>
         // =========================================================
-        // 1. 定数・グローバル変数定義 (Constants & Globals)
+        // 1. システム・グローバル基本設定
         // =========================================================
-        // ゲームバランス、敵パラメータ、配列の初期化など
+        const G_SCALE = 0.7;          // 全体の描画スケール（標準の70%）
+        const SPEED_SCALE = 0.25;     // ゲーム全体の速度倍率（全ての移動に適用）
+        const WALL_MARGIN = 5;        // 画面端の見えない壁の余白
+        const GRID_SPACING = 25;      // 背景グリッド線の間隔（小さいほど網目が細かい）
 
-        // 全体の描画スケール（0.7 = 標準の70%の大きさ）
-        const G_SCALE = 0.7;
-        // ゲーム全体の速度倍率（値を上げるとすべてが速くなります）
-        const SPEED_SCALE = 0.25;
-        // 画面端の見えない壁の余白
-        const WALL_MARGIN = 5;
-        // 通常ショットの最大強化レベル（1〜7）
-        const MAX_WEAPON_LEVEL = 7; // 最大を7に変更
+        let gameSpeed = 1.0;          // ゲーム速度係数（動的なスロー演出用）
+        let cameraScale = 1.0;        // カメラのズーム倍率（1.0=通常、0.75=縮小）
+        let frame = 0;                // 経過フレームカウント
+        let width, height;            // 画面サイズ（resize関数で設定）
+        let worldSize = 0;            // ワールドサイズ（resize関数で設定）
 
-        // ゲームの状態管理用
-        let gameSpeed = 1.0;       // ゲーム速度係数
-        let isBossWarning = false; // 警告演出中フラグ
-        let warningTimer = 0;      // 演出用タイマー
+        let gameState = 'TITLE';      // 現在のゲーム状態 ('TITLE', 'PLAYING', 'PAUSED', 'DYING', 'GAMEOVER_UI', 'ENDING', 'OST')
+        let previousGameState = '';   // ポーズ前の状態保存用
 
-        // ボスが出現する予定の座標を一時保存する変数
-        let nextBossSpawnX = 0;
-        let nextBossSpawnY = 0;
 
-        // ★追加：カメラのズーム倍率（1.0 = 通常、0.75 = 縮小）
-        let cameraScale = 1.0;
 
-        // --- ステージ・難易度設定 ---
-        let currentStage = 1; // 1からスタート
-        const ENEMIES_BASE_COUNT = 5; // ステージ1の基本敵数
-        const ENEMY_BASE_SPEED = 1.5; // ステージ1の基本速度
-        const MAX_STAGE = 8;
+        // =========================================================
+        // 2. ステージ・難易度・進行管理
+        // =========================================================
+        const START_STAGE = 3;        // 開始ステージ番号
 
-        // --- 難易度スケーリング設定 ---
-        const DIFFICULTY_CONFIG = {
-            SPEED_INC: 0.08,      // 1ステージごとの速度上昇率 (0.08 = 8%)
-            HP_INC: 0.5,         // 1ステージごとのHP上昇補正
-            SPAWN_INC: 15,       // 1ステージごとに増える敵の数
-            BULLET_SPEED_INC: 0.06 // 1ステージごとの弾速上昇率
-        };
+        const MAX_STAGE = 8;          // 最大ステージ数
+        let currentStage = 1;         // 現在のステージ番号
+        let stage = 1;                // 表示上のステージ番号
+        let score = 0;                // 現在のスコア
 
-        // 背景グリッド線の間隔（小さいほど網目が細かくなる）
-        const GRID_SPACING = 25;
+        let spawnedCount = 0;         // 現在のステージで生成済みの敵数
+        let enemiesToSpawn = 0;       // 現在のステージの総出現ノルマ
+        let enemiesKilled = 0;        // 現在のステージで倒した敵数
+        let isStageClear = false;     // ステージクリアフラグ
+        let dyingTimer = 0;           // 死亡演出用タイマー
 
-        // 自機の移動速度
-        const PLAYER_BASE_SPEED = 8.5; 
-
-        // --- 敵の移動速度設定 ---
-        const ENEMY_SPEEDS = {
-            TRIANGLE: 4.8,  // 紫：高速で直線的な動き
-            CUBE: 2.5,      // 緑：アイテムキャリア、動きは遅め
-            TADPOLE: 10,    // 白：精子型、非常に素早い
-            DRAGON: 5,      // 赤：ボス、最高速度が高い
-            HUNTER: 7,
-            HUNTER_ROT: 3,  // 接近時の回転速度
-            ASTEROID: 3.5,  // 白：分裂する岩、慣性移動（★追加）
-            BOSS_MISSILE: 8, // ★これを追加（ミサイルの巡航速度）
-        };
-
-        // ドラゴンがプレイヤーを追尾する際の加速力（旋回性能に影響）
-        const DRAGON_ACCELERATION = 0.2;
-
-        // --- 敵の出現（スポーン）バランス設定 ---
+        // ステージごとの敵総出現数
         const STAGE_ENEMY_COUNTS = [
-            60,  // Stage 1 60
-            80,  // Stage 2 80
+            60,  // Stage 1
+            80,  // Stage 2
             30,  // Stage 3
             120, // Stage 4
             150, // Stage 5
@@ -1031,105 +1005,195 @@
             300  // Stage 8 (Final)
         ];
 
-        // --- ★追加：画面内に同時に存在できる敵の最大数（ステージ別） ---
-        // 設定値を超えている間は、新しいワームホール（敵の出現口）が発生しなくなります
+        // 画面内に同時に存在できる敵の最大数（ステージ別）
         const STAGE_MAX_ON_SCREEN = [
-            10,   // Stage 1: チュートリアル的に少なめ
-            15,  // Stage 2
-            20,  // Stage 3
-            25,  // Stage 4
-            30,  // Stage 5
-            35,  // Stage 6
-            40,  // Stage 7
-            50   // Stage 8: 激戦
+            10, 15, 20, 25, 30, 35, 40, 50
         ];
 
-        // --- STAGE_ENEMIES 定義 ---
-        // Cube（アイテム）は別途15%で出現するため、ここには書きません
+        // 難易度上昇パラメータ
+        const DIFFICULTY_CONFIG = {
+            SPEED_INC: 0.08,       // 1ステージごとの敵速度上昇率 (8%)
+            HP_INC: 0.5,           // 1ステージごとの敵HP上昇補正
+            SPAWN_INC: 15,         // 1ステージごとに増える敵の数
+            BULLET_SPEED_INC: 0.06 // 1ステージごとの敵弾速上昇率 (6%)
+        };
+
+        // 各ステージの出現エネミープール
         const STAGE_ENEMIES = {
-            // ST1: 基本の突撃敵と、少し速い敵
             1: ['triangle', 'triangle', 'triangle', 'dragon'],
-            // ST2: 弾を撃つドラゴンを追加
             2: ['triangle', 'triangle', 'tadpole', 'dragon'],
-            // ST3: 岩石地帯（岩多め）
             3: ['asteroid', 'asteroid', 'asteroid', 'tadpole'],
-            // ST4: バランス型（岩は少なめ＝1つだけ入れる）
             4: ['triangle', 'triangle', 'tadpole', 'tadpole', 'dragon', 'dragon', 'asteroid'],
-            // ST5: ★新敵 HUNTER 登場（岩少なめ）
             5: ['triangle', 'tadpole', 'dragon', 'triangle', 'hunter', 'asteroid'],
-            // ST6: HUNTERの比率を上げ、激戦化
             6: ['triangle', 'tadpole', 'dragon', 'triangle', 'hunter', 'hunter', 'asteroid'],
-            // ST7: 総力戦（全種均等に近いが、強い敵多め）
             7: ['triangle', 'tadpole', 'dragon', 'dragon', 'hunter', 'hunter', 'asteroid'],
-            // ST8: ボス戦（取り巻きはHUNTERとDRAGONのみで圧力をかける）
             8: ['triangle', 'hunter', 'tadpole', 'dragon', 'asteroid', 'asteroid']
         };
 
-        const DROP_RATES = {
-            LEVEL: 0.30,      // 30% (1ステージ1個制限あり)
-            LASER: 0.10,      // 10%
-            INVINCIBLE: 0.05, // 5%
-            SHIELD_LOW: 0.20, // 20% (HP30%以下のピンチ時)
-            SHIELD_NORM: 0.05 // 5%  (通常時)
+
+        // =========================================================
+        // 3. プレイヤー（自機）設定・データ
+        // =========================================================
+        const PLAYER_BASE_SPEED = 10; // 自機の基本移動速度
+        const MAX_WEAPON_LEVEL = 7;    // 通常ショットの最大強化レベル
+
+        // プレイヤーオブジェクト初期化
+        const player = {
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            angle: 0,
+            satellites: [],
+            shield: 100,
+            weaponLevel: 1,
+            invuln: 0,
+            laserTimer: 0,
+            history: []
         };
 
-        // --- ボスのバリエーション設定 ---
+        // 入力状態管理オブジェクト
+        const input = {
+            move: { x: 0, y: 0, active: false },
+            aim: { x: 0, y: 0, active: false },
+            keys: {}
+        };
+
+        // カメラ座標
+        let camera = { x: 0, y: 0 };
+
+
+        // =========================================================
+        // 4. 敵（エネミー）設定・データ
+        // =========================================================
+
+        // 敵の移動速度設定 (SPEED_SCALE適用前のベース値)
+        const ENEMY_SPEEDS = {
+            TRIANGLE: 4.8,     // 紫：高速で直線的な動き
+            CUBE: 2.5,         // 緑：アイテムキャリア、動きは遅め
+            TADPOLE: 10,       // 白：精子型、非常に素早い
+            DRAGON: 5,         // 赤：中ボス級、最高速度が高い
+            HUNTER: 7,         // 橙：特殊攻撃型
+            HUNTER_ROT: 3,     // 接近時の回転速度
+            ASTEROID: 3.5      // 白：分裂する岩、慣性移動
+        };
+
+        const DRAGON_ACCELERATION = 0.2; // ドラゴンのプレイヤー追尾加速力
+
+        // 当たり判定（半径）設定
+        const ENEMY_HITBOX = {
+            TRIANGLE: 12,
+            CUBE: 15,
+            TADPOLE: 18,
+            DRAGON: 25,
+            HUNTER: 20,        // 星型のため少し大きめ
+            BULLET: 8          // 赤い敵弾の判定サイズ
+        };
+
+        // エンティティ配列の初期化
+        let enemies = [];
+        let enemyBullets = [];
+
+
+        // =========================================================
+        // 5. ボス（BOSS）設定・データ
+        // =========================================================
+        let isBossSpawned = false;   // ボス出現済みフラグ
+        let isBossWarning = false;   // 警告演出中フラグ
+        let warningTimer = 0;        // 警告演出用タイマー
+        let nextBossSpawnX = 0;      // ボス出現予定座標X
+        let nextBossSpawnY = 0;      // ボス出現予定座標Y
+
+        // ボスのバリエーション設定
         const BOSS_VARIANTS = [
-            { name: 'TRI-FORTRESS', sides: 3, color: '#f0f', hp: 100, bulletCount: 3, speedFactor: 1.5 }, // 高速
+            { name: 'TRI-FORTRESS', sides: 3, color: '#f0f', hp: 100, bulletCount: 3, speedFactor: 1.5 },
             { name: 'DIAMOND-CORE', sides: 4, color: '#ffff00', hp: 140, bulletCount: 4, speedFactor: 1.3 },
             { name: 'PENTA-BASE', sides: 5, color: '#0f8', hp: 140, bulletCount: 5, speedFactor: 1.1 },
             { name: 'HEXAGON-NEST', sides: 6, color: '#0cc', hp: 160, bulletCount: 6, speedFactor: 1.0 },
             { name: 'HEPTA-GATE', sides: 7, color: '#44f', hp: 180, bulletCount: 7, speedFactor: 0.9 },
             { name: 'OCTAGON-COMMAND', sides: 8, color: '#f40', hp: 200, bulletCount: 8, speedFactor: 0.8 },
             { name: 'NONA-REVEALER', sides: 9, color: '#f08', hp: 220, bulletCount: 9, speedFactor: 0.7 },
-            { name: 'DECA-DECIMATOR', sides: 10, color: '#fff', hp: 300, bulletCount: 10, speedFactor: 0.6 } // 超巨大・鈍重
+            { name: 'DECA-DECIMATOR', sides: 10, color: '#fff', hp: 300, bulletCount: 10, speedFactor: 0.6 }
         ];
 
-        // --- 当たり判定（半径）設定 ---
-        const ENEMY_HITBOX = {
-            TRIANGLE: 12,
-            CUBE: 15,
-            TADPOLE: 18,
-            DRAGON: 25,
-            HUNTER: 20,    // ★追加：星型なので少し大きめに設定
-            BULLET: 8,      // 敵が撃ってくる赤い弾の判定サイズ
+
+        // =========================================================
+        // 6. 弾丸（ショット・プロジェクトタイル）設定
+        // =========================================================
+        const BULLET_CONFIG = {
+            PLAYER: {
+                SPEED: 32.0,   // 自機の弾の速さ
+                LIFE: 120      // 自機の弾の射程（寿命）
+            },
+            ENEMY_NORMAL: {
+                SPEED: 10.0,   // 雑魚敵の弾の速さ
+                LIFE: 300      // 敵弾の射程
+            },
+            BOSS_LASER: {
+                SPEED: 9.0,    // ボスのバラ撒きレーザーの速さ
+                LIFE: 300
+            },
+            BOSS_HOMING: {
+                SPEED: 8.0,    // ボスのホーミングミサイルの速さ
+                LIFE: 300
+            }
         };
 
-        // --- エフェクト演出設定 ---
-        // 敵撃破時の火花の飛散速度
-        const EXPLOSION_SPEED_MAG = 2.0;
-        // 敵撃破時の火花の量（1.5 = 1.5倍）
-        const EXPLOSION_COUNT_MAG = 1.5;
+        let bullets = [];      // プレイヤーの弾
+        let lasers = [];       // プレイヤーのレーザー
+        let missiles = [];     // プレイヤーのホーミングミサイル（サテライト発射）
 
-        // --- ショット・弾丸の設定 ---
-        const BULLET_SETTINGS = {
-            PLAYER_SPEED: 32.0, // 自機の弾の速さ
-            PLAYER_LIFE: 120,   // 自機の弾が消えるまでの時間（＝射程距離）
-            ENEMY_SPEED: 10.0,  // 敵の弾の速さ
-            ENEMY_LIFE: 200     // 敵の弾の射程
-        };
 
-        // --- 敵の出現（スポーン）バランス設定 ---
+        // =========================================================
+        // 7. 出現（スポーン）・アイテム・演出・環境
+        // =========================================================
+
+        // スポーンロジック設定
         const SPAWN_SETTINGS = {
-            MAX_WORMHOLES_BASE: 3,  // 画面内に同時に存在できるワームホールの基本数 maxWormholes = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage *1.5
-            SPAWN_INTERVAL: 180,    // ワームホールから敵が出る間隔（60フレーム = 1秒）
-            WORMHOLE_CHANCE: 0.02   // 毎フレーム、新しいワームホールが発生する確率
+            MAX_WORMHOLES_BASE: 3,  // 同時に存在できるワームホールの基本数
+            SPAWN_INTERVAL: 180,    // 敵が出る間隔（180フレーム = 3秒）
+            WORMHOLE_CHANCE: 0.02   // 毎フレームの新ワームホール発生確率
         };
 
+        // アイテム持続時間設定
+        const INVULN_DURATION = 400;  // 無敵状態の持続時間
+        const LASER_DURATION = 400;   // 特殊レーザーの持続時間
+        const ITEM_LIFE = 300;        // アイテムが消滅するまでの時間
 
-        // 無敵状態の持続時間
-        const INVULN_DURATION = 400;
-        // --- アイテム・特殊状態の設定 ---
-        const LASER_DURATION = 400;
+        // アイテムドロップ率設定
+        const DROP_RATES = {
+            LEVEL: 0.30,       // レベルアップ (30%)
+            LASER: 0.10,       // レーザー (10%)
+            INVINCIBLE: 0.05,  // 無敵 (5%)
+            SHIELD_LOW: 0.20,  // ピンチ時シールド回復 (20%)
+            SHIELD_NORM: 0.05  // 通常時シールド回復 (5%)
+        };
 
-        // 出現したアイテムが点滅して消えるまでの時間
-        const ITEM_LIFE = 300;
+        let levelItemsDroppedInStage = 0; // ステージ内でドロップしたレベルアップアイテム数
 
-        // --- Global Variables ---
+        // エフェクト設定
+        const EXPLOSION_SPEED_MAG = 2.0; // 撃破火花の散る速さ
+        const EXPLOSION_COUNT_MAG = 1.5; // 撃破火花の量
+
+        // その他のエンティティ配列
+        let particles = [];    // パーティクル
+        let crystals = [];     // スコアアイテム（クリスタル）
+        let powerups = [];     // パワーアップアイテム
+        let wormholes = [];    // 出現口
+        let scorePopups = [];  // スコア表示
+        let rings = [];        // 衝撃波リング
+        let gridPoints = [];   // 背景グリッド点
+        let stars = [];        // 背景の星
+
+
+        // =========================================================
+        // 8. UI要素・DOM参照
+        // =========================================================
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
         const miniMapCanvas = document.getElementById('minimap-canvas');
         const miniMapCtx = miniMapCanvas.getContext('2d');
+
         const ui = {
             overlay: document.getElementById('overlay'),
             pauseOverlay: document.getElementById('pause-overlay'),
@@ -1147,49 +1211,38 @@
             invulnBar: document.getElementById('invuln-bar'),
             msg: document.getElementById('stage-msg'),
             warn: document.getElementById('warning-msg'),
+
+            // コントローラー・ボタン
             launchBtn: document.getElementById('launch-btn'),
             knobL: document.getElementById('knob-left'),
             knobR: document.getElementById('knob-right'),
             stickL: document.getElementById('stick-left'),
             stickR: document.getElementById('stick-right'),
+
+            // メニューボタン
             btnStart: document.getElementById('btn-start'),
             btnOst: document.getElementById('btn-ost'),
             btnTitle: document.getElementById('btn-title'),
             titleText: document.querySelector('#overlay h1'),
 
+            // ボスUI
             bossContainer: document.getElementById('boss-ui-container'),
             bossNameLabel: document.getElementById('boss-name-label'),
             bossBarFrame: document.getElementById('boss-bar-frame'),
             bossHpBarInline: document.getElementById('boss-hp-bar-inline'),
 
+            // リザルト・エンディング
             endingHud: document.getElementById('ending-msg'),
             finalScore: document.getElementById('final-score'),
             btnBackTitle: document.getElementById('btn-back-to-title'),
-
             btnNextResult: document.getElementById('btn-next-result'),
 
+            // ランキング・名前入力
             submitBtn: document.getElementById("submit-score-btn"),
             skipScoreBtn: document.getElementById("skip-score-btn"),
             nameInput: document.getElementById("player-name-input"),
             nameInputArea: document.getElementById("name-input-area"),
-
-        };
-
-        let width, height, worldSize = 0, camera = { x: 0, y: 0 };
-        let gameState = 'TITLE';
-        let previousGameState = '';
-        let score = 0, frame = 0, stage = 1;
-        let spawnedCount = 0, enemiesToSpawn = 0, isStageClear = false;
-        let dyingTimer = 0;
-        let enemiesKilled = 0;
-        let isBossSpawned = false;
-        let levelItemsDroppedInStage = 0;
-
-        const player = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, satellites: [], shield: 100, weaponLevel: 1, invuln: 0, laserTimer: 0, history: [] };
-        const input = { move: { x: 0, y: 0, active: false }, aim: { x: 0, y: 0, active: false }, keys: {} };
-        let bullets = [], lasers = [], enemies = [], enemyBullets = [], particles = [], crystals = [], missiles = [], powerups = [], wormholes = [], scorePopups = [], gridPoints = [], rings = [], stars = [];
-
-        // =========================================================
+        };       // =========================================================
         // 2. オーディオシステム (Audio System)
         // =========================================================
 
@@ -1450,9 +1503,9 @@
             ui.controls.style.display = 'block';
 
             score = 0;
-            stage = 1;
+            stage = START_STAGE;
             frame = 0;
-            currentStage = 1;
+            currentStage = START_STAGE;
 
             player.x = worldSize / 2;
             player.y = worldSize / 2;
@@ -1876,7 +1929,11 @@
                     if (w.life <= 0) w.active = false;
                     const dx = player.x - w.x; const dy = player.y - w.y;
                     const d = Math.hypot(dx, dy) || 0.01;
-                    if (d < 180) { const f = 500 / (d + 1); player.x += (dx / d) * f * 0.01; player.y += (dy / d) * f * 0.01; }
+                    if (d < 180) {
+                        const f = 500 / (d + 1);
+                        player.x += (dx / d) * f * 0.01 * SPEED_SCALE * gameSpeed;
+                        player.y += (dy / d) * f * 0.01 * SPEED_SCALE * gameSpeed;
+                    }
                 }
             });
             wormholes = wormholes.filter(w => w.life > -60);
@@ -1932,7 +1989,7 @@
 
             // 4. スムージングの強化
             // 0.05だと追従が鋭すぎて微細な座標変化を拾うため、0.04に落としてマイルドにします
-            cameraScale += (targetScale - cameraScale) * 0.04;
+            cameraScale += (targetScale - cameraScale) * 0.04 * gameSpeed;
 
             // 5. ズームが進むほど強制的に中央へ寄せる補正（ここがズレ防止のキモ）
             let zoomFactor = Math.max(0, Math.min(1, (1.0 - cameraScale) / 0.8));
@@ -1971,8 +2028,8 @@
             // 8. カメラ座標そのものにもスムージングをかける（これが決定打になります）
             // 内部のフォーカス座標がわずかに跳ねても、実際の表示座標を0.1の速度で追従させることで
             // 物理的に「ブレ」を視認不可能にします。
-            camera.x += (tx - camera.x) * 0.1;
-            camera.y += (ty - camera.y) * 0.1;
+            camera.x += (tx - camera.x) * 0.1 * gameSpeed;
+            camera.y += (ty - camera.y) * 0.1 * gameSpeed;
         }
 
         function updateDying() {
@@ -2035,7 +2092,7 @@
                 AudioSys.playSE('laser'); distortGrid(player.x, player.y, 20, 60); return;
             }
 
-            const s = BULLET_SETTINGS.PLAYER_SPEED * SPEED_SCALE;
+            const s = BULLET_CONFIG.PLAYER.SPEED * SPEED_SCALE;
             // レベルごとの発射角度オフセット設定（0 = 前方、Math.PI = 後方）
             const shotPatterns = {
                 1: [0.08, -0.08], // 2way
@@ -2052,7 +2109,13 @@
 
             currentPattern.forEach(offset => {
                 const a = player.angle + offset;
-                bullets.push({ x: player.x, y: player.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: BULLET_SETTINGS.PLAYER_LIFE });
+                bullets.push({
+                    x: player.x,
+                    y: player.y,
+                    vx: Math.cos(a) * s,
+                    vy: Math.sin(a) * s,
+                    life: BULLET_CONFIG.PLAYER.LIFE
+                });
             });
 
             AudioSys.playSE('shoot'); distortGrid(player.x, player.y, 10, 40);
@@ -2210,7 +2273,7 @@
                     x: x, y: y, vx: vx, vy: vy,
                     hp: 1,
                     speed: ENEMY_SPEEDS.TADPOLE * spd * stageMag,
-                    color: '#fff', type: 'tadpole', angle: 0,
+                    color: '#0ff', type: 'tadpole', angle: 0,
                     drop: 'none',
                     scale: 0.6, history: []
                 });
@@ -2517,22 +2580,22 @@
             const dist = Math.hypot(player.x - e.x, player.y - e.y);
 
             // --- 当たり判定半径の決定 ---
-            let radius = 15;
+            let radius = 15 * G_SCALE;;
             if (e.type === 'asteroid') {
                 // 岩の基本半径20pxに、ステージ補正等で大きくなったscaleを掛ける
-                radius = 20 * e.scale;
+                radius = 20 * e.scale * G_SCALE;;
             } else if (e.type === 'triangle') {
-                radius = ENEMY_HITBOX.TRIANGLE;
+                radius = ENEMY_HITBOX.TRIANGLE * G_SCALE;;
             } else if (e.type === 'cube') {
-                radius = ENEMY_HITBOX.CUBE;
+                radius = ENEMY_HITBOX.CUBE * G_SCALE;;
             } else if (e.type === 'tadpole') {
-                radius = ENEMY_HITBOX.TADPOLE;
+                radius = ENEMY_HITBOX.TADPOLE * G_SCALE;;
             } else if (e.type === 'dragon') {
-                radius = ENEMY_HITBOX.DRAGON;
+                radius = ENEMY_HITBOX.DRAGON * G_SCALE;;
             } else if (e.type === 'hunter') {
-                radius = ENEMY_HITBOX.HUNTER;
+                radius = ENEMY_HITBOX.HUNTER * G_SCALE;;
             } else if (e.type === 'boss') {
-                radius = 45; // ボスの判定サイズ
+                radius = 45 * G_SCALE;; // ボスの判定サイズ
             }
 
             // 衝突境界距離の計算（G_SCALEを考慮しつつ、無敵バリア時は判定を広げる）
@@ -2738,8 +2801,8 @@
                     const d = Math.hypot(dx, dy) || 0.001;
 
                     // プレイヤーへ向かって加速
-                    e.vx += (dx / d) * 0.2 * SPEED_SCALE;
-                    e.vy += (dy / d) * 0.2 * SPEED_SCALE;
+                    e.vx += (dx / d) * 0.2 * SPEED_SCALE * gameSpeed;
+                    e.vy += (dy / d) * 0.2 * SPEED_SCALE * gameSpeed;
 
                     // 速度制限
                     const cv = Math.hypot(e.vx, e.vy);
@@ -2765,7 +2828,8 @@
 
         function updateTadpoleAI(e) {
             const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 0.001;
-            e.vx += (dx / d) * 0.2 * SPEED_SCALE; e.vy += (dy / d) * 0.2 * SPEED_SCALE;
+            e.vx += (dx / d) * 0.2 * SPEED_SCALE * gameSpeed;
+            e.vy += (dy / d) * 0.2 * SPEED_SCALE * gameSpeed;
             const cv = Math.hypot(e.vx, e.vy); if (cv > e.speed) { e.vx = (e.vx / cv) * e.speed; e.vy = (e.vy / cv) * e.speed; }
             e.x += e.vx * gameSpeed;
             e.y += e.vy * gameSpeed;
@@ -2825,14 +2889,14 @@
                 e.fireTimer = 0;
 
                 // ここで直接、現在のステージに応じた弾速を計算
-                const currentEnemyBulletSpd = BULLET_SETTINGS.ENEMY_SPEED * SPEED_SCALE * (1 + (stage - 1) * DIFFICULTY_CONFIG.BULLET_SPEED_INC);
+                const currentEnemyBulletSpd = BULLET_CONFIG.ENEMY_NORMAL.SPEED * SPEED_SCALE * (1 + (stage - 1) * DIFFICULTY_CONFIG.BULLET_SPEED_INC);
 
                 enemyBullets.push({
                     x: e.x,
                     y: e.y,
-                    vx: Math.cos(e.angle) * currentEnemyBulletSpd,
-                    vy: Math.sin(e.angle) * currentEnemyBulletSpd,
-                    life: BULLET_SETTINGS.ENEMY_LIFE
+                    vx: Math.cos(a) * currentEnemyBulletSpd,
+                    vy: Math.sin(a) * currentEnemyBulletSpd,
+                    life: BULLET_CONFIG.ENEMY_NORMAL.LIFE
                 });
                 AudioSys.playSE('shoot');
             }
@@ -2840,7 +2904,8 @@
 
         function updateCubeAI(e) {
             const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 0.001;
-            e.vx += (dx / d) * 0.2 * SPEED_SCALE; e.vy += (dy / d) * 0.2 * SPEED_SCALE;
+            e.vx += (dx / d) * 0.2 * SPEED_SCALE * gameSpeed;
+            e.vy += (dy / d) * 0.2 * SPEED_SCALE * gameSpeed;
             const cv = Math.hypot(e.vx, e.vy); if (cv > e.speed) { e.vx = (e.vx / cv) * e.speed; e.vy = (e.vy / cv) * e.speed; }
             e.x += e.vx * gameSpeed;
             e.y += e.vy * gameSpeed;
@@ -2889,13 +2954,13 @@
 
                 if (e.actionTimer > 20 && e.actionTimer % 10 === 0 && e.burstCount < 3) {
                     // 弾速も定数の影響を受ける
-                    const bulletSpd = BULLET_SETTINGS.ENEMY_SPEED * 1.3 * SPEED_SCALE;
+                    const bulletSpd = BULLET_CONFIG.ENEMY_NORMAL.SPEED * 1.3 * SPEED_SCALE;
 
                     enemyBullets.push({
                         x: e.x, y: e.y,
                         vx: Math.cos(e.angle) * bulletSpd,
                         vy: Math.sin(e.angle) * bulletSpd,
-                        life: BULLET_SETTINGS.ENEMY_LIFE,
+                        life: BULLET_CONFIG.ENEMY_NORMAL.LIFE,
                         color: '#f80'
                     });
 
@@ -2946,61 +3011,55 @@
             // 時間経過のカウント
             e.spawnTimer = (e.spawnTimer || 0) + 1;
 
-            // --- 覚醒判定（白 → 赤） ---
+            // --- 覚醒判定 ---
             if (!e.isTracking && e.spawnTimer > e.trackingStart) {
                 e.isTracking = true;
-                e.color = '#ff4444'; // より鮮やかな赤に
 
-                // ★修正ポイント1：モード切替時の速度変換と減速
-                // 今までの移動速度(vx * speed)を計算し、実速度としてvx, vyに適用します。
-                // さらに * 0.2 を掛けることで、一度急ブレーキをかけます。
-                // これにより「ギョロっとこっちを見て動き出す」ような挙動になります。
+                // モード切替時の速度変換と減速
                 e.vx = (e.vx * e.speed) * 0.2;
                 e.vy = (e.vy * e.speed) * 0.2;
-
-                // 以降は speed 変数は使わず、vx, vy を直接操作するため 1 にリセット
                 e.speed = 1;
 
-                // 回転を速くする（荒ぶる演出）
-                e.rotSpd *= 5;
+                // 回転を速くする
+                e.rotSpd *= 3;
             }
 
             if (e.isTracking) {
-                // --- 追跡モード（自機へ加速） ---
+                // --- 追跡モード ---
+
+                // ★変更：「ネオン（e.glow）」を廃止し、「色（e.color）」を変化させる
+                // 赤成分(R)は255で固定し、緑(G)と青(B)を減らすことで「赤み」を出します。
+                // 255(白) 〜 180(薄い赤) の間をゆっくり往復させます。
+                const gb = Math.floor(215 + 40 * Math.sin(frame * 0.1));
+                e.color = `rgb(255, ${gb}, ${gb})`;
+
                 const dx = player.x - e.x;
                 const dy = player.y - e.y;
                 const dist = Math.hypot(dx, dy) || 0.001;
-
-                // ★修正ポイント2：誘導性能（加速度）を強化
-                // 以前の値(0.15)だと弱すぎたため、0.6程度まで上げます
                 const accel = (0.6 / e.size) * SPEED_SCALE;
 
-                e.vx += (dx / dist) * accel;
-                e.vy += (dy / dist) * accel;
+                e.vx += (dx / dist) * accel * gameSpeed;
+                e.vy += (dy / dist) * accel * gameSpeed;
 
-                // ★修正ポイント3：最高速度制限と摩擦
-                // ずっと加速し続けると制御不能になるため、適度な摩擦(0.98)と上限を設けます
                 const maxSpeed = 7.0 * SPEED_SCALE;
-                e.vx *= 0.99; // 空気抵抗（宇宙だけど制御しやすくするため）
-                e.vy *= 0.99;
-
+                e.vx *= 0.99; e.vy *= 0.99;
                 const currentSpeed = Math.hypot(e.vx, e.vy);
                 if (currentSpeed > maxSpeed) {
                     e.vx = (e.vx / currentSpeed) * maxSpeed;
                     e.vy = (e.vy / currentSpeed) * maxSpeed;
                 }
-
-                // 移動
                 e.x += e.vx * gameSpeed;
                 e.y += e.vy * gameSpeed;
 
             } else {
                 // --- 通常モード（漂流） ---
-                // 以前のロジック：e.vx * e.speed で移動
+
+                // 通常時は真っ白
+                e.color = '#ffffff';
+
                 e.x += e.vx * e.speed * gameSpeed;
                 e.y += e.vy * e.speed * gameSpeed;
 
-                // 画面端の処理（漂流中のみループor反射）
                 if (e.x < 0 || e.x > worldSize) e.vx *= -1;
                 if (e.y < 0 || e.y > worldSize) e.vy *= -1;
             }
@@ -3031,8 +3090,8 @@
             const dx = player.x - e.x, dy = player.y - e.y;
             const d = Math.hypot(dx, dy) || 0.1;
 
-            e.vx += (dx / d) * 0.02 * SPEED_SCALE;
-            e.vy += (dy / d) * 0.02 * SPEED_SCALE;
+            e.vx += (dx / d) * 0.02 * SPEED_SCALE * gameSpeed;
+            e.vy += (dy / d) * 0.02 * SPEED_SCALE * gameSpeed;
 
             const cv = Math.hypot(e.vx, e.vy);
             if (cv > e.speed) {
@@ -3070,10 +3129,9 @@
                         enemyBullets.push({
                             x: e.x + Math.cos(a) * 45,
                             y: e.y + Math.sin(a) * 45,
-                            vx: Math.cos(a) * bulletSpd,
-                            vy: Math.sin(a) * bulletSpd,
-                            // ★弱体化：寿命を 180 → 120 に短縮（射程を短くして画面を掃除しやすく）
-                            life: 120,
+                            vx: Math.cos(a) * (BULLET_CONFIG.BOSS_LASER.SPEED * SPEED_SCALE),
+                            vy: Math.sin(a) * (BULLET_CONFIG.BOSS_LASER.SPEED * SPEED_SCALE),
+                            life: BULLET_CONFIG.BOSS_LASER.LIFE,
                             isLaserMissile: true,
                             color: e.color
                         });
@@ -3108,9 +3166,9 @@
                         enemyBullets.push({
                             x: e.x + Math.cos(a) * 60,
                             y: e.y + Math.sin(a) * 60,
-                            vx: Math.cos(a) * bulletSpd,
-                            vy: Math.sin(a) * bulletSpd,
-                            life: 300,
+                            vx: Math.cos(a) * (BULLET_CONFIG.BOSS_HOMING.SPEED * SPEED_SCALE),
+                            vy: Math.sin(a) * (BULLET_CONFIG.BOSS_HOMING.SPEED * SPEED_SCALE),
+                            life: BULLET_CONFIG.BOSS_HOMING.LIFE,
                             isMissile: true,
                             color: e.color
                         });
@@ -3189,16 +3247,20 @@
 
                         // --- ★修正ポイント：ヒット演出 ---
 
-                        // 1. ボスの場合（既存）
+                        // 1. ボスの場合
                         if (e.type === 'boss') {
                             e.flashTimer = 5;
                             AudioSys.playSE('boss_hit');
                             for (let i = 0; i < 3; i++) {
                                 particles.push({
                                     x: b.x, y: b.y,
-                                    vx: (Math.random() - 0.5) * 10,
-                                    vy: (Math.random() - 0.5) * 10,
-                                    color: '#fff', life: 0.2, size: 2
+                                    // ★修正: 飛び散る速度に SPEED_SCALE を適用 (10 * 2.0 程度にして勢いを出す)
+                                    vx: (Math.random() - 0.5) * 20 * SPEED_SCALE,
+                                    vy: (Math.random() - 0.5) * 20 * SPEED_SCALE,
+                                    color: '#fff',
+                                    life: 0.2,
+                                    // ★修正: サイズに G_SCALE を適用
+                                    size: 2 * G_SCALE
                                 });
                             }
                         }
@@ -3322,8 +3384,7 @@
                     const C = (p1x + cos * currentLen) * p1y - p1x * (p1y + sin * currentLen);
                     const dist = Math.abs(A * eb.y - B * eb.x + C) / (Math.hypot(A, B) || 1);
                     const dot = (eb.x - p1x) * cos + (eb.y - p1y) * sin;
-
-                    if (dist < (l.width / 2 + 5) && dot > 0 && dot < currentLen) {
+                    if (dist < ((l.width / 2 + 5) * G_SCALE) && dot > 0 && dot < currentLen) {
                         eb.life = 0;
                         score += 10;
                     }
@@ -3336,88 +3397,110 @@
             const bulletStageMag = 1.0 + (stage - 1) * DIFFICULTY_CONFIG.BULLET_SPEED_INC;
 
             enemyBullets.forEach(eb => {
-                // --- A. フェードアウト中の処理 (寿命切れ・枠接触) ---
+                // --- A. フェードアウト中の処理 (明滅しながら消滅) ---
                 if (eb.isFading) {
-                    eb.alpha -= 0.05; // ここで毎フレーム透明度を減らす
-                    if (eb.alpha <= 0) {
-                        eb.alpha = 0;
-                        eb.life = 0; // ここで初めて配列から削除されるようにする
+                    // 全体のベース透明度を徐々に下げる (ここが 0 になると完全に消滅)
+                    // gameSpeedの影響を受けさせても良いですが、点滅演出としてはフレーム依存の方が綺麗な場合が多いです
+                    eb.baseAlpha = (eb.baseAlpha === undefined ? 1.0 : eb.baseAlpha) - 0.03;
+
+                    // 明滅ロジック
+                    const wave = (Math.sin(frame * 1.0) + 1) / 2;
+                    eb.alpha = eb.baseAlpha * wave;
+
+                    if (eb.baseAlpha <= 0) {
+                        eb.life = 0;
+                        return;
                     }
+
+                    // 同じ速さで等速直線運動
                     eb.x += eb.vx * gameSpeed;
                     eb.y += eb.vy * gameSpeed;
-                    return; // フェード中は以下の壁判定などをスキップ
+                    return;
                 }
 
                 const oldX = eb.x;
                 const oldY = eb.y;
-
-                // 通常移動
                 eb.x += eb.vx * gameSpeed;
                 eb.y += eb.vy * gameSpeed;
                 eb.life--;
 
-                // --- B. 消滅判定 (寿命切れ または エリア枠接触) ---
+                // --- B. ワールド境界（エリア枠）との衝突判定 ---
                 const isHitWall = (eb.x < WALL_MARGIN || eb.x > worldSize - WALL_MARGIN ||
                     eb.y < WALL_MARGIN || eb.y > worldSize - WALL_MARGIN);
 
-                if (eb.life <= 0 || isHitWall) {
+                if (isHitWall) {
                     if (eb.isMissile || eb.isLaserMissile) {
-                        // 爆発させずフェードアウトモードへ
+                        const impactX = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, eb.x));
+                        const impactY = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, eb.y));
+
+                        createExplosion(impactX, impactY, eb.color, 10);
+                        AudioSys.playSE('explode');
+                        distortGrid(impactX, impactY, 15, 30);
+                    }
+                    eb.life = 0;
+                    return;
+                }
+
+                // --- C. 寿命切れによる消滅判定 ---
+                if (eb.life <= 0) {
+                    if (eb.isMissile || eb.isLaserMissile) {
                         eb.isFading = true;
-                        eb.alpha = 1.0;
-                        // 枠に当たった場合は座標をクランプ(固定)して、そこで消えていくように見せる
-                        if (isHitWall) {
-                            eb.x = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, eb.x));
-                            eb.y = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, eb.y));
-                            eb.vx = 0; eb.vy = 0; // 枠の場合は止まって消える
-                        }
+                        eb.fadeTimer = 15;
+                        eb.life = 1;
+
+                        AudioSys.playSE('explode', 0.5);
                     } else {
                         eb.life = 0;
                     }
                     return;
                 }
 
-                // --- C. ミサイルの挙動制御 ---
+                // --- D. ミサイルの挙動制御 & 撃墜判定 ---
                 if (eb.isMissile && eb.life > 0) {
-                    eb.vx *= 0.96;
-                    eb.vy *= 0.96;
-                    const dx = player.x - eb.x;
-                    const dy = player.y - eb.y;
-                    const dist = Math.hypot(dx, dy) || 0.001;
-                    eb.vx += (dx / dist) * 0.25 * SPEED_SCALE;
-                    eb.vy += (dy / dist) * 0.25 * SPEED_SCALE;
+                    eb.vx *= 0.96; eb.vy *= 0.96;
+                    const dx = player.x - eb.x, dy = player.y - eb.y;
+                    const d = Math.hypot(dx, dy) || 0.001;
+
+                    // ★修正：加速にも gameSpeed を適用
+                    const accel = 0.25 * SPEED_SCALE;
+                    eb.vx += (dx / d) * accel * gameSpeed;
+                    eb.vy += (dy / d) * accel * gameSpeed;
+
                     const v = Math.hypot(eb.vx, eb.vy);
                     const cruiseSpeed = ENEMY_SPEEDS.BOSS_MISSILE * SPEED_SCALE * bulletStageMag;
+
                     if (v > cruiseSpeed) {
                         eb.vx = (eb.vx / v) * cruiseSpeed;
                         eb.vy = (eb.vy / v) * cruiseSpeed;
                     }
 
-                    // ミサイル撃墜判定
+                    // プレイヤーの弾による撃墜判定
                     bullets.forEach(b => {
-                        if (b.life > 0 && Math.hypot(b.x - eb.x, b.y - eb.y) < 20) {
-                            // ★修正: 撃墜時はフェードアウトせず、即座に爆発して削除
+                        // ★修正：撃墜判定距離にも G_SCALE を適用（見た目通りに）
+                        const hitDist = 20 * G_SCALE;
+                        if (b.life > 0 && Math.hypot(b.x - eb.x, b.y - eb.y) < hitDist) {
                             createExplosion(eb.x, eb.y, eb.color, 8);
                             AudioSys.playSE('explode');
-                            eb.life = 0;
-                            b.life = 0;
-                            score += 50;
+                            eb.life = 0; b.life = 0; score += 50;
                         }
                     });
                 }
 
-                // --- D. プレイヤーとの判定 (既存) ---
+                // --- E. プレイヤーとの判定 ---
                 if (eb.life > 0 && gameState !== 'DYING' && player.invuln <= 0) {
                     const dist = Math.hypot(player.x - eb.x, player.y - eb.y);
-                    const hitboxSize = eb.isMissile ? ENEMY_HITBOX.BULLET * 1.5 : ENEMY_HITBOX.BULLET;
-                    if (dist < hitboxSize) {
+
+                    // ★修正：プレイヤー衝突判定にも G_SCALE を適用
+                    // ミサイルは大きめ(12)、通常弾は小さめ(8)
+                    const collisionRadius = (eb.isMissile ? 12 : 8) * G_SCALE;
+
+                    if (dist < collisionRadius) {
                         eb.life = 0;
                         createExplosion(player.x, player.y, eb.color || '#f00', 10);
                         damage(15);
                     }
                 }
             });
-
             enemyBullets = enemyBullets.filter(eb => eb.life > 0);
         }
 
@@ -3515,8 +3598,8 @@
                 c.vy = (c.vy || 0) * 0.95;
 
                 // 初速にも SPEED_SCALE を適用して移動させる
-                c.x += c.vx * SPEED_SCALE * gameSpeed; 
-                c.y += c.vy * SPEED_SCALE * gameSpeed; 
+                c.x += c.vx * SPEED_SCALE * gameSpeed;
+                c.y += c.vy * SPEED_SCALE * gameSpeed;
 
                 // --- 2. 自機への吸い寄せ（マグネット） ---
                 const dx = player.x - c.x;
@@ -3645,15 +3728,15 @@
             particles.forEach(p => {
                 p.x += p.vx * gameSpeed;
                 p.y += p.vy * gameSpeed;
-                p.vx *= 0.92;
-                p.vy *= 0.92;
-                p.vy += 0.005;
-                p.life -= 0.02;
+                p.vx *= Math.pow(0.92, gameSpeed);
+                p.vy *= Math.pow(0.92, gameSpeed);
+                p.vy += 0.005 * gameSpeed;
+                p.life -= 0.02 * gameSpeed;
             });
             particles = particles.filter(p => p.life > 0);
             rings.forEach(r => {
-                r.r += 2 * gameSpeed;
-                r.life -= 0.02 * gameSpeed;
+                r.r += 2 * SPEED_SCALE * gameSpeed;
+                r.life -= 0.02 * SPEED_SCALE * gameSpeed;
             });
             rings = rings.filter(r => r.life > 0);
         }
@@ -3676,8 +3759,8 @@
                     if (dist > 0.1) {
                         const f = -0.12 * dist;
                         const ang = Math.atan2(dy, dx);
-                        p.vx += Math.cos(ang) * f;
-                        p.vy += Math.sin(ang) * f;
+                        p.vx += Math.cos(ang) * f * gameSpeed;
+                        p.vy += Math.sin(ang) * f * gameSpeed;
                     }
 
                     p.vx *= 0.85;
@@ -4541,9 +4624,13 @@
         function drawTadpoleEnemy(ctx, e) {
             ctx.save();
 
-            // --- カラー設定：明るい水色（シアンネオン） ---
-            const neonCyan = "#0ff";      // 鮮やかなシアン
-            const lightCyan = "#ccffff";  // ハイライト用の白に近い青
+            // --- 描画関数内 ---
+            const baseColor = e.color; // 例: "#00ffff"
+            const hue = getHue(baseColor); // 色相を取得
+
+
+            // lightCyan: 元の色と同じ色相で、輝度を90%（ほぼ白に近い明るさ）にする
+            const lightColor = `hsl(${hue}, 100%, 90%)`;
 
             // --- 1. テイル（高速流動フラグメント）の描画 ---
             if (e.history.length > 1) {
@@ -4580,10 +4667,10 @@
             ctx.fill();
 
             // ワイヤーフレームの設定
-            ctx.strokeStyle = neonCyan;
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = baseColor;
+            ctx.lineWidth = 2.5;
             ctx.shadowBlur = 15;
-            ctx.shadowColor = neonCyan;
+            ctx.shadowColor = baseColor;
 
             // --- メインボディ「＝＝＝」部分 ---
             for (let j = 0; j < 3; j++) {
@@ -4595,7 +4682,7 @@
 
                 // 水平支柱（ハイライト色を混ぜる）
                 ctx.save();
-                ctx.strokeStyle = lightCyan;
+                ctx.strokeStyle = lightColor;
                 ctx.lineWidth = 0.8;
                 ctx.beginPath();
                 ctx.moveTo(xPos, -15); ctx.lineTo(xPos + 12, -15);
@@ -4611,7 +4698,7 @@
             ctx.stroke();
 
             ctx.save();
-            ctx.strokeStyle = lightCyan;
+            ctx.strokeStyle = lightColor;
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.moveTo(25, -9); ctx.lineTo(42, 0); ctx.lineTo(25, 9);   // 内側の ＜
@@ -4620,9 +4707,9 @@
 
             // --- コア・ユニット ---
             // 中心部で強く輝く水色のエネルギー体
-            ctx.fillStyle = lightCyan;
+            ctx.fillStyle = lightColor;
             ctx.shadowBlur = 20;
-            ctx.shadowColor = neonCyan;
+            ctx.shadowColor = baseColor;
             ctx.beginPath();
             ctx.rect(5, -4, 8, 8);
             ctx.fill();
@@ -4641,7 +4728,7 @@
             ctx.scale(s, s);
 
             // ネオンホワイトのワイヤーフレーム設定
-            ctx.strokeStyle = '#fff';
+            ctx.strokeStyle = e.color;
 
             // ★ポイント: 小さくなっても線の太さを維持する計算
             // スケール s で割ることで、画面上の見た目の太さを常に一定（約1.5px）に保ちます
@@ -5136,7 +5223,7 @@
                 ctx.textAlign = "right";
                 ctx.textBaseline = "top";
 
-                // "WARNING !!" 
+                // "WARNING !!"
                 // 幅に合わせてフォントサイズを微調整 (16px)
                 ctx.font = "900 16px Orbitron, sans-serif";
                 ctx.fillStyle = "#ff0000";
