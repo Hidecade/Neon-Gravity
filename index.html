@@ -3338,14 +3338,14 @@
             enemyBullets.forEach(eb => {
                 // --- A. フェードアウト中の処理 (寿命切れ・枠接触) ---
                 if (eb.isFading) {
-                    eb.alpha -= 0.08; // 消える速さ
+                    eb.alpha -= 0.05; // ここで毎フレーム透明度を減らす
                     if (eb.alpha <= 0) {
-                        eb.life = 0; // 完全に消えたら削除
+                        eb.alpha = 0;
+                        eb.life = 0; // ここで初めて配列から削除されるようにする
                     }
-                    // ★修正: 速度を落とさず、等速で移動し続けながら消える
                     eb.x += eb.vx * gameSpeed;
                     eb.y += eb.vy * gameSpeed;
-                    return;
+                    return; // フェード中は以下の壁判定などをスキップ
                 }
 
                 const oldX = eb.x;
@@ -3706,70 +3706,110 @@
         // =========================================================
         // 10. 描画システム (Rendering Systems)
         // =========================================================
+
         function draw() {
-
             ctx.save();
-
             ctx.scale(cameraScale, cameraScale);
             ctx.translate(-camera.x, -camera.y);
 
+            drawBackground();          // 1. 背景
+            drawWorldBounds();         // 2. 枠
+            drawWormholes();           // 3. 穴
+            drawEnemies();             // 4. 敵
+            drawEnemyProjectiles();    // 5. 敵弾（透明度適用済み）
+
+            if (gameState === 'PLAYING') {
+                drawPlayerSystems();   // 6. 自機
+            }
+
+            drawLasers();              // 7. 自機レーザー
+            drawPlayerBullets();       // 8. 自機ショット
+            drawItems();               // 9. アイテム
+            drawVisualEffects();       // 10. エフェクト
+
+            // UI要素（ワールド座標系でないものも含むが、ここでは便宜上呼び出し）
+            if (gameState === 'PLAYING' || gameState === 'DYING') {
+                drawMiniMap();
+            }
+            drawScorePopups();
+
+            ctx.restore();
+
+            // 画面固定のUI演出
+            drawBossWarningEffect();
+        }
+
+        // --- 以下、各描画サブ関数 ---
+        function drawBackground() {
             ctx.fillStyle = '#fff';
             stars.forEach(s => {
-                const sx = (s.x - camera.x * s.parallax) % worldSize; const sy = (s.y - camera.y * s.parallax) % worldSize;
-                const dx = (sx + worldSize) % worldSize; const dy = (sy + worldSize) % worldSize;
-                ctx.globalAlpha = s.brightness; ctx.beginPath(); ctx.arc(dx, dy, s.size, 0, Math.PI * 2); ctx.fill();
+                const sx = (s.x - camera.x * s.parallax) % worldSize;
+                const sy = (s.y - camera.y * s.parallax) % worldSize;
+                const dx = (sx + worldSize) % worldSize;
+                const dy = (sy + worldSize) % worldSize;
+                ctx.globalAlpha = s.brightness;
+                ctx.beginPath(); ctx.arc(dx, dy, s.size, 0, Math.PI * 2); ctx.fill();
             });
             ctx.globalAlpha = 1.0;
 
-            ctx.save(); ctx.beginPath(); ctx.rect(0, 0, worldSize, worldSize); ctx.clip();
-
-            ctx.strokeStyle = 'rgba(0, 150, 255, 0.3)'; // 水色(0,150,255)で透明度0.15。かなり薄くなります。
-            ctx.lineWidth = 1; // 線自体も少し細くすると繊細になります
-            ctx.shadowBlur = 5;  // 光彩を抑える（以前は15）
+            // グリッド
+            ctx.save();
+            ctx.beginPath(); ctx.rect(0, 0, worldSize, worldSize); ctx.clip();
+            ctx.strokeStyle = 'rgba(0, 150, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.shadowBlur = 5;
             ctx.shadowColor = '#08f';
-
             ctx.beginPath();
-            const viewX = camera.x;
-            const viewY = camera.y;
             const viewW = width / cameraScale;
             const viewH = height / cameraScale;
 
-            for (let i = 0; i < gridPoints.length; i++) for (let j = 0; j < gridPoints[i].length; j++) {
-                const p = gridPoints[i][j]; if (!p) continue;
-
-                // 画面外判定（これで途切れなくなります）
-                if (p.x < viewX - 50 || p.x > viewX + viewW + 50 || p.y < viewY - 50 || p.y > viewY + viewH + 50) continue;
-
-                if (i > 0 && gridPoints[i - 1] && gridPoints[i - 1][j]) { ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y); ctx.lineTo(p.x, p.y); }
-                if (j > 0 && gridPoints[i][j - 1]) { ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y); ctx.lineTo(p.x, p.y); }
+            for (let i = 0; i < gridPoints.length; i++) {
+                for (let j = 0; j < gridPoints[i].length; j++) {
+                    const p = gridPoints[i][j];
+                    if (!p || p.x < camera.x - 50 || p.x > camera.x + viewW + 50 || p.y < camera.y - 50 || p.y > camera.y + viewH + 50) continue;
+                    if (i > 0 && gridPoints[i - 1][j]) { ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y); ctx.lineTo(p.x, p.y); }
+                    if (j > 0 && gridPoints[i][j - 1]) { ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y); ctx.lineTo(p.x, p.y); }
+                }
             }
-            ctx.stroke(); ctx.shadowBlur = 0; ctx.restore();
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
 
-            ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3; ctx.strokeRect(WALL_MARGIN, WALL_MARGIN, worldSize - WALL_MARGIN * 2, worldSize - WALL_MARGIN * 2);
+        function drawWorldBounds() {
+            ctx.strokeStyle = '#0ff';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(WALL_MARGIN, WALL_MARGIN, worldSize - WALL_MARGIN * 2, worldSize - WALL_MARGIN * 2);
+        }
 
+        function drawWormholes() {
             wormholes.forEach(w => {
                 if (w.active || w.life > -60) {
-                    let scale = 1; if (w.life > 300) scale = (400 - w.life) / 100; else if (w.life <= 0) scale = Math.max(0, (60 + w.life) / 60);
-                    ctx.save(); ctx.translate(w.x, w.y); ctx.scale(scale, scale);
+                    let scale = 1;
+                    if (w.life > 300) scale = (400 - w.life) / 100;
+                    else if (w.life <= 0) scale = Math.max(0, (60 + w.life) / 60);
+                    ctx.save();
+                    ctx.translate(w.x, w.y);
+                    ctx.scale(scale, scale);
                     ctx.shadowBlur = 30; ctx.shadowColor = '#20f';
                     const grad = ctx.createRadialGradient(-5, -5, 2, 0, 0, 25);
                     grad.addColorStop(0, '#333'); grad.addColorStop(0.2, '#000'); grad.addColorStop(0.8, '#000'); grad.addColorStop(1, '#0ff');
-                    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, 20 + Math.sin(frame * 0.1) * 2, 0, Math.PI * 2); ctx.fill();
-                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, 35 + Math.cos(frame * 0.05) * 5, 0, Math.PI * 2); ctx.stroke();
-                    ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(5, 5); ctx.stroke();
+                    ctx.fillStyle = grad;
+                    ctx.beginPath(); ctx.arc(0, 0, 20 + Math.sin(frame * 0.1) * 2, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)'; ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.arc(0, 0, 35 + Math.cos(frame * 0.05) * 5, 0, Math.PI * 2); ctx.stroke();
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(5, 5); ctx.stroke();
                     ctx.restore();
                 }
             });
+        }
 
+        function drawEnemies() {
             enemies.forEach(e => {
-                ctx.save(); // 個別にsave/restoreすることで透明度の影響を防ぐ
-
-                // 出現演出中の透明度を適用
-                if (e.isWarping) {
-                    ctx.globalAlpha = e.warpPercent || 0;
-                } else {
-                    ctx.globalAlpha = 1.0;
-                }
+                ctx.save();
+                ctx.globalAlpha = e.isWarping ? (e.warpPercent || 0) : 1.0;
 
                 if (e.type === 'dragon') drawDragonEnemy(ctx, e);
                 else if (e.type === 'triangle') drawTriangleEnemy(ctx, e);
@@ -3781,134 +3821,102 @@
 
                 ctx.restore();
             });
+        }
 
-            // 敵の弾の描画ループ内
+        function drawEnemyProjectiles() {
             enemyBullets.forEach(eb => {
                 ctx.save();
                 ctx.translate(eb.x, eb.y);
+
+                // フェードアウト中なら eb.alpha を適用、そうでなければ 1.0 (不透明)
+                const currentAlpha = eb.isFading ? Math.max(0, eb.alpha) : 1.0;
+                ctx.globalAlpha = currentAlpha;
+
+                // レーザー弾やミサイルの場合、光の重なりを綺麗に見せるため加算合成を使うことが多いですが、
+                // 消える時は globalAlpha が効くように設定します。
+                if (eb.isLaserMissile || eb.isMissile) {
+                    ctx.globalCompositeOperation = 'lighter';
+                }
+
                 if (eb.isLaserMissile) {
-                    drawLaserMissile(ctx, eb); // ★これを呼び出す
+                    drawLaserMissile(ctx, eb);
                 } else if (eb.isMissile) {
                     drawHomingMissile(ctx, eb);
                 } else {
                     drawNormalBullet(ctx, eb);
                 }
+
                 ctx.restore();
-            })
+            });
 
-            ctx.shadowBlur = 0;
+            // 描画後は必ず透明度と合成モードをデフォルトに戻す
+            ctx.globalAlpha = 1.0;
+            ctx.globalCompositeOperation = 'source-over';
+        }
 
-            if (gameState === 'PLAYING') {
-                // --- 残像（トレイル）の描画処理 ---
-                player.history.forEach((pos, i) => {
-                    // i=0 は現在の自機と同じ位置なのでスキップ
-                    if (i === 0) return;
+        function drawPlayerSystems() {
+            // 残像
+            player.history.forEach((pos, i) => {
+                if (i === 0) return;
+                ctx.save();
+                ctx.translate(pos.x, pos.y); ctx.rotate(pos.angle); ctx.scale(G_SCALE, G_SCALE);
+                ctx.globalAlpha = 0.4 * (1 - i / player.history.length);
+                let trailColor = player.invuln > 0 ? '#ff0' : (player.laserTimer > 0 ? '#0ff' : '#0f8');
+                ctx.strokeStyle = trailColor; ctx.lineWidth = 1.5; ctx.shadowBlur = 5; ctx.shadowColor = trailColor;
+                ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-10, 10); ctx.lineTo(-5, 0); ctx.lineTo(-10, -10); ctx.closePath(); ctx.stroke();
+                ctx.restore();
+            });
 
-                    ctx.save();
-                    ctx.translate(pos.x, pos.y);
-                    ctx.rotate(pos.angle);
-                    ctx.scale(G_SCALE, G_SCALE);
+            // 特殊エフェクト
+            if (player.weaponLevel >= MAX_WEAPON_LEVEL - 1) drawEmeraldPhoenix(ctx, player);
+            if (player.invuln > 0) drawInvulnBarrier(ctx, player);
 
-                    // 配列の後ろに行くほど（古いほど）透明にする
-                    const alpha = 0.4 * (1 - i / player.history.length);
-                    ctx.globalAlpha = alpha;
+            // 本体
+            drawPlayer(ctx, player);
+        }
 
-                    // 残像の色を状態に合わせて設定
-                    let trailColor = '#0f8';
-                    if (player.invuln > 0) trailColor = '#ff0';
-                    else if (player.laserTimer > 0) trailColor = '#0ff';
+        function drawPlayerBullets() {
+            ctx.fillStyle = '#0f8';
+            bullets.forEach(b => {
+                ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, Math.PI * 2); ctx.fill();
+            });
+        }
 
-                    ctx.strokeStyle = trailColor;
-                    ctx.lineWidth = 1.5;
-                    ctx.shadowBlur = 5;
-                    ctx.shadowColor = trailColor;
-
-                    // 自機の形を描画（本体より少し簡略化してもOK）
-                    ctx.beginPath();
-                    ctx.moveTo(20, 0);
-                    ctx.lineTo(-10, 10);
-                    ctx.lineTo(-5, 0);
-                    ctx.lineTo(-10, -10);
-                    ctx.closePath();
-                    ctx.stroke();
-
-                    ctx.restore();
-                });
-
-                // 1. 最大レベルなら碧き不死鳥を纏う
-                if (player.weaponLevel >= MAX_WEAPON_LEVEL - 1) {
-                    drawEmeraldPhoenix(ctx, player);
-                }
-
-                // 2. 無敵状態ならバリアを展開する
-                if (player.invuln > 0) {
-                    drawInvulnBarrier(ctx, player);
-                }
-
-                // --- 自機本体（レイヤー上層） ---
-                drawPlayer(ctx, player);
-            }
-
-            drawLasers();
-            ctx.fillStyle = '#0f8'; bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, Math.PI * 2); ctx.fill(); });
-
-            // --- 1. クリスタルの描画（暗い緑） ---
-            ctx.fillStyle = '#008000'; // Dark Green
+        function drawItems() {
+            // クリスタル
+            ctx.fillStyle = '#008000';
             crystals.forEach(c => {
                 ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(frame * 0.1);
                 const scale = c.life > 60 ? 1 : c.life / 60; ctx.scale(scale, scale);
-                // 形状はひし形のまま
                 ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(4, 0); ctx.lineTo(0, 6); ctx.lineTo(-4, 0); ctx.fill();
-
-                // もし「C」という文字にしたい場合は上記2行を消して以下を使ってください
-                // ctx.fillStyle = '#008000'; ctx.font = '10px monospace'; ctx.fillText('C', 0, 0);
-
                 ctx.restore();
             });
 
-            // --- 2. パワーアップアイテムの描画（指定の文字と色） ---
+            // パワーアップ
             powerups.forEach(p => {
                 let char = '?';
                 let color = '#fff';
-
-                // タイプごとの色と文字の設定
-                if (p.type === 'laser') {
-                    color = '#aff'; // Laser: 青
-                    char = 'L';
-                } else if (p.type === 'level') {
-                    color = '#0f0'; // Level Up: 明るい緑
-                    char = 'W';     // Weapon? Shot? (W指定)
-                } else if (p.type === 'invincible') {
-                    color = '#ff0'; // Invincible: 黄
-                    char = 'I';
-                } else if (p.type === 'shield') {
-                    color = '#0ff'; // Shield: 青（少し濃い目にして区別）
-                    char = 'S';
-                }
+                if (p.type === 'laser') { color = '#aff'; char = 'L'; }
+                else if (p.type === 'level') { color = '#0f0'; char = 'W'; }
+                else if (p.type === 'invincible') { color = '#ff0'; char = 'I'; }
+                else if (p.type === 'shield') { color = '#0ff'; char = 'S'; }
 
                 ctx.strokeStyle = color;
-
-                ctx.save();
-                ctx.translate(p.x, p.y);
-                const scale = p.life > 60 ? 1 : p.life / 60;
-                ctx.scale(scale, scale);
-
-                // 枠線の描画
-                ctx.lineWidth = 2;
-                ctx.strokeRect(-8, -8, 16, 16);
-
-                // 文字の描画
-                ctx.fillStyle = color;
-                ctx.font = 'bold 12px monospace';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
+                ctx.save(); ctx.translate(p.x, p.y);
+                const scale = p.life > 60 ? 1 : p.life / 60; ctx.scale(scale, scale);
+                ctx.lineWidth = 2; ctx.strokeRect(-8, -8, 16, 16);
+                ctx.fillStyle = color; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(char, 0, 0);
-
                 ctx.restore();
             });
+        }
 
-            ctx.fillStyle = '#fd0'; missiles.forEach(m => { ctx.beginPath(); ctx.arc(m.x, m.y, 4 * G_SCALE, 0, Math.PI * 2); ctx.fill(); });
+        function drawVisualEffects() {
+            // 特殊ミサイル（プレイヤー側など）
+            ctx.fillStyle = '#fd0';
+            missiles.forEach(m => { ctx.beginPath(); ctx.arc(m.x, m.y, 4 * G_SCALE, 0, Math.PI * 2); ctx.fill(); });
 
+            // パーティクル
             particles.forEach(p => {
                 ctx.save(); ctx.globalAlpha = Math.min(1, p.life);
                 ctx.beginPath(); const length = 4.0; ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
@@ -3917,19 +3925,14 @@
             });
             ctx.globalAlpha = 1.0;
 
-            rings.forEach(r => { ctx.strokeStyle = r.color; ctx.lineWidth = 3; ctx.globalAlpha = r.life; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1.0; });
-
-            // カメラリセット後に描画することで、画面上の固定位置（左上）に表示される
-            if (gameState === 'PLAYING' || gameState === 'DYING') {
-                drawMiniMap();
-            }
-
-            drawScorePopups();
-            ctx.restore();
-
-            // WARNING演出の描画 (画面固定座標) ---
-            drawBossWarningEffect();
+            // リング
+            rings.forEach(r => {
+                ctx.save(); ctx.strokeStyle = r.color; ctx.lineWidth = 3; ctx.globalAlpha = r.life;
+                ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+            });
         }
+
 
         // player
         function drawPlayer(ctx, p) {
