@@ -5077,8 +5077,7 @@
             // --- 4. 武器表示（レーザー/通常レベル）の更新 ---
             ui.weaponDisplay.innerHTML = '';
             if (player.laserTimer > 0) {
-                const maxTime = 600;
-                const pct = Math.max(0, (player.laserTimer / maxTime) * 100);
+                const pct = Math.max(0, (player.laserTimer / LASER_DURATION) * 100);
                 const frameDiv = document.createElement('div');
                 frameDiv.className = 'laser-bar-frame';
                 const fillDiv = document.createElement('div');
@@ -5102,7 +5101,7 @@
             // --- 5. 無敵状態バーの更新 ---
             if (player.invuln > 20) {
                 ui.invulnWrapper.style.display = 'block';
-                const pct = Math.min(100, (player.invuln / 600) * 100);
+                const pct = Math.min(100, (player.invuln / INVULN_DURATION) * 100);
                 ui.invulnBar.style.width = pct + "%";
                 // 終了間際の点滅
                 if (player.invuln < 120 && Math.floor(frame / 4) % 2 === 0) ui.invulnBar.style.opacity = 0.3;
