@@ -229,12 +229,32 @@
         #stage-msg {
             display: none;
             position: absolute;
-            top: 35%;
+            top: 40%;
             width: 100%;
             text-align: center;
             color: #fff;
-            font-size: 40px;
-            text-shadow: 0 0 20px #0ff;
+            font-size: 50px;
+            font-weight: 900;
+            /* 静止した状態での強力な発光 */
+            text-shadow: 0 0 15px #0ff, 0 0 30px #0ff, 0 0 60px #0ff;
+            letter-spacing: 12px;
+            z-index: 100;
+            pointer-events: none;
+            font-family: 'Orbitron', sans-serif;
+            /* 揺れを削除し、透明度と輝度の変化のみ適用 */
+            animation: clear-glow 2.5s ease-in-out infinite;
+        }
+
+        @keyframes clear-glow {
+            0%, 100% {
+                opacity: 0.8;
+                filter: brightness(1);
+            }
+
+            50% {
+                opacity: 1;
+                filter: brightness(1.8) scale(1.02);
+            }
         }
 
         /* =========================================================
@@ -887,11 +907,11 @@
                         const stageVal = data.stage ? "ST." + data.stage : "-";
 
                         tr.innerHTML = `
-                                                <td class="${rankClass}" style="text-align:center;">${rankText}</td>
-                                                <td style="text-align:left;">${escapeHtml(data.name)}</td>
-                                                <td style="color:#aaa; text-align:center;">${stageVal}</td>
-                                                <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
-                                            `;
+                                                    <td class="${rankClass}" style="text-align:center;">${rankText}</td>
+                                                    <td style="text-align:left;">${escapeHtml(data.name)}</td>
+                                                    <td style="color:#aaa; text-align:center;">${stageVal}</td>
+                                                    <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
+                                                `;
                         rankingBody.appendChild(tr);
                         rank++;
                     });
@@ -982,7 +1002,7 @@
         // =========================================================
         const START_STAGE = 1;        // 開始ステージ番号
 
-        const MAX_STAGE = 8;          // 最大ステージ数
+        const MAX_STAGE = 1;          // 最大ステージ数
         let currentStage = 1;         // 現在のステージ番号
         let stage = 1;                // 表示上のステージ番号
         let score = 0;                // 現在のスコア
@@ -1027,7 +1047,7 @@
             5: ['triangle', 'tadpole', 'dragon', 'triangle', 'hunter', 'asteroid'],
             6: ['triangle', 'tadpole', 'dragon', 'triangle', 'hunter', 'hunter', 'asteroid'],
             7: ['triangle', 'tadpole', 'dragon', 'dragon', 'hunter', 'hunter', 'asteroid'],
-            8: ['triangle', 'hunter', 'tadpole', 'dragon', 'asteroid', 'asteroid']
+            8: ['triangle', 'hunter', 'tadpole', 'dragon', 'asteroid']
         };
 
 
@@ -1242,7 +1262,9 @@
             skipScoreBtn: document.getElementById("skip-score-btn"),
             nameInput: document.getElementById("player-name-input"),
             nameInputArea: document.getElementById("name-input-area"),
-        };       // =========================================================
+        };
+
+        // =========================================================
         // 2. オーディオシステム (Audio System)
         // =========================================================
 
@@ -1252,7 +1274,6 @@
             boss: 'audio/Neon_Gravity_Boss.mp3',
             stages: ['audio/Neon_Gravity_00.mp3', 'audio/Neon_Gravity_01.mp3', 'audio/Neon_Gravity_02.mp3', 'audio/Neon_Gravity_03.mp3']
         };
-
 
         const AudioSys = {
             ctx: null, bgmEl: null, currentSrc: null, noiseBuffer: null,
@@ -1585,6 +1606,16 @@
             for (let i = 0; i < whCount; i++) {
                 spawnWormhole();
             }
+
+            // 空間の再構築（逆向きの歪みを与えてリセット演出）
+            distortGrid(worldSize / 2, worldSize / 2, -200, worldSize);
+
+            // メッセージとスピードの完全復帰
+            ui.msg.style.display = 'none';
+            gameSpeed = 1.0;
+
+            // 開始の合図としてプレイヤー位置にリングを表示
+            rings.push({ x: player.x, y: player.y, r: 5, color: '#0f8', life: 1.0 });
         }
 
         function resetGame() {
@@ -1665,31 +1696,66 @@
         }
 
         function checkStageClear() {
-            // 1. 画面上の脅威（敵・ボス・アステロイドすべて）が消滅したか
-            // enemies配列にすべて集約されているため、このlengthチェックが最も重要です
             const noEnemies = enemies.length === 0;
-
-            // 2. 出現口（ワームホール）がすべて閉じたか
             const noWormholes = wormholes.filter(w => w.active).length === 0;
-
-            // 3. ボスが既に出現したか（ボスが出る前に雑魚が全滅してクリアになるのを防ぐ）
             const bossWasSpawned = isBossSpawned;
 
-            // 4. クリア判定
-            // ボスを倒した瞬間に全敵をHP0にしているため、
-            // 「ボス出現済み」かつ「敵がゼロ（自爆完了）」かつ「ワームホールなし」でクリア
             if (!isStageClear && noEnemies && noWormholes && bossWasSpawned) {
                 isStageClear = true;
 
-                if (stage === MAX_STAGE) {
-                    showEnding();
-                } else {
-                    // クリアメッセージ表示とBGM再生
-                    ui.msg.style.display = 'block';
-                    AudioSys.playBGM('clear');
+                // 1. スローモーション（時間をゆっくりにする）
+                gameSpeed = 0.25;
 
-                    // 4秒後に次ステージへ
+                // 2. グリッド空間に巨大な衝撃波（中心を歪ませる）
+                distortGrid(worldSize / 2, worldSize / 2, 1000, worldSize);
+
+                // 3. 複数の衝撃波リング（時間差で放射状に広げる）
+                for (let i = 0; i < 5; i++) {
                     setTimeout(() => {
+                        rings.push({
+                            x: player.x,
+                            y: player.y,
+                            r: 10,
+                            color: i % 2 === 0 ? '#0ff' : '#fff',
+                            life: 1.2
+                        });
+                    }, i * 300);
+                }
+
+                // クリア用BGMの再生
+                AudioSys.playBGM('clear');
+
+                if (stage === MAX_STAGE) {
+                    // --- 全ステージクリア時：ゴールドネオン ---
+                    ui.msg.innerText = "ALL MISSION CLEAR";
+                    ui.msg.style.color = "#fff";
+                    // 黄金色の重厚な影
+                    ui.msg.style.textShadow = "0 0 15px #ffd700, 0 0 30px #ffd700, 0 0 60px #ff8c00";
+                    ui.msg.style.display = 'block';
+
+                    setTimeout(() => {
+                        gameSpeed = 1.0;
+                        showEnding();
+                    }, 5000);
+
+                } else {
+                    // --- 各ステージクリア時：シアンネオン ---
+                    ui.msg.innerText = "STAGE " + stage + " CLEAR";
+                    ui.msg.style.color = "#fff";
+                    ui.msg.style.textShadow = "0 0 15px #0ff, 0 0 30px #0ff, 0 0 60px #0ff";
+                    ui.msg.style.display = 'block';
+
+                    // 徐々に元のゲームスピードに復帰させる
+                    let speedRecover = setInterval(() => {
+                        gameSpeed += 0.015;
+                        if (gameSpeed >= 1.0) {
+                            gameSpeed = 1.0;
+                            clearInterval(speedRecover);
+                        }
+                    }, 100);
+
+                    setTimeout(() => {
+                        ui.msg.style.display = 'none';
                         stage++;
                         ui.stage.innerText = stage;
                         startStage();
@@ -3908,7 +3974,7 @@
                 const margin = (e.type === 'boss' || e.type === 'dragon') ? 350 : 100;
                 if (!isOnScreen(e, margin)) return;
 
-                ctx.save(); 
+                ctx.save();
 
                 ctx.globalAlpha = e.isWarping ? (e.warpPercent || 0) : 1.0;
 
