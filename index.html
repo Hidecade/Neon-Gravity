@@ -2115,7 +2115,7 @@
                         isBossWarning = false;
                         gameSpeed = 1.0;
 
-                        // 通常ステージのボス出現処理
+                        // 通常ステージのボス出現処理（Stage 9以外）
                         if (stage !== 9) {
                             wormholes.unshift({ x: nextBossSpawnX, y: nextBossSpawnY, life: 300, maxLife: 300, active: true });
                             spawnEnemy(nextBossSpawnX, nextBossSpawnY, 'boss');
@@ -2164,44 +2164,9 @@
                     // --- BOSS RUSH LOGIC ---
                     const bossExists = enemies.some(e => e.type === 'boss');
 
-                    // ボスがおらず、まだ全ボス倒していない場合 -> 出現カウントダウン
+                    // 1. ボス出現管理
                     if (!bossExists && rushBossIndex < 8) {
                         rushIntervalTimer++;
-
-                        // インターバル中、プレイヤーの近く以外にアステロイドを出す（盾・障害物用）
-                        if (frame % 60 === 0) {
-                            let ax, ay;
-                            let safety = 0;
-
-                            // ★修正: 壁との間に余裕を持たせるための余白（パディング）を設定
-                            // アステロイドの大きさも考慮して、150px程度内側に出現させる
-                            const spawnPadding = 150;
-
-                            do {
-                                // WALL_MARGIN ではなく spawnPadding を使用して範囲を狭める
-                                ax = spawnPadding + Math.random() * (worldSize - spawnPadding * 2);
-                                ay = spawnPadding + Math.random() * (worldSize - spawnPadding * 2);
-                                safety++;
-                            } while (Math.hypot(ax - player.x, ay - player.y) < 500 && safety < 10);
-
-                            // アイテム岩の抽選 (30%の確率でアイテム岩)
-                            const isItemRock = Math.random() < 0.3;
-
-                            spawnEnemy(ax, ay, 'asteroid', Math.random() > 0.5 ? 2 : 1);
-
-                            // 生成された直後の岩を取得してプロパティを上書き
-                            const rock = enemies[enemies.length - 1];
-                            if (rock && rock.type === 'asteroid') {
-                                if (isItemRock) {
-                                    rock.drop = 'shield';   // シールド回復アイテム
-                                    rock.color = '#0f0';    // 緑色
-                                    rock.hp = rock.hp * 1.5;
-                                } else {
-                                    rock.drop = 'none';
-                                }
-                            }
-                        }
-
                         // 3秒(180F)待って次ボス出現
                         if (rushIntervalTimer > 180) {
                             rushIntervalTimer = 0;
@@ -2212,7 +2177,7 @@
                             wormholes.push({ x: cx, y: cy, life: 300, maxLife: 300, active: true });
                             distortGrid(cx, cy, 300, 500);
 
-                            // ボス生成とパラメータ強制上書き
+                            // ボス生成
                             spawnEnemy(cx, cy, 'boss');
                             const newBoss = enemies[enemies.length - 1];
                             if (newBoss && newBoss.type === 'boss') {
@@ -2231,6 +2196,27 @@
                         }
                     }
 
+                    // 2. 援護雑魚のスポーン（ボス生存中かつ画面内の敵が5体未満のとき）
+                    if (bossExists && enemies.length < 5 && frame % 120 === 0) {
+                        // 現在のボス番号(0-7)に対応するステージ(1-8)のエネミープールを取得
+                        // rushBossIndex は 0始まりなので +1 してステージ番号に合わせる
+                        const currentPool = STAGE_ENEMIES[rushBossIndex + 1] || STAGE_ENEMIES[1];
+                        const randomType = currentPool[Math.floor(Math.random() * currentPool.length)];
+
+                        // プレイヤーから離れた位置にワームホールを生成してスポーン
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist = 600;
+                        const sx = Math.max(100, Math.min(worldSize - 100, player.x + Math.cos(angle) * dist));
+                        const sy = Math.max(100, Math.min(worldSize - 100, player.y + Math.sin(angle) * dist));
+
+                        wormholes.push({ x: sx, y: sy, life: 100, maxLife: 100, active: true });
+
+                        // 少し遅れて敵を出す
+                        setTimeout(() => {
+                            if (gameState === 'PLAYING' && stage === 9) spawnEnemy(sx, sy, randomType);
+                        }, 500);
+                    }
+
                 } else {
                     // --- 通常ステージ (1-8) のスポーンロジック ---
                     const maxWormholes = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage * 1.5;
@@ -2246,7 +2232,7 @@
                 wormholes.forEach((w) => {
                     w.life--;
                     if (w.active) {
-                        // ステージ9以外の場合のみ、ワームホールから雑魚を出す
+                        // ステージ9以外の場合のみ、ワームホールから雑魚を出す（Stage 9は上記ロジックで制御）
                         if (stage !== 9 && w.life > 60 && w.life % SPAWN_SETTINGS.SPAWN_INTERVAL === 0) {
                             const remaining = enemiesToSpawn - spawnedCount;
                             const threshold = enemiesToSpawn * 0.2;
@@ -3060,29 +3046,28 @@
             }
 
             function destroyEnemy(e) {
-                if (e.type !== 'asteroid') {
-                    enemiesKilled++;
+                // Stage 9 では、ボス以外の撃破数をカウントしない（ボスのみで進行）
+                if (stage === 9) {
+                    if (e.type === 'boss') {
+                        rushBossIndex++;
+                        rushIntervalTimer = 0;
+                        // ボス撃破時に周囲の雑魚も一掃（連鎖爆発）
+                        enemies.forEach(other => {
+                            if (other !== e && other.hp > 0) {
+                                other.hp = 0;
+                                if (other.type === 'asteroid') other.noSplit = true;
+                            }
+                        });
+                        wormholes.forEach(w => w.life = 0);
+                        // シールド回復を確定ドロップ
+                        powerups.push({ x: e.x, y: e.y, vx: 0, vy: 0, type: 'shield', life: 600 });
+                    }
+                } else {
+                    // 通常ステージ
+                    if (e.type !== 'asteroid') enemiesKilled++;
                 }
 
-                // ★追加: BOSS RUSHの進行管理
-                if (e.type === 'boss' && stage === 9) {
-                    rushBossIndex++;
-                    rushIntervalTimer = 0;
-                    powerups.push({ x: e.x, y: e.y, vx: 0, vy: 0, type: 'shield', life: 600 });
-                }
-
-                // --- 連鎖爆発（ボス共通） ---
-                if (e.type === 'boss') {
-                    enemies.forEach(other => {
-                        if (other !== e && other.hp > 0) {
-                            other.hp = 0;
-                            if (other.type === 'asteroid') other.noSplit = true;
-                        }
-                    });
-                    wormholes.forEach(w => w.life = 0);
-                }
-
-                // エフェクト生成
+                // --- 爆発エフェクトの生成 ---
                 const particleCount = (e.type === 'boss') ? 120 : (e.type === 'asteroid' ? 30 : 40);
                 for (let i = 0; i < particleCount; i++) {
                     const angle = Math.random() * Math.PI * 2;
@@ -3093,10 +3078,11 @@
                     createExplosion(e.x, e.y, color, 1);
                 }
 
-                // 音と特殊演出
+                // --- 効果音と画面揺れ ---
                 if (e.type === 'boss') {
                     AudioSys.playSE('dragon_explode');
                     distortGrid(e.x, e.y, 100, 200);
+                    // ミサイルも誘爆
                     enemyBullets.forEach(b => {
                         if (b.isMissile) createExplosion(b.x, b.y, b.color, 5);
                     });
@@ -3109,16 +3095,14 @@
                     distortGrid(e.x, e.y, 30, 60);
                 }
 
-                // スコア＆ドロップ
+                // スコア加算
                 const pts = (e.type === 'dragon' || e.type === 'boss') ? 1000 : (e.type === 'asteroid' ? 150 : 100);
                 score += pts;
                 ui.score.innerText = score.toString().padStart(6, '0');
                 scorePopups.push({ x: e.x, y: e.y, text: pts, life: 40, alpha: 1, vy: -1 });
 
-                // ★修正: アステロイドを除外する条件「|| e.type === 'asteroid'」を削除しました
-                // これにより、dropプロパティを持つアステロイドからアイテムが出現します
+                // ドロップ処理
                 if (e.noDrop || e.drop === 'none') return;
-
                 const itemProps = { x: e.x, y: e.y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4 };
                 if (e.drop === 'level') powerups.push({ ...itemProps, type: 'level', life: 999999 });
                 else if (e.drop === 'laser') powerups.push({ ...itemProps, type: 'laser', life: ITEM_LIFE });
@@ -3606,9 +3590,11 @@
                 // --- 共通: 移動ロジック ---
                 const dx = player.x - e.x;
                 const dy = player.y - e.y;
+                const distToPlayer = Math.hypot(dx, dy) || 1;
+
                 // 通常より少し積極的に動く
-                e.vx += (dx / (Math.hypot(dx, dy) || 1)) * 0.05 * SPEED_SCALE * gameSpeed;
-                e.vy += (dy / (Math.hypot(dx, dy) || 1)) * 0.05 * SPEED_SCALE * gameSpeed;
+                e.vx += (dx / distToPlayer) * 0.03 * SPEED_SCALE * gameSpeed;
+                e.vy += (dy / distToPlayer) * 0.03 * SPEED_SCALE * gameSpeed;
 
                 e.vx *= 0.96; e.vy *= 0.96;
                 e.x += e.vx * gameSpeed;
@@ -3618,16 +3604,19 @@
                 e.x = Math.max(margin, Math.min(worldSize - margin, e.x));
                 e.y = Math.max(margin, Math.min(worldSize - margin, e.y));
 
-                // --- 共通: カウンター攻撃判定 ---
+                // --- 共通: カウンター攻撃判定（マイルド版） ---
                 if (e.prevHp && e.hp < e.prevHp) {
+                    // 確率を15%に落とし、単発の自機狙いにする
                     if (Math.random() < 0.15) {
                         const angle = Math.atan2(player.y - e.y, player.x - e.x);
-                        const spd = 12 * SPEED_SCALE;
+                        const spd = 10 * SPEED_SCALE;
                         enemyBullets.push({
                             x: e.x, y: e.y,
                             vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
-                            life: 180, color: '#fff', isFading: false
+                            life: 180, color: '#fff'
                         });
+                        // 反撃のサインとして小さな火花
+                        createExplosion(e.x, e.y, '#fff', 3);
                         AudioSys.playSE('shoot');
                     }
                 }
@@ -3635,15 +3624,15 @@
 
                 // --- フェーズ管理 ---
                 e.fireTimer++;
-                const cycle = 700;
+                const cycle = 750;
                 const phaseTime = e.fireTimer % cycle;
 
                 if (phaseTime < 250) {
-                    // Phase 1: 拡散 (弾速1.5倍)
-                    e.angle += 0.25;
-                    if (frame % 12 === 0) {
+                    // Phase 1: 拡散 (16F間隔のリズム)
+                    e.angle += 0.15;
+                    if (frame % 16 === 0) {
                         const sides = e.variant.sides;
-                        const bulletSpd = BULLET_CONFIG.BOSS_LASER.SPEED * SPEED_SCALE * 1.5;
+                        const bulletSpd = BULLET_CONFIG.BOSS_LASER.SPEED * SPEED_SCALE * 1.8;
                         for (let i = 0; i < sides; i++) {
                             const a = e.angle + (Math.PI * 2 / sides) * i;
                             enemyBullets.push({
@@ -3655,25 +3644,27 @@
                         AudioSys.playSE('shoot');
                     }
                 } else if (phaseTime < 450) {
-                    // Phase 2: 狙撃
+                    // Phase 2: 狙撃 (警告あり)
                     const targetAngle = Math.atan2(player.y - e.y, player.x - e.x);
                     let diff = targetAngle - e.angle;
                     while (diff <= -Math.PI) diff += Math.PI * 2;
                     while (diff > Math.PI) diff -= Math.PI * 2;
                     e.angle += diff * 0.1;
 
-                    const subTime = phaseTime - 250;
-                    if (subTime % 60 === 0) {
-                        const lead = 20;
+                    const sub = (phaseTime - 250) % 60;
+                    if (sub < 20) e.isWarningSnipe = true;
+                    else if (sub === 21) {
+                        e.isWarningSnipe = false;
+                        const lead = 15;
                         const predX = player.x + player.vx * lead;
                         const predY = player.y + player.vy * lead;
-                        const aimAngle = Math.atan2(predY - e.y, predX - e.x);
-                        const spd = 14 * SPEED_SCALE;
+                        const aim = Math.atan2(predY - e.y, predX - e.x);
+                        const spd = 15 * SPEED_SCALE;
                         for (let i = 0; i < 3; i++) {
                             enemyBullets.push({
                                 x: e.x, y: e.y,
-                                vx: Math.cos(aimAngle) * spd * (1 - i * 0.1),
-                                vy: Math.sin(aimAngle) * spd * (1 - i * 0.1),
+                                vx: Math.cos(aim) * spd * (1 - i * 0.1),
+                                vy: Math.sin(aim) * spd * (1 - i * 0.1),
                                 life: 200, color: '#f00'
                             });
                         }
@@ -3681,18 +3672,18 @@
                         createExplosion(e.x, e.y, '#f00', 5);
                     }
                 } else {
-                    // Phase 3: 誘導ミサイル
-                    e.angle += 0.05;
-                    const subTime = phaseTime - 450;
-                    if (subTime === 10 || subTime === 100) {
-                        const sides = e.variant.sides;
+                    // Phase 3: 誘導
+                    e.angle += 0.03;
+                    const sub = phaseTime - 450;
+                    if (sub === 10 || sub === 120) {
+                        const sides = Math.min(e.variant.sides, 6);
                         const speed = BULLET_CONFIG.BOSS_HOMING.SPEED * SPEED_SCALE;
                         for (let i = 0; i < sides; i++) {
                             const a = e.angle + (Math.PI * 2 / sides) * i;
                             enemyBullets.push({
                                 x: e.x + Math.cos(a) * 60, y: e.y + Math.sin(a) * 60,
                                 vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
-                                life: BULLET_CONFIG.BOSS_HOMING.LIFE, isMissile: true, color: e.color
+                                life: 300, isMissile: true, color: e.color
                             });
                         }
                         AudioSys.playSE('launch');
@@ -5360,81 +5351,54 @@
 
             function drawBossEnemy(ctx, e) {
                 ctx.save();
-                // ボスの現在位置（出現中は固定座標）へ移動
                 ctx.translate(e.x, e.y);
 
-                // --- ★修正：出現演出（透明＆極小 → 実体化＆拡大） ---
+                // --- 1. 出現演出 ---
                 if (e.isSpawning) {
-                    // 進行度 t : 0.0 (開始) → 1.0 (完了)
                     const t = e.spawnTimer / e.spawnMax;
-
-                    // イージング関数：最初はグワッと広がり、最後はゆっくり定着する
                     const easeOut = 1 - Math.pow(1 - t, 3);
-
-                    // 1. 透明度の操作 (Fade In)
-                    // t=0(透明) → t=1(実体) にすることで「だんだん実体化」に見せる
                     ctx.globalAlpha = t;
-
-                    // 2. 拡大演出 (Zoom In)
-                    // 0.2倍の大きさからスタートし、1.0倍（本来のサイズ）へ拡大
-                    const spawnZoom = 0.2 + (0.8 * easeOut);
-                    ctx.scale(spawnZoom, spawnZoom);
-
-                    // 3. 転送光のエフェクト
-                    // 出現直後は強く発光し、実体化するにつれて光が収まる
-                    ctx.shadowBlur = 60 * (1 - easeOut);
-                    ctx.shadowColor = '#ffffff';
-
-                    // 加算合成にすることで、色が重なった部分が白く飛び「エネルギー体」っぽくなる
+                    ctx.scale(0.2 + 0.8 * easeOut, 0.2 + 0.8 * easeOut);
                     ctx.globalCompositeOperation = 'lighter';
                 }
 
-                // ボス本来の回転
+                // ★削除: 狙撃フェーズの警告線描画ブロックを削除しました
+
+                // --- 2. 本体の回転とスケーリング ---
                 ctx.rotate(e.angle);
-                // ボス本来のスケール設定（出現中の拡大率と掛け合わされます）
                 ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
 
-                // --- 以下、ボスの描画ロジック（変更なし） ---
-
-                // 1. カラー・設定の構築
                 const isDmg = e.flashTimer > 0;
                 if (isDmg) e.flashTimer--;
 
                 const baseColor = e.color;
                 const brightColor = `hsl(${getHue(baseColor)}, 100%, 70%)`;
-                const mainStroke = isDmg ? brightColor : baseColor;
+                const mainStroke = isDmg ? '#fff' : baseColor;
                 const subStroke = isDmg ? '#fff' : brightColor;
-
                 const sides = e.variant.sides;
                 const radius = 45;
 
-                // 2. 内部精密構造
+                // --- 3. 内部精密構造 (ワイヤー) ---
                 ctx.strokeStyle = subStroke;
                 ctx.lineWidth = 0.4;
-                // 出現中以外は通常通りの透明度設定（出現中は globalAlpha = t が優先される）
-                if (!e.isSpawning) {
-                    ctx.globalAlpha = isDmg ? 1.0 : 0.6;
-                }
-
-                // もし出現中でなければ影をつける（出現中は上の白い光が優先）
-                if (!e.isSpawning) {
-                    ctx.shadowBlur = isDmg ? 20 : 0;
-                    ctx.shadowColor = subStroke;
-                }
-
+                ctx.globalAlpha = isDmg ? 1.0 : 0.6;
                 for (let i = 0; i < sides; i++) {
                     const a = (Math.PI * 2 / sides) * i;
                     const nextA = (Math.PI * 2 / sides) * (i + 1);
-                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius); ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius);
+                    ctx.stroke();
+
                     ctx.beginPath();
                     ctx.moveTo(Math.cos(a) * radius * 0.6, Math.sin(a) * radius * 0.6);
                     ctx.lineTo(Math.cos(nextA) * radius * 0.6, Math.sin(nextA) * radius * 0.6);
                     ctx.stroke();
                 }
 
-                // 3. 装甲フレーム
-                if (!e.isSpawning) ctx.globalAlpha = 1.0; // 通常時は不透明
-
+                // --- 4. メイン装甲フレーム ---
+                ctx.globalAlpha = 1.0;
+                // 影（グロー）は出現時以外に適用
                 if (!e.isSpawning) {
                     ctx.shadowBlur = isDmg ? 30 : 12;
                     ctx.shadowColor = mainStroke;
@@ -5451,31 +5415,36 @@
                     ctx.stroke();
                 });
 
-                // 4. コアユニット
+                // --- 5. 回転するコア ---
                 ctx.save();
-                ctx.rotate(-e.angle * 4);
+                ctx.rotate(-e.angle * 4); // 逆回転
                 ctx.strokeStyle = subStroke;
                 ctx.strokeRect(-8, -8, 16, 16);
                 ctx.fillStyle = mainStroke;
-                if (!e.isSpawning) ctx.globalAlpha = isDmg ? 1.0 : 0.5;
+                ctx.globalAlpha = isDmg ? 1.0 : 0.5;
                 ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
                 ctx.restore();
 
-                // 5. 砲塔ユニット
+                // --- 6. 各頂点の砲塔ユニット ---
+                ctx.globalAlpha = 1.0;
                 for (let i = 0; i < sides; i++) {
                     const a = (Math.PI * 2 / sides) * i;
                     ctx.save();
                     ctx.translate(Math.cos(a) * radius, Math.sin(a) * radius);
                     ctx.rotate(a);
-                    ctx.strokeStyle = subStroke; ctx.lineWidth = 0.6; ctx.strokeRect(-8, -10, 10, 20);
-                    ctx.strokeStyle = mainStroke; ctx.lineWidth = 1.2;
-                    [-4, 4].forEach(y => { ctx.beginPath(); ctx.moveTo(2, y); ctx.lineTo(24, y); ctx.stroke(); });
+                    ctx.strokeStyle = subStroke;
+                    ctx.lineWidth = 0.6;
+                    ctx.strokeRect(-8, -10, 10, 20);
+                    ctx.strokeStyle = mainStroke;
+                    ctx.lineWidth = 1.2;
+                    [-4, 4].forEach(y => {
+                        ctx.beginPath(); ctx.moveTo(2, y); ctx.lineTo(24, y); ctx.stroke();
+                    });
                     ctx.restore();
                 }
 
-                // 6. ダメージエフェクト（出現中は出さない）
+                // --- 7. ダメージエフェクト（出現中は出さない） ---
                 if (isDmg && !e.isSpawning) {
-                    // ... (火花とリングの処理はそのまま) ...
                     for (let i = 0; i < 4; i++) {
                         const ang = Math.random() * Math.PI * 2;
                         const spd = 4 + Math.random() * 10;
@@ -5493,6 +5462,9 @@
                 }
 
                 ctx.restore();
+                // 描画設定のリセット
+                ctx.shadowBlur = 0;
+                ctx.setLineDash([]);
             }
 
             function drawNormalBullet(ctx, eb) {
