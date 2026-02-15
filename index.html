@@ -1037,9 +1037,9 @@
             // =========================================================
             // 2. ステージ・難易度・進行管理
             // =========================================================
-            const START_STAGE = 1;        // 開始ステージ番号
+            const START_STAGE = 9;        // 開始ステージ番号
 
-            const MAX_STAGE = 8;          // 最大ステージ数
+            const MAX_STAGE = 9;          // 最大ステージ数
             let currentStage = 1;         // 現在のステージ番号
             let stage = 1;                // 表示上のステージ番号
             let score = 0;                // 現在のスコア
@@ -1049,6 +1049,9 @@
             let enemiesKilled = 0;        // 現在のステージで倒した敵数
             let isStageClear = false;     // ステージクリアフラグ
             let dyingTimer = 0;           // 死亡演出用タイマー
+
+            let rushBossIndex = 0;          // ボスラッシュモード:現在戦っているボスの番号 (0~7)
+            let rushIntervalTimer = 0;      // ボスラッシュモード:ボス撃破後のインターバルタイマー
 
             // ステージごとの敵総出現数
             const STAGE_ENEMY_COUNTS = [
@@ -1652,71 +1655,67 @@
             }
 
             function startStage() {
-                // ★追加：隠していたHUDを再表示する
                 const hud = document.querySelector('.hud-row');
                 if (hud) hud.style.display = 'flex';
 
-                // ステージごとの敵総数を計算
-                if (stage <= STAGE_ENEMY_COUNTS.length) {
-                    enemiesToSpawn = STAGE_ENEMY_COUNTS[stage - 1];
-                } else {
-                    enemiesToSpawn = STAGE_ENEMY_COUNTS[STAGE_ENEMY_COUNTS.length - 1] + 50;
-                }
-
-                // --- 内部状態の完全リセット ---
+                // 共通リセット
                 spawnedCount = 0;
                 enemiesKilled = 0;
                 isStageClear = false;
-
-                // ★ボス関連のフラグとタイマーを確実に初期化
                 isBossSpawned = false;
                 isBossWarning = false;
                 warningTimer = 0;
-
                 levelItemsDroppedInStage = 0;
 
-                // --- UIの初期化 ---
+                // UIリセット
                 ui.msg.style.fontSize = "32px";
                 ui.msg.style.display = 'none';
-                ui.msg.style.opacity = "1"; // リセット
-                ui.msg.style.textShadow = ""; // シャドウもリセットしておくと安心です
-                ui.warn.style.display = 'none'; // 警告テキストも隠す
-                if (ui.bossContainer) ui.bossContainer.style.display = 'none'; // ボスHPバーも隠す
+                ui.msg.style.opacity = "1";
+                ui.msg.style.textShadow = "";
+                ui.warn.style.display = 'none';
+                if (ui.bossContainer) ui.bossContainer.style.display = 'none';
 
-                // --- 配列の初期化 ---
-                bullets = [];
-                lasers = [];
-                enemies = [];
-                enemyBullets = [];
-                crystals = [];
-                missiles = [];
-                powerups = [];
-                wormholes = [];
-                scorePopups = [];
-                rings = [];
+                // 配列リセット
+                bullets = []; lasers = []; enemies = []; enemyBullets = [];
+                crystals = []; missiles = []; powerups = []; wormholes = [];
+                scorePopups = []; rings = [];
 
-                // --- BGM変更ロジック ---
-                if (gameState === 'PLAYING') {
-                    // ステージ数に合わせてBGMを選択
-                    const bgmIndex = Math.floor((stage - 1) / 2) % BGM_FILES.stages.length;
-                    AudioSys.playBGM('stage', bgmIndex);
+                // ★変更: ステージ9の初期化
+                if (stage === 9) {
+                    rushBossIndex = 0;
+                    rushIntervalTimer = 0;
+                    enemiesToSpawn = 9999; // クリア判定に使わないため大きな値に
+
+                    ui.msg.innerText = "FINAL MISSION\nBOSS RUSH";
+                    ui.msg.style.color = "#f00";
+                    ui.msg.style.textShadow = "0 0 20px #f00";
+                    ui.msg.style.display = 'block';
+
+                    AudioSys.playBGM('boss');
+                    setTimeout(() => { ui.msg.style.display = 'none'; }, 4000);
+
+                    gameSpeed = 1.0;
+                } else {
+                    // 通常ステージ初期化
+                    if (stage <= STAGE_ENEMY_COUNTS.length) {
+                        enemiesToSpawn = STAGE_ENEMY_COUNTS[stage - 1];
+                    } else {
+                        enemiesToSpawn = STAGE_ENEMY_COUNTS[STAGE_ENEMY_COUNTS.length - 1] + 50;
+                    }
+
+                    if (gameState === 'PLAYING') {
+                        const bgmIndex = Math.floor((stage - 1) / 2) % BGM_FILES.stages.length;
+                        AudioSys.playBGM('stage', bgmIndex);
+                    }
+
+                    const whCount = Math.max(1, Math.floor((stage + 1) / 2));
+                    for (let i = 0; i < whCount; i++) spawnWormhole();
+
+                    gameSpeed = 1.0;
                 }
 
-                // --- ワームホールの生成 ---
-                // ステージが進むほど出現口を増やす（最小1、ステージに応じて増加）
-                const whCount = Math.max(1, Math.floor((stage + 1) / 2));
-                for (let i = 0; i < whCount; i++) {
-                    spawnWormhole();
-                }
-
-                // 空間の再構築（逆向きの歪みを与えてリセット演出）
+                // 共通演出
                 distortGrid(worldSize / 2, worldSize / 2, -200, worldSize);
-
-                // メッセージとスピードの完全復帰
-                ui.msg.style.display = 'none';
-                gameSpeed = 1.0;
-
-                // 開始の合図としてプレイヤー位置にリングを表示
                 rings.push({ x: player.x, y: player.y, r: 5, color: '#0f8', life: 1.0 });
             }
 
@@ -1771,64 +1770,48 @@
             }
 
             function checkStageClear() {
-                const noEnemies = enemies.length === 0;
-                const noWormholes = wormholes.filter(w => w.active).length === 0;
-                const bossWasSpawned = isBossSpawned;
+                let isClearCondition = false;
 
-                if (!isStageClear && noEnemies && noWormholes && bossWasSpawned) {
+                // ★変更: クリア条件の分岐
+                if (stage === 9) {
+                    // 全ボス撃破完了
+                    if (rushBossIndex >= 8) isClearCondition = true;
+                } else {
+                    const noEnemies = enemies.length === 0;
+                    const noWormholes = wormholes.filter(w => w.active).length === 0;
+                    const bossWasSpawned = isBossSpawned;
+                    if (noEnemies && noWormholes && bossWasSpawned) isClearCondition = true;
+                }
+
+                if (!isStageClear && isClearCondition) {
                     isStageClear = true;
-
-                    // 1. スローモーション（時間をゆっくりにする）
                     gameSpeed = 0.25;
-
-                    // 2. グリッド空間に巨大な衝撃波（中心を歪ませる）
                     distortGrid(worldSize / 2, worldSize / 2, 1000, worldSize);
-
-                    // 3. 複数の衝撃波リング（時間差で放射状に広げる）
                     for (let i = 0; i < 5; i++) {
                         setTimeout(() => {
                             rings.push({
-                                x: player.x,
-                                y: player.y,
-                                r: 10,
-                                color: i % 2 === 0 ? '#0ff' : '#fff',
-                                life: 1.2
+                                x: player.x, y: player.y, r: 10,
+                                color: i % 2 === 0 ? '#0ff' : '#fff', life: 1.2
                             });
                         }, i * 300);
                     }
-
-                    // クリア用BGMの再生
                     AudioSys.playBGM('clear');
 
                     if (stage === MAX_STAGE) {
-                        // --- 全ステージクリア時：ゴールドネオン ---
                         ui.msg.innerText = "ALL MISSION CLEAR";
                         ui.msg.style.color = "#fff";
-                        // 黄金色の重厚な影
                         ui.msg.style.textShadow = "0 0 15px #ffd700, 0 0 30px #ffd700, 0 0 60px #ff8c00";
                         ui.msg.style.display = 'block';
-
-                        setTimeout(() => {
-                            gameSpeed = 1.0;
-                            showEnding();
-                        }, 5000);
-
+                        setTimeout(() => { gameSpeed = 1.0; showEnding(); }, 5000);
                     } else {
-                        // --- 各ステージクリア時：シアンネオン ---
                         ui.msg.innerText = "STAGE " + stage + " CLEAR";
                         ui.msg.style.color = "#fff";
                         ui.msg.style.textShadow = "0 0 15px #0ff, 0 0 30px #0ff, 0 0 60px #0ff";
                         ui.msg.style.display = 'block';
-
-                        // 徐々に元のゲームスピードに復帰させる
                         let speedRecover = setInterval(() => {
                             gameSpeed += 0.015;
-                            if (gameSpeed >= 1.0) {
-                                gameSpeed = 1.0;
-                                clearInterval(speedRecover);
-                            }
+                            if (gameSpeed >= 1.0) { gameSpeed = 1.0; clearInterval(speedRecover); }
                         }, 100);
-
                         setTimeout(() => {
                             ui.msg.style.display = 'none';
                             stage++;
@@ -2122,21 +2105,22 @@
             }
 
             function update() {
-
                 // --- ゲームパッド入力の処理 ---
                 handleGamepadInput();
 
                 // --- 警告演出の管理 ---
                 if (isBossWarning) {
-                    // ... (警告処理の中身はそのまま) ...
-                    //if (warningTimer % 60 === 0) AudioSys.playSE('warning');
                     warningTimer--;
                     if (warningTimer <= 0) {
                         isBossWarning = false;
                         gameSpeed = 1.0;
-                        wormholes.unshift({ x: nextBossSpawnX, y: nextBossSpawnY, life: 300, maxLife: 300, active: true });
-                        spawnEnemy(nextBossSpawnX, nextBossSpawnY, 'boss');
-                        distortGrid(nextBossSpawnX, nextBossSpawnY, 250, 400);
+
+                        // 通常ステージのボス出現処理
+                        if (stage !== 9) {
+                            wormholes.unshift({ x: nextBossSpawnX, y: nextBossSpawnY, life: 300, maxLife: 300, active: true });
+                            spawnEnemy(nextBossSpawnX, nextBossSpawnY, 'boss');
+                            distortGrid(nextBossSpawnX, nextBossSpawnY, 250, 400);
+                        }
                     }
                 }
 
@@ -2162,10 +2146,8 @@
                 if (player.x < WALL_MARGIN) player.x = WALL_MARGIN; if (player.x > worldSize - WALL_MARGIN) player.x = worldSize - WALL_MARGIN;
                 if (player.y < WALL_MARGIN) player.y = WALL_MARGIN; if (player.y > worldSize - WALL_MARGIN) player.y = worldSize - WALL_MARGIN;
 
-
-                // --- ★修正：カメラ更新処理を関数呼び出しに置き換え ---
+                // カメラ更新
                 updateCamera();
-
 
                 // --- 向きと射撃 ---
                 if (input.aim.active) player.angle = Math.atan2(input.aim.y, input.aim.x);
@@ -2174,38 +2156,110 @@
                 const fireInterval = player.laserTimer > 0 ? 4 : 6;
                 if ((input.aim.active || input.keys['Space'] || input.keys['KeyZ']) && frame % fireInterval === 0) fire();
 
-                // ... (以下、ワームホール生成ロジックや各update処理はそのまま) ...
 
-                // --- ワームホール生成ロジック ---
-                const maxWormholes = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage * 1.5;
-                const activeWormholes = wormholes.filter(w => w.active).length;
-                const currentMaxOnScreen = STAGE_MAX_ON_SCREEN[stage - 1] || 40;
+                // =========================================================
+                // ★変更: ステージ9 (BOSS RUSH) 用の分岐ロジック
+                // =========================================================
+                if (stage === 9) {
+                    // --- BOSS RUSH LOGIC ---
+                    const bossExists = enemies.some(e => e.type === 'boss');
 
-                let shouldSpawnWormhole = !isBossWarning && spawnedCount < enemiesToSpawn && activeWormholes < maxWormholes && enemies.length < currentMaxOnScreen && Math.random() < SPAWN_SETTINGS.WORMHOLE_CHANCE;
-                if (enemies.length === 0 && activeWormholes === 0 && spawnedCount < enemiesToSpawn) shouldSpawnWormhole = true;
-                if (shouldSpawnWormhole) spawnWormhole();
+                    // ボスがおらず、まだ全ボス倒していない場合 -> 出現カウントダウン
+                    if (!bossExists && rushBossIndex < 8) {
+                        rushIntervalTimer++;
+
+                        // インターバル中、プレイヤーの近く以外にアステロイドを出す（盾・障害物用）
+                        if (frame % 60 === 0) {
+                            let ax, ay;
+                            let safety = 0;
+
+                            // ★修正: 壁との間に余裕を持たせるための余白（パディング）を設定
+                            // アステロイドの大きさも考慮して、150px程度内側に出現させる
+                            const spawnPadding = 150;
+
+                            do {
+                                // WALL_MARGIN ではなく spawnPadding を使用して範囲を狭める
+                                ax = spawnPadding + Math.random() * (worldSize - spawnPadding * 2);
+                                ay = spawnPadding + Math.random() * (worldSize - spawnPadding * 2);
+                                safety++;
+                            } while (Math.hypot(ax - player.x, ay - player.y) < 500 && safety < 10);
+
+                            // アイテム岩の抽選 (30%の確率でアイテム岩)
+                            const isItemRock = Math.random() < 0.3;
+
+                            spawnEnemy(ax, ay, 'asteroid', Math.random() > 0.5 ? 2 : 1);
+
+                            // 生成された直後の岩を取得してプロパティを上書き
+                            const rock = enemies[enemies.length - 1];
+                            if (rock && rock.type === 'asteroid') {
+                                if (isItemRock) {
+                                    rock.drop = 'shield';   // シールド回復アイテム
+                                    rock.color = '#0f0';    // 緑色
+                                    rock.hp = rock.hp * 1.5;
+                                } else {
+                                    rock.drop = 'none';
+                                }
+                            }
+                        }
+
+                        // 3秒(180F)待って次ボス出現
+                        if (rushIntervalTimer > 180) {
+                            rushIntervalTimer = 0;
+                            const cx = worldSize / 2;
+                            const cy = worldSize / 2;
+
+                            // ワームホール演出
+                            wormholes.push({ x: cx, y: cy, life: 300, maxLife: 300, active: true });
+                            distortGrid(cx, cy, 300, 500);
+
+                            // ボス生成とパラメータ強制上書き
+                            spawnEnemy(cx, cy, 'boss');
+                            const newBoss = enemies[enemies.length - 1];
+                            if (newBoss && newBoss.type === 'boss') {
+                                const variant = BOSS_VARIANTS[rushBossIndex];
+                                newBoss.variant = variant;
+                                newBoss.color = variant.color;
+                                newBoss.hp = variant.hp * 1.5; // ラッシュ用にHP強化
+                                newBoss.maxHp = newBoss.hp;
+                                newBoss.scale = 1.5 + (variant.sides * 0.1);
+                                newBoss.spawnMax = 150;
+                                newBoss.isSpawning = true;
+                            }
+
+                            isBossSpawned = true;
+                            AudioSys.playSE('warning');
+                        }
+                    }
+
+                } else {
+                    // --- 通常ステージ (1-8) のスポーンロジック ---
+                    const maxWormholes = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage * 1.5;
+                    const activeWormholes = wormholes.filter(w => w.active).length;
+                    const currentMaxOnScreen = STAGE_MAX_ON_SCREEN[stage - 1] || 40;
+
+                    let shouldSpawnWormhole = !isBossWarning && spawnedCount < enemiesToSpawn && activeWormholes < maxWormholes && enemies.length < currentMaxOnScreen && Math.random() < SPAWN_SETTINGS.WORMHOLE_CHANCE;
+                    if (enemies.length === 0 && activeWormholes === 0 && spawnedCount < enemiesToSpawn) shouldSpawnWormhole = true;
+                    if (shouldSpawnWormhole) spawnWormhole();
+                }
 
                 // --- ワームホールの更新 ---
                 wormholes.forEach((w) => {
-                    // ... (省略) ...
                     w.life--;
                     if (w.active) {
-                        if (w.life > 60 && w.life % SPAWN_SETTINGS.SPAWN_INTERVAL === 0) {
-
+                        // ステージ9以外の場合のみ、ワームホールから雑魚を出す
+                        if (stage !== 9 && w.life > 60 && w.life % SPAWN_SETTINGS.SPAWN_INTERVAL === 0) {
                             const remaining = enemiesToSpawn - spawnedCount;
                             const threshold = enemiesToSpawn * 0.2;
 
-                            // ★修正ポイント：ボス出現判定を「外側」に出し、条件を強化
+                            // ボス出現判定
                             if (!isBossSpawned) {
-                                // 残りが20%以下、またはすでにノルマ数に達してしまった場合
                                 if (remaining <= threshold || spawnedCount >= enemiesToSpawn) {
                                     triggerBossEncounter();
                                     isBossSpawned = true;
-                                    return; // このワームホールからの今回のスポーンは終了
+                                    return;
                                 }
                             }
 
-                            // ボスが出ていない判定を通過し、かつノルマが残っている場合のみ雑魚を出す
                             if (spawnedCount < enemiesToSpawn) {
                                 if (Math.random() < 0.15) {
                                     spawnEnemy(w.x, w.y, 'cube');
@@ -2217,6 +2271,8 @@
                             }
                         }
                         if (w.life <= 0) w.active = false;
+
+                        // 吸い込み効果
                         const dx = player.x - w.x; const dy = player.y - w.y;
                         const d = Math.hypot(dx, dy) || 0.01;
                         if (d < 180) {
@@ -2731,12 +2787,23 @@
                     });
                     spawnedCount++;
                 } else if (type === 'asteroid') {
+                    // =========================================================
+                    // ★修正: ステージ9（BOSS RUSH）のみ遅くする分岐を追加
+                    // =========================================================
                     const sizeFactor = 1.0 + (stage - 1) * 0.1;
                     const hp = (size === 1 ? 4 : size === 2 ? 2 : 1) + Math.floor((stage - 1) * 0.5);
                     const baseScale = size === 1 ? 1.8 : size === 2 ? 1.1 : 0.6;
                     const finalScale = baseScale * sizeFactor;
 
-                    const moveSpeed = (ENEMY_SPEEDS.ASTEROID * 0.7) * (1 + size * 0.4) * spd * stageMag;
+                    // ★ここが変更点
+                    // ステージ9なら係数 0.2 (重くゆっくり)、それ以外は 0.7 (元の速さ)
+                    const speedMultiplier = (stage === 9) ? 0.3 : 0.7;
+
+                    // 回転速度も同様に、ステージ9ならゆっくり、それ以外はキビキビと
+                    const rotMultiplier = (stage === 9) ? 0.05 : 0.1;
+
+                    const moveSpeed = (ENEMY_SPEEDS.ASTEROID * speedMultiplier) * (1 + size * 0.1) * spd * stageMag;
+
                     const ang = Math.random() * Math.PI * 2;
 
                     enemies.push({
@@ -2749,14 +2816,14 @@
                         type: 'asteroid',
                         size: size,
                         angle: Math.random() * Math.PI * 2,
-                        rotSpd: (Math.random() - 0.5) * 0.1,
+                        rotSpd: (Math.random() - 0.5) * rotMultiplier, // 回転速度を適用
                         scale: finalScale,
                         drop: 'none',
 
-                        // --- ★追加：追跡モード用パラメータ ---
-                        spawnTimer: 0,           // 経過フレーム
-                        trackingStart: 300 + Math.random() * 200, // 追跡開始までの時間（約5〜8秒）
-                        isTracking: false        // 追跡中フラグ
+                        // 追跡モード用パラメータ
+                        spawnTimer: 0,
+                        trackingStart: 300 + Math.random() * 200,
+                        isTracking: false
                     });
 
                     // アステロイドは出現数には含めるが撃破ノルマには含めない（前回の仕様維持）
@@ -2782,49 +2849,42 @@
 
             function updateEnemies() {
                 enemies.forEach(e => {
-                    // --- ★修正ポイント ---
-                    // Triangle型は独自のAI（updateTriangleAI）でフォーメーション制御を行うため、
-                    // ここの汎用フォーメーション処理（updateFormationMovement）はスキップさせる。
                     const isTriangle = (e.type === 'triangle');
 
                     if (!isTriangle && e.leader && e.leader.hp > 0) {
                         updateFormationMovement(e);
-                        // Triangle以外で回転が必要な場合の処理（もしあれば）
                         if (e.type === 'cube') { e.rotX += 0.03; e.rotY += 0.04; }
                     } else {
-                        // Triangleはリーダー/副機に関わらずこちら（switch文）を実行
                         switch (e.type) {
                             case 'dragon': updateDragonAI(e); break;
                             case 'tadpole': updateTadpoleAI(e); break;
-                            case 'triangle': updateTriangleAI(e); break; // ★ここで副機も処理されるようになる
+                            case 'triangle': updateTriangleAI(e); break;
                             case 'cube': updateCubeAI(e); break;
-                            case 'boss': updateBossAI(e); break;
+
+                            // ★変更: ボスAIの分岐
+                            case 'boss':
+                                if (stage === 9) updateBossSpecialAI(e); // ラッシュ用AI
+                                else updateBossAI(e); // 通常AI
+                                break;
+
                             case 'asteroid': updateAsteroidAI(e); break;
                             case 'hunter': updateHunterAI(e); break;
                         }
                     }
 
-
-                    // --- 共通処理 ---
                     applySeparation(e);
                     applyAsteroidCollisions(e);
                     applyWorldBoundary(e);
                     checkPlayerCollision(e);
                     checkSatelliteCollision(e);
 
-                    // --- 破壊判定 ---
                     if (e.hp <= 0) {
-                        // ★修正： e.noSplit が true の時は分裂させない
                         if (e.type === 'asteroid' && e.size < 3 && !e.noSplit) {
-                            for (let i = 0; i < 2; i++) {
-                                spawnEnemy(e.x, e.y, 'asteroid', e.size + 1);
-                            }
+                            for (let i = 0; i < 2; i++) spawnEnemy(e.x, e.y, 'asteroid', e.size + 1);
                         }
-                        destroyEnemy(e); // 爆発エフェクト発生
+                        destroyEnemy(e);
                     }
                 });
-
-                // 死んだ敵を除去
                 enemies = enemies.filter(e => e.hp > 0);
             }
 
@@ -3000,89 +3060,65 @@
             }
 
             function destroyEnemy(e) {
-                // --- ★修正：ASTEROID以外の場合のみ撃破カウントを進める ---
                 if (e.type !== 'asteroid') {
                     enemiesKilled++;
                 }
 
-                // =========================================================
-                // ★追加：ボス撃破時の連鎖爆発（アステロイド含む）
-                // =========================================================
+                // ★追加: BOSS RUSHの進行管理
+                if (e.type === 'boss' && stage === 9) {
+                    rushBossIndex++;
+                    rushIntervalTimer = 0;
+                    powerups.push({ x: e.x, y: e.y, vx: 0, vy: 0, type: 'shield', life: 600 });
+                }
+
+                // --- 連鎖爆発（ボス共通） ---
                 if (e.type === 'boss') {
                     enemies.forEach(other => {
                         if (other !== e && other.hp > 0) {
-                            other.hp = 0; // 全員のHPを0にする
-
-                            // アステロイドの場合、分裂を封じるフラグを立てる
-                            if (other.type === 'asteroid') {
-                                other.noSplit = true;
-                            }
+                            other.hp = 0;
+                            if (other.type === 'asteroid') other.noSplit = true;
                         }
                     });
-
-                    // ワームホールも即座に消去
                     wormholes.forEach(w => w.life = 0);
                 }
-                // =========================================================
 
-                // --- 爆発エフェクトのカスタマイズ ---
+                // エフェクト生成
                 const particleCount = (e.type === 'boss') ? 120 : (e.type === 'asteroid' ? 30 : 40);
                 for (let i = 0; i < particleCount; i++) {
-                    // (中略：エフェクトのコードはそのまま)
-                    let pColor;
-                    const rand = Math.random();
-                    if (e.type === 'asteroid') {
-                        if (rand < 0.85) pColor = '#ffffff';
-                        else if (rand < 0.95) pColor = '#888888';
-                        else pColor = '#ffaa00';
-                    } else {
-                        if (rand < 0.85) pColor = e.color;
-                        else if (rand < 0.95) pColor = '#ffffff';
-                        else pColor = '#ffff00';
-                    }
-                    createExplosion(e.x, e.y, pColor, 1);
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = (Math.random() * 8 + 2) * EXPLOSION_SPEED_MAG;
+                    let color;
+                    if (e.type === 'asteroid') color = Math.random() < 0.85 ? '#ffffff' : '#ffaa00';
+                    else color = Math.random() < 0.85 ? e.color : '#ffff00';
+                    createExplosion(e.x, e.y, color, 1);
                 }
 
-                // --- 効果音と特殊演出 ---
+                // 音と特殊演出
                 if (e.type === 'boss') {
-                    // (中略)
                     AudioSys.playSE('dragon_explode');
-                    if (typeof screenShake !== 'undefined') screenShake = 40;
                     distortGrid(e.x, e.y, 100, 200);
-
-                    // --- ★追加：ボス撃破時にホーミング弾(Missile)を全消去 ---
-                    // 1. 残っているミサイルの場所で小さな爆発を起こす（演出）
                     enemyBullets.forEach(b => {
-                        if (b.isMissile) {
-                            createExplosion(b.x, b.y, b.color, 5); // 小さな爆発
-                        }
+                        if (b.isMissile) createExplosion(b.x, b.y, b.color, 5);
                     });
-
-                    // 2. 配列からミサイルを除外する（消滅）
                     enemyBullets = enemyBullets.filter(b => !b.isMissile);
-                    // ----------------------------------------------------
-
                 } else if (e.type === 'dragon') {
-                    // (中略)
                     AudioSys.playSE('dragon_explode');
                     distortGrid(e.x, e.y, 40, 80);
-                } else if (e.type === 'asteroid') {
-                    AudioSys.playSE('explode');
-                    distortGrid(e.x, e.y, 20, 40);
                 } else {
                     AudioSys.playSE('explode');
                     distortGrid(e.x, e.y, 30, 60);
                 }
 
-                // スコア処理
+                // スコア＆ドロップ
                 const pts = (e.type === 'dragon' || e.type === 'boss') ? 1000 : (e.type === 'asteroid' ? 150 : 100);
                 score += pts;
                 ui.score.innerText = score.toString().padStart(6, '0');
                 scorePopups.push({ x: e.x, y: e.y, text: pts, life: 40, alpha: 1, vy: -1 });
 
-                // (中略：ドロップ処理はそのまま)
-                if (e.noDrop || e.drop === 'none' || e.type === 'asteroid') return;
-                // ...以下ドロップ生成コード...
+                // ★修正: アステロイドを除外する条件「|| e.type === 'asteroid'」を削除しました
+                // これにより、dropプロパティを持つアステロイドからアイテムが出現します
+                if (e.noDrop || e.drop === 'none') return;
+
                 const itemProps = { x: e.x, y: e.y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4 };
                 if (e.drop === 'level') powerups.push({ ...itemProps, type: 'level', life: 999999 });
                 else if (e.drop === 'laser') powerups.push({ ...itemProps, type: 'laser', life: ITEM_LIFE });
@@ -3374,7 +3410,9 @@
                 e.spawnTimer = (e.spawnTimer || 0) + 1;
 
                 // --- 覚醒判定 ---
-                if (!e.isTracking && e.spawnTimer > e.trackingStart) {
+                // ★修正: 「stage !== 9」を追加
+                // ステージ9以外、かつ時間が経過した場合のみ追尾モードへ移行
+                if (stage !== 9 && !e.isTracking && e.spawnTimer > e.trackingStart) {
                     e.isTracking = true;
 
                     // モード切替時の速度変換と減速
@@ -3389,9 +3427,7 @@
                 if (e.isTracking) {
                     // --- 追跡モード ---
 
-                    // ★変更：「ネオン（e.glow）」を廃止し、「色（e.color）」を変化させる
-                    // 赤成分(R)は255で固定し、緑(G)と青(B)を減らすことで「赤み」を出します。
-                    // 255(白) 〜 180(薄い赤) の間をゆっくり往復させます。
+                    // 色の変化（赤みがかかる）
                     const gb = Math.floor(215 + 40 * Math.sin(frame * 0.1));
                     e.color = `rgb(255, ${gb}, ${gb})`;
 
@@ -3416,8 +3452,13 @@
                 } else {
                     // --- 通常モード（漂流） ---
 
-                    // 通常時は真っ白
-                    e.color = '#ffffff';
+                    // Boss Rushでは追尾しないので、アイテム岩の場合は緑色を維持する必要がある
+                    // そのため、強制的に白に戻す処理を少し変更します
+                    if (e.drop === 'shield') {
+                        e.color = '#0f0'; // アイテム岩は緑
+                    } else {
+                        e.color = '#ffffff'; // それ以外は白
+                    }
 
                     e.x += e.vx * e.speed * gameSpeed;
                     e.y += e.vy * e.speed * gameSpeed;
@@ -3551,6 +3592,114 @@
                 if (e.fireTimer >= maxCycle) e.fireTimer = 0;
             }
 
+            function updateBossSpecialAI(e) {
+                // --- 共通: 出現演出 ---
+                if (e.isSpawning) {
+                    e.spawnTimer++;
+                    if (e.spawnTimer >= e.spawnMax) e.isSpawning = false;
+                    else {
+                        e.x = e.spawnX; e.y = e.spawnY; e.vx = 0; e.vy = 0;
+                        return;
+                    }
+                }
+
+                // --- 共通: 移動ロジック ---
+                const dx = player.x - e.x;
+                const dy = player.y - e.y;
+                // 通常より少し積極的に動く
+                e.vx += (dx / (Math.hypot(dx, dy) || 1)) * 0.05 * SPEED_SCALE * gameSpeed;
+                e.vy += (dy / (Math.hypot(dx, dy) || 1)) * 0.05 * SPEED_SCALE * gameSpeed;
+
+                e.vx *= 0.96; e.vy *= 0.96;
+                e.x += e.vx * gameSpeed;
+                e.y += e.vy * gameSpeed;
+
+                const margin = 150;
+                e.x = Math.max(margin, Math.min(worldSize - margin, e.x));
+                e.y = Math.max(margin, Math.min(worldSize - margin, e.y));
+
+                // --- 共通: カウンター攻撃判定 ---
+                if (e.prevHp && e.hp < e.prevHp) {
+                    if (Math.random() < 0.15) {
+                        const angle = Math.atan2(player.y - e.y, player.x - e.x);
+                        const spd = 12 * SPEED_SCALE;
+                        enemyBullets.push({
+                            x: e.x, y: e.y,
+                            vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
+                            life: 180, color: '#fff', isFading: false
+                        });
+                        AudioSys.playSE('shoot');
+                    }
+                }
+                e.prevHp = e.hp;
+
+                // --- フェーズ管理 ---
+                e.fireTimer++;
+                const cycle = 700;
+                const phaseTime = e.fireTimer % cycle;
+
+                if (phaseTime < 250) {
+                    // Phase 1: 拡散 (弾速1.5倍)
+                    e.angle += 0.25;
+                    if (frame % 12 === 0) {
+                        const sides = e.variant.sides;
+                        const bulletSpd = BULLET_CONFIG.BOSS_LASER.SPEED * SPEED_SCALE * 1.5;
+                        for (let i = 0; i < sides; i++) {
+                            const a = e.angle + (Math.PI * 2 / sides) * i;
+                            enemyBullets.push({
+                                x: e.x + Math.cos(a) * 45, y: e.y + Math.sin(a) * 45,
+                                vx: Math.cos(a) * bulletSpd, vy: Math.sin(a) * bulletSpd,
+                                life: BULLET_CONFIG.BOSS_LASER.LIFE, isLaserMissile: true, color: e.color
+                            });
+                        }
+                        AudioSys.playSE('shoot');
+                    }
+                } else if (phaseTime < 450) {
+                    // Phase 2: 狙撃
+                    const targetAngle = Math.atan2(player.y - e.y, player.x - e.x);
+                    let diff = targetAngle - e.angle;
+                    while (diff <= -Math.PI) diff += Math.PI * 2;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+                    e.angle += diff * 0.1;
+
+                    const subTime = phaseTime - 250;
+                    if (subTime % 60 === 0) {
+                        const lead = 20;
+                        const predX = player.x + player.vx * lead;
+                        const predY = player.y + player.vy * lead;
+                        const aimAngle = Math.atan2(predY - e.y, predX - e.x);
+                        const spd = 14 * SPEED_SCALE;
+                        for (let i = 0; i < 3; i++) {
+                            enemyBullets.push({
+                                x: e.x, y: e.y,
+                                vx: Math.cos(aimAngle) * spd * (1 - i * 0.1),
+                                vy: Math.sin(aimAngle) * spd * (1 - i * 0.1),
+                                life: 200, color: '#f00'
+                            });
+                        }
+                        AudioSys.playSE('launch');
+                        createExplosion(e.x, e.y, '#f00', 5);
+                    }
+                } else {
+                    // Phase 3: 誘導ミサイル
+                    e.angle += 0.05;
+                    const subTime = phaseTime - 450;
+                    if (subTime === 10 || subTime === 100) {
+                        const sides = e.variant.sides;
+                        const speed = BULLET_CONFIG.BOSS_HOMING.SPEED * SPEED_SCALE;
+                        for (let i = 0; i < sides; i++) {
+                            const a = e.angle + (Math.PI * 2 / sides) * i;
+                            enemyBullets.push({
+                                x: e.x + Math.cos(a) * 60, y: e.y + Math.sin(a) * 60,
+                                vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+                                life: BULLET_CONFIG.BOSS_HOMING.LIFE, isMissile: true, color: e.color
+                            });
+                        }
+                        AudioSys.playSE('launch');
+                        distortGrid(e.x, e.y, 100, 200);
+                    }
+                }
+            }
 
             // =========================================================
             // 9. エンティティ更新 (Entity Updates)
@@ -3764,42 +3913,27 @@
                 const bulletStageMag = 1.0 + (stage - 1) * DIFFICULTY_CONFIG.BULLET_SPEED_INC;
 
                 enemyBullets.forEach(eb => {
-                    // --- A. フェードアウト中の処理 (明滅しながら消滅) ---
+                    // --- A. フェードアウト中の処理 ---
                     if (eb.isFading) {
-                        // 全体のベース透明度を徐々に下げる (ここが 0 になると完全に消滅)
-                        // gameSpeedの影響を受けさせても良いですが、点滅演出としてはフレーム依存の方が綺麗な場合が多いです
                         eb.baseAlpha = (eb.baseAlpha === undefined ? 1.0 : eb.baseAlpha) - 0.03;
-
-                        // 明滅ロジック
                         const wave = (Math.sin(frame * 1.0) + 1) / 2;
                         eb.alpha = eb.baseAlpha * wave;
-
-                        if (eb.baseAlpha <= 0) {
-                            eb.life = 0;
-                            return;
-                        }
-
-                        // 同じ速さで等速直線運動
+                        if (eb.baseAlpha <= 0) { eb.life = 0; return; }
                         eb.x += eb.vx * gameSpeed;
                         eb.y += eb.vy * gameSpeed;
                         return;
                     }
 
-                    const oldX = eb.x;
-                    const oldY = eb.y;
                     eb.x += eb.vx * gameSpeed;
                     eb.y += eb.vy * gameSpeed;
                     eb.life--;
 
-                    // --- B. ワールド境界（エリア枠）との衝突判定 ---
-                    const isHitWall = (eb.x < WALL_MARGIN || eb.x > worldSize - WALL_MARGIN ||
-                        eb.y < WALL_MARGIN || eb.y > worldSize - WALL_MARGIN);
-
+                    // --- B. ワールド境界との衝突判定 ---
+                    const isHitWall = (eb.x < WALL_MARGIN || eb.x > worldSize - WALL_MARGIN || eb.y < WALL_MARGIN || eb.y > worldSize - WALL_MARGIN);
                     if (isHitWall) {
                         if (eb.isMissile || eb.isLaserMissile) {
                             const impactX = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, eb.x));
                             const impactY = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, eb.y));
-
                             createExplosion(impactX, impactY, eb.color, 10);
                             AudioSys.playSE('explode');
                             distortGrid(impactX, impactY, 15, 30);
@@ -3808,13 +3942,10 @@
                         return;
                     }
 
-                    // --- C. 寿命切れによる消滅判定 ---
+                    // --- C. 寿命切れ ---
                     if (eb.life <= 0) {
                         if (eb.isMissile || eb.isLaserMissile) {
-                            eb.isFading = true;
-                            eb.fadeTimer = 15;
-                            eb.life = 1;
-
+                            eb.isFading = true; eb.fadeTimer = 15; eb.life = 1;
                             AudioSys.playSE('explode', 0.5);
                         } else {
                             eb.life = 0;
@@ -3822,28 +3953,55 @@
                         return;
                     }
 
-                    // --- D. ミサイルの挙動制御 & 撃墜判定 ---
+                    // =========================================================
+                    // ★追加: アステロイドによる弾の吸収（盾機能）
+                    // =========================================================
+                    if (eb.life > 0) {
+                        // 全ての敵（アステロイド含む）に対して判定
+                        for (const rock of enemies) {
+                            // アステロイド以外は弾をスルーする（味方撃ち防止）
+                            if (rock.type !== 'asteroid' || rock.hp <= 0) continue;
+
+                            // 判定距離（岩の見た目より少し大きめに吸わせると守られている感が出る）
+                            const rockRadius = 25 * rock.scale * G_SCALE;
+
+                            if (Math.hypot(rock.x - eb.x, rock.y - eb.y) < rockRadius) {
+                                // 弾を消滅させる
+                                eb.life = 0;
+
+                                // 演出: カンッ！という火花
+                                createExplosion(eb.x, eb.y, '#fff', 3);
+
+                                // ★重要: 岩にダメージを与えるか？
+                                // ここでは「岩は敵弾に対しては無敵（または非常に硬い）」とします。
+                                // そうしないと盾があっという間に壊れて戦略が崩壊するため。
+                                // どうしても壊したい場合は rock.hp -= 0.1; などを追加してください。
+
+                                // ループを抜ける（1つの弾が複数の岩に当たるのを防ぐ）
+                                break;
+                            }
+                        }
+                        // 弾が消滅していたら、これ以降のプレイヤー判定などはスキップ
+                        if (eb.life === 0) return;
+                    }
+                    // =========================================================
+
+
+                    // --- D. ミサイルの誘導 ---
                     if (eb.isMissile && eb.life > 0) {
                         eb.vx *= 0.96; eb.vy *= 0.96;
                         const dx = player.x - eb.x, dy = player.y - eb.y;
                         const d = Math.hypot(dx, dy) || 0.001;
-
-                        // ★修正：加速にも gameSpeed を適用
                         const accel = 0.25 * SPEED_SCALE;
                         eb.vx += (dx / d) * accel * gameSpeed;
                         eb.vy += (dy / d) * accel * gameSpeed;
-
                         const v = Math.hypot(eb.vx, eb.vy);
                         const cruiseSpeed = ENEMY_SPEEDS.BOSS_MISSILE * SPEED_SCALE * bulletStageMag;
-
                         if (v > cruiseSpeed) {
                             eb.vx = (eb.vx / v) * cruiseSpeed;
                             eb.vy = (eb.vy / v) * cruiseSpeed;
                         }
-
-                        // プレイヤーの弾による撃墜判定
                         bullets.forEach(b => {
-                            // ★修正：撃墜判定距離にも G_SCALE を適用（見た目通りに）
                             const hitDist = 20 * G_SCALE;
                             if (b.life > 0 && Math.hypot(b.x - eb.x, b.y - eb.y) < hitDist) {
                                 createExplosion(eb.x, eb.y, eb.color, 8);
@@ -3856,11 +4014,7 @@
                     // --- E. プレイヤーとの判定 ---
                     if (eb.life > 0 && gameState !== 'DYING' && player.invuln <= 0) {
                         const dist = Math.hypot(player.x - eb.x, player.y - eb.y);
-
-                        // ★修正：プレイヤー衝突判定にも G_SCALE を適用
-                        // ミサイルは大きめ(12)、通常弾は小さめ(8)
                         const collisionRadius = (eb.isMissile ? 12 : 8) * G_SCALE;
-
                         if (dist < collisionRadius) {
                             eb.life = 0;
                             createExplosion(player.x, player.y, eb.color || '#f00', 10);
@@ -5486,81 +5640,70 @@
             }
 
             function updateUI() {
-                // --- 1. ボスHPバーの更新 ---
+                // Boss HP Bar
                 const currentBoss = enemies.find(e => e.type === 'boss');
                 if (currentBoss) {
                     ui.bossContainer.style.display = 'block';
-                    const hpPct = Math.max(0, (currentBoss.hp / currentBoss.variant.hp) * 100);
+                    const hpPct = Math.max(0, (currentBoss.hp / currentBoss.maxHp) * 100); // maxHpを使用
                     const bColor = currentBoss.color;
-
                     ui.bossHpBarInline.style.width = hpPct + "%";
                     ui.bossHpBarInline.style.backgroundColor = bColor;
                     ui.bossHpBarInline.style.boxShadow = `0 0 10px ${bColor}`;
-
                     ui.bossBarFrame.style.borderColor = bColor;
                     ui.bossNameLabel.style.color = bColor;
                     ui.bossNameLabel.innerText = currentBoss.variant.name;
-
-                    // ピンチ時の点滅演出
-                    if (hpPct < 25 && frame % 10 < 5) {
-                        ui.bossHpBarInline.style.backgroundColor = '#fff';
-                    }
+                    if (hpPct < 25 && frame % 10 < 5) ui.bossHpBarInline.style.backgroundColor = '#fff';
                 } else {
                     ui.bossContainer.style.display = 'none';
                 }
 
-                // --- 2. 敵スウォーム（残り数）バーの更新 ---
-                const enemyRemains = Math.max(0, enemiesToSpawn - enemiesKilled);
-                ui.enemyBar.style.width = `${(enemyRemains / enemiesToSpawn) * 100}%`;
-                document.querySelector('.bar-label.enemy').innerText = `ENEMY: ${enemyRemains}`;
+                // ★変更: ステージ9はボス進行度を表示
+                if (stage === 9) {
+                    const progress = rushBossIndex / 8;
+                    ui.enemyBar.style.width = `${(1 - progress) * 100}%`;
+                    document.querySelector('.bar-label.enemy').innerText = `BOSS RUSH: ${rushBossIndex}/8`;
+                } else {
+                    const enemyRemains = Math.max(0, enemiesToSpawn - enemiesKilled);
+                    ui.enemyBar.style.width = `${(enemyRemains / enemiesToSpawn) * 100}%`;
+                    document.querySelector('.bar-label.enemy').innerText = `ENEMY: ${enemyRemains}`;
+                }
 
-                // --- 3. シールドバーの更新 ---
+                // Shield Bar
                 const shieldPercent = Math.max(0, (player.shield / PLAYER_BASE_SHIELD) * 100);
                 ui.shieldBar.style.width = shieldPercent + "%";
-                // 30%以下でクリティカル表示
                 if (player.shield < PLAYER_BASE_SHIELD * 0.3) ui.shieldBar.classList.add('shield-critical');
                 else ui.shieldBar.classList.remove('shield-critical');
-
-                // 数値表示（HTMLに存在する場合のみ）
                 if (ui.shieldVal) ui.shieldVal.innerText = Math.floor(Math.max(0, player.shield));
 
-                // --- 4. 武器表示（レーザー/通常レベル）の更新 ---
+                // Weapon Bar
                 ui.weaponDisplay.innerHTML = '';
                 if (player.laserTimer > 0) {
                     const pct = Math.max(0, (player.laserTimer / LASER_DURATION) * 100);
-                    const frameDiv = document.createElement('div');
-                    frameDiv.className = 'laser-bar-frame';
-                    const fillDiv = document.createElement('div');
-                    fillDiv.className = 'laser-bar-fill';
+                    const frameDiv = document.createElement('div'); frameDiv.className = 'laser-bar-frame';
+                    const fillDiv = document.createElement('div'); fillDiv.className = 'laser-bar-fill';
                     fillDiv.style.width = pct + '%';
-                    // 終了間際の点滅
                     if (player.laserTimer < 120 && Math.floor(frame / 4) % 2 === 0) fillDiv.style.opacity = 0.3;
-                    frameDiv.appendChild(fillDiv);
-                    ui.weaponDisplay.appendChild(frameDiv);
+                    frameDiv.appendChild(fillDiv); ui.weaponDisplay.appendChild(frameDiv);
                     player.laserTimer--;
                 } else {
-                    // 通常のウェポンレベルブロック表示
                     for (let i = 1; i <= MAX_WEAPON_LEVEL; i++) {
-                        const block = document.createElement('div');
-                        block.className = 'w-block';
+                        const block = document.createElement('div'); block.className = 'w-block';
                         if (i <= player.weaponLevel) block.classList.add('active');
                         ui.weaponDisplay.appendChild(block);
                     }
                 }
 
-                // --- 5. 無敵状態バーの更新 ---
+                // Invuln Bar
                 if (player.invuln > 20) {
                     ui.invulnWrapper.style.display = 'block';
                     const pct = Math.min(100, (player.invuln / INVULN_DURATION) * 100);
                     ui.invulnBar.style.width = pct + "%";
-                    // 終了間際の点滅
                     if (player.invuln < 120 && Math.floor(frame / 4) % 2 === 0) ui.invulnBar.style.opacity = 0.3;
                     else ui.invulnBar.style.opacity = 1.0;
                 } else {
                     ui.invulnWrapper.style.display = 'none';
                 }
 
-                // ミニマップの描画（以前作成したものがあればここで呼ぶ）
                 if (typeof drawMiniMap === 'function') drawMiniMap();
             }
 
