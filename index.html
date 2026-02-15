@@ -1603,7 +1603,8 @@
 
 
                 gameState = 'PLAYING';
-                ui.overlay.style.display = 'none'; ui.ost.style.display = 'none';
+                ui.overlay.style.display = 'none';
+                ui.ost.style.display = 'none';
                 ui.controls.style.display = 'block';
 
                 score = 0;
@@ -1618,6 +1619,16 @@
                 player.weaponLevel = 1;
                 player.satellites = []; player.invuln = 0; player.laserTimer = 0;
                 player.history = [];
+
+                // --- 追加：ゲームパッド接続状況を確認してUI表示を決める ---
+                const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+                const isConnected = Array.from(gamepads).some(gp => gp !== null);
+
+                if (isConnected) {
+                    ui.controls.style.display = 'none';
+                } else {
+                    ui.controls.style.display = 'block';
+                }
 
                 // --- ★カメラの瞬間リセット ---
                 cameraScale = 1.0;
@@ -2111,6 +2122,9 @@
             }
 
             function update() {
+
+                // --- ゲームパッド入力の処理 ---
+                handleGamepadInput();
 
                 // --- 警告演出の管理 ---
                 if (isBossWarning) {
@@ -5786,6 +5800,91 @@
             document.addEventListener('click', handleInteraction);
             document.addEventListener('touchstart', handleInteraction);
             document.addEventListener('keydown', handleInteraction);
+
+            // ゲームパッド制御用
+            function handleGamepadInput() {
+                const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+                let activeGp = null;
+
+                for (let i = 0; i < gamepads.length; i++) {
+                    if (gamepads[i]) {
+                        activeGp = gamepads[i];
+                        break;
+                    }
+                }
+
+                if (!activeGp) return;
+
+                // --- 【重要】コントローラーが接続されているなら画面UIを隠す ---
+                // プレイ中かつ、UIが表示されている場合のみ非表示に切り替える
+                if (gameState === 'PLAYING' && ui.controls.style.display !== 'none') {
+                    ui.controls.style.display = 'none';
+                }
+
+                // --- 左スティック: 移動 ---
+                const moveX = activeGp.axes[0];
+                const moveY = activeGp.axes[1];
+                const moveDeadzone = 0.2;
+
+                if (Math.abs(moveX) > moveDeadzone || Math.abs(moveY) > moveDeadzone) {
+                    input.move.active = true;
+                    input.move.x = moveX;
+                    input.move.y = moveY;
+                } else {
+                    // スティックが倒されていないときは入力を止める（タッチ操作との干渉防止）
+                    if (input.move.active && !input.keys['ArrowLeft']) { // キーボード優先なら条件追加
+                        input.move.x = 0;
+                        input.move.y = 0;
+                        input.move.active = false;
+                    }
+                }
+
+                // --- 右スティック: 照準 ---
+                const aimX = activeGp.axes[2];
+                const aimY = activeGp.axes[3];
+                const aimDeadzone = 0.2;
+
+                if (Math.abs(aimX) > aimDeadzone || Math.abs(aimY) > aimDeadzone) {
+                    input.aim.active = true;
+                    input.aim.x = aimX;
+                    input.aim.y = aimY;
+                } else {
+                    input.aim.active = false;
+                }
+
+                // --- ボタン入力: BOMB/LAUNCH ---
+                const bombBtn = activeGp.buttons[2].pressed || activeGp.buttons[5].pressed || activeGp.buttons[7].pressed;
+                if (bombBtn && !input.padBombPressed) {
+                    if (gameState === 'PLAYING') launchSatellites();
+                    if (gameState === 'TITLE') startGame();
+                }
+                input.padBombPressed = bombBtn;
+
+                // ポーズ解除
+                if (activeGp.buttons[0].pressed && gameState === 'PAUSED') {
+                    resumeAction();
+                }
+            }
+
+            // 接続イベント
+            window.addEventListener("gamepadconnected", (e) => {
+                console.log("Gamepad connected: " + e.gamepad.id);
+                // プレイ中なら即座にUIを消す
+                if (gameState === 'PLAYING') {
+                    ui.controls.style.display = 'none';
+                }
+            });
+
+            window.addEventListener("gamepaddisconnected", (e) => {
+                console.log("Gamepad disconnected");
+                // プレイ中ならタッチUIを復活させる
+                if (gameState === 'PLAYING') {
+                    ui.controls.style.display = 'block';
+                }
+                // 入力リセット
+                input.move.x = 0; input.move.y = 0;
+                input.move.active = false; input.aim.active = false;
+            });
 
             init(); loop();
         </script>
