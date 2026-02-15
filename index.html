@@ -4471,22 +4471,19 @@
             }
 
             function drawEnemyProjectiles() {
-                enemyBullets.forEach(eb => {
+                // ★高速化: 弾の描画中は常に「加算合成」にする
+                // これにより、色が重なるほど白く光り、shadowBlurなしでも発光感が出る
+                ctx.globalCompositeOperation = 'lighter';
 
+                enemyBullets.forEach(eb => {
                     if (!isOnScreen(eb, 50)) return;
 
                     ctx.save();
                     ctx.translate(eb.x, eb.y);
 
-                    // フェードアウト中なら eb.alpha を適用、そうでなければ 1.0 (不透明)
+                    // フェードアウト中なら透明度を適用
                     const currentAlpha = eb.isFading ? Math.max(0, eb.alpha) : 1.0;
                     ctx.globalAlpha = currentAlpha;
-
-                    // レーザー弾やミサイルの場合、光の重なりを綺麗に見せるため加算合成を使うことが多いですが、
-                    // 消える時は globalAlpha が効くように設定します。
-                    if (eb.isLaserMissile || eb.isMissile) {
-                        ctx.globalCompositeOperation = 'lighter';
-                    }
 
                     if (eb.isLaserMissile) {
                         drawLaserMissile(ctx, eb);
@@ -4499,7 +4496,7 @@
                     ctx.restore();
                 });
 
-                // 描画後は必ず透明度と合成モードをデフォルトに戻す
+                // 設定を戻す
                 ctx.globalAlpha = 1.0;
                 ctx.globalCompositeOperation = 'source-over';
             }
@@ -5500,12 +5497,18 @@
 
             function drawNormalBullet(ctx, eb) {
                 ctx.rotate(frame * 0.15);
-                const bulletColor = (Math.floor(frame / 5) % 2 === 0) ? '#ff0000' : '#ff8800';
-                ctx.fillStyle = bulletColor;
-                ctx.shadowBlur = 8;
-                ctx.shadowColor = bulletColor;
 
+                const bulletColor = (Math.floor(frame / 5) % 2 === 0) ? '#ff0000' : '#ff8800';
                 const size = 6 * G_SCALE;
+
+                // ★高速化: shadowBlurを削除
+                // ctx.shadowBlur = 8; 
+                // ctx.shadowColor = bulletColor;
+
+                // 代わりに、少し大きめに薄く描画して「光の暈（かさ）」を表現しても良いが、
+                // 通常弾は数が多いのでシンプルに塗りつぶしのみにする
+                ctx.fillStyle = bulletColor;
+
                 ctx.beginPath();
                 ctx.moveTo(0, -size);
                 ctx.lineTo(size * 0.7, 0);
@@ -5513,28 +5516,43 @@
                 ctx.lineTo(-size * 0.7, 0);
                 ctx.closePath();
                 ctx.fill();
+
+                // 中心を白くして発光感を出す
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(0, 0, size * 0.4, 0, Math.PI * 2);
+                ctx.fill();
             }
 
             function drawHomingMissile(ctx, eb) {
-                // ミサイルを進行方向（速度ベクトル）に向ける
                 const angle = Math.atan2(eb.vy, eb.vx);
                 ctx.rotate(angle);
 
-                const mSize = 12 * G_SCALE; // ミサイルは少し大きめに
+                const mSize = 12 * G_SCALE;
                 const color = eb.color || '#f00';
 
+                // ★高速化: shadowBlur削除
+                // ctx.shadowBlur = 12;
+
+                // 1. グロー部分（塗りつぶしを少し薄く）
                 ctx.strokeStyle = color;
                 ctx.lineWidth = 2;
-                ctx.shadowBlur = 12;
-                ctx.shadowColor = color;
+                // 加算合成(lighter)が効いているので、重ねるだけで光って見える
 
-                // ミサイルの形状（鋭い矢印型）
                 ctx.beginPath();
-                ctx.moveTo(mSize, 0);            // 先端
-                ctx.lineTo(-mSize, mSize * 0.6);   // 右後ろ
-                ctx.lineTo(-mSize * 0.4, 0);     // 中央のくぼみ
-                ctx.lineTo(-mSize, -mSize * 0.6);  // 左後ろ
+                ctx.moveTo(mSize, 0);
+                ctx.lineTo(-mSize, mSize * 0.6);
+                ctx.lineTo(-mSize * 0.4, 0);
+                ctx.lineTo(-mSize, -mSize * 0.6);
                 ctx.closePath();
+
+                // 内部を半透明で塗る
+                ctx.fillStyle = color;
+                ctx.globalAlpha = 0.5;
+                ctx.fill();
+
+                // 枠線を描く
+                ctx.globalAlpha = 1.0;
                 ctx.stroke();
 
                 // 推進エンジンの中心点
@@ -5544,29 +5562,28 @@
                 ctx.fill();
             }
 
-            // 直進レーザー弾の描画
             function drawLaserMissile(ctx, eb) {
                 const angle = Math.atan2(eb.vy, eb.vx);
                 ctx.rotate(angle);
 
-                const len = 30 * G_SCALE; // 短い棒状
+                const len = 30 * G_SCALE;
                 const color = eb.color || '#f00';
 
-                ctx.globalCompositeOperation = 'lighter';
+                // ★高速化: shadowBlurを使わず、線を2回重ねて発光表現
+                // ctx.shadowBlur = 10; <--- これが重いので削除
 
-                // 外側の光
+                // 1. 外側の光（太く、半透明）
                 ctx.strokeStyle = color;
-                ctx.lineWidth = 4;
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = color;
+                ctx.lineWidth = 6 * G_SCALE; // 太く
+                ctx.globalAlpha = 0.4;       // 半透明
                 ctx.beginPath();
                 ctx.moveTo(-len / 2, 0); ctx.lineTo(len / 2, 0);
                 ctx.stroke();
 
-                // 中心の白い芯
+                // 2. 中心の芯（細く、くっきり）
                 ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1.5;
-                ctx.shadowBlur = 0;
+                ctx.lineWidth = 2 * G_SCALE; // 細く
+                ctx.globalAlpha = 1.0;       // 不透明
                 ctx.beginPath();
                 ctx.moveTo(-len / 2, 0); ctx.lineTo(len / 2, 0);
                 ctx.stroke();
