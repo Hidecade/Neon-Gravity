@@ -3735,8 +3735,8 @@
             });
             particles = particles.filter(p => p.life > 0);
             rings.forEach(r => {
-                r.r += 2 * SPEED_SCALE * gameSpeed;
-                r.life -= 0.02 * SPEED_SCALE * gameSpeed;
+                r.r += 8 * SPEED_SCALE * gameSpeed;
+                r.life -= 0.08 * SPEED_SCALE * gameSpeed;
             });
             rings = rings.filter(r => r.life > 0);
         }
@@ -3823,6 +3823,20 @@
         }
 
         // --- 以下、各描画サブ関数 ---
+
+        function isOnScreen(obj, margin = 50) {
+            // 現在のカメラの表示範囲（スケール考慮）
+            const viewW = width / cameraScale;
+            const viewH = height / cameraScale;
+
+            return (
+                obj.x > camera.x - margin &&
+                obj.x < camera.x + viewW + margin &&
+                obj.y > camera.y - margin &&
+                obj.y < camera.y + viewH + margin
+            );
+        }
+
         function drawBackground() {
             ctx.fillStyle = '#fff';
             stars.forEach(s => {
@@ -3891,7 +3905,11 @@
 
         function drawEnemies() {
             enemies.forEach(e => {
-                ctx.save();
+                const margin = (e.type === 'boss' || e.type === 'dragon') ? 350 : 100;
+                if (!isOnScreen(e, margin)) return;
+
+                ctx.save(); 
+
                 ctx.globalAlpha = e.isWarping ? (e.warpPercent || 0) : 1.0;
 
                 if (e.type === 'dragon') drawDragonEnemy(ctx, e);
@@ -3908,6 +3926,9 @@
 
         function drawEnemyProjectiles() {
             enemyBullets.forEach(eb => {
+
+                if (!isOnScreen(eb, 50)) return;
+
                 ctx.save();
                 ctx.translate(eb.x, eb.y);
 
@@ -3960,16 +3981,27 @@
 
         function drawPlayerBullets() {
             ctx.fillStyle = '#0f8';
+            ctx.beginPath(); // ループの前にパスを開始
+
             bullets.forEach(b => {
-                ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, Math.PI * 2); ctx.fill();
+                if (!isOnScreen(b, 50)) return;
+
+                // 各弾丸の円形パスを繋げていく
+                ctx.moveTo(b.x + 2, b.y);
+                ctx.arc(b.x, b.y, 2, 0, Math.PI * 2);
             });
+
+            ctx.fill(); // 最後に一括で塗りつぶす
         }
 
         function drawItems() {
             // クリスタル
             ctx.fillStyle = '#008000';
             crystals.forEach(c => {
-                ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(frame * 0.1);
+                if (!isOnScreen(c, 50)) return;
+                ctx.save();
+                ctx.translate(c.x, c.y);
+                ctx.rotate(frame * 0.1);
                 const scale = c.life > 60 ? 1 : c.life / 60; ctx.scale(scale, scale);
                 ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(4, 0); ctx.lineTo(0, 6); ctx.lineTo(-4, 0); ctx.fill();
                 ctx.restore();
@@ -3977,15 +4009,16 @@
 
             // パワーアップ
             powerups.forEach(p => {
+                if (!isOnScreen(p, 50)) return;
+
                 let char = '?';
                 let color = '#fff';
                 if (p.type === 'laser') { color = '#aff'; char = 'L'; }
                 else if (p.type === 'level') { color = '#0f0'; char = 'W'; }
                 else if (p.type === 'invincible') { color = '#ff0'; char = 'I'; }
-                else if (p.type === 'shield') { color = '#0ff'; char = 'S'; }
 
-                ctx.strokeStyle = color;
-                ctx.save(); ctx.translate(p.x, p.y);
+                ctx.save();
+                ctx.translate(p.x, p.y);
                 const scale = p.life > 60 ? 1 : p.life / 60; ctx.scale(scale, scale);
                 ctx.lineWidth = 2; ctx.strokeRect(-8, -8, 16, 16);
                 ctx.fillStyle = color; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -4001,17 +4034,37 @@
 
             // パーティクル
             particles.forEach(p => {
-                ctx.save(); ctx.globalAlpha = Math.min(1, p.life);
+                if (!isOnScreen(p, 30)) return;
+                ctx.save();
+                ctx.globalAlpha = Math.min(1, p.life);
                 ctx.beginPath(); const length = 4.0; ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
                 ctx.lineWidth = p.size || 2; ctx.strokeStyle = p.color; ctx.lineCap = 'round'; ctx.stroke();
                 ctx.restore();
             });
             ctx.globalAlpha = 1.0;
 
-            // リング
             rings.forEach(r => {
-                ctx.save(); ctx.strokeStyle = r.color; ctx.lineWidth = 3; ctx.globalAlpha = r.life;
-                ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
+                if (!isOnScreen({ x: r.x, y: r.y }, r.r + 50)) return;
+
+                ctx.save();
+                ctx.globalAlpha = r.life;
+
+                // 1. 外側の太い光（薄い色）
+                ctx.strokeStyle = r.color;
+                ctx.lineWidth = 4 * G_SCALE;
+                ctx.globalAlpha = r.life * 0.3; // 透明度を下げる
+                ctx.beginPath();
+                ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // 2. 内側の鋭い光（白い芯）
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1 * G_SCALE;
+                ctx.globalAlpha = r.life;
+                ctx.beginPath();
+                ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
+                ctx.stroke();
+
                 ctx.restore();
             });
         }
