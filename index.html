@@ -1037,7 +1037,7 @@
         // =========================================================
         // 2. ステージ・難易度・進行管理
         // =========================================================
-        const START_STAGE = 1;        // 開始ステージ番号
+        const START_STAGE = 10;        // 開始ステージ番号
 
         const MAX_STAGE = 10;          // 最大ステージ数
         let currentStage = 1;         // 現在のステージ番号
@@ -1687,7 +1687,7 @@
             if (ui.bossContainer) ui.bossContainer.style.display = 'none';
 
             bullets = []; lasers = []; enemies = []; enemyBullets = [];
-            crystals = []; missiles = []; powerups = []; wormholes = [];
+            missiles = []; wormholes = [];
             scorePopups = []; rings = [];
 
             // ★Stage 10 (Battleship Boss) の初期化
@@ -3160,8 +3160,8 @@
                     enemies.forEach(other => {
                         if (other !== e && other.hp > 0) {
                             other.hp = 0;
-                            if (other.type === 'asteroid') other.noSplit = true;
-                            other.noDrop = true; // 画面がアイテムで埋まるのを防ぐ
+                            other.noSplit = true; // ★アステロイドが分裂しないようにする
+                            other.noDrop = true;  // 画面がアイテムで埋まるのを防ぐ
                         }
                     });
                     // 進行中のワームホールもすべて閉じる
@@ -3181,6 +3181,16 @@
                 gameSpeed = 0.05;
                 bullets = [];
                 enemyBullets = [];
+
+                // ★追加：ラスボス撃破時も、アステロイドを含めた全ての敵を連鎖爆発させる
+                enemies.forEach(other => {
+                    if (other !== e && other.hp > 0) {
+                        other.hp = 0;
+                        other.noSplit = true; // ★アステロイド分裂防止
+                        other.noDrop = true;  // アイテムドロップ防止
+                    }
+                });
+                wormholes.forEach(w => w.life = 0);
             }
             // --- 通常の敵の撃破 ---
             else {
@@ -4400,7 +4410,7 @@
 
         function updateCrystals() {
             crystals.forEach(c => {
-                c.life--;
+                c.life -= gameSpeed;
 
                 // --- 1. 初速（飛び散り）の適用 ---
                 // destroyEnemyで設定された vx, vy があれば使用します
@@ -4452,7 +4462,7 @@
                 // --- 1. 消失防止と寿命の更新 ---
                 // レベルアップアイテム以外は寿命を減らす
                 if (p.type !== 'level') {
-                    p.life--;
+                    p.life -= gameSpeed;
                 }
 
                 // 自機との距離と方向ベクトルを計算
