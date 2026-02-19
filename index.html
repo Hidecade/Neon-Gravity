@@ -4243,21 +4243,33 @@
                 // --- D. ミサイルの誘導 ---
                 if (eb.isMissile && eb.life > 0) {
 
-                    // ★ここを追加：移動前の現在地を記録（最大20個まで）
+                    // ★追加：追尾用タイマーの初期化（例: 120フレーム ＝ 約2秒間だけ追尾する）
+                    if (eb.homingTimer === undefined) {
+                        eb.homingTimer = 240;
+                    }
+
+                    // 軌跡（トレイル）の記録
                     if (eb.trail) {
                         eb.trail.unshift({ x: eb.x, y: eb.y });
                         if (eb.trail.length > 10) eb.trail.pop();
                     }
-                    // 慣性（少し値を上げ、初速を維持しやすくした）
-                    eb.vx *= 0.99; eb.vy *= 0.99;
 
-                    const dx = player.x - eb.x, dy = player.y - eb.y;
-                    const d = Math.hypot(dx, dy) || 0.001;
+                    // ★タイマーが残っている間だけ誘導（旋回）を行う
+                    if (eb.homingTimer > 0) {
+                        eb.homingTimer--; // タイマーを減らす
 
-                    // 加速度を 0.4 に強化（よりクイックにプレイヤーへ向きを変える）
-                    const accel = 0.4 * SPEED_SCALE;
-                    eb.vx += (dx / d) * accel * gameSpeed;
-                    eb.vy += (dy / d) * accel * gameSpeed;
+                        // 慣性（旋回を滑らかにするため）
+                        eb.vx *= 0.99; eb.vy *= 0.99;
+
+                        const dx = player.x - eb.x, dy = player.y - eb.y;
+                        const d = Math.hypot(dx, dy) || 0.001;
+
+                        // プレイヤーへ向けて加速
+                        const accel = 0.4 * SPEED_SCALE;
+                        eb.vx += (dx / d) * accel * gameSpeed;
+                        eb.vy += (dy / d) * accel * gameSpeed;
+                    }
+                    // タイマーが0になった後は、加速や旋回を行わず、現在の vx, vy のまま直進します
 
                     const v = Math.hypot(eb.vx, eb.vy);
 
@@ -4269,7 +4281,7 @@
                         eb.vy = (eb.vy / v) * cruiseSpeed;
                     }
 
-                    // プレイヤーのショットで撃墜できる判定（ここから下は変更なしでOK）
+                    // プレイヤーのショットで撃墜できる判定
                     bullets.forEach(b => {
                         const hitDist = 20 * G_SCALE;
                         if (b.life > 0 && Math.hypot(b.x - eb.x, b.y - eb.y) < hitDist) {
@@ -6327,6 +6339,10 @@
         }
 
         function drawHomingMissile(ctx, eb) {
+            // --- 0. フェードアウト処理の反映 ---
+            // eb.alpha が定義されている場合はそれを使用し、なければ 1.0 とする
+            const currentAlpha = (eb.alpha !== undefined) ? eb.alpha : 1.0;
+
             // --- 1. ジェット噴射の軌跡（トレイル）を描画 ---
             if (eb.trail && eb.trail.length > 1) {
                 ctx.save();
@@ -6336,39 +6352,40 @@
                 ctx.lineJoin = 'round';
                 ctx.lineCap = 'round';
 
-                // 軌跡の各セグメントをループで描画し、徐々に細く・薄くする
                 for (let i = 0; i < eb.trail.length - 1; i++) {
                     const p1 = eb.trail[i];
                     const p2 = eb.trail[i + 1];
-
-                    // 0.0（末端）から 1.0（ミサイル直後）に向かって変化する比率
                     const ratio = 1 - (i / eb.trail.length);
 
                     ctx.beginPath();
                     ctx.moveTo(p1.x, p1.y);
                     ctx.lineTo(p2.x, p2.y);
 
-                    // ① 外側の光（根元は太く、先端は細く）
+                    // ① 外側の光（全体の透明度 currentAlpha を掛ける）
                     ctx.strokeStyle = trailColor;
-                    ctx.lineWidth = 6 * ratio * G_SCALE; // 最大6から徐々に0へ
-                    ctx.globalAlpha = 0.2 * ratio;       // 透明度も先端ほど下げる
+                    ctx.lineWidth = 6 * ratio * G_SCALE;
+                    ctx.globalAlpha = 0.2 * ratio * currentAlpha; // ★修正
                     ctx.stroke();
 
-                    // ② 内側の白い芯（同様に先細りさせる）
+                    // ② 内側の白い芯
                     ctx.strokeStyle = '#fff';
                     ctx.lineWidth = 2 * ratio * G_SCALE;
-                    ctx.globalAlpha = 0.4 * ratio;
+                    ctx.globalAlpha = 0.4 * ratio * currentAlpha; // ★修正
                     ctx.stroke();
                 }
                 ctx.restore();
             }
 
-            // --- 2. ミサイル本体の描画（ここから下は変更なし） ---
+            // --- 2. ミサイル本体の描画 ---
             ctx.save();
+            // 本体描画全体にフェードアウトを適用
+            ctx.globalAlpha = currentAlpha; // ★追加
+
             const angle = Math.atan2(eb.vy, eb.vx);
             ctx.rotate(angle);
             const mSize = 12 * G_SCALE;
             const color = eb.color || '#f00';
+
             ctx.strokeStyle = color;
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -6377,11 +6394,15 @@
             ctx.lineTo(-mSize * 0.4, 0);
             ctx.lineTo(-mSize, -mSize * 0.6);
             ctx.closePath();
+
+            // 塗りの透明度はベースの透明度の半分にする
             ctx.fillStyle = color;
-            ctx.globalAlpha = 0.5;
+            ctx.globalAlpha = 0.5 * currentAlpha; // ★修正
             ctx.fill();
-            ctx.globalAlpha = 1.0;
+
+            ctx.globalAlpha = currentAlpha; // 線のために戻す
             ctx.stroke();
+
             ctx.fillStyle = '#fff';
             ctx.beginPath();
             ctx.arc(-mSize * 0.5, 0, 3 * G_SCALE, 0, Math.PI * 2);
