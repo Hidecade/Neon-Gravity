@@ -1058,8 +1058,8 @@
 
         // ステージごとの敵総出現数
         const STAGE_ENEMY_COUNTS = [
-            60,  // Stage 1
-            80,  // Stage 2
+            80,  // Stage 1
+            100,  // Stage 2
             50,  // Stage 3
             150, // Stage 4
             180, // Stage 5
@@ -1086,7 +1086,7 @@
             1: ['triangle', 'triangle', 'triangle', 'dragon'],
             2: ['triangle', 'triangle', 'tadpole', 'dragon'],
             3: ['asteroid', 'asteroid', 'asteroid', 'tadpole'],
-            4: ['triangle', 'triangle', 'tadpole', 'tadpole', 'dragon', 'dragon', 'asteroid'],
+            4: ['phantom', 'triangle', 'tadpole', 'tadpole', 'dragon', 'dragon', 'asteroid'],
             5: ['triangle', 'tadpole', 'dragon', 'triangle', 'hunter', 'asteroid'],
             6: ['triangle', 'tadpole', 'dragon', 'triangle', 'hunter', 'hunter', 'asteroid'],
             7: ['triangle', 'tadpole', 'dragon', 'dragon', 'hunter', 'hunter', 'asteroid'],
@@ -3112,7 +3112,7 @@
                     x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
                     hp: 2 + Math.floor(hpMag),
                     speed: ENEMY_SPEEDS.PHANTOM * spd * stageMag,
-                    color: '#b0f', // 紫系ネオン
+                    color: '#0ff', // ネオン
                     type: 'phantom',
                     angle: 0,
                     drop: dropType,
@@ -3473,20 +3473,26 @@
             }
 
             // --- 効果音と画面揺れ ---
-            if (e.type === 'boss') {
+            // --- ボス（大） ---
+            if (e.type === 'boss' || e.type === 'battleship') {
                 AudioSys.playSE('explode_large');
-                distortGrid(e.x, e.y, 100, 200);
-                // ミサイルも誘爆
-                enemyBullets.forEach(b => {
-                    if (b.isMissile) createExplosion(b.x, b.y, b.color, 5);
-                });
-                enemyBullets = enemyBullets.filter(b => !b.isMissile);
-            } else if (e.type === 'dragon' || e.type === 'asteroid') {
+            }
+            // --- アステロイドの判定 ---
+            else if (e.type === 'asteroid') {
+                // e.size === 1 が最大サイズです
+                if (e.size === 1) {
+                    AudioSys.playSE('explode_medium');
+                } else {
+                    AudioSys.playSE('explode_small');
+                }
+            }
+            // --- 中型（中）：Dragonなど ---
+            else if (e.type === 'dragon') {
                 AudioSys.playSE('explode_medium');
-                distortGrid(e.x, e.y, 40, 80);
-            } else {
+            }
+            // --- 小型（小）：その他雑魚 ---
+            else {
                 AudioSys.playSE('explode_small');
-                distortGrid(e.x, e.y, 30, 60);
             }
 
             // スコア加算
@@ -3870,58 +3876,116 @@
             const dist = Math.hypot(dx, dy) || 1;
 
             if (e.state === 'stealth') {
-                // ステルス状態：ゆっくり近づく
                 e.vx += (dx / dist) * 0.05 * gameSpeed;
                 e.vy += (dy / dist) * 0.05 * gameSpeed;
                 e.vx *= 0.95; e.vy *= 0.95;
                 e.angle = Math.atan2(e.vy, e.vx);
-
-                // 透明度を低く保つ
                 e.alpha += (0.15 - e.alpha) * 0.1;
 
-                // 距離が近づいたら姿を現す
-                if (dist < 280) {
-                    e.state = 'appear';
+                if (dist < 500) {
+                    e.state = 'approach';
                     e.timer = 0;
                 }
-            } else if (e.state === 'appear') {
-                // 実体化状態：足を止めて自機をロックオン
+            }
+            else if (e.state === 'approach') {
+                const approachSpd = 12 * SPEED_SCALE;
+                e.vx += (dx / dist) * 0.8 * gameSpeed;
+                e.vy += (dy / dist) * 0.8 * gameSpeed;
+
+                const currentV = Math.hypot(e.vx, e.vy);
+                if (currentV > approachSpd) {
+                    e.vx = (e.vx / currentV) * approachSpd;
+                    e.vy = (e.vy / currentV) * approachSpd;
+                }
+
+                e.angle = Math.atan2(e.vy, e.vx);
+
+                // 徐々に実体化（出現）
+                e.alpha += (1.0 - e.alpha) * 0.08;
+                e.timer += gameSpeed;
+
+                // ★修正ポイント：実体化がほぼ完了（alpha > 0.8）し、かつ接近した場合のみ攻撃へ
+                if (dist < 250 && e.alpha > 0.8) {
+                    e.state = 'attack';
+                    e.timer = 0;
+                }
+            }
+            else if (e.state === 'attack') {
                 e.vx *= 0.8; e.vy *= 0.8;
+
                 const targetAngle = Math.atan2(dy, dx);
                 let diff = targetAngle - e.angle;
                 while (diff <= -Math.PI) diff += Math.PI * 2;
                 while (diff > Math.PI) diff -= Math.PI * 2;
-                e.angle += diff * 0.2;
+                e.angle += diff * 0.1;
 
-                // 姿を現す（明滅）
                 e.timer += gameSpeed;
-                e.alpha = 0.5 + Math.sin(e.timer * 0.5) * 0.5;
 
-                // 一定時間後に突進開始
-                if (e.timer > 30) {
-                    e.state = 'dash';
-                    e.timer = 0;
-                    const dashSpd = 18 * SPEED_SCALE;
-                    e.vx = Math.cos(e.angle) * dashSpd;
-                    e.vy = Math.sin(e.angle) * dashSpd;
-                    e.alpha = 1.0;
-                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
+                // --- 照準アニメーションのロジック ---
+                // 0から1に向かって増加するエイム率。30フレームかけて1.0にする。
+                e.aimRate = Math.min(1.0, e.timer / 30);
+
+                // 予告レーザーの表示
+                e.isAiming = (e.timer < 30);
+
+                if (e.timer === 30) {
+                    e.isAiming = false;
+                    for (let i = 0; i < 4; i++) {
+                        const orbitAngle = e.rotAngle + (Math.PI / 2) * i;
+                        const orbitDist = 38;
+                        const shootX = e.x + Math.cos(orbitAngle) * orbitDist;
+                        const shootY = e.y + Math.sin(orbitAngle) * orbitDist;
+
+                        // ★ 弾速を10から20へ倍増。この敵のみの専用設定
+                        const bulletSpd = 20 * SPEED_SCALE;
+                        const aim = Math.atan2(player.y - shootY, player.x - shootX);
+
+                        enemyBullets.push({
+                            x: shootX,
+                            y: shootY,
+                            vx: Math.cos(aim) * bulletSpd,
+                            vy: Math.sin(aim) * bulletSpd,
+                            life: 200,
+                            color: e.color,
+                            isLaserMissile: true // 鋭いレーザー外見
+                        });
+                    }
+                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
+                    distortGrid(e.x, e.y, 40, 100);
                 }
-            } else if (e.state === 'dash') {
-                // 突進状態：直進のみ
-                e.timer += gameSpeed;
-                e.trail.unshift({ x: e.x, y: e.y });
-                if (e.trail.length > 8) e.trail.pop();
 
-                // 一定時間経過か、画面端到達で再びステルスへ
-                if (e.timer > 50 || e.x <= WALL_MARGIN || e.x >= worldSize - WALL_MARGIN || e.y <= WALL_MARGIN || e.y >= worldSize - WALL_MARGIN) {
+                if (e.timer > 60) {
+                    e.state = 'retreat';
+                    e.timer = 0;
+                    e.aimRate = 0; // 離脱時はエイム解除
+                }
+            }
+            else if (e.state === 'retreat') {
+                const retreatSpd = 8 * SPEED_SCALE;
+                e.vx -= (dx / dist) * 0.4 * gameSpeed;
+                e.vy -= (dy / dist) * 0.4 * gameSpeed;
+
+                const currentV = Math.hypot(e.vx, e.vy);
+                if (currentV > retreatSpd) {
+                    e.vx = (e.vx / currentV) * retreatSpd;
+                    e.vy = (e.vy / currentV) * retreatSpd;
+                }
+
+                e.angle = Math.atan2(e.vy, e.vx);
+                // 離脱しながら少しずつ透明度を下げる
+                e.alpha += (0.4 - e.alpha) * 0.05;
+                e.timer += gameSpeed;
+
+                if (dist > 450 || e.timer > 100) {
                     e.state = 'stealth';
-                    e.trail = [];
+                    e.timer = 0;
                 }
             }
 
             e.x += e.vx * gameSpeed;
             e.y += e.vy * gameSpeed;
+            e.x = Math.max(100, Math.min(worldSize - 100, e.x));
+            e.y = Math.max(100, Math.min(worldSize - 100, e.y));
         }
 
         function updateEclipseAI(e) {
@@ -6225,108 +6289,120 @@
             const scale = e.scale * G_SCALE;
             ctx.scale(scale, scale);
 
+            ctx.globalAlpha = e.alpha;
             ctx.globalCompositeOperation = 'lighter';
 
-            // --- 2. 3D計算（垂直にコインが回るような回転） ---
-            // ★ゆっくり回るように速度を調整
-            const rotSpeed = e.state === 'dash' ? 0.2 : 0.01;
-            if (e.rotAngle === undefined) e.rotAngle = Math.random() * Math.PI * 2;
-            e.rotAngle += rotSpeed;
+            // ゆっくりとした公転
+            const orbitSpeed = 0.05;
+            if (e.rotAngle === undefined) e.rotAngle = 0;
+            e.rotAngle += orbitSpeed;
 
-            // 簡易3D投影
-            const project = (x, y, z) => {
-                // ★ Y軸回転（立てたコインが垂直に回る動き）
-                const x1 = x * Math.cos(e.rotAngle) - z * Math.sin(e.rotAngle);
-                const z1 = x * Math.sin(e.rotAngle) + z * Math.cos(e.rotAngle);
-                const y1 = y;
-
-                // ★ X軸回転（少し上から見下ろす角度をつけて立体感と厚みを見せる）
-                const tilt = 0.4;
-                const y2 = y1 * Math.cos(tilt) - z1 * Math.sin(tilt);
-
-                return { px: x1, py: y2 };
-            };
-
-            // サイズ (1.3倍)
-            const R = 20.8; // 外径 
-            const r = 11.7; // 内径 
-            const h = 7.8;  // 厚みの半分 
-            const sides = 8; // 八角形
-
-            const projOuterTop = [];
-            const projInnerTop = [];
-            const projOuterBot = [];
-            const projInnerBot = [];
-
-            // 頂点生成と投影
-            for (let i = 0; i < sides; i++) {
-                const a = (Math.PI * 2 / sides) * i;
-                const cx = Math.cos(a);
-                const cy = Math.sin(a);
-
-                // XY平面に八角形を作り、Z方向で厚みを表現
-                projOuterTop.push(project(cx * R, cy * R, h));
-                projInnerTop.push(project(cx * r, cy * r, h));
-                projOuterBot.push(project(cx * R, cy * R, -h));
-                projInnerBot.push(project(cx * r, cy * r, -h));
-            }
-
-            // 描画ヘルパー
-            const drawLoop = (pts) => {
-                ctx.beginPath();
-                pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.px, p.py) : ctx.lineTo(p.px, p.py));
-                ctx.closePath();
-                ctx.stroke();
-            };
-
-            // --- 3. シンプルなワイヤーフレーム描画 ---
-            ctx.globalAlpha = e.alpha;
-            ctx.strokeStyle = e.color;
-            ctx.lineWidth = 2.5;
-
-            // 4つのリングを描く
-            drawLoop(projOuterTop);
-            drawLoop(projInnerTop);
-            drawLoop(projOuterBot);
-            drawLoop(projInnerBot);
-
-            // 上下のリングを繋ぐ厚み方向の線を描く
-            ctx.beginPath();
-            for (let i = 0; i < sides; i++) {
-                ctx.moveTo(projOuterTop[i].px, projOuterTop[i].py);
-                ctx.lineTo(projOuterBot[i].px, projOuterBot[i].py);
-                ctx.moveTo(projInnerTop[i].px, projInnerTop[i].py);
-                ctx.lineTo(projInnerBot[i].px, projInnerBot[i].py);
-            }
-            ctx.stroke();
-
-            // --- 4. 赤-オレンジの点滅するコア ---
-            const center = project(0, 0, 0);
-
-            // 色を赤(Hue:0付近)〜オレンジ(Hue:30付近)で明滅させる
-            const hue = 15 + Math.sin(frame * 0.25) * 15;
+            // --- 1. 中央コア（重層描画） ---
+            const hue = 15 + Math.sin(frame * 0.2) * 15;
+            const corePulse = 1.0 + Math.sin(frame * 0.3) * 0.1;
             const coreColor = `hsl(${hue}, 100%, 60%)`;
-            const pulse = 1.2 + Math.sin(frame * 0.4) * 0.3;
+            const coreColorOuter = `hsl(${hue}, 100%, 30%)`;
 
-            // 強い発光
+            ctx.fillStyle = coreColorOuter;
+            ctx.beginPath(); ctx.arc(0, 0, 10 * corePulse, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = coreColor;
-            ctx.shadowBlur = 20 * pulse;
-            ctx.shadowColor = coreColor;
-            ctx.globalAlpha = 1.0;
-
-            ctx.beginPath();
-            const coreSize = (e.state === 'dash' ? 6.5 : 4.5) * pulse;
-            ctx.arc(center.px, center.py, coreSize, 0, Math.PI * 2);
-            ctx.fill();
-
-            // 中心に白い芯
+            ctx.beginPath(); ctx.arc(0, 0, 7 * corePulse, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#fff';
-            ctx.shadowBlur = 5;
-            ctx.beginPath();
-            ctx.arc(center.px, center.py, coreSize * 0.5, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 0, 3 * corePulse, 0, Math.PI * 2); ctx.fill();
 
-            ctx.shadowBlur = 0;
+            // --- 照準レーザー ---
+            if (e.isAiming) {
+                const targetX = (player.x - e.x) / scale;
+                const targetY = (player.y - e.y) / scale;
+                const laserAlpha = 0.4 + Math.sin(frame * 0.8) * 0.2;
+                ctx.save();
+                ctx.setLineDash([8, 12]);
+                ctx.lineDashOffset = -frame * 3;
+                ctx.lineWidth = 4.0 * G_SCALE;
+                ctx.strokeStyle = `rgba(255, 0, 0, ${laserAlpha * 0.4})`;
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(targetX, targetY); ctx.stroke();
+                ctx.lineWidth = 1.2 * G_SCALE;
+                ctx.strokeStyle = `rgba(255, 200, 200, ${laserAlpha})`;
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(targetX, targetY); ctx.stroke();
+                ctx.restore();
+            }
+
+            // --- 2. 三角錐パーツ ---
+            const pts = [
+                { x: 15, y: 0, z: 0 },    // 先端
+                { x: -10, y: 10, z: 5 },   // 底面1
+                { x: -10, y: -10, z: 5 },  // 底面2
+                { x: -10, y: 0, z: -9 }    // 底面3
+            ];
+
+            // 各パーツの共通目標：プレイヤーへの角度
+            const lookAtAngle = Math.atan2(player.y - e.y, player.x - e.x);
+            const aimRate = e.aimRate || 0;
+
+            const project = (pt, i, orbitDist, targetAngle, rate) => {
+                // このパーツの現在の公転角度
+                const currentOrbitAngle = e.rotAngle + (Math.PI / 2) * i;
+
+                // 公転位置の算出
+                const ox = Math.cos(currentOrbitAngle) * orbitDist;
+                const oy = Math.sin(currentOrbitAngle) * orbitDist;
+
+                // --- 最短回転のロジック ---
+                // 狙っていない時(rate=0)は外側を向く(= currentOrbitAngle)
+                // 狙い始めると(rate>0)最短距離でtargetAngleへ向く
+                let startAng = currentOrbitAngle;
+                let endAng = targetAngle;
+
+                // 角度の差を -PI 〜 PI に正規化して、360度以上の無駄な回転を防ぐ
+                let diff = endAng - startAng;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+
+                // 現在のエイム率を掛けて、現在の向きを決定
+                const currentLookAngle = startAng + diff * rate;
+
+                // 回転計算（無駄なロール回転を排除）
+                const rx = pt.x * Math.cos(currentLookAngle) - pt.y * Math.sin(currentLookAngle);
+                const ry = pt.x * Math.sin(currentLookAngle) + pt.y * Math.cos(currentLookAngle);
+                const rz = pt.z;
+
+                // 3D投影
+                const tilt = 0.4;
+                const finalY = ry * Math.cos(tilt) - rz * Math.sin(tilt);
+
+                return { px: rx + ox, py: finalY + oy };
+            };
+
+            const lines = [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]];
+
+            for (let i = 0; i < 4; i++) {
+                const dist = 35 + Math.sin(frame * 0.05) * 2;
+                const p = pts.map(pt => project(pt, i, dist, lookAtAngle, aimRate));
+
+                // --- ネオンライン描画 (shadowBlurなし・lighter合成) ---
+                ctx.strokeStyle = e.color;
+                ctx.lineWidth = 4;
+                ctx.globalAlpha = e.alpha * 0.25;
+                ctx.beginPath();
+                lines.forEach(l => { ctx.moveTo(p[l[0]].px, p[l[0]].py); ctx.lineTo(p[l[1]].px, p[l[1]].py); });
+                ctx.stroke();
+
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = e.alpha * 0.7;
+                ctx.beginPath();
+                lines.forEach(l => { ctx.moveTo(p[l[0]].px, p[l[0]].py); ctx.lineTo(p[l[1]].px, p[l[1]].py); });
+                ctx.stroke();
+
+                // 面の塗り
+                ctx.save();
+                ctx.globalAlpha = e.alpha * 0.12;
+                ctx.fillStyle = e.color;
+                ctx.beginPath();
+                ctx.moveTo(p[0].px, p[0].py); ctx.lineTo(p[1].px, p[1].py); ctx.lineTo(p[2].px, p[2].py);
+                ctx.fill();
+                ctx.restore();
+            }
 
             ctx.restore();
         }
