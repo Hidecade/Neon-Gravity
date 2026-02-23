@@ -1028,11 +1028,15 @@
         const WALL_MARGIN = 5;        // 画面端の見えない壁の余白
         const GRID_SPACING = 32;      // 背景グリッド線の間隔（小さいほど網目が細かい）
 
+        // ★追加：iPhoneの画面サイズ（長辺）を基準とする
+        const REFERENCE_SIZE = 850;
+        let baseAppScale = 1.0; // 画面サイズによる基本拡大率
+
         let gameSpeed = 1.0;          // ゲーム速度係数（動的なスロー演出用）
         let cameraScale = 1.0;        // カメラのズーム倍率（1.0=通常、0.75=縮小）
         let frame = 0;                // 経過フレームカウント
         let width, height;            // 画面サイズ（resize関数で設定）
-        let worldSize = 0;            // ワールドサイズ（resize関数で設定）
+        let worldSize = 1500;            // ワールドサイズ（resize関数で設定）
 
         let gameState = 'TITLE';      // 現在のゲーム状態 ('TITLE', 'PLAYING', 'PAUSED', 'DYING', 'GAMEOVER_UI', 'ENDING', 'OST')
         let previousGameState = '';   // ポーズ前の状態保存用
@@ -1058,14 +1062,14 @@
 
         // ステージごとの敵総出現数
         const STAGE_ENEMY_COUNTS = [
-            100,  // Stage 1
-            120,  // Stage 2
+            60,  // Stage 1
+            80,  // Stage 2
             70,  // Stage 3
-            150, // Stage 4
+            120, // Stage 4
             180, // Stage 5
             220, // Stage 6
-            280, // Stage 7
-            400  // Stage 8 (Final)
+            250, // Stage 7
+            360  // Stage 8 (Final)
         ];
 
         // 画面内に同時に存在できる敵の最大数（ステージ別）
@@ -1430,7 +1434,7 @@
                         o.type = 'sawtooth';
                         o.frequency.setValueAtTime(freq, startTime);
                         o.frequency.linearRampToValueAtTime(freq * 1.8, startTime + duration);
-                        const volume = 0.10;
+                        const volume = 0.08;
                         subG.gain.setValueAtTime(volume, startTime);
                         subG.gain.linearRampToValueAtTime(volume, startTime + duration - 0.1);
                         subG.gain.linearRampToValueAtTime(0, startTime + duration);
@@ -1576,7 +1580,7 @@
                 o.type = 'sine';
                 o.frequency.setValueAtTime(600, t);
                 o.frequency.linearRampToValueAtTime(1800, t + 0.2);
-                g.gain.setValueAtTime(0.3, t);
+                g.gain.setValueAtTime(0.2, t);
                 g.gain.linearRampToValueAtTime(0, t + 0.2);
                 return { osc: o, duration: 0.2 };
             },
@@ -1603,20 +1607,71 @@
                 return { osc: o, duration: 0.5 };
             },
 
-            // ボス被弾音
+            // ボス被弾音（金属の削れ音 ＋ 重低音の「バンー！」）
             boss_hit: (ctx, t, g) => {
+                const dur = 0.18; // ★低音を響かせるため、少しだけ余韻を伸ばす
+
+                // --- ステレオパンナー ---
+                const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
+                if (panner.pan) {
+                    panner.pan.value = (Math.random() - 0.5) * 1.2;
+                }
+                panner.connect(g);
+
+                // ==========================================
+                // 1. 今までの金属的なヒット音（中〜高音域）
+                // ==========================================
                 const o = ctx.createOscillator();
-                const f = ctx.createBiquadFilter();
-                o.type = 'square';
-                f.type = 'lowpass'; f.Q.value = 8;
-                o.frequency.setValueAtTime(350, t);
-                o.frequency.exponentialRampToValueAtTime(50, t + 0.15);
-                f.frequency.setValueAtTime(3000, t);
-                f.frequency.exponentialRampToValueAtTime(100, t + 0.1);
-                g.gain.setValueAtTime(0.08, t);
-                g.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
-                o.connect(f); f.connect(g);
-                return { osc: o, duration: 0.15 };
+                o.type = 'sawtooth';
+
+                const basePitch = 95 + Math.random() * 10;
+                o.frequency.setValueAtTime(basePitch, t);
+                o.frequency.exponentialRampToValueAtTime(basePitch - 10, t + dur);
+
+                const mod = ctx.createOscillator();
+                mod.type = 'square';
+                mod.frequency.value = 750 + Math.random() * 100;
+
+                const modGain = ctx.createGain();
+                modGain.gain.value = 600;
+
+                mod.connect(modGain);
+                modGain.connect(o.frequency);
+
+                mod.start(t);
+                mod.stop(t + dur);
+
+                const env = ctx.createGain();
+                env.gain.setValueAtTime(0.15, t);
+                env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+                o.connect(env);
+                env.connect(panner);
+                o.start(t);
+                o.stop(t + dur);
+
+                // ==========================================
+                // 2. ★追加：重低音の「バンー！」（サブベース）
+                // ==========================================
+                const subOsc = ctx.createOscillator();
+                subOsc.type = 'sine'; // 重低音に最適な「サイン波」を使用
+
+                // ドスッという打撃感を出すため、150Hzから地響きの30Hzへ急降下させる
+                subOsc.frequency.setValueAtTime(150, t);
+                subOsc.frequency.exponentialRampToValueAtTime(30, t + 0.1);
+
+                const subEnv = ctx.createGain();
+                // 低音は人間の耳に聞こえにくいため、音量を大きめ(0.4)に設定
+                subEnv.gain.setValueAtTime(0.4, t);
+                subEnv.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+                subOsc.connect(subEnv);
+                subEnv.connect(panner); // 低音もステレオに合わせて出力
+
+                subOsc.start(t);
+                subOsc.stop(t + dur);
+
+                return { osc: null, duration: dur };
             },
 
             // 短く鋭い破裂音（パシッ！）
@@ -1791,6 +1846,7 @@
                 // 別の曲を再生する場合
                 this.bgmEl.pause();
                 this.bgmEl.src = src;
+                this.currentSrc = src; // ★追加：現在再生中の曲を記憶する
                 this.bgmEl.currentTime = 0;
                 this.bgmEl.volume = 0.4; // 音量調整
 
@@ -1835,7 +1891,8 @@
 
             pauseBGM() { if (this.bgmEl && !this.bgmEl.paused) this.bgmEl.pause(); },
             resumeBGM() {
-                if (this.bgmEl && this.bgmEl.paused && this.currentSrc) {
+                // currentSrcの代わりに、bgmElにsrcがセットされているかを確認する
+                if (this.bgmEl && this.bgmEl.paused && this.bgmEl.src) {
                     this.bgmEl.play().catch(() => { });
                 }
             }
@@ -1897,8 +1954,14 @@
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
-            const size = Math.max(width, height) * 1.5;
-            worldSize = size;
+
+            // ★修正：現在の画面サイズと基準サイズ(850)を比較して、拡大率を計算
+            const maxDim = Math.max(width, height);
+            baseAppScale = maxDim / REFERENCE_SIZE;
+
+            // worldSizeは固定にしたので、ここの計算は削除します
+            // const size = Math.max(width, height) * 1.5;
+            // worldSize = size;
 
             initGrid();
             initStars();
@@ -2672,7 +2735,9 @@
                 const camT = 1 - Math.pow(1 - t, 5);
 
                 const dist = Math.hypot(player.x - boss.x, player.y - boss.y) || 0.1;
-                const maxDist = 2200;
+
+                // ★修正：maxDistを固定されたworldSize(1500)に合わせて少し小さくする
+                const maxDist = 1500;
                 const ratio = Math.min(dist / maxDist, 1.0);
 
                 // 2. ズーム目標値の計算
@@ -2684,11 +2749,15 @@
                 focusY = player.y + (boss.y - player.y) * bias;
             }
 
+            // ★追加：基本の拡大率(baseAppScale)を掛けて、最終的なスケールにする
+            const finalTargetScale = targetScale * baseAppScale;
+
             // 4. スムージング
-            cameraScale += (targetScale - cameraScale) * 0.04 * gameSpeed;
+            cameraScale += (finalTargetScale - cameraScale) * 0.04 * gameSpeed;
 
             // 5. ズームが進むほど強制的に中央へ寄せる補正
-            let zoomFactor = Math.max(0, Math.min(1, (1.0 - cameraScale) / 0.8));
+            // ★修正：ズームイン時の補正割合を baseAppScale 基準に変更
+            let zoomFactor = Math.max(0, Math.min(1, (baseAppScale - cameraScale) / (0.8 * baseAppScale)));
             const centerStrength = Math.pow(zoomFactor, 3);
 
             focusX = focusX * (1 - centerStrength) + (worldSize / 2) * centerStrength;
@@ -2702,8 +2771,9 @@
             let ty = focusY - viewH / 2;
 
             // 7. クランプ処理（境界チェック）
-            let padX = 150;
-            let padY = 125;
+            // ★修正：UI等のパディングもスケールに合わせて調整
+            let padX = 150 / baseAppScale;
+            let padY = 125 / baseAppScale;
             if (height > width) { padX = 0; } else { padY = 0; }
 
             if (viewW < worldSize) {
@@ -3061,7 +3131,7 @@
                     rotZ: Math.random() * Math.PI
                 };
                 enemies.push(leader);
-                spawnedCount++;
+                spawnedCount += 0.2;
 
                 // --- 2. 取り巻き（フォロワー）の生成 ---
                 // リーダーを中心に左右2台ずつ、計4台を配置
@@ -3107,7 +3177,7 @@
                         rotZ: Math.random() * Math.PI
                     });
                     leader.followers.push(enemies[enemies.length - 1]);
-                    spawnedCount++;
+                    spawnedCount += 0.2;
                 }
             } else if (type === 'boss') {
                 const variantIndex = (stage - 1) % BOSS_VARIANTS.length;
@@ -3674,6 +3744,12 @@
                     // 進行中のワームホールもすべて閉じる
                     wormholes.forEach(w => w.life = 0);
 
+                    // ★追加：残っている敵弾をすべて小さな爆発エフェクトにしてから消去
+                    enemyBullets.forEach(eb => {
+                        createExplosion(eb.x, eb.y, eb.color || '#fff', 3);
+                    });
+                    enemyBullets = [];
+
                     // 派手なグリッドの歪み
                     distortGrid(e.x, e.y, 200, 500);
                 }
@@ -3703,7 +3779,11 @@
             else {
                 // asteroid または bubble 以外の場合に撃破数を加算する
                 if (e.type !== 'asteroid' && e.type !== 'bubble') {
-                    enemiesKilled++;
+                    if (e.type === 'triangle') {
+                        enemiesKilled += 0.2;
+                    } else {
+                        enemiesKilled += 1;
+                    }
                 }
             }
 
@@ -5706,7 +5786,9 @@
 
             // UI要素（ワールド座標系でないものも含むが、ここでは便宜上呼び出し）
             if (gameState === 'PLAYING' || gameState === 'DYING') {
-                drawMiniMap();
+                if (frame % 3 === 0) {
+                    drawMiniMap();
+                }
             }
             drawScorePopups();
 
@@ -6921,6 +7003,7 @@
 
             // コアの外光（グローエフェクト）
             ctx.globalCompositeOperation = 'lighter';
+
             ctx.shadowBlur = isAiming ? 25 : 15;
             ctx.shadowColor = '#ff0000';
 
@@ -7578,7 +7661,7 @@
             ctx.save();
             ctx.translate(e.x, e.y);
 
-            // 1. 出現演出 (最適化: 高速なイージング)
+            // 1. 出現演出
             if (e.isSpawning) {
                 const t = e.spawnTimer / e.spawnMax;
                 const easeOut = 1 - Math.pow(1 - t, 4);
@@ -7600,10 +7683,8 @@
             const sides = e.variant.sides;
             const baseColor = e.color;
             const mainStroke = isDmg ? '#ffffff' : baseColor;
-            // ★追加: リアクター用の深紅カラー定義
             const reactorColor = isDmg ? '#ffffff' : '#cc0000';
 
-            // 全体の基本半径
             const baseRadius = 45;
 
             // --- 4. 中層：土台・トラス構造 ---
@@ -7619,43 +7700,39 @@
             }
             ctx.stroke(); ctx.restore();
 
-            // --- 4.5. 内装フレーム (追加) ---
+            // --- 4.5. 内装フレーム ---
             ctx.save();
-            // 内側のフレームなので、土台より少し小さくする
             const innerFrameRad = baseRadius * 0.85;
 
-            // メインカラーを少し暗くして、奥行き感を出す
             ctx.strokeStyle = mainStroke;
-            ctx.lineWidth = 0.8; // 細い線で精密感を出す
-            ctx.globalAlpha = 0.5; // 半透明にして内部構造らしく見せる
+            ctx.lineWidth = 0.8;
+            ctx.globalAlpha = 0.5;
 
             ctx.beginPath();
             for (let i = 0; i < sides; i++) {
-                // 現在の頂点の角度
                 const angle1 = (Math.PI * 2 / sides) * i - Math.PI / 2;
-                // 次の頂点の角度
                 const angle2 = (Math.PI * 2 / sides) * (i + 1) - Math.PI / 2;
-                // 2つの頂点の中間の角度
                 const midAngle = (angle1 + angle2) / 2;
 
-                // 1. 頂点から中心に向かうフレーム
                 ctx.moveTo(Math.cos(angle1) * innerFrameRad, Math.sin(angle1) * innerFrameRad);
                 ctx.lineTo(Math.cos(angle1) * (innerFrameRad * 0.3), Math.sin(angle1) * (innerFrameRad * 0.3));
 
-                // 2. 頂点間をつなぐ、少し内側に凹んだトラス構造
                 ctx.moveTo(Math.cos(angle1) * innerFrameRad, Math.sin(angle1) * innerFrameRad);
-                // 中間の角度の、少し内側の点に向かって線を引く
                 ctx.lineTo(Math.cos(midAngle) * (innerFrameRad * 0.6), Math.sin(midAngle) * (innerFrameRad * 0.6));
-                // 次の頂点に向かって線を引く
                 ctx.lineTo(Math.cos(angle2) * innerFrameRad, Math.sin(angle2) * innerFrameRad);
             }
-            // 内側の小さな多角形も描く
             drawPolygonPath(ctx, innerFrameRad * 0.3, sides);
 
             ctx.stroke();
             ctx.restore();
 
-            // --- 5. 精密砲台モジュール (角の数だけ配置) ---
+            // ★軽量化ポイント1: 砲台のグラデーションをループの外で1回だけ生成して使い回す
+            const modGrad = ctx.createLinearGradient(-10, -20, 10, 20);
+            modGrad.addColorStop(0, 'rgba(40, 40, 40, 0.95)');
+            modGrad.addColorStop(0.5, 'rgba(10, 10, 10, 0.95)');
+            modGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+
+            // --- 5. 精密砲台モジュール ---
             for (let i = 0; i < sides; i++) {
                 ctx.save();
                 ctx.rotate((Math.PI * 2 / sides) * i);
@@ -7672,10 +7749,7 @@
 
                 // B. 天面
                 ctx.translate(0, -3);
-                const modGrad = ctx.createLinearGradient(-10, -20, 10, 20);
-                modGrad.addColorStop(0, 'rgba(40, 40, 40, 0.95)');
-                modGrad.addColorStop(0.5, 'rgba(10, 10, 10, 0.95)');
-                modGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+                // ★軽量化: 生成済みのグラデーションを適用
                 ctx.fillStyle = modGrad;
                 ctx.beginPath();
                 ctx.moveTo(-12, -35); ctx.lineTo(12, -35); ctx.lineTo(14, 15);
@@ -7683,11 +7757,11 @@
                 ctx.closePath(); ctx.fill();
                 ctx.strokeStyle = mainStroke; ctx.lineWidth = 1; ctx.stroke();
 
-                // C. リアクター (★変更: 深紅の発光)
+                // C. リアクター 
                 ctx.save();
                 ctx.globalCompositeOperation = 'lighter';
                 const energyPulse = Math.sin(frame * 0.3 + i) * 0.3 + 0.7;
-                ctx.fillStyle = reactorColor; // 深紅を適用
+                ctx.fillStyle = reactorColor;
                 ctx.globalAlpha = energyPulse;
                 for (let k = 0; k < 5; k++) {
                     const y = -10 + k * 6;
@@ -7696,18 +7770,15 @@
                 }
                 ctx.restore();
 
-                // D. 砲身 (★変更: 大きく突き出すように延長)
+                // D. 砲身 
                 ctx.strokeStyle = mainStroke;
                 ctx.lineWidth = 1;
                 ctx.beginPath();
-                // 根元のレール部分
                 ctx.moveTo(-6, -35); ctx.lineTo(-6, -10);
                 ctx.moveTo(6, -35); ctx.lineTo(6, -10);
-                // 先端の砲身（大幅に延長: 25 -> 50）
                 ctx.moveTo(0, 10); ctx.lineTo(0, 50);
                 ctx.stroke();
 
-                // 砲口のアクセント
                 ctx.fillStyle = mainStroke;
                 ctx.beginPath(); ctx.arc(0, 50, 1.5, 0, Math.PI * 2); ctx.fill();
 
@@ -7717,37 +7788,28 @@
             // --- 6. 多層外殻フレーム ---
             ctx.save();
             const layers = 4;
-            // ★変更: 外側への広がりを大きくして、線と線の間の「隙間」をしっかり確保する
-            const outerRad = baseRadius + 28; // 12 から 28 に拡大
-            const innerRad = baseRadius + 2;  // 本体から少しだけ離す
+            const outerRad = baseRadius + 28;
+            const innerRad = baseRadius + 2;
 
             for (let i = 0; i < layers; i++) {
                 const ratio = i / (layers - 1);
-
-                // ★変更: 外側に行くほど少しずつ間隔が広がるように計算（立体感アップ）
                 const r = innerRad + (outerRad - innerRad) * Math.pow(ratio, 1.2);
-
-                // ★変更: 内側を濃く、外側に広がるほど薄く消えていくグラデーション表現
                 const layerAlpha = 0.15 + 0.6 * (1 - ratio);
-
-                // ★変更: 線が太すぎるとくっついてしまうので、細くて鋭い線にする
                 const layerWidth = 1.2 - (0.7 * ratio);
 
                 ctx.beginPath();
                 drawPolygonPath(ctx, r, sides);
                 ctx.strokeStyle = mainStroke;
-                ctx.lineWidth = Math.max(0.5, layerWidth); // 最小でも0.5の太さは維持
+                ctx.lineWidth = Math.max(0.5, layerWidth);
                 ctx.globalAlpha = layerAlpha;
                 ctx.stroke();
             }
 
-            // フレーム接続リブ（放射状の支柱）
             ctx.beginPath();
             ctx.lineWidth = 2.0;
             ctx.strokeStyle = mainStroke;
             ctx.globalAlpha = 0.5;
             for (let i = 0; i < sides; i++) {
-                // 砲台と同じ位置（頂点）から支柱を伸ばす
                 const angle = (Math.PI * 2 / sides) * i - Math.PI / 2;
                 ctx.moveTo(Math.cos(angle) * innerRad, Math.sin(angle) * innerRad);
                 ctx.lineTo(Math.cos(angle) * outerRad, Math.sin(angle) * outerRad);
@@ -7776,9 +7838,17 @@
             const coreSize = socketRad * 0.6 + pulse * 1.5;
 
             ctx.globalCompositeOperation = 'lighter';
-            ctx.shadowBlur = isDmg ? 40 : 20;
-            ctx.shadowColor = mainStroke;
 
+            // ★軽量化ポイント2: shadowBlurを廃止し、疑似グロー（半透明の重ね塗り）で発光を表現
+            const glowSize = isDmg ? 1.8 : 1.4;
+            ctx.fillStyle = mainStroke;
+            ctx.globalAlpha = isDmg ? 0.5 : 0.15;
+            ctx.beginPath();
+            drawPolygonPath(ctx, coreSize * glowSize, sides);
+            ctx.fill();
+
+            // コア下塗り
+            ctx.globalAlpha = 1.0;
             ctx.fillStyle = 'rgba(10, 0, 0, 0.8)';
             ctx.beginPath(); drawPolygonPath(ctx, coreSize, sides); ctx.fill();
 
@@ -7792,7 +7862,6 @@
                 ctx.fillStyle = mainStroke;
                 ctx.globalAlpha = alpha3d * 0.3;
                 ctx.lineWidth = 1.5;
-                ctx.shadowBlur = 0;
                 ctx.beginPath(); drawPolygonPath(ctx, coreSize * scale3d, sides);
                 ctx.fill(); ctx.stroke();
                 ctx.beginPath();
@@ -7803,8 +7872,16 @@
                 }
                 ctx.stroke(); ctx.restore();
             }
-            ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 10; ctx.shadowColor = '#fff';
+
+            // ★軽量化ポイント3: 中心の白い光も疑似グローへ変更
+            ctx.fillStyle = mainStroke;
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = 1.0;
             ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
+
             ctx.restore(); // コア終了
 
             // --- 9. ダメージエフェクト ---
@@ -7821,6 +7898,7 @@
             }
             ctx.restore(); // 全体終了
         }
+
 
         // --- 巨大戦艦（ラスボス）の描画 ---
         function drawBattleshipBoss(ctx, e) {
@@ -8396,7 +8474,9 @@
                 ui.enemyBar.style.width = `${(1 - progress) * 100}%`;
                 document.querySelector('.bar-label.enemy').innerText = `BOSS RUSH: ${rushBossIndex}/8`;
             } else {
-                const enemyRemains = Math.max(0, enemiesToSpawn - enemiesKilled);
+                // ★修正4: 浮動小数点の誤差を消すため Math.ceil() で整数に切り上げる
+                const rawRemains = enemiesToSpawn - enemiesKilled;
+                const enemyRemains = Math.max(0, Math.ceil(rawRemains));
                 ui.enemyBar.style.width = `${(enemyRemains / enemiesToSpawn) * 100}%`;
                 document.querySelector('.bar-label.enemy').innerText = `ENEMY: ${enemyRemains}`;
             }
