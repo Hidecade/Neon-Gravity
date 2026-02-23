@@ -1370,7 +1370,16 @@
             boss: 'audio/Neon_Gravity_Boss.mp3',
             last: 'audio/Neon_Gravity_Last.mp3',
             story: 'audio/Neon_Gravity_Story.mp3',
-            stages: ['audio/Neon_Gravity_00.mp3', 'audio/Neon_Gravity_01.mp3', 'audio/Neon_Gravity_02.mp3', 'audio/Neon_Gravity_03.mp3']
+            stages: [
+                'audio/Neon_Gravity_01.mp3',
+                'audio/Neon_Gravity_02.mp3',
+                'audio/Neon_Gravity_03.mp3',
+                'audio/Neon_Gravity_04.mp3',
+                'audio/Neon_Gravity_05.mp3',
+                'audio/Neon_Gravity_06.mp3',
+                'audio/Neon_Gravity_07.mp3',
+                'audio/Neon_Gravity_08.mp3'
+            ]
         };
 
         // --- SEの音響定義ライブラリ ---
@@ -1753,22 +1762,37 @@
             playBGM(key, idx = 0) {
                 if (!this.bgmEl) return;
 
-                let src = this.getBgmPath(key, idx);
-                const currentFull = this.getNormalizedUrl(this.bgmEl.src);
-                const nextFull = this.getNormalizedUrl(src);
-
-                if (currentFull === nextFull && !this.bgmEl.paused) return;
-
-                this.stopBgmInterval();
-
-                if (currentFull !== nextFull) {
-                    this.bgmEl.src = src;
-                    this.bgmEl.currentTime = 0;
-                    this.currentSrc = src;
+                // --- パス決定ロジックの修正 ---
+                let src = "";
+                if (key === 'stage') {
+                    // ここで引数 idx を使って配列から曲を選択する
+                    if (BGM_FILES.stages && BGM_FILES.stages[idx]) {
+                        src = BGM_FILES.stages[idx];
+                    } else {
+                        console.error(`Stage BGM at index ${idx} not found.`);
+                        return;
+                    }
+                } else {
+                    src = BGM_FILES[key];
                 }
 
-                this.bgmEl.volume = 0.4;
-                this.bgmEl.play().catch(() => console.log("BGM play blocked"));
+                // 現在再生中のURLと、これから再生するURLを比較（重複再生防止）
+                const currentFull = new URL(this.bgmEl.src, window.location.href).href;
+                const nextFull = new URL(src, window.location.href).href;
+
+                if (currentFull === nextFull && !this.bgmEl.paused) {
+                    return; // すでに再生中なら何もしない
+                }
+
+                // 別の曲を再生する場合
+                this.bgmEl.pause();
+                this.bgmEl.src = src;
+                this.bgmEl.currentTime = 0;
+                this.bgmEl.volume = 0.4; // 音量調整
+
+                this.bgmEl.play().catch(e => {
+                    console.warn("BGM playback failed. User interaction might be required.", e);
+                });
             },
 
             getBgmPath(key, idx) {
@@ -1818,27 +1842,34 @@
             AudioSys.resume();
             ui.overlay.style.display = 'none';
 
-
             gameState = 'OST';
             ui.ost.style.display = 'flex';
             const list = document.getElementById('track-list');
             list.innerHTML = '';
 
-            // ★ここに 'Boss Theme' を追加します
+            // 1. Titleを最初に定義
             const tracks = [
-                { n: 'Title Theme', k: 'title' },
-                { n: 'Stage 1', k: 'stage', i: 0 },
-                { n: 'Stage 2', k: 'stage', i: 1 },
-                { n: 'Stage 3', k: 'stage', i: 2 },
-                { n: 'Stage 4', k: 'stage', i: 3 },
-                { n: 'Boss Theme', k: 'boss' },
-                { n: 'Last Boss Theme', k: 'last' },
-                { n: 'Story', k: 'story' },  
-                { n: 'Clear Theme', k: 'clear' }
+                { n: 'Title Theme', k: 'title' }
             ];
 
+            // 2. STAGE 1-8 を自動追加（Titleのすぐ後ろに配置）
+            BGM_FILES.stages.forEach((path, index) => {
+                tracks.push({ n: `Stage ${index + 1} BGM`, k: 'stage', i: index });
+            });
+
+            // 3. 残りの特殊トラックを順番に追加
+            tracks.push(
+                { n: 'Boss Encounter', k: 'boss' },
+                { n: 'The Final Ark', k: 'last' },
+                { n: 'Mission Complete', k: 'clear' },
+                { n: 'Story Mode', k: 'story' } // Storyを最後に配置
+            );
+
+            // 描画処理（変更なし）
             tracks.forEach(t => {
-                const d = document.createElement('div'); d.className = 'track-item'; d.innerText = t.n;
+                const d = document.createElement('div');
+                d.className = 'track-item';
+                d.innerText = t.n;
                 d.onclick = () => {
                     AudioSys.playBGM(t.k, t.i);
                     document.querySelectorAll('.track-item').forEach(e => e.classList.remove('playing'));
@@ -2022,7 +2053,8 @@
                 else enemiesToSpawn = STAGE_ENEMY_COUNTS[STAGE_ENEMY_COUNTS.length - 1] + 50;
 
                 if (gameState === 'PLAYING') {
-                    const bgmIndex = Math.floor((stage - 1) / 2) % BGM_FILES.stages.length;
+                    // ★修正: 2ステージ毎ではなく、ステージ番号に直接連動させる
+                    const bgmIndex = (stage - 1) % BGM_FILES.stages.length;
                     AudioSys.playBGM('stage', bgmIndex);
                 }
                 const whCount = Math.max(1, Math.floor((stage + 1) / 2));
