@@ -1040,7 +1040,7 @@
         // =========================================================
         // 2. ステージ・難易度・進行管理
         // =========================================================
-        const START_STAGE = 1;        // 開始ステージ番号
+        const START_STAGE = 3;        // 開始ステージ番号
 
         const MAX_STAGE = 10;          // 最大ステージ数
         let currentStage = 1;         // 現在のステージ番号
@@ -1085,7 +1085,7 @@
         const STAGE_ENEMIES = {
             1: ['jellyfish', 'spark_jelly', 'triangle', 'dragon'],
             2: ['triangle', 'triangle', 'tadpole', 'dragon'],
-            3: ['asteroid', 'asteroid', 'asteroid', 'jellyfish','spark_jelly'],
+            3: ['bubble', 'bubble', 'bubble', 'jellyfish','spark_jelly'],
             4: ['phantom', 'triangle', 'tadpole', 'asteroid'],
             5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'asteroid'],
             6: ['triangle', 'tadpole', 'dragon', 'triangle', 'hunter', 'phantom', 'asteroid'],
@@ -1154,10 +1154,11 @@
             DRAGON: 5,         // 赤：中ボス級、最高速度が高い
             HUNTER: 7,         // 橙：特殊攻撃型
             HUNTER_ROT: 3,     // 接近時の回転速度
-            ASTEROID: 3.5,      // 白：分裂する岩、慣性移動
+            ASTEROID: 3.5,
+            BUBBLE: 3.5,        
             PHANTOM: 2.0,   // ★追加: ステルス時の基本速度。突進時は別計算
             ECLIPSE: 1.5,
-            JELLYFISH: 2.5     // ★追加: クラゲ（基本は遅いが脈動で加速する）
+            JELLYFISH: 2.5,     // ★追加: クラゲ（基本は遅いが脈動で加速する）
         };
 
         const DRAGON_ACCELERATION = 0.2; // ドラゴンのプレイヤー追尾加速力
@@ -2118,7 +2119,7 @@
             startStage();
         }
 
-        // --- checkStageClear関数の修正 ---
+
         function checkStageClear() {
             let isClearCondition = false;
 
@@ -3134,41 +3135,37 @@
                     cameraLerpTimer: 0
                 });
                 spawnedCount++;
-            } else if (type === 'asteroid') {
-                // =========================================================
-                // ★修正: アステロイドを通常仕様（速い・回転する）に戻す
-                // =========================================================
+                // bubble か asteroid (rock) の共通処理
+            } else if (type === 'bubble' || type === 'asteroid') {
                 const sizeFactor = 1.0 + (stage - 1) * 0.1;
                 const hp = (size === 1 ? 4 : size === 2 ? 2 : 1) + Math.floor((stage - 1) * 0.5);
                 const baseScale = size === 1 ? 1.8 : size === 2 ? 1.1 : 0.6;
                 const finalScale = baseScale * sizeFactor;
 
-                // 通常の速度係数 (0.7) と回転速度 (0.1) に戻す
-                const moveSpeed = (ENEMY_SPEEDS.ASTEROID * 0.7) * (1 + size * 0.4) * spd * stageMag;
+                // スピード定数の選択 (typeによって切り替え)
+                const baseSpdConst = (type === 'bubble') ? ENEMY_SPEEDS.BUBBLE : ENEMY_SPEEDS.ASTEROID;
+                const moveSpeed = (baseSpdConst * 0.7) * (1 + size * 0.4) * spd * stageMag;
                 const ang = Math.random() * Math.PI * 2;
 
                 enemies.push({
-                    x, y,
+                    x: x, y: y,
                     vx: Math.cos(ang) * moveSpeed,
                     vy: Math.sin(ang) * moveSpeed,
                     hp: hp,
                     speed: moveSpeed,
-                    color: '#fff',
-                    type: 'asteroid',
+                    color: (type === 'bubble') ? '#0ff' : '#fff',
+                    type: type,      // 'bubble' か 'asteroid'
+                    variant: (type === 'bubble') ? 'bubble' : 'asteroid', // 見た目の指定
                     size: size,
                     angle: Math.random() * Math.PI * 2,
-                    rotSpd: (Math.random() - 0.5) * 0.1, // 速い回転
+                    rotSpd: (Math.random() - 0.5) * 0.1,
                     scale: finalScale,
                     drop: 'none',
-
-                    // 追跡モード用パラメータ
                     spawnTimer: 0,
                     trackingStart: 300 + Math.random() * 200,
                     isTracking: false
                 });
-
-                // アステロイドは出現数には含めるが撃破ノルマには含めない（前回の仕様維持）
-                // spawnedCount++; // ← 前回の修正で削除した場合はそのまま
+       
             } else if (type === 'hunter') {
                 enemies.push({
                     x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
@@ -3305,16 +3302,17 @@
                     updateFormationMovement(e);
                     if (e.type === 'cube') { e.rotX += 0.03; e.rotY += 0.04; }
                 } else {
-                    // ★ 弾の発射を監視するため、AI実行前の敵弾の数を記録
+                    // AI実行前の敵弾の数を記録
                     const bulletCountBefore = enemyBullets.length;
 
-                    // AI（移動と射撃）は常に実行し、画面外でも不自然に止まらないようにする
+                    // AI（移動と射撃）の実行
                     switch (e.type) {
                         case 'dragon': updateDragonAI(e); break;
                         case 'tadpole': updateTadpoleAI(e); break;
                         case 'triangle': updateTriangleAI(e); break;
                         case 'cube': updateCubeAI(e); break;
                         case 'asteroid': updateAsteroidAI(e); break;
+                        case 'bubble': updateAsteroidAI(e); break; // ★bubbleもasteroidと同じAIを使用
                         case 'hunter': updateHunterAI(e); break;
                         case 'phantom': updatePhantomAI(e); break;
                         case 'eclipse': updateEclipseAI(e); break;
@@ -3326,18 +3324,23 @@
                         case 'battleship': updateBattleshipAI(e); break;
                     }
 
-                    // ★ 画面外の敵が弾を撃とうとした場合、追加された弾を即座に消去する（攻撃の無効化）
+                    // 画面外の敵が弾を撃った場合、無効化する
                     if (!inActiveRange && enemyBullets.length > bulletCountBefore) {
                         enemyBullets.length = bulletCountBefore;
                     }
                 }
 
                 applySeparation(e);
-                applyAsteroidCollisions(e);
-                //applyJellyfishAsteroidCollisions(e);
+
+                // --- 衝突判定の修正 ---
+                // bubble または asteroid の場合に衝突ロジックを適用
+                if (e.type === 'asteroid' || e.type === 'bubble') {
+                    applyAsteroidCollisions(e);
+                }
+
                 applyWorldBoundary(e);
 
-                // ★ プレイヤーとの体当たり判定や、サテライトの当たり判定は「画面付近」のみに限定
+                // プレイヤーとの体当たり判定などは「画面付近」のみ
                 if (inActiveRange) {
                     checkPlayerCollision(e);
                     checkSatelliteCollision(e);
@@ -3345,18 +3348,22 @@
 
                 // --- 撃破判定 ---
                 if (e.hp <= 0) {
-                    // ラスボス撃破時の劇的演出
+                    // ラスボス撃破演出
                     if (e.type === 'battleship') {
-                        gameSpeed = 0.05; // 世界をスローモーションに
-                        bullets = [];      // 画面の弾を消す
+                        gameSpeed = 0.05;
+                        bullets = [];
                         enemyBullets = [];
-                        createExplosion(e.x, e.y, '#fff', 200); // 大爆発
+                        createExplosion(e.x, e.y, '#fff', 200);
                         if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_large');
                     }
 
-                    // アステロイドの分裂処理
-                    if (e.type === 'asteroid' && e.size < 3 && !e.noSplit) {
-                        for (let i = 0; i < 2; i++) spawnEnemy(e.x, e.y, 'asteroid', e.size + 1);
+                    // --- 分裂処理の修正 ---
+                    // bubble または asteroid が壊れたときに分裂させる
+                    if ((e.type === 'asteroid' || e.type === 'bubble') && e.size < 3 && !e.noSplit) {
+                        for (let i = 0; i < 2; i++) {
+                            // 親と同じ type と variant を引き継いで分裂
+                            spawnEnemy(e.x, e.y, e.type, e.size + 1, e.variant);
+                        }
                     }
 
                     destroyEnemy(e);
@@ -3385,66 +3392,68 @@
         }
 
         function applyAsteroidCollisions(e) {
-            if (e.type !== 'asteroid') return;
+            if (e.type !== 'asteroid' && e.type !== 'bubble') return;
 
             enemies.forEach(other => {
-                // 自分自身、または死んでいる敵、アステロイド以外の敵は無視
-                if (e === other || other.hp <= 0 || other.type !== 'asteroid') return;
+                if (e === other || other.hp <= 0 || (other.type !== 'asteroid' && other.type !== 'bubble')) return;
 
                 const dx = other.x - e.x;
                 const dy = other.y - e.y;
                 const dist = Math.hypot(dx, dy) || 0.001;
 
-                // --- 判定半径の動的な計算 ---
-                // 基本半径20pxにそれぞれのscaleを掛け、さらに描画倍率G_SCALEを考慮
-                const r1 = 20 * e.scale * G_SCALE;
-                const r2 = 20 * other.scale * G_SCALE;
+                const hitRadius = 22 * 0.85;
+                const r1 = hitRadius * e.scale * G_SCALE;
+                const r2 = hitRadius * other.scale * G_SCALE;
                 const minDist = r1 + r2;
 
                 if (dist < minDist) {
-                    // --- 1. 重なり（めり込み）の解消 ---
+                    // --- 1. 重なり解消（少し強めに押し出す） ---
                     const overlap = minDist - dist;
-                    const nx = dx / dist; // 法線ベクトルx
-                    const ny = dy / dist; // 法線ベクトルy
+                    const nx = dx / dist;
+                    const ny = dy / dist;
 
-                    // サイズ（scale）を重みとして、小さい方がより大きく弾かれるように調整
-                    // (質量 = scaleの2乗に比例すると仮定するとよりリアルですが、シンプルにscale比で計算)
                     const totalScale = e.scale + other.scale;
                     const ratioE = other.scale / totalScale;
                     const ratioOther = e.scale / totalScale;
 
-                    e.x -= nx * overlap * ratioE;
-                    e.y -= ny * overlap * ratioE;
-                    other.x += nx * overlap * ratioOther;
-                    other.y += ny * overlap * ratioOther;
+                    // overlap に 1.05 程度を掛けて「重なりをわずかに超えて」引き離す
+                    const separation = overlap * 1.05;
+                    e.x -= nx * separation * ratioE;
+                    e.y -= ny * separation * ratioE;
+                    other.x += nx * separation * ratioOther;
+                    other.y += ny * separation * ratioOther;
 
-                    // --- 2. 速度ベクトルの反射（弾性衝突） ---
-                    // 相対速度
+                    // --- 2. 反射処理 ---
                     const rvx = other.vx - e.vx;
                     const rvy = other.vy - e.vy;
-
-                    // 法線方向の速度成分（内積）
                     const velAlongNormal = rvx * nx + rvy * ny;
 
-                    // 既に離れようとしている（ベクトルが外向き）場合は処理しない
                     if (velAlongNormal > 0) return;
 
-                    // 反発係数 (0.6〜0.8くらいが岩らしくて自然です)
-                    const restitution = 0.7;
-                    const j = -(1 + restitution) * velAlongNormal;
+                    const isAnyBubble = (e.type === 'bubble' || other.type === 'bubble');
+                    // 反発係数を上げる。泡なら1.0（エネルギー減衰なし）
+                    const restitution = isAnyBubble ? 1.0 : 0.8;
 
-                    // 質量比に基づいた速度変化（大きい岩ほど動きにくい）
+                    // ★最低反発速度を保証する（ゆっくり近づいた時も確実に弾き飛ばす）
+                    const minBounceVelocity = -1.5;
+                    const effectiveVel = Math.min(velAlongNormal, minBounceVelocity);
+
+                    const j = -(1 + restitution) * effectiveVel;
+
                     e.vx -= j * nx * ratioE;
                     e.vy -= j * ny * ratioE;
                     other.vx += j * nx * ratioOther;
                     other.vy += j * ny * ratioOther;
 
-                    // --- 3. 衝突時の火花演出 ---
-                    // 激しくぶつかった時だけ火花を出す
-                    if (Math.abs(velAlongNormal) > 1 && frame % 2 === 0) {
+                    // --- 3. 演出 ---
+                    if (Math.abs(effectiveVel) > 0.5) {
                         const midX = (e.x + other.x) / 2;
                         const midY = (e.y + other.y) / 2;
-                        createExplosion(midX, midY, '#fff', 2);
+                        if (isAnyBubble) {
+                            if (frame % 3 === 0) createExplosion(midX, midY, '#0ff', 1);
+                            if (e.type === 'bubble') e.bend = 15; // 衝撃の見た目も強く
+                            if (other.type === 'bubble') other.bend = 15;
+                        }
                     }
                 }
             });
@@ -3692,7 +3701,10 @@
             }
             // --- 通常の敵の撃破 ---
             else {
-                if (e.type !== 'asteroid') enemiesKilled++;
+                // asteroid または bubble 以外の場合に撃破数を加算する
+                if (e.type !== 'asteroid' && e.type !== 'bubble') {
+                    enemiesKilled++;
+                }
             }
 
             // --- 爆発エフェクトの生成 ---
@@ -3705,9 +3717,9 @@
             } else if (e.type === 'phantom' || e.type === 'triangle') {
                 // ★ 破片演出がある敵は、細かい火花を極端に減らす（控えめにする）
                 particleCount = 3;
-            } else if (e.type === 'jellyfish') {
-                // ★追加: クラゲは通常の火花（線）をゼロにする
-                particleCount = 0;
+            } else if (e.type === 'jellyfish' || e.type === 'bubble') {
+                // ★追加: クラゲとバブルは通常の火花（線）をゼロにする
+                particleCount = 2;
             }
             
 
@@ -3854,11 +3866,18 @@
                 // ドラゴン撃破時は専用の「ごく少数」の火花だけ出す
                 createExplosion(e.x, e.y, '#fff', 5);
             }
-            else if (e.type === 'jellyfish') {
+            // --- ★変更：JellyfishとBubble共通の特殊撃破演出 ---
+            else if (e.type === 'jellyfish' || e.type === 'bubble') {
                 AudioSys.playSE('explode_small'); // 少し高い音が水泡が弾ける音に似ます
                 distortGrid(e.x, e.y, 50, 100);
 
-                const bubbleCount = 20; // 泡の数
+                // ★追加：バブルの場合はサイズ(1が最大, 3が最小)に応じて泡の数を変える
+                let bubbleCount = 20;
+                if (e.type === 'bubble') {
+                    // size1(大)なら30個、size2(中)なら20個、size3(小)なら10個
+                    bubbleCount = (4 - (e.size || 2)) * 5;
+                }
+
                 for (let i = 0; i < bubbleCount; i++) {
                     const angle = Math.random() * Math.PI * 2;
                     const speed = 1 + Math.random() * 3; // ふんわり飛び散る速度
@@ -4232,9 +4251,10 @@
 
             if (e.isTracking) {
                 // --- 追跡モード ---
-                // 色の変化（赤みがかかる）
-                const gb = Math.floor(215 + 40 * Math.sin(frame * 0.1));
-                e.color = `rgb(255, ${gb}, ${gb})`;
+                if (e.type === 'asteroid') {
+                    const gb = Math.floor(215 + 40 * Math.sin(frame * 0.1));
+                    e.color = `rgb(255, ${gb}, ${gb})`;
+                }
 
                 const dx = player.x - e.x;
                 const dy = player.y - e.y;
@@ -4256,7 +4276,9 @@
 
             } else {
                 // --- 通常モード（漂流） ---
-                e.color = '#ffffff';
+                if (e.type === 'asteroid') {
+                    e.color = '#ffffff';
+                }
 
                 e.x += e.vx * e.speed * gameSpeed;
                 e.y += e.vy * e.speed * gameSpeed;
@@ -4556,7 +4578,7 @@
                 }
 
             } else {
-                // --- 通常クラゲ（電撃弾の発射：既存のまま） ---
+                // --- 通常クラゲ（小さな衝撃波の発射） ---
                 if (pulse > 0.95 && e.canFire) {
                     e.canFire = false;
                     if (Math.random() < 0.3) {
@@ -4566,9 +4588,17 @@
                             y: e.y + Math.sin(e.angle) * 10,
                             vx: Math.cos(targetAngle) * bSpd,
                             vy: Math.sin(targetAngle) * bSpd,
-                            life: 150, color: e.color
+                            life: 120,                // 帯電クラゲより寿命を短く
+                            color: e.color || '#0ff', // クラゲと同じシアン色
+                            isShockwave: true,        // ★衝撃波フラグ
+                            baseScale: 0.5,           // ★初期サイズを小さく (帯電クラゲは1.0)
+                            scaleSpeed: 0.01          // ★拡大速度も遅く (帯電クラゲは0.02)
                         });
-                        if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
+
+                        // 衝撃波なので「ピシュッ」という単発音より、レーザー系の音を流用
+                        if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
+                        // 撃った瞬間に少しだけ空間を歪ませる
+                        if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 30, 80);
                     }
                 } else if (pulse < 0) {
                     e.canFire = true;
@@ -5312,9 +5342,11 @@
 
                     let collisionRadius = (eb.isMissile ? 12 : 8) * G_SCALE;
 
-                    // ★追加: 衝撃波の場合は徐々に拡大させ、当たり判定も大きくする
+                    // ★変更: 衝撃波の場合は徐々に拡大させ、個別の拡大速度(scaleSpeed)に対応
                     if (eb.isShockwave) {
-                        eb.baseScale = (eb.baseScale || 1.0) + 0.02 * gameSpeed; // 毎フレーム拡大
+                        // scaleSpeedが指定されていればそれを使用、なければ0.02
+                        const growSpd = (eb.scaleSpeed !== undefined) ? eb.scaleSpeed : 0.02;
+                        eb.baseScale = (eb.baseScale || 1.0) + growSpd * gameSpeed;
                         collisionRadius = 18 * eb.baseScale * G_SCALE; // 見た目に合わせて判定を拡大
                     }
 
@@ -5769,7 +5801,6 @@
             });
         }
 
-        // --- drawEnemiesの修正 ---
         function drawEnemies() {
             enemies.forEach(e => {
                 const margin = (e.type === 'boss' || e.type === 'dragon' || e.type === 'battleship') ? 350 : 100;
@@ -5782,7 +5813,7 @@
                 else if (e.type === 'triangle') drawTriangleEnemy(ctx, e);
                 else if (e.type === 'cube') drawCubeEnemy(ctx, e);
                 else if (e.type === 'tadpole') drawTadpoleEnemy(ctx, e);
-                else if (e.type === 'asteroid') drawAsteroidEnemy(ctx, e);
+                else if (e.type === 'asteroid' || e.type === 'bubble') drawAsteroidEnemy(ctx, e);
                 else if (e.type === 'hunter') drawHunterEnemy(ctx, e);
                 else if (e.type === 'phantom') drawPhantomEnemy(ctx, e); 
                 else if (e.type === 'eclipse') drawEclipseEnemy(ctx, e);
@@ -7019,42 +7050,114 @@
         function drawAsteroidEnemy(ctx, e) {
             ctx.save();
             ctx.translate(e.x, e.y);
-            ctx.rotate(e.angle);
-
-            // スケールを適用
             const s = e.scale * G_SCALE;
             ctx.scale(s, s);
 
-            // ネオンホワイトのワイヤーフレーム設定
-            ctx.strokeStyle = e.color;
+            if (e.variant === 'bubble') {
+                ctx.globalCompositeOperation = 'lighter';
 
-            // ★ポイント: 小さくなっても線の太さを維持する計算
-            // スケール s で割ることで、画面上の見た目の太さを常に一定（約1.5px）に保ちます
-            ctx.lineWidth = 1.5 / s;
+                // ★変更1：時間をゆっくり進めて、ゆったりとした動きにする (0.04 -> 0.02)
+                const time = frame * 0.02;
+                const baseRadius = 22;
 
-            ctx.shadowBlur = 12 / s; // 発光もスケールに合わせて調整
-            ctx.shadowColor = '#fff';
+                // ★変更2：衝突の余韻を少し長く残す (0.85 -> 0.92)
+                e.bend = (e.bend || 0) * 0.92;
 
-            ctx.beginPath();
-            // 岩の形状（e.sizeをシードにして形状を固定）
-            for (let i = 0; i < 8; i++) {
-                const r = 22 * (0.8 + Math.sin(i * 2.1 + e.size * 5) * 0.25);
-                const ang = (Math.PI * 2 / 8) * i;
-                const tx = Math.cos(ang) * r;
-                const ty = Math.sin(ang) * r;
-                if (i === 0) ctx.moveTo(tx, ty); else ctx.lineTo(tx, ty);
+                const points = [];
+                const numPoints = 8;
+
+                for (let i = 0; i < numPoints; i++) {
+                    const ang = (Math.PI * 2 / numPoints) * i;
+
+                    // ★変更3：揺れ幅（係数）を全体的に大きくし、より複雑な波形にする
+                    // メインの大きな揺れ: 0.8 -> 1.5
+                    // サブの不規則な揺れ: 0.4 -> 0.8
+                    // 衝突時の影響: 0.3 -> 0.4
+                    const noise = Math.sin(time + i) * 1.5
+                        + Math.cos(time * 1.3 + i * 1.5) * 0.8
+                        + Math.sin(frame * 0.2 + i) * e.bend * 0.4;
+
+                    const r = baseRadius + noise;
+                    points.push({ x: Math.cos(ang) * r, y: Math.sin(ang) * r });
+                }
+
+
+                ctx.beginPath();
+                let xc = (points[numPoints - 1].x + points[0].x) / 2;
+                let yc = (points[numPoints - 1].y + points[0].y) / 2;
+                ctx.moveTo(xc, yc);
+
+                for (let i = 0; i < numPoints; i++) {
+                    const p = points[i];
+                    const pNext = points[(i + 1) % numPoints];
+                    xc = (p.x + pNext.x) / 2;
+                    yc = (p.y + pNext.y) / 2;
+                    ctx.quadraticCurveTo(p.x, p.y, xc, yc);
+                }
+                ctx.closePath();
+
+                // ★追加: 奥のグリッドを暗く沈ませる「遮光レイヤー」
+                ctx.globalCompositeOperation = 'source-over'; // 通常のアルファブレンド
+                ctx.fillStyle = 'rgba(0, 5, 20, 0.6)'; // 半透明の暗い色（深海のようなネイビーブラック）
+                ctx.fill(); // まず暗く塗りつぶす
+
+                // ★変更: フチやハイライトだけを光らせる（加算合成）
+                ctx.globalCompositeOperation = 'lighter';
+                const grad = ctx.createRadialGradient(-6, -6, 2, 0, 0, baseRadius + 4);
+                // 中間の透明度を0にすることで、さきほど塗った「暗さ」を活かします
+                grad.addColorStop(0, 'rgba(255, 255, 255, 0.15)'); // 中心はわずかに光る
+                grad.addColorStop(0.4, 'rgba(0, 255, 255, 0)');    // 中間は完全に透明（奥の暗さが見える）
+                grad.addColorStop(0.85, 'rgba(0, 255, 255, 0.4)'); // 輪郭のフチは光る
+                grad.addColorStop(1, 'rgba(0, 255, 255, 0)');      // 完全に溶け込む
+
+                ctx.fillStyle = grad;
+                ctx.fill(); // 上からグラデーションを重ね塗り
+
+                // 輪郭線
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+                ctx.lineWidth = 1.2 / s;
+                ctx.stroke();
+
+                // フィルタを解除
+                ctx.filter = 'none';
+
+                // --- ハイライト削除済み ---
+
+                // 内部のキラキラ（そのまま残す）
+                ctx.fillStyle = '#fff';
+                for (let i = 0; i < 2; i++) {
+                    const slowTime = time * 0.5 + i;
+                    const bx = Math.cos(slowTime) * 10;
+                    const by = Math.sin(slowTime * 1.2) * 10;
+                    ctx.globalAlpha = 0.2 + Math.sin(slowTime) * 0.1;
+                    ctx.beginPath();
+                    ctx.arc(bx, by, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+            } else {
+                // 岩の描画
+                ctx.rotate(e.angle);
+                ctx.strokeStyle = e.color;
+                ctx.lineWidth = 1.5 / s;
+                ctx.shadowBlur = 12 / s;
+                ctx.shadowColor = '#fff';
+                ctx.beginPath();
+                for (let i = 0; i < 8; i++) {
+                    const r = 22 * (0.8 + Math.sin(i * 2.1 + e.size * 5) * 0.25);
+                    const ang = (Math.PI * 2 / 8) * i;
+                    if (i === 0) ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
+                    else ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+                }
+                ctx.closePath();
+                ctx.stroke();
+                ctx.globalAlpha = 0.2;
+                ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(5, 8); ctx.stroke();
             }
-            ctx.closePath();
-            ctx.stroke();
-
-            // 内部の亀裂（これも線の太さを維持）
-            ctx.globalAlpha = 0.2;
-            ctx.beginPath();
-            ctx.moveTo(-10, -5); ctx.lineTo(5, 8);
-            ctx.stroke();
 
             ctx.restore();
         }
+
 
         function drawPhantomEnemy(ctx, e) {
             ctx.save();
@@ -7347,7 +7450,24 @@
 
             const pulse = Math.sin(e.timer * 0.08);
             const squeeze = Math.max(0, pulse);
-            const isSpark = (e.variant === 'spark'); // ★帯電フラグ
+            const isSpark = (e.variant === 'spark');
+
+            // --- 旋回に合わせた「能動的な足の曲がり」計算（控えめ調整版） ---
+            if (e.prevAngle === undefined) e.prevAngle = e.angle;
+            if (e.bend === undefined) e.bend = 0;
+
+            let angleDiff = e.angle - e.prevAngle;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+
+            // ★係数を 3000 -> 600 (1/5) に減少。より自然なしなりへ。
+            const targetBend = angleDiff * 600;
+            e.bend += (targetBend - e.bend) * 0.1; // 追従を少しマイルドに
+            e.bend *= 0.9; // 復元力
+
+            // ★最大曲がり幅も 50 -> 10 (1/5) に制限
+            const maxBend = 10;
+            e.bend = Math.max(-maxBend, Math.min(maxBend, e.bend));
 
             ctx.globalCompositeOperation = 'lighter';
 
@@ -7356,7 +7476,6 @@
             ctx.strokeStyle = e.color;
             ctx.globalAlpha = 0.5;
 
-            // 触手の生え際を細くまとめる (間隔を狭く)
             const tentacleCount = isSpark ? 6 : 4;
             const spacing = isSpark ? 2.5 : 4;
 
@@ -7366,103 +7485,75 @@
                 ctx.moveTo(-5, startY);
 
                 const waveSpd = isSpark ? 0.15 : 0.1;
-                // 波の振幅も少し抑え気味にしてスマートなシルエットに
-                const waveAmp = isSpark ? 14 : 9;
-
+                const waveAmp = isSpark ? 12 : 8;
                 const wave1 = Math.sin(e.timer * waveSpd - i * 0.5) * waveAmp;
                 const wave2 = Math.cos(e.timer * (waveSpd * 0.5) + i) * (waveAmp * 1.2);
                 const stretch = squeeze * 15;
 
+                // ベジェ曲線の y 座標に bend を適用。先端に向けて効果を強める。
                 ctx.bezierCurveTo(
-                    -20 - stretch, startY + wave1,
-                    -40 - stretch * 2, startY + wave2,
-                    -60 - stretch * 3, startY + wave1 * 1.5
+                    -20 - stretch, startY + wave1 + e.bend * 0.3,
+                    -40 - stretch * 2, startY + wave2 + e.bend * 1.0,
+                    -65 - stretch * 3, startY + wave1 * 1.5 + e.bend * 2.0
                 );
                 ctx.stroke();
 
                 if (isSpark && Math.random() < 0.1) {
                     ctx.save();
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 1;
-                    ctx.globalAlpha = 0.8;
+                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5; ctx.globalAlpha = 0.4;
                     ctx.stroke();
                     ctx.restore();
                 }
             }
 
-            // --- 2. 傘（ドーム型のカサ） ---
+            // --- 2. 傘（変更なし） ---
             ctx.globalAlpha = 0.8;
-
             const grad = ctx.createRadialGradient(5, 0, 0, 5, 0, 20);
             grad.addColorStop(0, '#ffffff');
             const innerGlow = isSpark && e.chargeLevel ? Math.min(1.0, e.chargeLevel) : 0.4;
             grad.addColorStop(innerGlow, e.color);
             grad.addColorStop(1, 'transparent');
-
-            // カサを細身の流線型に調整
-            const headX = 22 + squeeze * 6;     // 先端を少し前へ伸ばす
-            const rearX = -6 + squeeze * 4;     // 後ろのヒダ
-            const widthY = 10 - squeeze * 3;    // 横幅を大幅に細く
-
+            const headX = 22 + squeeze * 6;
+            const rearX = -6 + squeeze * 4;
+            const widthY = 10 - squeeze * 3;
             ctx.beginPath();
             ctx.moveTo(headX, 0);
             ctx.quadraticCurveTo(8, widthY, rearX, widthY);
             ctx.quadraticCurveTo(0, 0, rearX, -widthY);
             ctx.quadraticCurveTo(8, -widthY, headX, 0);
             ctx.closePath();
-
-            ctx.fillStyle = 'rgba(10, 0, 30, 0.7)';
-            ctx.fill();
-
-            ctx.fillStyle = grad;
-            ctx.fill();
-
-            ctx.strokeStyle = e.color;
-            ctx.lineWidth = 1.5;
-            ctx.shadowBlur = isSpark ? 25 : 15;
-            ctx.shadowColor = e.color;
+            ctx.fillStyle = 'rgba(10, 0, 30, 0.7)'; ctx.fill();
+            ctx.fillStyle = grad; ctx.fill();
+            ctx.strokeStyle = e.color; ctx.lineWidth = 1.5;
+            ctx.shadowBlur = isSpark ? 25 : 15; ctx.shadowColor = e.color;
             ctx.stroke();
 
-            // --- 3. コア（中心の心臓部） ---
-
-            // 帯電クラゲは赤〜橙へ脈動するように色を動的に生成、通常は白
+            // --- 3. コア（変更なし） ---
             let coreColor = '#fff';
             if (isSpark) {
-                // 緑の成分を 0(赤) 〜 120(橙) の間で波打たせる
                 const greenVal = Math.floor(60 + Math.sin(frame * 0.2) * 60);
                 coreColor = `rgb(255, ${greenVal}, 0)`;
             }
-
             ctx.fillStyle = coreColor;
-            ctx.shadowBlur = isSpark ? 20 : 0; // 帯電時は強く光らせる
-            ctx.shadowColor = coreColor;
-
+            ctx.shadowBlur = isSpark ? 20 : 0; ctx.shadowColor = coreColor;
             ctx.beginPath();
-
             if (isSpark) {
-                // 帯電クラゲ：ギザギザしたエネルギーコア
                 const coreSize = 3 + pulse * 2 + (e.chargeLevel || 0) * 4;
                 for (let j = 0; j < 6; j++) {
                     const a = (Math.PI * 2 / 6) * j + frame * 0.2;
                     const r = coreSize * (0.8 + Math.random() * 0.4);
-                    // 縦方向を少し潰してスリム化
-                    const cx = 4 + Math.cos(a) * r;
-                    const cy = Math.sin(a) * r * 0.8;
-                    if (j === 0) ctx.moveTo(cx, cy);
-                    else ctx.lineTo(cx, cy);
+                    const cx = 4 + Math.cos(a) * r; const cy = Math.sin(a) * r * 0.8;
+                    if (j === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
                 }
-                ctx.closePath();
-                ctx.fill();
+                ctx.closePath(); ctx.fill();
             } else {
-                // 通常クラゲ：コアも少し前後に長い「楕円」にして流線型を強調
                 ctx.ellipse(4 + squeeze * 2, 0, 3 + pulse * 2, 2 + pulse, 0, 0, Math.PI * 2);
                 ctx.fill();
             }
 
+            e.prevAngle = e.angle;
             ctx.restore();
         }
-
-
 
 
         function drawBossEnemy(ctx, e) {
