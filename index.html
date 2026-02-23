@@ -720,6 +720,63 @@
             }
         }
 
+        /* =========================================================
+           ★ポーズボタン（画面配置対応版）
+           ========================================================= */
+        #pause-btn {
+            position: absolute;
+            /* 横画面時：BOMBボタン(#launch-btn)の上に配置 */
+            right: 30px;
+            bottom: 280px;
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 20, 40, 0.8);
+            border: 2px solid rgba(0, 255, 255, 0.5);
+            color: #0ff;
+            font-size: 16px;
+            font-weight: bold;
+            display: none; /* 初期は非表示 */
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 100;
+            pointer-events: auto;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+            font-family: 'Orbitron', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+            #pause-btn:active {
+                background: #0ff;
+                color: #000;
+                transform: scale(0.9);
+            }
+
+        /* 縦画面時：左右ジョイスティックの間の下ギリギリに配置 */
+        @media (orientation: portrait) {
+            #pause-btn {
+                right: auto;
+                left: 50%;
+                transform: translateX(-50%);
+                bottom: 15px;
+                width: 60px;
+                height: 40px;
+            }
+        }
+
+        /* =========================================================
+           ★ゲームパッド選択時のハイライトエフェクト
+           ========================================================= */
+        .menu-btn.selected, .track-item.selected {
+            background: rgba(0,255,255,0.4) !important;
+            color: #fff !important;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #fff !important;
+            border-color: #fff !important;
+        }
+
     </style>
 
 </head>
@@ -729,7 +786,7 @@
     <canvas id="game"></canvas>
 
     <div id="ui">
-
+        <div id="pause-btn">||</div>
 
         <div class="hud-row">
             <div id="info-box" style="display:flex; flex-direction:column; gap:8px;">
@@ -988,6 +1045,7 @@
                 }
                 loadingEl.style.display = "none";
                 tableEl.style.display = "table";
+                if (window.refreshMenuButtons) window.refreshMenuButtons();
             } catch (e) {
                 console.error("Ranking Error:", e);
                 loadingEl.innerText = "CONNECTION ERROR";
@@ -1323,6 +1381,8 @@
             score: document.getElementById('score-display'),
             stage: document.getElementById('stage-num'),
 
+            pauseBtn: document.getElementById('pause-btn'),
+
             weaponDisplay: document.getElementById('weapon-display'),
 
             shieldBar: document.getElementById('shield-bar'),
@@ -1365,7 +1425,9 @@
             nameInputArea: document.getElementById("name-input-area"),
         };
 
-
+        // ★追加：ゲームパッド用メニュー管理変数
+        let currentMenuButtons = [];
+        let selectedMenuIndex = 0;
 
 
         // =========================================================
@@ -1938,6 +2000,7 @@
                 };
                 list.appendChild(d);
             });
+            window.refreshMenuButtons(); 
         }
 
         function closeOST() {
@@ -1949,6 +2012,55 @@
         // =========================================================
         // 3. 初期化・システム制御 (Core Logic)
         // =========================================================
+        // ★修正：表示されているメニューボタンを抽出する関数（参照エラー修正版）
+        window.refreshMenuButtons = function () {
+            currentMenuButtons = [];
+            selectedMenuIndex = 0;
+
+            // 別スコープの変数を直接読めないのでIDで取得する
+            const rOverlay = document.getElementById("ranking-overlay");
+            const cBtn = document.getElementById("close-ranking-btn");
+
+            if (rOverlay && rOverlay.style.display === 'flex') {
+                currentMenuButtons = [cBtn];
+            } else if (ui.nameInputArea.style.display === 'flex') {
+                // 名前入力中
+                const inputBtns = document.querySelectorAll('#name-input-area .menu-btn');
+                inputBtns.forEach(btn => {
+                    if (window.getComputedStyle(btn).display !== 'none') currentMenuButtons.push(btn);
+                });
+            } else if (gameState === 'TITLE' || gameState === 'GAMEOVER_UI') {
+                const overlayBtns = document.querySelectorAll('#overlay .menu-btn');
+                overlayBtns.forEach(btn => {
+                    if (window.getComputedStyle(btn).display !== 'none') currentMenuButtons.push(btn);
+                });
+            } else if (gameState === 'OST') {
+                const ostBtns = document.querySelectorAll('#ost-ui .track-item, #ost-ui .menu-btn');
+                ostBtns.forEach(btn => currentMenuButtons.push(btn));
+            } else if (gameState === 'ENDING') {
+                const endBtns = document.querySelectorAll('#ending-msg .menu-btn');
+                endBtns.forEach(btn => currentMenuButtons.push(btn));
+            }
+
+            window.updateMenuSelectionUI();
+        };
+
+        window.updateMenuSelectionUI = function () {
+            document.querySelectorAll('.menu-btn.selected, .track-item.selected').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            if (currentMenuButtons.length > 0) {
+                selectedMenuIndex = Math.max(0, Math.min(selectedMenuIndex, currentMenuButtons.length - 1));
+                const activeBtn = currentMenuButtons[selectedMenuIndex];
+                if (activeBtn) {
+                    activeBtn.classList.add('selected');
+                    // 画面外にある場合はスクロールして表示
+                    activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+            }
+        };
+
         function init() { resize(); AudioSys.init(); }
 
         function resize() {
@@ -2015,6 +2127,7 @@
             ui.overlay.style.display = 'none';
             ui.ost.style.display = 'none';
 
+
             // 3. パラメータの初期化
             score = 0;
             stage = START_STAGE;  // 開始ステージを適用
@@ -2056,6 +2169,7 @@
             ui.enemyBar.style.width = "100%";
             ui.warn.style.display = 'none';
             ui.msg.style.display = 'none'; // メッセージ類を隠す
+            ui.pauseBtn.style.display = 'flex';
 
             // 7. ステージ開始
             startStage();
@@ -2130,6 +2244,10 @@
             }
 
             distortGrid(worldSize / 2, worldSize / 2, -200, worldSize);
+
+            const isConnected = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).some(gp => gp !== null);
+            ui.controls.style.display = isConnected ? 'none' : 'block';
+            ui.pauseBtn.style.display = isConnected ? 'none' : 'flex'; // ★追加
         }
 
         function resetGame() {
@@ -2173,6 +2291,7 @@
             ui.shieldBar.style.backgroundColor = '#0ff';
             ui.enemyBar.style.width = "100%";
             ui.warn.style.display = 'none'; ui.msg.style.display = 'none';
+            ui.pauseBtn.style.display = 'flex';
             ui.bossContainer.style.display = 'none';
             ui.overlay.style.display = 'none'; ui.controls.style.display = 'block';
 
@@ -2180,7 +2299,12 @@
             AudioSys.playBGM('stage', bgmIndex);
             gameState = 'PLAYING';
             startStage();
+
+            const isConnected = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).some(gp => gp !== null);
+            ui.controls.style.display = isConnected ? 'none' : 'block';
+            ui.pauseBtn.style.display = isConnected ? 'none' : 'flex'; // ★追加
         }
+
 
 
         function checkStageClear() {
@@ -2262,6 +2386,7 @@
             ui.msg.style.display = 'none';       // "ALL MISSION CLEAR" 等のメッセージ
             ui.warn.style.display = 'none';      // "WARNING" 等の警告
             if (ui.bossContainer) ui.bossContainer.style.display = 'none'; // ボスHPバー
+            ui.pauseBtn.style.display = 'none';
 
             // スコア表示の更新（まだ画面には出さない）
             document.getElementById('result-score-display').innerText = `SCORE: ${score.toLocaleString()}`;
@@ -2307,6 +2432,8 @@
 
                     ui.skipScoreBtn.innerText = "NEXT";
                 }
+
+                window.refreshMenuButtons();
 
                 // --- ボタン処理 ---
                 // ★追加: 二重送信を完全に防ぐためのフラグ
@@ -2384,10 +2511,14 @@
             ui.btnTitle.style.color = titleColor;
             ui.btnTitle.onclick = () => returnToTitle();
 
+            ui.pauseBtn.style.display = 'none';
+
             // リザルト画面ではランキングとOSTボタンは隠す
             const btnRanking = document.getElementById('btn-ranking');
             if (btnRanking) btnRanking.style.display = 'none';
             if (ui.btnOst) ui.btnOst.style.display = 'none';
+
+            window.refreshMenuButtons();
         }
 
         function returnToTitle() {
@@ -2422,7 +2553,7 @@
                 // タイトルからの呼び出しは閉じた後何もしない(null)
                 btnRanking.onclick = () => window.showRanking(null);
             }
-
+            window.refreshMenuButtons();
         }
 
 
@@ -2444,6 +2575,8 @@
             const hud = document.querySelector('.hud-row');
             if (hud) hud.style.display = 'none';
 
+            ui.pauseBtn.style.display = 'none';
+
             // エンディング画面を表示
             ui.endingHud.style.display = 'flex';
 
@@ -2462,6 +2595,8 @@
                     ui.endingHud.style.display = 'none';
                 };
             }
+
+            window.refreshMenuButtons();
         }
 
         function triggerBossEncounter() {
@@ -8767,43 +8902,78 @@
             let activeGp = null;
 
             for (let i = 0; i < gamepads.length; i++) {
-                if (gamepads[i]) {
-                    activeGp = gamepads[i];
-                    break;
-                }
+                if (gamepads[i]) { activeGp = gamepads[i]; break; }
             }
 
             if (!activeGp) return;
 
-            // --- 【重要】コントローラーが接続されているなら画面UIを隠す ---
-            // プレイ中かつ、UIが表示されている場合のみ非表示に切り替える
-            if (gameState === 'PLAYING' && ui.controls.style.display !== 'none') {
-                ui.controls.style.display = 'none';
+            // --- プレイ中のUI非表示処理 ---
+            if (gameState === 'PLAYING') {
+                if (ui.controls.style.display !== 'none') ui.controls.style.display = 'none';
+                if (ui.pauseBtn.style.display !== 'none') ui.pauseBtn.style.display = 'none';
             }
 
-            // --- 左スティック: 移動 ---
             const moveX = activeGp.axes[0];
             const moveY = activeGp.axes[1];
-            const moveDeadzone = 0.2;
 
+            // --- ★追加: 十字キー(D-Pad)とAボタン、STARTボタンの取得 ---
+            const dpadUp = activeGp.buttons[12]?.pressed || moveY < -0.5;
+            const dpadDown = activeGp.buttons[13]?.pressed || moveY > 0.5;
+            const dpadLeft = activeGp.buttons[14]?.pressed || moveX < -0.5;
+            const dpadRight = activeGp.buttons[15]?.pressed || moveX > 0.5;
+            const aBtn = activeGp.buttons[0]?.pressed;
+            const startBtn = activeGp.buttons[9]?.pressed; // START/OPTIONS ボタン
+
+            // --- ★追加: STARTボタンでポーズ切り替え ---
+            if (startBtn && !input.padStartPressed) {
+                if (gameState === 'PLAYING') {
+                    setPaused(true);
+                } else if (gameState === 'PAUSED') {
+                    resumeAction();
+                }
+            }
+            input.padStartPressed = startBtn;
+
+            // --- ★追加: メニュー画面での操作 ---
+            if (gameState !== 'PLAYING') {
+                if ((dpadUp || dpadLeft) && !input.padDirPressed) {
+                    selectedMenuIndex--;
+                    updateMenuSelectionUI();
+                } else if ((dpadDown || dpadRight) && !input.padDirPressed) {
+                    selectedMenuIndex++;
+                    updateMenuSelectionUI();
+                }
+
+                if (aBtn && !input.padAPressed) {
+                    if (gameState === 'PAUSED') {
+                        resumeAction();
+                    } else if (currentMenuButtons[selectedMenuIndex]) {
+                        currentMenuButtons[selectedMenuIndex].click(); // Aボタンで決定
+                        // クリック後に状態が変わる可能性があるので少し待って更新
+                        setTimeout(() => window.refreshMenuButtons(), 100);
+                    }
+                }
+
+                input.padDirPressed = (dpadUp || dpadDown || dpadLeft || dpadRight);
+                input.padAPressed = aBtn;
+                return; // メニュー画面中は自機の移動などは行わない
+            }
+
+            // --- 以下、プレイ中の操作 ---
+            const moveDeadzone = 0.2;
             if (Math.abs(moveX) > moveDeadzone || Math.abs(moveY) > moveDeadzone) {
                 input.move.active = true;
                 input.move.x = moveX;
                 input.move.y = moveY;
             } else {
-                // スティックが倒されていないときは入力を止める（タッチ操作との干渉防止）
-                if (input.move.active && !input.keys['ArrowLeft']) { // キーボード優先なら条件追加
-                    input.move.x = 0;
-                    input.move.y = 0;
-                    input.move.active = false;
+                if (input.move.active && !input.keys['ArrowLeft']) {
+                    input.move.x = 0; input.move.y = 0; input.move.active = false;
                 }
             }
 
-            // --- 右スティック: 照準 ---
             const aimX = activeGp.axes[2];
             const aimY = activeGp.axes[3];
             const aimDeadzone = 0.2;
-
             if (Math.abs(aimX) > aimDeadzone || Math.abs(aimY) > aimDeadzone) {
                 input.aim.active = true;
                 input.aim.x = aimX;
@@ -8812,41 +8982,43 @@
                 input.aim.active = false;
             }
 
-            // --- ボタン入力: BOMB/LAUNCH ---
-            const bombBtn = activeGp.buttons[2].pressed || activeGp.buttons[5].pressed || activeGp.buttons[7].pressed;
-            if (bombBtn && !input.padBombPressed) {
-                if (gameState === 'PLAYING') launchSatellites();
-                if (gameState === 'TITLE') startGame();
+            const bombBtn = activeGp.buttons[2]?.pressed || activeGp.buttons[5]?.pressed || activeGp.buttons[7]?.pressed;
+            if (bombBtn && !input.padBombPressed && gameState === 'PLAYING') {
+                launchSatellites();
             }
             input.padBombPressed = bombBtn;
-
-            // ポーズ解除
-            if (activeGp.buttons[0].pressed && gameState === 'PAUSED') {
-                resumeAction();
-            }
         }
 
         // 接続イベント
         window.addEventListener("gamepadconnected", (e) => {
             console.log("Gamepad connected: " + e.gamepad.id);
-            // プレイ中なら即座にUIを消す
             if (gameState === 'PLAYING') {
                 ui.controls.style.display = 'none';
+                ui.pauseBtn.style.display = 'none'; // ★追加
             }
         });
 
         window.addEventListener("gamepaddisconnected", (e) => {
             console.log("Gamepad disconnected");
-            // プレイ中ならタッチUIを復活させる
             if (gameState === 'PLAYING') {
                 ui.controls.style.display = 'block';
+                ui.pauseBtn.style.display = 'flex'; // ★追加
             }
-            // 入力リセット
             input.move.x = 0; input.move.y = 0;
             input.move.active = false; input.aim.active = false;
         });
 
-        init(); loop();
+        // --- ★追加：タッチ用ポーズボタンのイベント ---
+        const handlePauseClick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (gameState === 'PLAYING') setPaused(true);
+        };
+        ui.pauseBtn.addEventListener('click', handlePauseClick);
+        ui.pauseBtn.addEventListener('touchstart', handlePauseClick, { passive: false });
+
+        init();
+        window.refreshMenuButtons();
+        loop();
     </script>
 </body>
 
