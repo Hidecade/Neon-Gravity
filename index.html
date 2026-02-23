@@ -1058,9 +1058,9 @@
 
         // ステージごとの敵総出現数
         const STAGE_ENEMY_COUNTS = [
-            80,  // Stage 1
-            100,  // Stage 2
-            50,  // Stage 3
+            100,  // Stage 1
+            120,  // Stage 2
+            100,  // Stage 3
             150, // Stage 4
             180, // Stage 5
             220, // Stage 6
@@ -1083,9 +1083,9 @@
 
         // 各ステージの出現エネミープール
         const STAGE_ENEMIES = {
-            1: ['triangle', 'triangle', 'triangle', 'dragon'],
+            1: ['jellyfish', 'spark_jelly', 'triangle', 'dragon'],
             2: ['triangle', 'triangle', 'tadpole', 'dragon'],
-            3: ['asteroid', 'asteroid', 'asteroid', 'tadpole'],
+            3: ['asteroid', 'asteroid', 'asteroid', 'jellyfish','spark_jelly'],
             4: ['phantom', 'triangle', 'tadpole', 'asteroid'],
             5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'asteroid'],
             6: ['triangle', 'tadpole', 'dragon', 'triangle', 'hunter', 'phantom', 'asteroid'],
@@ -1156,7 +1156,8 @@
             HUNTER_ROT: 3,     // 接近時の回転速度
             ASTEROID: 3.5,      // 白：分裂する岩、慣性移動
             PHANTOM: 2.0,   // ★追加: ステルス時の基本速度。突進時は別計算
-            ECLIPSE: 1.5    // ★追加: 中ボス。超鈍足でジワジワ迫る
+            ECLIPSE: 1.5,
+            JELLYFISH: 2.5     // ★追加: クラゲ（基本は遅いが脈動で加速する）
         };
 
         const DRAGON_ACCELERATION = 0.2; // ドラゴンのプレイヤー追尾加速力
@@ -1169,6 +1170,7 @@
             DRAGON: 25,
             HUNTER: 20,        // 星型のため少し大きめ
             PHANTOM: 16,    // ★追加
+            JELLYFISH: 18,
             ECLIPSE: 40,    // ★追加: 巨大な当たり判定
             BULLET: 8,          // 赤い敵弾の判定サイズ
             BOSS: 45
@@ -1193,6 +1195,7 @@
             cube: 200,         // アイテムキャリア（ボーナス敵）
             triangle: 150,     // フォーメーション機
             tadpole: 100,      // 高速移動機（基本雑魚）
+            jellyfish: 180,
 
             // 特殊判定がない場合のフォールバック（ワームホールなど）
             default: 100
@@ -3252,6 +3255,26 @@
                     actionTimer: 0
                 });
                 spawnedCount++;
+            } else if (type === 'jellyfish' || type === 'spark_jelly') {
+                const isSpark = (type === 'spark_jelly');
+
+                enemies.push({
+                    x: x, y: y, vx: vx * 0.1, vy: vy * 0.1,
+                    hp: (isSpark ? 4 : 2) + Math.floor(hpMag * 1.5),
+                    speed: ENEMY_SPEEDS.JELLYFISH * spd * stageMag * (isSpark ? 1.2 : 1.0),
+                    color: '#0ff', // ★変更: すべてシアン（#0ff）に統一
+                    type: 'jellyfish',
+                    variant: isSpark ? 'spark' : 'normal',
+                    angle: angle,
+                    prevAngle: angle,
+                    bend: 0,
+                    drop: dropType,
+                    scale: isSpark ? 1.4 : 1.2,
+                    timer: Math.random() * 100,
+                    canFire: true,
+                    chargeLevel: 0
+                });
+                spawnedCount++;
             }
 
         }
@@ -3295,6 +3318,7 @@
                         case 'hunter': updateHunterAI(e); break;
                         case 'phantom': updatePhantomAI(e); break;
                         case 'eclipse': updateEclipseAI(e); break;
+                        case 'jellyfish': updateJellyfishAI(e); break;
                         case 'boss':
                             if (stage === 9) updateBossSpecialAI(e);
                             else updateBossAI(e);
@@ -3310,6 +3334,7 @@
 
                 applySeparation(e);
                 applyAsteroidCollisions(e);
+                //applyJellyfishAsteroidCollisions(e);
                 applyWorldBoundary(e);
 
                 // ★ プレイヤーとの体当たり判定や、サテライトの当たり判定は「画面付近」のみに限定
@@ -3420,6 +3445,72 @@
                         const midX = (e.x + other.x) / 2;
                         const midY = (e.y + other.y) / 2;
                         createExplosion(midX, midY, '#fff', 2);
+                    }
+                }
+            });
+        }
+
+        // クラゲとアステロイドの衝突（ぼよーんと跳ね返る）
+        function applyJellyfishAsteroidCollisions(e) {
+            // クラゲ以外はこの処理を行わない
+            if (e.type !== 'jellyfish') return;
+
+            enemies.forEach(other => {
+                // 死んでいる敵や、アステロイド以外の敵は無視
+                if (other.hp <= 0 || other.type !== 'asteroid') return;
+
+                const dx = e.x - other.x; // 岩からクラゲへのベクトル
+                const dy = e.y - other.y;
+                const dist = Math.hypot(dx, dy) || 0.001;
+
+                // --- 判定半径 ---
+                // クラゲの見た目のサイズに合わせて半径を調整
+                const r1 = 20 * e.scale * G_SCALE;     // クラゲの半径（少し大きめに）
+                const r2 = 20 * other.scale * G_SCALE; // アステロイドの半径
+                const minDist = r1 + r2;
+
+                if (dist < minDist) {
+                    // --- 1. 重なりの解消（位置を押し戻す） ---
+                    const overlap = minDist - dist;
+                    const nx = dx / dist; // 法線ベクトルX（岩→クラゲ）
+                    const ny = dy / dist; // 法線ベクトルY
+
+                    e.x += nx * overlap;
+                    e.y += ny * overlap;
+
+                    // --- 2. 速度ベクトルの反射計算 ---
+                    // 現在の速度と法線の内積を計算（接近しているか判定）
+                    const dot = e.vx * nx + e.vy * ny;
+
+                    // 岩に向かって進んでいる場合のみ反射させる
+                    if (dot < 0) {
+                        // ★変更：弾力係数を 1.6 → 0.8 に下げ、過剰な加速を防ぐ
+                        const bounceFactor = 0.8;
+
+                        // 反射ベクトル計算
+                        const impulse = (1 + bounceFactor) * dot;
+                        e.vx -= impulse * nx;
+                        e.vy -= impulse * ny;
+
+                        // ★追加：跳ね返り速度の安全装置（リミッター）
+                        // どんなに強く当たっても、基本速度の1.5倍以上にはならないようにする
+                        const maxBounceSpeed = e.speed * 1.5;
+                        const currentV = Math.hypot(e.vx, e.vy);
+                        if (currentV > maxBounceSpeed) {
+                            e.vx = (e.vx / currentV) * maxBounceSpeed;
+                            e.vy = (e.vy / currentV) * maxBounceSpeed;
+                        }
+
+                        // --- 3. 「ぼよーん」感の演出 ---
+                        // 反射後の速度から、新しい進行角度をセット
+                        e.angle = Math.atan2(e.vy, e.vx);
+
+                        // 強制的に「縮んだ」状態にするタイマー値にセット
+                        // 次の瞬間に反動で大きくカサが開く
+                        e.timer = (Math.PI * 1.5) / 0.08;
+
+                        // 少し回転を加える（衝撃でよろめく感じ）
+                        e.angle += (Math.random() - 0.5) * 0.5;
                     }
                 }
             });
@@ -3614,7 +3705,11 @@
             } else if (e.type === 'phantom' || e.type === 'triangle') {
                 // ★ 破片演出がある敵は、細かい火花を極端に減らす（控えめにする）
                 particleCount = 3;
+            } else if (e.type === 'jellyfish') {
+                // ★追加: クラゲは通常の火花（線）をゼロにする
+                particleCount = 0;
             }
+            
 
             for (let i = 0; i < particleCount; i++) {
                 const angle = Math.random() * Math.PI * 2;
@@ -3758,6 +3853,27 @@
 
                 // ドラゴン撃破時は専用の「ごく少数」の火花だけ出す
                 createExplosion(e.x, e.y, '#fff', 5);
+            }
+            else if (e.type === 'jellyfish') {
+                AudioSys.playSE('explode_small'); // 少し高い音が水泡が弾ける音に似ます
+                distortGrid(e.x, e.y, 50, 100);
+
+                const bubbleCount = 20; // 泡の数
+                for (let i = 0; i < bubbleCount; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1 + Math.random() * 3; // ふんわり飛び散る速度
+                    particles.push({
+                        x: e.x + (Math.random() - 0.5) * 20,
+                        y: e.y + (Math.random() - 0.5) * 20,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        color: e.color || '#0ff',
+                        life: 1 + Math.random(),   // 長めに残す
+                        size: 3 + Math.random() * 3, // 泡の大きさ（半径）
+                        isBubble: true,              // ★泡フラグ
+                        wobbleOffset: Math.random() * Math.PI * 2 // 揺らぎの初期位相
+                    });
+                }
             }
             // --- その他の敵の処理 ---
             else if (e.type === 'boss' || e.type === 'battleship') {
@@ -4344,6 +4460,121 @@
             }
         }
 
+        function updateJellyfishAI(e) {
+            e.timer += gameSpeed;
+
+            if (e.chargeLevel === undefined) e.chargeLevel = 0;
+            // 自機への角度を計算
+            const dx = player.x - e.x;
+            const dy = player.y - e.y;
+            const distToPlayer = Math.hypot(dx, dy) || 1;
+            const targetAngle = Math.atan2(dy, dx);
+
+            // ゆっくり自機の方へ旋回
+            let diff = targetAngle - e.angle;
+            while (diff <= -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+
+            // 帯電クラゲの方が旋回性能が高い
+            const turnSpd = (e.variant === 'spark') ? 0.05 : 0.03;
+            e.angle += diff * turnSpd * gameSpeed;
+
+            // --- 脈動（パルス）と慣性ロジック ---
+            // サイン波を使って収縮・膨張のリズムを作る
+            const pulse = Math.sin(e.timer * 0.08);
+
+            // 1. 水の抵抗（摩擦）による自然な減速
+            // ここで毎フレーム速度を落とすことで、滑るような「慣性」が生まれる
+            e.vx *= 0.95;
+            e.vy *= 0.95;
+
+            // 2. 脈動による加速（水を蹴る）
+            if (pulse > 0) {
+                // サイン波がプラスの時（カサをすぼめる時）に前方に加速力を足し込む
+                const accel = pulse * e.speed * 0.4;
+                e.vx += Math.cos(e.angle) * accel;
+                e.vy += Math.sin(e.angle) * accel;
+            } else {
+                // 脈動が止まっている（カサが開いている）間も、わずかな推進力を与えてフワフワ漂わせる
+                const drift = e.speed * 0.03;
+                e.vx += Math.cos(e.angle) * drift;
+                e.vy += Math.sin(e.angle) * drift;
+            }
+
+            // 最終的な速度を座標に適用
+            e.x += e.vx * gameSpeed;
+            e.y += e.vy * gameSpeed;
+
+            // ==========================================
+            // ★攻撃ロジックの分岐
+            // ==========================================
+            if (e.variant === 'spark') {
+                // --- 帯電クラゲ（放電攻撃） ---
+                if (pulse > 0) {
+                    // 収縮時にチャージを溜める
+                    e.chargeLevel += 0.05 * gameSpeed;
+
+                    // チャージエフェクト（ビリビリ：赤橙色に）
+                    if (Math.random() < e.chargeLevel && frame % 3 === 0) {
+                        const r = 20 * e.scale;
+                        const a = Math.random() * Math.PI * 2;
+                        particles.push({
+                            x: e.x + Math.cos(a) * r, y: e.y + Math.sin(a) * r,
+                            vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2,
+                            color: '#ff4400', life: 0.2, size: 2 // ★変更: 白から赤橙に
+                        });
+                    }
+                }
+
+                // 収縮のピークで一気に放電！
+                if (pulse > 0.95 && e.canFire && e.chargeLevel > 1.0) {
+                    e.canFire = false;
+                    e.chargeLevel = 0;
+
+                    // 自身を中心とした放電エフェクト（そのまま残す）
+                    //rings.push({ x: e.x, y: e.y, r: 10, color: '#ff0000', life: 1.5 });
+                    //rings.push({ x: e.x, y: e.y, r: 40, color: '#ff8800', life: 1.0 });
+
+                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
+                    distortGrid(e.x, e.y, 80, 150);
+
+                    // ★ 変更：自機に向かって飛んでいく衝撃波を生成
+                    const bSpd = 12 * SPEED_SCALE; // 弾の速度
+                    enemyBullets.push({
+                        x: e.x + Math.cos(e.angle) * 20,
+                        y: e.y + Math.sin(e.angle) * 20,
+                        vx: Math.cos(targetAngle) * bSpd,
+                        vy: Math.sin(targetAngle) * bSpd,
+                        life: 200,
+                        color: '#ff4400', // 危険な赤橙色
+                        isShockwave: true, // ★衝撃波フラグ
+                        baseScale: 1.0     // 拡大用の初期スケール
+                    });
+                } else if (pulse < 0) {
+                    e.canFire = true;
+                    e.chargeLevel = Math.max(0, e.chargeLevel - 0.02 * gameSpeed);
+                }
+
+            } else {
+                // --- 通常クラゲ（電撃弾の発射：既存のまま） ---
+                if (pulse > 0.95 && e.canFire) {
+                    e.canFire = false;
+                    if (Math.random() < 0.3) {
+                        const bSpd = 8 * SPEED_SCALE;
+                        enemyBullets.push({
+                            x: e.x + Math.cos(e.angle) * 10,
+                            y: e.y + Math.sin(e.angle) * 10,
+                            vx: Math.cos(targetAngle) * bSpd,
+                            vy: Math.sin(targetAngle) * bSpd,
+                            life: 150, color: e.color
+                        });
+                        if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
+                    }
+                } else if (pulse < 0) {
+                    e.canFire = true;
+                }
+            }
+        }
 
         function updateBossAI(e) {
             // --- 1. 出現演出中の処理 ---
@@ -4990,9 +5221,9 @@
                 }
 
                 // =========================================================
-                // ★追加: アステロイドによる弾の吸収（盾機能）
+                // アステロイドによる弾の吸収（盾機能）
                 // =========================================================
-                if (eb.life > 0) {
+                if (eb.life > 0 && !eb.isShockwave) {
                     // 全ての敵（アステロイド含む）に対して判定
                     for (const rock of enemies) {
                         // アステロイド以外は弾をスルーする（味方撃ち防止）
@@ -5078,7 +5309,15 @@
                 // --- E. プレイヤーとの判定 ---
                 if (eb.life > 0 && gameState !== 'DYING' && player.invuln <= 0) {
                     const dist = Math.hypot(player.x - eb.x, player.y - eb.y);
-                    const collisionRadius = (eb.isMissile ? 12 : 8) * G_SCALE;
+
+                    let collisionRadius = (eb.isMissile ? 12 : 8) * G_SCALE;
+
+                    // ★追加: 衝撃波の場合は徐々に拡大させ、当たり判定も大きくする
+                    if (eb.isShockwave) {
+                        eb.baseScale = (eb.baseScale || 1.0) + 0.02 * gameSpeed; // 毎フレーム拡大
+                        collisionRadius = 18 * eb.baseScale * G_SCALE; // 見た目に合わせて判定を拡大
+                    }
+
                     if (dist < collisionRadius) {
                         eb.life = 0;
                         createExplosion(player.x, player.y, eb.color || '#f00', 10);
@@ -5315,10 +5554,20 @@
                 p.y += p.vy * gameSpeed;
                 p.vx *= Math.pow(0.92, gameSpeed);
                 p.vy *= Math.pow(0.92, gameSpeed);
-                p.vy += 0.005 * gameSpeed;
-                p.life -= 0.02 * gameSpeed;
 
-                // ★追加：破片の回転を更新
+                // --- ★追加：泡か通常の火花かで物理挙動を変える ---
+                if (p.isBubble) {
+                    // 泡の特殊挙動：上方向にゆっくり浮上し、左右にゆらゆら揺れる
+                    p.vy -= 0.01 * gameSpeed;
+                    p.x += Math.sin(frame * 0.05 + p.wobbleOffset) * 0.5 * gameSpeed;
+                    p.life -= 0.015 * gameSpeed; // 火花よりゆっくり消える
+                } else {
+                    // 通常の火花の挙動
+                    p.vy += 0.005 * gameSpeed;
+                    p.life -= 0.02 * gameSpeed;
+                }
+
+                // 破片の回転を更新
                 if (p.rotV) p.angle += p.rotV * gameSpeed;
             });
             particles = particles.filter(p => p.life > 0);
@@ -5537,6 +5786,7 @@
                 else if (e.type === 'hunter') drawHunterEnemy(ctx, e);
                 else if (e.type === 'phantom') drawPhantomEnemy(ctx, e); 
                 else if (e.type === 'eclipse') drawEclipseEnemy(ctx, e);
+                else if (e.type === 'jellyfish') drawJellyfishEnemy(ctx, e);
 
                 else if (e.type === 'boss') drawBossEnemy(ctx, e); 
                 else if (e.type === 'battleship') drawBattleshipBoss(ctx, e);
@@ -5545,7 +5795,6 @@
             });
         }
 
-        // --- drawEnemyProjectilesの修正 ---
         function drawEnemyProjectiles() {
             ctx.globalCompositeOperation = 'lighter';
             enemyBullets.forEach(eb => {
@@ -5557,10 +5806,12 @@
 
                 if (eb.isLaserMissile) {
                     drawLaserMissile(ctx, eb);
-                } else if (eb.isFighter) { // ★戦闘機フラグがある場合
+                } else if (eb.isFighter) {
                     drawFighterJet(ctx, eb);
-                } else if (eb.isMissile) { // 通常ボスのホーミングミサイル
+                } else if (eb.isMissile) {
                     drawHomingMissile(ctx, eb);
+                } else if (eb.isShockwave) { // ★追加：衝撃波の描画呼び出し
+                    drawShockwave(ctx, eb);
                 } else {
                     drawNormalBullet(ctx, eb);
                 }
@@ -5568,6 +5819,56 @@
             });
             ctx.globalAlpha = 1.0;
             ctx.globalCompositeOperation = 'source-over';
+        }
+
+        // 三日月型の衝撃波（消える直前までうっすら視認可能版）
+        function drawShockwave(ctx, eb) {
+            const angle = Math.atan2(eb.vy, eb.vx);
+            ctx.rotate(angle);
+
+            const currentScale = eb.baseScale || 1.0;
+            const scale = currentScale * G_SCALE;
+            ctx.scale(scale, scale);
+
+            // --- ★修正ロジック：広がるほど薄くなるが、0.3以下にはならない ---
+            // 減衰計算
+            let scatterAlpha = 1.2 - (currentScale * 0.4);
+            // ★ここがポイント：下限を0.3に設定（消える直前まで0.3の濃さを維持）
+            scatterAlpha = Math.max(0.3, scatterAlpha);
+
+            const lifeAlpha = Math.min(1.0, eb.life / 40);
+            const finalAlpha = scatterAlpha * lifeAlpha;
+
+            if (finalAlpha <= 0) return;
+
+            ctx.globalCompositeOperation = 'lighter';
+
+            // --- 1. 外側の淡いシアンの波紋 ---
+            ctx.strokeStyle = '#0ff';
+            ctx.lineWidth = 4 + (currentScale);
+            ctx.lineCap = 'round';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#0ff';
+            // 元の設計より少しだけ alpha を底上げ
+            ctx.globalAlpha = finalAlpha * 0.8;
+
+            ctx.beginPath();
+            ctx.arc(-10, 0, 25, -Math.PI / 3, Math.PI / 3, false);
+            ctx.stroke();
+
+
+
+            // --- 3. 背後の余韻粒子（発生率を下限に合わせて維持） ---
+            if (frame % 5 === 0 && Math.random() < Math.max(0.2, scatterAlpha)) {
+                particles.push({
+                    x: eb.x, y: eb.y,
+                    vx: -eb.vx * 0.05, vy: -eb.vy * 0.05,
+                    color: '#00ffff',
+                    life: 0.3, size: 1.0 * scale,
+                    isBubble: true,
+                    wobbleOffset: Math.random() * Math.PI
+                });
+            }
         }
 
         function drawPlayerSystems() {
@@ -5844,6 +6145,36 @@
                         ctx.globalAlpha = Math.min(1, p.life) * 0.4;
                         ctx.fill();
                     }
+                }
+                else if (p.isBubble) {
+                    // --- ★変更：泡（バブル）パーティクルの描画（最初から薄め） ---
+                    ctx.translate(p.x, p.y);
+
+                    // ベースの透明度を 0.4（40%）まで下げて、最初から薄くする
+                    const baseOpacity = 0.6;
+                    const fade = Math.min(1.0, p.life) * baseOpacity;
+
+                    ctx.globalAlpha = fade;
+                    const r = p.size * G_SCALE;
+
+                    // 泡の輪郭と内部
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r, 0, Math.PI * 2);
+
+                    // 内部をさらに薄く塗りつぶす
+                    ctx.fillStyle = `rgba(255, 255, 255, 0.2)`;
+                    ctx.fill();
+
+                    // 外枠（クラゲのメインカラー）
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    // 泡のハイライト（少し明るくして立体感を出す）
+                    ctx.fillStyle = `rgba(255, 255, 255, 0.9)`;
+                    ctx.beginPath();
+                    ctx.arc(-r * 0.4, -r * 0.4, r * 0.25, 0, Math.PI * 2);
+                    ctx.fill();
                 }
                 // 通常の火花（線）
                 else {
@@ -7007,6 +7338,132 @@
             }
             ctx.restore();
         }
+
+        function drawJellyfishEnemy(ctx, e) {
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            ctx.rotate(e.angle);
+            ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
+
+            const pulse = Math.sin(e.timer * 0.08);
+            const squeeze = Math.max(0, pulse);
+            const isSpark = (e.variant === 'spark'); // ★帯電フラグ
+
+            ctx.globalCompositeOperation = 'lighter';
+
+            // --- 1. 波打つ触手 ---
+            ctx.lineWidth = isSpark ? 2.0 : 1.5;
+            ctx.strokeStyle = e.color;
+            ctx.globalAlpha = 0.5;
+
+            // 触手の生え際を細くまとめる (間隔を狭く)
+            const tentacleCount = isSpark ? 6 : 4;
+            const spacing = isSpark ? 2.5 : 4;
+
+            for (let i = 0; i < tentacleCount; i++) {
+                ctx.beginPath();
+                const startY = (i - (tentacleCount - 1) / 2) * spacing;
+                ctx.moveTo(-5, startY);
+
+                const waveSpd = isSpark ? 0.15 : 0.1;
+                // 波の振幅も少し抑え気味にしてスマートなシルエットに
+                const waveAmp = isSpark ? 14 : 9;
+
+                const wave1 = Math.sin(e.timer * waveSpd - i * 0.5) * waveAmp;
+                const wave2 = Math.cos(e.timer * (waveSpd * 0.5) + i) * (waveAmp * 1.2);
+                const stretch = squeeze * 15;
+
+                ctx.bezierCurveTo(
+                    -20 - stretch, startY + wave1,
+                    -40 - stretch * 2, startY + wave2,
+                    -60 - stretch * 3, startY + wave1 * 1.5
+                );
+                ctx.stroke();
+
+                if (isSpark && Math.random() < 0.1) {
+                    ctx.save();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.globalAlpha = 0.8;
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+
+            // --- 2. 傘（ドーム型のカサ） ---
+            ctx.globalAlpha = 0.8;
+
+            const grad = ctx.createRadialGradient(5, 0, 0, 5, 0, 20);
+            grad.addColorStop(0, '#ffffff');
+            const innerGlow = isSpark && e.chargeLevel ? Math.min(1.0, e.chargeLevel) : 0.4;
+            grad.addColorStop(innerGlow, e.color);
+            grad.addColorStop(1, 'transparent');
+
+            // カサを細身の流線型に調整
+            const headX = 22 + squeeze * 6;     // 先端を少し前へ伸ばす
+            const rearX = -6 + squeeze * 4;     // 後ろのヒダ
+            const widthY = 10 - squeeze * 3;    // 横幅を大幅に細く
+
+            ctx.beginPath();
+            ctx.moveTo(headX, 0);
+            ctx.quadraticCurveTo(8, widthY, rearX, widthY);
+            ctx.quadraticCurveTo(0, 0, rearX, -widthY);
+            ctx.quadraticCurveTo(8, -widthY, headX, 0);
+            ctx.closePath();
+
+            ctx.fillStyle = 'rgba(10, 0, 30, 0.7)';
+            ctx.fill();
+
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            ctx.strokeStyle = e.color;
+            ctx.lineWidth = 1.5;
+            ctx.shadowBlur = isSpark ? 25 : 15;
+            ctx.shadowColor = e.color;
+            ctx.stroke();
+
+            // --- 3. コア（中心の心臓部） ---
+
+            // 帯電クラゲは赤〜橙へ脈動するように色を動的に生成、通常は白
+            let coreColor = '#fff';
+            if (isSpark) {
+                // 緑の成分を 0(赤) 〜 120(橙) の間で波打たせる
+                const greenVal = Math.floor(60 + Math.sin(frame * 0.2) * 60);
+                coreColor = `rgb(255, ${greenVal}, 0)`;
+            }
+
+            ctx.fillStyle = coreColor;
+            ctx.shadowBlur = isSpark ? 20 : 0; // 帯電時は強く光らせる
+            ctx.shadowColor = coreColor;
+
+            ctx.beginPath();
+
+            if (isSpark) {
+                // 帯電クラゲ：ギザギザしたエネルギーコア
+                const coreSize = 3 + pulse * 2 + (e.chargeLevel || 0) * 4;
+                for (let j = 0; j < 6; j++) {
+                    const a = (Math.PI * 2 / 6) * j + frame * 0.2;
+                    const r = coreSize * (0.8 + Math.random() * 0.4);
+                    // 縦方向を少し潰してスリム化
+                    const cx = 4 + Math.cos(a) * r;
+                    const cy = Math.sin(a) * r * 0.8;
+                    if (j === 0) ctx.moveTo(cx, cy);
+                    else ctx.lineTo(cx, cy);
+                }
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                // 通常クラゲ：コアも少し前後に長い「楕円」にして流線型を強調
+                ctx.ellipse(4 + squeeze * 2, 0, 3 + pulse * 2, 2 + pulse, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+
+
 
         function drawBossEnemy(ctx, e) {
             ctx.save();
