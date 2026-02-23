@@ -46,7 +46,7 @@
             width: 100%;
             height: 100%;
             pointer-events: none; /* 操作を下の要素へ通す */
-            z-index: 20; /* キャンバスより前面 */
+            z-index: 60; /* キャンバスより前面 */
 
             display: flex;
             flex-direction: column; /* 縦方向に要素配置 */
@@ -350,10 +350,35 @@
             max-width: 500px;
             max-height: 60vh; /* 画面高さの60% */
 
-            overflow-y: auto; /* スクロール可能 */
+            overflow-y: auto; /* 縦スクロールは可能にする */
+            overflow-x: hidden; /* ★横方向のはみ出しと横スクロールバーを完全に隠す */
             margin: 10px 0;
             -webkit-overflow-scrolling: touch;
+            /* Firefox向けのサイバースクロールバー設定 */
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
         }
+
+            /* =========================================================
+           ★Chrome / Safari / Edge向けのサイバースクロールバー設定
+           ========================================================= */
+            #ost-scroll-container::-webkit-scrollbar {
+                width: 6px; /* 縦スクロールバーの細さ */
+            }
+
+            #ost-scroll-container::-webkit-scrollbar-track {
+                background: rgba(0, 255, 255, 0.05); /* バーの背景（暗い水色） */
+                border-radius: 3px;
+            }
+
+            #ost-scroll-container::-webkit-scrollbar-thumb {
+                background: rgba(0, 255, 255, 0.5); /* つまみ（ネオンブルー） */
+                border-radius: 3px;
+            }
+
+                #ost-scroll-container::-webkit-scrollbar-thumb:hover {
+                    background: #0ff; /* マウスを乗せると明るく光る */
+                }
 
         .track-item {
             padding: 15px 20px;
@@ -374,9 +399,9 @@
             }
 
         /* =========================================================
-                9. 操作コントローラー（ジョイスティック）
-                見た目のデザインと配置設定
-                ========================================================= */
+            9. 操作コントローラー（ジョイスティック）
+            見た目のデザインと配置設定
+           ========================================================= */
 
         /* 全体コンテナ */
         #controls {
@@ -764,16 +789,19 @@
                 width: 60px;
                 height: 40px;
             }
+
+                /* ★追加：縦画面で押した時も、中央揃え（translateX）を維持したまま縮小する */
+                #pause-btn:active {
+                    transform: translateX(-50%) scale(0.9);
+                }
         }
 
         /* =========================================================
            ★ゲームパッド選択時のハイライトエフェクト
            ========================================================= */
         .menu-btn.selected, .track-item.selected {
-            background: rgba(0,255,255,0.4) !important;
             color: #fff !important;
             transform: scale(1.05);
-            box-shadow: 0 0 20px #fff !important;
             border-color: #fff !important;
         }
 
@@ -896,8 +924,11 @@
     </div>
 
     <div id="pause-overlay">
-        <h1 style="color:#fff; font-size:40px; text-shadow:0 0 10px #fff;">PAUSED</h1>
-        <p style="color:#aaa; margin-top:20px;">TAP TO RESUME</p>
+        <h1 style="color:#fff; font-size:40px; text-shadow:0 0 10px #fff; margin-bottom:30px;">PAUSED</h1>
+        <div style="display:flex; flex-direction:column; align-items:center;">
+            <div class="menu-btn" id="btn-resume">RESUME</div>
+            <div class="menu-btn" id="btn-quit">QUIT TO TITLE</div>
+        </div>
     </div>
 
     <div id="ost-ui">
@@ -2013,9 +2044,12 @@
         // 3. 初期化・システム制御 (Core Logic)
         // =========================================================
         // ★修正：表示されているメニューボタンを抽出する関数（参照エラー修正版）
-        window.refreshMenuButtons = function () {
+        // ★修正：表示されているメニューボタンを抽出する関数（参照エラー修正版）
+        window.refreshMenuButtons = function (resetIndex = true) { // ★ここを修正
             currentMenuButtons = [];
-            selectedMenuIndex = 0;
+            if (resetIndex) {
+                selectedMenuIndex = 0;
+            }
 
             // 別スコープの変数を直接読めないのでIDで取得する
             const rOverlay = document.getElementById("ranking-overlay");
@@ -2023,8 +2057,12 @@
 
             if (rOverlay && rOverlay.style.display === 'flex') {
                 currentMenuButtons = [cBtn];
+            } else if (gameState === 'PAUSED') {
+                // ★追加：PAUSE画面のボタンを取得
+                const pauseBtns = document.querySelectorAll('#pause-overlay .menu-btn');
+                pauseBtns.forEach(btn => currentMenuButtons.push(btn));
             } else if (ui.nameInputArea.style.display === 'flex') {
-                // 名前入力中
+            // 名前入力中
                 const inputBtns = document.querySelectorAll('#name-input-area .menu-btn');
                 inputBtns.forEach(btn => {
                     if (window.getComputedStyle(btn).display !== 'none') currentMenuButtons.push(btn);
@@ -2102,6 +2140,7 @@
                     previousGameState = gameState;
                     gameState = 'PAUSED';
                     ui.pauseOverlay.style.display = 'flex';
+                    window.refreshMenuButtons();
                 }
                 AudioSys.pauseBGM();
             } else {
@@ -2145,6 +2184,15 @@
             player.laserTimer = 0;
             player.history = [];
 
+            // --- ★追加：入力状態とスティックの見た目を強制リセット ---
+            input.move.x = 0; input.move.y = 0; input.move.active = false;
+            input.aim.x = 0; input.aim.y = 0; input.aim.active = false;
+            for (let key in input.keys) input.keys[key] = false; // キーボード入力もリセット
+            if (ui.knobL) ui.knobL.style.transform = 'translate(0,0)';
+            if (ui.knobR) ui.knobR.style.transform = 'translate(0,0)';
+            // --------------------------------------------------------
+
+
             // 4. 入力デバイスに応じたUI表示
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             const isConnected = Array.from(gamepads).some(gp => gp !== null);
@@ -2155,7 +2203,8 @@
             const viewW = width / cameraScale;
             const viewH = height / cameraScale;
             camera.x = player.x - viewW / 2;
-            camera.y = player.y - viewH / 2;
+            //camera.y = player.y - viewH / 2;
+            camera.y = player.y - viewH * 0.65;
 
             // スムージングのラグを消すため、強制的にカメラ座標を確定
             updateCamera();
@@ -2275,12 +2324,21 @@
             player.satellites = [];
             player.history = [];
 
+            // --- ★追加：入力状態とスティックの見た目を強制リセット ---
+            input.move.x = 0; input.move.y = 0; input.move.active = false;
+            input.aim.x = 0; input.aim.y = 0; input.aim.active = false;
+            for (let key in input.keys) input.keys[key] = false;
+            if (ui.knobL) ui.knobL.style.transform = 'translate(0,0)';
+            if (ui.knobR) ui.knobR.style.transform = 'translate(0,0)';
+            // --------------------------------------------------------
+
             // --- ★カメラの瞬間リセット ---
             cameraScale = 1.0;
             const viewW = width / cameraScale;
             const viewH = height / cameraScale;
             camera.x = player.x - viewW / 2;
-            camera.y = player.y - viewH / 2;
+            //camera.y = player.y - viewH / 2;
+            camera.y = player.y - viewH * 0.65;
 
             // これにより、スムージングの計算（ Lerp ）をリセット
             updateCamera();
@@ -2304,8 +2362,6 @@
             ui.controls.style.display = isConnected ? 'none' : 'block';
             ui.pauseBtn.style.display = isConnected ? 'none' : 'flex'; // ★追加
         }
-
-
 
         function checkStageClear() {
             let isClearCondition = false;
@@ -2345,9 +2401,6 @@
                 }, 4000);
             }
         }
-
-
-
 
         async function waitForFirebase() {
             return new Promise((resolve) => {
@@ -2556,11 +2609,6 @@
             window.refreshMenuButtons();
         }
 
-
-
-
-
-
         function showEnding() {
             gameState = 'ENDING';
             //AudioSys.stopBGM();
@@ -2632,6 +2680,9 @@
         // =========================================================
         function loop() {
             requestAnimationFrame(loop);
+
+            handleGamepadInput();
+
             if (gameState === 'PAUSED') return;
             ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, width, height);
 
@@ -2651,8 +2702,6 @@
         }
 
         function update() {
-            // --- ゲームパッド入力の処理 ---
-            handleGamepadInput();
 
             // --- 警告演出の管理 ---
             if (isBossWarning) {
@@ -2700,12 +2749,23 @@
             // カメラ更新
             updateCamera();
 
-            // --- 向きと射撃 ---
-            if (input.aim.active) player.angle = Math.atan2(input.aim.y, input.aim.x);
-            else if (Math.hypot(mx, my) > 0.1) player.angle = Math.atan2(my, mx);
+            // --- 向きと射撃のロジック修正 ---
+            // 1. 右スティック（エイム）が動いている場合はそちらを優先
+            if (input.aim.active) {
+                player.angle = Math.atan2(input.aim.y, input.aim.x);
+            }
+            // 2. 移動している場合は、移動方向を向く
+            else if (Math.hypot(mx, my) > 0.1) {
+                player.angle = Math.atan2(my, mx);
+            }
 
+            // ショット間隔（レーザー時は高速）
             const fireInterval = player.laserTimer > 0 ? 4 : 6;
-            if ((input.aim.active || input.keys['Space'] || input.keys['KeyZ']) && frame % fireInterval === 0) fire();
+
+            // ★ Aボタン（input.padAPressed）または スペース/Zキー で射撃
+            if ((input.aim.active || input.keys['Space'] || input.keys['KeyZ'] || input.padAPressed) && frame % fireInterval === 0) {
+                fire();
+            }
 
 
             // =========================================================
@@ -2786,8 +2846,12 @@
                 const activeWormholes = wormholes.filter(w => w.active).length;
                 const currentMaxOnScreen = STAGE_MAX_ON_SCREEN[stage - 1] || 40;
 
-                let shouldSpawnWormhole = !isBossWarning && spawnedCount < enemiesToSpawn && activeWormholes < maxWormholes && enemies.length < currentMaxOnScreen && Math.random() < SPAWN_SETTINGS.WORMHOLE_CHANCE;
-                if (enemies.length === 0 && activeWormholes === 0 && spawnedCount < enemiesToSpawn) shouldSpawnWormhole = true;
+                // ★修正1: ボス戦闘中(ボスが存在している間)は、ノルマを無視してワームホールを生成する
+                const bossExists = enemies.some(e => e.type === 'boss' || e.type === 'battleship');
+                const canSpawnWormhole = (spawnedCount < enemiesToSpawn) || (isBossSpawned && bossExists);
+
+                let shouldSpawnWormhole = !isBossWarning && canSpawnWormhole && activeWormholes < maxWormholes && enemies.length < currentMaxOnScreen && Math.random() < SPAWN_SETTINGS.WORMHOLE_CHANCE;
+                if (enemies.length === 0 && activeWormholes === 0 && canSpawnWormhole) shouldSpawnWormhole = true;
                 if (shouldSpawnWormhole) spawnWormhole();
             }
 
@@ -2795,7 +2859,6 @@
             wormholes.forEach((w) => {
                 w.life--;
                 if (w.active) {
-                    // ★修正: ステージ9と10以外の場合のみ、ワームホールから雑魚を出す
                     if (stage !== 9 && stage !== 10 && w.life > 60 && w.life % SPAWN_SETTINGS.SPAWN_INTERVAL === 0) {
                         const remaining = enemiesToSpawn - spawnedCount;
                         const threshold = enemiesToSpawn * 0.2;
@@ -2809,7 +2872,9 @@
                             }
                         }
 
-                        if (spawnedCount < enemiesToSpawn) {
+                        // ★修正2: ボス戦闘中も雑魚を出し続ける
+                        const bossExists = enemies.some(e => e.type === 'boss');
+                        if (spawnedCount < enemiesToSpawn || bossExists) {
                             if (Math.random() < 0.15) {
                                 spawnEnemy(w.x, w.y, 'cube');
                             } else {
@@ -2903,7 +2968,8 @@
 
             // 6. 最終座標の算出
             let tx = focusX - viewW / 2;
-            let ty = focusY - viewH / 2;
+            //let ty = focusY - viewH / 2;
+            let ty = focusY - viewH * 0.65;
 
             // 7. クランプ処理（境界チェック）
             // ★修正：UI等のパディングもスケールに合わせて調整
@@ -3138,6 +3204,11 @@
         // 7. 敵機生成と共通AI (Enemy Spawning & Common AI)
         // =========================================================
         function spawnWormhole() {
+
+            if (isStageClear) return;
+            if (stage === 9 && rushBossIndex >= 8) return;
+            if (stage !== 9 && isBossSpawned && !enemies.some(e => e.type === 'boss' || e.type === 'battleship')) return;
+
             wormholes.push({
                 x: WALL_MARGIN + 100 + Math.random() * (worldSize - WALL_MARGIN * 2 - 200),
                 y: WALL_MARGIN + 100 + Math.random() * (worldSize - WALL_MARGIN * 2 - 200),
@@ -3147,6 +3218,14 @@
         }
 
         function spawnEnemy(x, y, type, size = 1) {
+
+            if (isStageClear) return;
+            if (stage === 9 && rushBossIndex >= 8) return;
+            if (stage !== 9 && isBossSpawned && type !== 'boss' && type !== 'battleship') {
+                const bossExists = enemies.some(e => e.type === 'boss' || e.type === 'battleship');
+                if (!bossExists) return; // ボスが既に死んでいるなら雑魚は出さない
+            }
+
             const spd = SPEED_SCALE;
             const stageMag = 1.0 + (stage - 1) * DIFFICULTY_CONFIG.SPEED_INC;
             const hpMag = (stage - 1) * DIFFICULTY_CONFIG.HP_INC;
@@ -8823,8 +8902,17 @@
             }
         };
 
-        ui.pauseOverlay.addEventListener('click', resumeAction);
-        ui.pauseOverlay.addEventListener('touchstart', resumeAction, { passive: false });
+        // ★修正：画面全体クリックを廃止し、個別のボタンに処理を割り当てる
+        document.getElementById('btn-resume').onclick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            resumeAction();
+        };
+
+        document.getElementById('btn-quit').onclick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            ui.pauseOverlay.style.display = 'none';
+            returnToTitle(); // タイトル画面に戻る
+        };
 
         function handleTouch(e) {
             e.preventDefault();
@@ -8916,15 +9004,14 @@
             const moveX = activeGp.axes[0];
             const moveY = activeGp.axes[1];
 
-            // --- ★追加: 十字キー(D-Pad)とAボタン、STARTボタンの取得 ---
             const dpadUp = activeGp.buttons[12]?.pressed || moveY < -0.5;
             const dpadDown = activeGp.buttons[13]?.pressed || moveY > 0.5;
             const dpadLeft = activeGp.buttons[14]?.pressed || moveX < -0.5;
             const dpadRight = activeGp.buttons[15]?.pressed || moveX > 0.5;
-            const aBtn = activeGp.buttons[0]?.pressed;
+            const aBtn = activeGp.buttons[0]?.pressed; // Aボタン
             const startBtn = activeGp.buttons[9]?.pressed; // START/OPTIONS ボタン
 
-            // --- ★追加: STARTボタンでポーズ切り替え ---
+            // --- STARTボタンでポーズ切り替え ---
             if (startBtn && !input.padStartPressed) {
                 if (gameState === 'PLAYING') {
                     setPaused(true);
@@ -8934,32 +9021,31 @@
             }
             input.padStartPressed = startBtn;
 
-            // --- ★追加: メニュー画面での操作 ---
+            // --- メニュー画面での操作 ---
             if (gameState !== 'PLAYING') {
-                if ((dpadUp || dpadLeft) && !input.padDirPressed) {
-                    selectedMenuIndex--;
-                    updateMenuSelectionUI();
-                } else if ((dpadDown || dpadRight) && !input.padDirPressed) {
-                    selectedMenuIndex++;
+                if ((dpadUp || dpadDown || dpadLeft || dpadRight) && !input.padDirPressed) {
+                    if (dpadUp || dpadLeft) selectedMenuIndex--;
+                    if (dpadDown || dpadRight) selectedMenuIndex++;
                     updateMenuSelectionUI();
                 }
 
                 if (aBtn && !input.padAPressed) {
-                    if (gameState === 'PAUSED') {
-                        resumeAction();
-                    } else if (currentMenuButtons[selectedMenuIndex]) {
+                    if (currentMenuButtons[selectedMenuIndex]) {
                         currentMenuButtons[selectedMenuIndex].click(); // Aボタンで決定
-                        // クリック後に状態が変わる可能性があるので少し待って更新
-                        setTimeout(() => window.refreshMenuButtons(), 100);
+                        setTimeout(() => {
+                            if (window.refreshMenuButtons) window.refreshMenuButtons(false);
+                        }, 100);
                     }
                 }
 
                 input.padDirPressed = (dpadUp || dpadDown || dpadLeft || dpadRight);
                 input.padAPressed = aBtn;
-                return; // メニュー画面中は自機の移動などは行わない
+                return; // メニュー画面中は以下の移動・射撃処理をスキップ
             }
 
-            // --- 以下、プレイ中の操作 ---
+            // --- ★ここからプレイ中の操作（Aボタンを有効化） ---
+            input.padAPressed = aBtn; // これにより update 関数内で射撃判定が通るようになります
+
             const moveDeadzone = 0.2;
             if (Math.abs(moveX) > moveDeadzone || Math.abs(moveY) > moveDeadzone) {
                 input.move.active = true;
