@@ -5021,10 +5021,22 @@
         }
 
         function updatePlayerBullets() {
+            // 現在のカメラの表示範囲を計算
+            const viewW = width / cameraScale;
+            const viewH = height / cameraScale;
+            const margin = 50; // 画面外50pxまで飛んだら消す（自然なフェードアウト感のため）
+
             bullets.forEach(b => {
                 b.x += b.vx * gameSpeed;
                 b.y += b.vy * gameSpeed;
                 b.life--;
+
+                // --- ★追加：画面（カメラ）の範囲外に出たら弾を消滅させる ---
+                if (b.x < camera.x - margin || b.x > camera.x + viewW + margin ||
+                    b.y < camera.y - margin || b.y > camera.y + viewH + margin) {
+                    b.life = 0;
+                    return; // 消滅したので以後の当たり判定をスキップ
+                }
 
                 // --- ワールド境界との衝突判定 ---
                 if (b.x < WALL_MARGIN || b.x > worldSize - WALL_MARGIN ||
@@ -5035,11 +5047,12 @@
 
                     createWallImpact(impactX, impactY, '#0f8');
                     b.life = 0;
+                    return; // 消滅したので以後の判定をスキップ
                 }
 
                 // --- 敵との当たり判定 ---
                 enemies.forEach(e => {
-                    // ★追加：弾が消えている、敵が死んでいる、または【敵が画面外の場合はスキップ】
+                    // 弾が消えている、敵が死んでいる、または【敵が画面外の場合はスキップ】
                     if (b.life <= 0 || e.hp <= 0 || !e.inActiveRange) return;
 
                     // --- 出現演出中のボスはショットをすり抜ける ---
@@ -5047,7 +5060,7 @@
 
                     // 敵の種類ごとの判定半径
                     let hitRadius = 30 * e.scale;
-                    if (e.type === 'asteroid') hitRadius = 25 * e.scale;
+                    if (e.type === 'asteroid' || e.type === 'bubble') hitRadius = 25 * e.scale; // ★bubbleも念のため追加
                     else if (e.type === 'dragon') hitRadius = ENEMY_HITBOX.DRAGON;
                     else if (e.type === 'triangle') hitRadius = ENEMY_HITBOX.TRIANGLE;
                     else if (e.type === 'cube') hitRadius = ENEMY_HITBOX.CUBE;
@@ -5062,9 +5075,9 @@
                         e.hp--;     // ダメージを与える
 
                         // 1. ボスの場合
-                        if (e.type === 'boss') {
+                        if (e.type === 'boss' || e.type === 'battleship') { // ★念のためbattleshipも追加
                             e.flashTimer = 5;
-                            AudioSys.playSE('boss_hit');
+                            if (typeof AudioSys !== 'undefined') AudioSys.playSE('boss_hit');
                             for (let i = 0; i < 3; i++) {
                                 particles.push({
                                     x: b.x, y: b.y,
@@ -5079,8 +5092,7 @@
                         // 2. ボス以外の敵
                         else {
                             if (e.hp > 0) {
-
-                                AudioSys.playSE('enemy_hit');
+                                if (typeof AudioSys !== 'undefined') AudioSys.playSE('enemy_hit');
                                 const sparkColor = e.color || '#fff';
                                 for (let i = 0; i < 4; i++) {
                                     particles.push({
@@ -5102,36 +5114,37 @@
         }
 
         function updateLasers() {
+            // ★追加：現在のカメラの表示範囲に基づいて、レーザーの最大長を計算
+            // （画面の幅・高さの大きい方 + 余白100px くらいで自然に見切れるようにする）
+            const viewW = width / cameraScale;
+            const viewH = height / cameraScale;
+            const dynamicMaxLen = Math.max(viewW, viewH) + 100;
+
             lasers.forEach(l => {
                 l.life--;
-                const maxLen = 2000;
-                let currentLen = maxLen; // デフォルトの長さ
+
+                // ★修正1：長さを固定の2000ではなく、画面サイズに合わせる
+                let currentLen = dynamicMaxLen;
 
                 const cos = Math.cos(l.angle);
                 const sin = Math.sin(l.angle);
 
-                // --- ★追加：壁との交差判定（壁で止める処理） ---
+                // --- 壁との交差判定（壁で止める処理） ---
                 const min = WALL_MARGIN;
                 const max = worldSize - WALL_MARGIN;
 
-                // 1. X方向の壁（左右）までの距離を計算
-                // cosがプラスなら右壁(max)、マイナスなら左壁(min)を見る
                 let distX = Infinity;
                 if (cos !== 0) {
                     distX = (cos > 0 ? max - l.x : min - l.x) / cos;
                 }
 
-                // 2. Y方向の壁（上下）までの距離を計算
-                // sinがプラスなら下壁(max)、マイナスなら上壁(min)を見る
                 let distY = Infinity;
                 if (sin !== 0) {
                     distY = (sin > 0 ? max - l.y : min - l.y) / sin;
                 }
 
-                // 3. 近い方の壁までの距離を採用
                 const distToWall = Math.min(distX, distY);
 
-                // 4. 壁が射程より近ければ、そこでレーザーを止める
                 if (distToWall < currentLen) {
                     currentLen = distToWall;
 
@@ -5140,13 +5153,18 @@
                     const hitY = l.y + sin * currentLen;
                     createWallImpact(hitX, hitY, '#0ff'); // シアン色の火花
                 }
-                // ------------------------------------------
 
                 const p1x = l.x;
                 const p1y = l.y;
 
-                // 5. 敵との衝突判定（壁より手前に敵がいればさらに短くなる）
+                // --- 敵との衝突判定 ---
                 enemies.forEach(e => {
+                    // ★修正2：敵が死んでいる、または【画面外の場合はスキップ（オフスクリーンキル防止）】
+                    if (e.hp <= 0 || !e.inActiveRange) return;
+
+                    // ★修正3：出現中のボス・戦艦には当たらないようにする
+                    if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) return;
+
                     const dx = e.x - p1x;
                     const dy = e.y - p1y;
                     const distToEnemy = Math.hypot(dx, dy);
@@ -5157,13 +5175,12 @@
                     if (diff > Math.PI) diff = Math.PI * 2 - diff;
 
                     // 角度が近く、かつ現在の長さ（壁までの距離含む）より近い場合
-                    // ★ 修正ポイント：diff（角度の許容差）を広げる
-                    // 0.35 程度にすると、中心軸から少し離れた敵にも当たります
-                    if (diff < 0.35 && distToEnemy < currentLen) { // ★修正: maxLenではなくcurrentLenと比較
-                        const hitRadius = (e.type === 'boss' ? 45 : 15) * e.scale;
+                    if (diff < 0.35 && distToEnemy < currentLen) {
+                        // ★修正4：巨大戦艦(battleship)の判定も追加
+                        const hitRadius = (e.type === 'boss' || e.type === 'battleship' ? 45 : 15) * e.scale;
 
-                        // BOSSの場合はレーザーを遮断（長さを更新）
-                        if (e.type === 'boss') {
+                        // ボスや戦艦の場合はレーザーを貫通させず、そこで止める
+                        if (e.type === 'boss' || e.type === 'battleship') {
                             currentLen = Math.min(currentLen, distToEnemy);
                             e.flashTimer = 5;
                         }
@@ -5185,18 +5202,19 @@
                     }
                 });
 
-                // 6. 最終的な描画長さを保存
+                // 最終的な描画長さを保存
                 l.renderLen = currentLen;
 
-                // 7. 敵弾の消去判定（既存のまま）
+                // --- 敵弾の消去判定 ---
                 enemyBullets.forEach(eb => {
+                    if (eb.life <= 0) return;
+
                     const A = p1x - (p1x + cos * currentLen);
                     const B = p1y - (p1y + sin * currentLen);
                     const C = (p1x + cos * currentLen) * p1y - p1x * (p1y + sin * currentLen);
                     const dist = Math.abs(A * eb.y - B * eb.x + C) / (Math.hypot(A, B) || 1);
                     const dot = (eb.x - p1x) * cos + (eb.y - p1y) * sin;
-                    // ★ 修正ポイント：判定半径の計算に下駄を履かせる
-                    // (l.width / 2 + 5) の「+ 5」を「+ 15」や「+ 20」に増やします
+
                     if (dist < ((l.width / 2 + 15) * G_SCALE) && dot > 0 && dot < currentLen) {
                         eb.life = 0;
                         score += 10;
