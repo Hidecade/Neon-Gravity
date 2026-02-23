@@ -1089,7 +1089,7 @@
             4: ['phantom', 'triangle', 'tadpole', 'asteroid'],
             5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'asteroid'],
             6: ['triangle', 'tadpole', 'dragon', 'triangle', 'hunter', 'phantom', 'asteroid'],
-            7: ['triangle', 'tadpole', 'dragon', 'phantom', 'eclipse', 'hunter', 'asteroid'],
+            7: ['triangle', 'tadpole', 'dragon', 'triangle', 'eclipse', 'triangle', 'asteroid'],
             8: ['triangle', 'hunter', 'phantom', 'tadpole', 'dragon', 'asteroid']
         };
 
@@ -1170,7 +1170,8 @@
             HUNTER: 20,        // 星型のため少し大きめ
             PHANTOM: 16,    // ★追加
             ECLIPSE: 40,    // ★追加: 巨大な当たり判定
-            BULLET: 8          // 赤い敵弾の判定サイズ
+            BULLET: 8,          // 赤い敵弾の判定サイズ
+            BOSS: 45
         };
 
         // --- 敵の撃破スコア設定テーブル ---
@@ -1374,6 +1375,7 @@
 
         // --- SEの音響定義ライブラリ ---
         const SE_LIBRARY = {
+
             // ショット音
             shoot: (ctx, t, g) => {
                 const o = ctx.createOscillator();
@@ -1384,7 +1386,6 @@
                 g.gain.linearRampToValueAtTime(0, t + 0.1);
                 return { osc: o, duration: 0.1 };
             },
-
 
             // レーザー発射音
             laser: (ctx, t, g) => {
@@ -1472,7 +1473,7 @@
                 const totalDur = 5.0;
 
                 // タイミングを少し不規則にする（0秒、0.3~0.5秒、0.8~1.0秒）
-                const bursts = [0, 0.35 + Math.random() * 0.2, 0.85 + Math.random() * 0.2];
+                const bursts = [0, 0.15 + Math.random() * 0.2, 0.85 + Math.random() * 0.2];
 
                 bursts.forEach((delay, i) => {
                     const startTime = t + delay;
@@ -1603,7 +1604,36 @@
                 g.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
                 o.connect(f); f.connect(g);
                 return { osc: o, duration: 0.15 };
-            }
+            },
+
+            // 短く鋭い破裂音（パシッ！）
+            enemy_hit: (ctx, t, g, noise) => {
+                if (!noise) return { osc: null, duration: 0 };
+
+                const duration = 0.12; // 0.1秒を切る極短設定でキレを出す
+                const n = ctx.createBufferSource();
+                const f = ctx.createBiquadFilter();
+                n.buffer = noise;
+
+                // --- フィルター設定：高域を少し通して「パシッ」感を出す ---
+                f.type = 'bandpass'; // バンドパスで特定の「叩き」成分を抽出
+                f.frequency.setValueAtTime(1000, t); // 高めの周波数から開始
+                f.frequency.exponentialRampToValueAtTime(400, t + duration);
+                f.Q.value = 0.5;
+
+                // --- 音量：アタック（立ち上がり）を最大にして即座に消す ---
+                g.gain.setValueAtTime(0.1, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+
+                n.connect(f);
+                f.connect(g);
+
+                n.start(t);
+                n.stop(t + duration);
+
+                // オシレーターを使わずノイズのみなので osc は null
+                return { osc: null, duration: duration };
+            },
         };
 
 
@@ -1660,6 +1690,19 @@
 
             async playSE(type) {
                 if (!this.ctx || !SE_LIBRARY[type]) return;
+
+                // --- 重複防止ロジック ---
+                const now = this.ctx.currentTime;
+                this.lastPlayed = this.lastPlayed || {};
+
+                // 前回の再生から 0.05秒（約3フレーム）経過していなければ無視
+                // 「チリッ」という短い音の場合、これくらいの間隔が自然です
+                if (this.lastPlayed[type] && now - this.lastPlayed[type] < 0.05) {
+                    return;
+                }
+                this.lastPlayed[type] = now;
+                // ----------------------
+
                 await this.resume();
 
                 const t = this.ctx.currentTime;
@@ -1667,7 +1710,6 @@
                 g.connect(this.ctx.destination);
 
                 try {
-                    // ライブラリから音の定義を呼び出し
                     const effect = SE_LIBRARY[type](this.ctx, t, g, this.noiseBuffer);
 
                     if (effect.osc) {
@@ -1676,7 +1718,6 @@
                         effect.osc.stop(t + effect.duration);
                     }
 
-                    // クリーニング予約（余裕を持って2秒か演奏時間の長い方）
                     const cleanupTime = Math.max(2000, effect.duration * 1000 + 500);
                     this.registerNode(type, g, cleanupTime);
 
@@ -3150,15 +3191,31 @@
                 });
                 spawnedCount++;
             } else if (type === 'eclipse') {
+                // --- ★追加：出現制限ロジック ---
+                const MIN_DISTANCE = 600; // Eclipse同士の最低間隔（ピクセル）
+
+                // 既に存在している Eclipse との距離をチェック
+                const tooClose = enemies.some(other => {
+                    if (other.type === 'eclipse') {
+                        const dist = Math.hypot(x - other.x, y - other.y);
+                        return dist < MIN_DISTANCE;
+                    }
+                    return false;
+                });
+
+                // 近すぎる場合は、今回の出現を中止する
+                if (tooClose) return;
+
+                // --- ここから通常の出現処理 ---
                 enemies.push({
                     x: x, y: y, vx: vx * 0.2, vy: vy * 0.2,
-                    hp: 30 + hpMag * 5, // Dragonより高い耐久力
+                    hp: 24 + hpMag * 5,
                     speed: ENEMY_SPEEDS.ECLIPSE * spd * stageMag,
-                    color: '#0ff', 
+                    color: '#0ff',
                     type: 'eclipse',
                     angle: 0,
                     rotSpeed: 0.02,
-                    drop: 'level', // 倒すと確定でレベルアップドロップ
+                    drop: dropType,
                     scale: 1.5,
                     actionTimer: 0
                 });
@@ -3516,7 +3573,17 @@
             }
 
             // --- 爆発エフェクトの生成 ---
-            const particleCount = (e.type === 'boss') ? 120 : (e.type === 'asteroid' ? 30 : 40);
+            // 敵の種類に応じて基本の火花（パーティクル）の数を調整
+            let particleCount = 40; // デフォルトの雑魚
+            if (e.type === 'boss') {
+                particleCount = 120;
+            } else if (e.type === 'asteroid') {
+                particleCount = 30;
+            } else if (e.type === 'phantom' || e.type === 'triangle') {
+                // ★ 破片演出がある敵は、細かい火花を極端に減らす（控えめにする）
+                particleCount = 3;
+            }
+
             for (let i = 0; i < particleCount; i++) {
                 const angle = Math.random() * Math.PI * 2;
                 const speed = (Math.random() * 8 + 2) * EXPLOSION_SPEED_MAG;
@@ -3526,7 +3593,6 @@
                 createExplosion(e.x, e.y, color, 1);
             }
 
-            // --- 効果音と画面揺れ ---
             // --- Phantom専用の特殊撃破演出 ---
             if (e.type === 'phantom') {
                 AudioSys.playSE('explode_medium'); // 中サイズの爆発音
@@ -3562,6 +3628,105 @@
                 // 中心コアの爆発
                 createExplosion(e.x, e.y, '#fff', 20);
             }
+            // --- ★追加：Eclipse専用の特殊撃破演出 ---
+            else if (e.type === 'eclipse') {
+                AudioSys.playSE('explode_medium');
+                distortGrid(e.x, e.y, 100, 200);
+
+                const bitCount = 6;
+                const orbitDist = 50 + Math.sin(frame * 0.05) * 4;
+
+                for (let i = 0; i < bitCount; i++) {
+                    // 現在の回転角からビットの正確な位置を算出
+                    const orbitAngle = (e.angle || 0) + (Math.PI * 2 / bitCount) * i;
+                    const partX = e.x + Math.cos(orbitAngle) * orbitDist;
+                    const partY = e.y + Math.sin(orbitAngle) * orbitDist;
+
+                    // 中心から外側へ向かうベクトル
+                    const pvx = Math.cos(orbitAngle) * (3 + Math.random() * 4);
+                    const pvy = Math.sin(orbitAngle) * (3 + Math.random() * 4);
+
+                    particles.push({
+                        x: partX, y: partY,
+                        vx: pvx, vy: pvy,
+                        color: e.color || '#f05',
+                        life: 2,           // 粘り強く残す
+                        size: e.scale || 1.0,
+                        isShard: true,
+                        shardType: 'eclipseBit', // ★Eclipse専用ビットフラグ
+                        angle: orbitAngle,
+                        rotV: (Math.random() - 0.5) * 0.4 // クルクル回る
+                    });
+
+                    // 各ビットの根元で小さな爆発
+                    createExplosion(partX, partY, e.color, 3);
+                }
+
+                // 中心（ブラックホール）の崩壊エフェクト
+                createExplosion(e.x, e.y, '#fff', 30);
+            }
+            // --- Triangle専用の特殊撃破演出（サイズ微調整版） ---
+            else if (e.type === 'triangle') {
+                AudioSys.playSE('explode_small');
+
+                const shardCount = 3 + Math.floor(Math.random() * 2);
+                for (let i = 0; i < shardCount; i++) {
+                    const angle = (Math.PI * 2 / shardCount) * i + e.angle + (Math.random() - 0.5);
+                    const speed = 4 + Math.random() * 4;
+
+                    const vertices = [];
+                    for (let v = 0; v < 3; v++) {
+                        const a = (Math.PI * 2 / 3) * v + (Math.random() - 0.5) * 1.0;
+                        // ★頂点の距離を少し抑える (10〜25 -> 7〜18)
+                        const r = 7 + Math.random() * 11;
+                        vertices.push({ x: Math.cos(a) * r, y: Math.sin(a) * r });
+                    }
+
+                    particles.push({
+                        x: e.x, y: e.y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        color: e.color || '#0f8',
+                        life: 1.2,
+                        // ★全体の描画スケールを適正サイズに (1.5 -> 1.1)
+                        size: e.scale ? e.scale * 1.1 : 1.1,
+                        isShard: true,
+                        shardType: 'tri',
+                        vertices: vertices,
+                        angle: angle,
+                        rotV: (Math.random() - 0.5) * 0.5
+                    });
+                }
+            }
+            else if (e.type === 'dragon') {
+                AudioSys.playSE('explode_medium');
+                distortGrid(e.x, e.y, 80, 140);
+
+                // 体節をバラバラに放出（頭 + セグメント）
+                const allParts = [{ x: e.x, y: e.y, angle: e.angle }, ...e.segments];
+
+                allParts.forEach((seg, i) => {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 2 + Math.random() * 3; // 速度を少し抑える
+
+                    particles.push({
+                        x: seg.x, y: seg.y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        color: e.color || '#c00',
+                        life: 2,          
+                        size: e.scale || 1.0,
+                        isShard: true,
+                        shardType: 'dragonSeg',
+                        angle: seg.angle,
+                        rotV: (Math.random() - 0.5) * 0.2,
+                        segIndex: i
+                    });
+                });
+
+                // ドラゴン撃破時は専用の「ごく少数」の火花だけ出す
+                createExplosion(e.x, e.y, '#fff', 5);
+            }
             // --- その他の敵の処理 ---
             else if (e.type === 'boss' || e.type === 'battleship') {
                 AudioSys.playSE('explode_large');
@@ -3575,11 +3740,7 @@
                     AudioSys.playSE('explode_small');
                 }
             }
-            // --- 中型（中）：Dragonなど ---
-            else if (e.type === 'dragon') {
-                AudioSys.playSE('explode_medium');
-            }
-            // --- 小型（小）：その他雑魚 ---
+            // --- 小型（小）：その他雑魚（triangleは上で処理済み）---
             else {
                 AudioSys.playSE('explode_small');
             }
@@ -4599,7 +4760,7 @@
                     else if (e.type === 'cube') hitRadius = ENEMY_HITBOX.CUBE;
                     else if (e.type === 'tadpole') hitRadius = ENEMY_HITBOX.TADPOLE;
                     else if (e.type === 'hunter') hitRadius = ENEMY_HITBOX.HUNTER;
-                    else if (e.type === 'boss') hitRadius = 45;
+                    else if (e.type === 'boss') hitRadius = ENEMY_HITBOX.BOSS;
 
                     // 距離チェック
                     if (Math.hypot(b.x - e.x, b.y - e.y) < hitRadius) {
@@ -4625,6 +4786,8 @@
                         // 2. ボス以外の敵
                         else {
                             if (e.hp > 0) {
+
+                                AudioSys.playSE('enemy_hit');
                                 const sparkColor = e.color || '#fff';
                                 for (let i = 0; i < 4; i++) {
                                     particles.push({
@@ -5122,8 +5285,12 @@
                 p.vy *= Math.pow(0.92, gameSpeed);
                 p.vy += 0.005 * gameSpeed;
                 p.life -= 0.02 * gameSpeed;
+
+                // ★追加：破片の回転を更新
+                if (p.rotV) p.angle += p.rotV * gameSpeed;
             });
             particles = particles.filter(p => p.life > 0);
+
             rings.forEach(r => {
                 r.r += 8 * SPEED_SCALE * gameSpeed;
                 r.life -= 0.08 * SPEED_SCALE * gameSpeed;
@@ -5505,31 +5672,174 @@
         }
 
         function drawVisualEffects() {
+
             // 特殊ミサイル（プレイヤー側など）
             ctx.fillStyle = '#fd0';
             missiles.forEach(m => { ctx.beginPath(); ctx.arc(m.x, m.y, 4 * G_SCALE, 0, Math.PI * 2); ctx.fill(); });
 
             // パーティクル
             particles.forEach(p => {
-                if (!isOnScreen(p, 30)) return;
+                if (!isOnScreen(p, 50)) return;
                 ctx.save();
                 ctx.globalAlpha = Math.min(1, p.life);
-                ctx.beginPath(); const length = 4.0; ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
-                ctx.lineWidth = p.size || 2; ctx.strokeStyle = p.color; ctx.lineCap = 'round'; ctx.stroke();
+
+                if (p.isShard) {
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.angle || 0);
+
+                    // フェードアウトとズームアウトの計算
+                    const opacity = Math.min(1.0, p.life);
+                    const smoothAlpha = Math.pow(opacity, 0.7);
+                    const s = (p.size || 1.0) * G_SCALE * (0.6 + opacity * 0.4);
+                    ctx.scale(s, s);
+
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = 1.5;
+                    ctx.globalCompositeOperation = 'lighter';
+
+                    if (p.shardType === 'eclipseBit') {
+                        // --- Eclipseの三角錐ビットの描画 ---
+                        const pts = [{ x: 14, y: 0, z: 0 }, { x: -7, y: 7, z: 4 }, { x: -7, y: -7, z: 4 }, { x: -7, y: 0, z: -8 }];
+                        const lines = [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]];
+
+                        // 簡易3D投影（Eclipse本体のロジックを流用）
+                        const project = (pt) => {
+                            const tilt = 0.4;
+                            const finalY = pt.y * Math.cos(tilt) - pt.z * Math.sin(tilt);
+                            return { x: pt.x, y: finalY };
+                        };
+
+                        const pProj = pts.map(pt => project(pt));
+
+                        ctx.beginPath();
+                        lines.forEach(l => {
+                            ctx.moveTo(pProj[l[0]].x, pProj[l[0]].y);
+                            ctx.lineTo(pProj[l[1]].x, pProj[l[1]].y);
+                        });
+
+                        ctx.globalAlpha = smoothAlpha;
+                        ctx.stroke();
+
+                        // 内部の薄い塗り
+                        ctx.fillStyle = p.color;
+                        ctx.globalAlpha = smoothAlpha * 0.2;
+                        ctx.fill();
+
+                        // 中央に白いハイライト（芯）
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 0.5;
+                        ctx.globalAlpha = smoothAlpha * 0.5;
+                        ctx.stroke();
+
+                    } else if (p.shardType === 'dragonSeg') {
+                        const i = p.segIndex || 0;
+                        const sizeMod = Math.max(0.6, 1 - (i * 0.08));
+                        const w = 12 * sizeMod;
+                        const h = 18 * sizeMod;
+
+                        // --- 粘り強いフェードアウトの計算 ---
+                        // p.life が 1.0 以上の間は不透明度 1.0 を維持し、1.0 を切ってからゆっくり消える
+                        const opacity = Math.min(1.0, p.life);
+                        // さらに消え方を滑らかにする（放物線的な減衰）
+                        const smoothAlpha = Math.pow(opacity, 0.7);
+
+                        // --- 回転とスケールの適用 ---
+                        ctx.save();
+                        // すでに親のループで translate と rotate(p.angle) は実行されている前提ですが、
+                        // もし回転が足りない場合はここでさらに p.angle を使って回します。
+
+                        // スケールも life に合わせてゆっくり小さくする（ズームアウト感）
+                        const s = (p.size || 1.0) * G_SCALE * (0.5 + opacity * 0.5);
+                        ctx.scale(s, s);
+
+                        // 本体の描画
+                        ctx.beginPath();
+                        ctx.moveTo(w, -h / 2);
+                        ctx.lineTo(w, h / 2);
+                        ctx.lineTo(-w * 0.9, h * 0.35);
+                        ctx.lineTo(-w * 0.9, -h * 0.35);
+                        ctx.closePath();
+
+                        // 内部の塗り（少し発光感を残す）
+                        ctx.fillStyle = p.color;
+                        ctx.globalAlpha = smoothAlpha * 0.3;
+                        ctx.fill();
+
+                        // 輪郭線
+                        ctx.strokeStyle = p.color;
+                        ctx.lineWidth = 1.5;
+                        ctx.globalAlpha = smoothAlpha;
+                        ctx.stroke();
+
+                        // 中央の芯（ハイライト）
+                        ctx.strokeStyle = "#fff";
+                        ctx.lineWidth = 0.5;
+                        ctx.globalAlpha = smoothAlpha * 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(-w * 0.5, 0); ctx.lineTo(w, 0);
+                        ctx.stroke();
+
+                        ctx.restore();
+                    }
+                    else if (p.shardType === 'tri') {
+                    // ...（既存のTriangle描画）
+                        // --- ランダムに生成された三角形ワイヤーフレーム ---
+                        ctx.beginPath();
+                        if (p.vertices && p.vertices.length === 3) {
+                            ctx.moveTo(p.vertices[0].x, p.vertices[0].y);
+                            ctx.lineTo(p.vertices[1].x, p.vertices[1].y);
+                            ctx.lineTo(p.vertices[2].x, p.vertices[2].y);
+                        } else {
+                            // データがない場合のフォールバック（保険）
+                            ctx.moveTo(0, -10); ctx.lineTo(8, 8); ctx.lineTo(-8, 8);
+                        }
+                        ctx.closePath();
+                        ctx.stroke();
+
+                        ctx.fillStyle = p.color;
+                        ctx.globalAlpha = Math.min(1, p.life) * 0.3;
+                        ctx.fill();
+                    } else {
+                        // --- Phantomなどの立体的な破片 ---
+                        ctx.beginPath();
+                        ctx.moveTo(10, 0);
+                        ctx.lineTo(-5, 5);
+                        ctx.lineTo(-5, -5);
+                        ctx.closePath();
+                        ctx.stroke();
+
+                        ctx.fillStyle = p.color;
+                        ctx.globalAlpha = Math.min(1, p.life) * 0.4;
+                        ctx.fill();
+                    }
+                }
+                // 通常の火花（線）
+                else {
+                    ctx.beginPath();
+                    const length = 4.0;
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
+                    ctx.lineWidth = p.size || 2;
+                    ctx.strokeStyle = p.color;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+                }
+
                 ctx.restore();
             });
             ctx.globalAlpha = 1.0;
 
+            // リングエフェクト
             rings.forEach(r => {
                 if (!isOnScreen({ x: r.x, y: r.y }, r.r + 50)) return;
 
                 ctx.save();
                 ctx.globalAlpha = r.life;
 
-                // 1. 外側の太い光（薄い色）
+                // 1. 外側の太い光
                 ctx.strokeStyle = r.color;
                 ctx.lineWidth = 4 * G_SCALE;
-                ctx.globalAlpha = r.life * 0.3; // 透明度を下げる
+                ctx.globalAlpha = r.life * 0.3;
                 ctx.beginPath();
                 ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
                 ctx.stroke();
@@ -6519,7 +6829,6 @@
             const isDmg = (e.flashTimer > 0);
             if (isDmg) e.flashTimer--;
 
-            // ★ 揺れを削除し、純粋に座標のみを設定
             ctx.translate(e.x, e.y);
 
             // --- 出現演出（ズームイン＆フェードイン）---
@@ -6530,8 +6839,7 @@
             const isAppearing = timer < appearDuration;
 
             const safeScale = Math.max(0.01, e.scale * G_SCALE);
-            const dmgScaleMult = isDmg ? 1.05 : 1.0;
-            const currentScale = safeScale * (0.05 + 0.95 * easeProgress) * dmgScaleMult;
+            const currentScale = safeScale * (0.05 + 0.95 * easeProgress);
             ctx.scale(currentScale, currentScale);
             ctx.globalAlpha = easeProgress;
 
@@ -6592,8 +6900,7 @@
             const smoothAim = aimFactor * aimFactor * (3 - 2 * aimFactor);
             const targetAngle = Math.atan2(player.y - e.y, player.x - e.x);
 
-            const dmgOrbitBoost = isDmg ? 5 : 0;
-            const orbitDist = 50 + Math.sin(frame * 0.05) * 4 + dmgOrbitBoost;
+            const orbitDist = 50 + Math.sin(frame * 0.05) * 4;
 
             const pts = [{ x: 14, y: 0, z: 0 }, { x: -7, y: 7, z: 4 }, { x: -7, y: -7, z: 4 }, { x: -7, y: 0, z: -8 }];
             const lines = [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]];
@@ -7255,9 +7562,6 @@
 
             ctx.globalAlpha = 1.0;
         }
-
-
-
 
         function drawNormalBullet(ctx, eb) {
             ctx.rotate(frame * 0.15);
