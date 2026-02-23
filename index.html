@@ -1012,7 +1012,7 @@
 
             // 送信 ＆ 11位以下の削除処理
             submitAndCleanup: async (score, stage, name) => {
-                // 1. 追加
+                // 1. スコアの追加（ここは確実に実行させる）
                 await addDoc(collection(db, SCORES_COLLECTION), {
                     name: name,
                     score: score,
@@ -1020,18 +1020,25 @@
                     timestamp: serverTimestamp()
                 });
 
-                // 2. 全件取得して整列
-                const qAll = query(collection(db, SCORES_COLLECTION), orderBy("score", "desc"));
-                const snapshot = await getDocs(qAll);
+                // 2. クリーンアップ処理
+                // ここで権限エラー（Firebaseのルール制限）が起きても、登録自体は成功しているので
+                // エラーを握り潰して（無視して）処理を続行させる
+                try {
+                    // 全件取得は負荷やルール違反の可能性があるため、limit(20)で上位20件だけを見るように修正
+                    const qAll = query(collection(db, SCORES_COLLECTION), orderBy("score", "desc"), limit(20));
+                    const snapshot = await getDocs(qAll);
 
-                // 3. 11件目以降があれば削除
-                if (snapshot.size > 10) {
-                    const deletePromises = [];
-                    // 10番目(インデックス10)以降を全て削除対象にする
-                    for (let i = 10; i < snapshot.size; i++) {
-                        deletePromises.push(deleteDoc(snapshot.docs[i].ref));
+                    // 11件目以降があれば削除
+                    if (snapshot.size > 10) {
+                        const deletePromises = [];
+                        for (let i = 10; i < snapshot.size; i++) {
+                            deletePromises.push(deleteDoc(snapshot.docs[i].ref));
+                        }
+                        await Promise.all(deletePromises);
                     }
-                    await Promise.all(deletePromises);
+                } catch (cleanupError) {
+                    // 削除権限がない場合はここでエラーになるが、ログに残すだけに留める
+                    console.warn("Cleanup failed, but submission was successful:", cleanupError);
                 }
             }
         };
@@ -1322,7 +1329,8 @@
             { name: 'HEPTA-GATE', sides: 7, color: '#44f', hp: 180, bulletCount: 7, speedFactor: 0.9 },
             { name: 'OCTAGON-COMMAND', sides: 8, color: '#f40', hp: 200, bulletCount: 8, speedFactor: 0.8 },
             { name: 'NONA-REVEALER', sides: 9, color: '#f08', hp: 220, bulletCount: 9, speedFactor: 0.7 },
-            { name: 'DECA-DECIMATOR', sides: 10, color: '#fff', hp: 300, bulletCount: 10, speedFactor: 0.6 }
+            { name: 'DECA-DECIMATOR', sides: 10, color: '#fff', hp: 300, bulletCount: 10, speedFactor: 0.6 },
+            { name: 'GENESIS-ARK', sides: 12, color: '#00ffff', hp: 100, bulletCount: 12, speedFactor: 0.3 }
         ];
 
         const WARNING_SOUND_INTERVAL = 48;
@@ -2747,8 +2755,7 @@
             if (player.x < WALL_MARGIN) player.x = WALL_MARGIN; if (player.x > worldSize - WALL_MARGIN) player.x = worldSize - WALL_MARGIN;
             if (player.y < WALL_MARGIN) player.y = WALL_MARGIN; if (player.y > worldSize - WALL_MARGIN) player.y = worldSize - WALL_MARGIN;
 
-            // カメラ更新
-            updateCamera();
+
 
             // --- 向きと射撃のロジック修正 ---
             // 1. 右スティック（エイム）が動いている場合はそちらを優先
@@ -2912,6 +2919,10 @@
             updateGrid();
             updateScorePopups();
             checkStageClear();
+
+            // カメラ更新
+            updateCamera();
+
             updateUI();
         }
 
@@ -2920,77 +2931,77 @@
             let focusX = player.x;
             let focusY = player.y;
 
-            // --- 修正箇所：通常のボス、またはラスボスを探す ---
+            // 通常のボス、またはラスボスを探す
             const boss = enemies.find(e => e.type === 'boss' || e.type === 'battleship');
 
-            if (boss && Number.isFinite(boss.x)) {
-                // 1. タイマーの進行
-                const smoothMax = (boss.spawnMax || 100) + 20; // spawnMaxがない場合を考慮
-                if (boss.cameraLerpTimer === undefined) boss.cameraLerpTimer = 0; // 初期化
+            if (boss && Number.isFinite(boss.x) && Number.isFinite(boss.y)) {
+                // 1. タイマーの進行（出現に合わせて滑らかにズームするため）
+                const smoothMax = (boss.spawnMax || 100) + 20;
+                if (boss.cameraLerpTimer === undefined) boss.cameraLerpTimer = 0;
 
                 if (boss.cameraLerpTimer < smoothMax) {
                     boss.cameraLerpTimer++;
                 }
 
                 const t = boss.cameraLerpTimer / smoothMax;
-                const camT = 1 - Math.pow(1 - t, 5);
+                const camT = 1 - Math.pow(1 - t, 4); // 滑らかなイージング
 
                 const dist = Math.hypot(player.x - boss.x, player.y - boss.y) || 0.1;
-
-                // ★修正：maxDistを固定されたworldSize(1500)に合わせて少し小さくする
                 const maxDist = 1500;
                 const ratio = Math.min(dist / maxDist, 1.0);
 
                 // 2. ズーム目標値の計算
-                targetScale = 1.0 - (ratio * 0.8 * camT);
+                // 引きすぎると操作しづらいため、最大でも0.65倍程度のマイルドなズームアウトに留める
+                targetScale = 1.0 - (ratio * 0.35 * camT);
 
                 // 3. フォーカス位置のブレンド
-                const bias = ratio * 0.45 * camT;
+                // プレイヤーとボスの中間地点を少しだけ注視する
+                // biasを0.25と控えめにすることで、自機中心の操作感を崩さずにボスを視界に入れる
+                const bias = ratio * 0.25 * camT;
                 focusX = player.x + (boss.x - player.x) * bias;
                 focusY = player.y + (boss.y - player.y) * bias;
             }
 
-            // ★追加：基本の拡大率(baseAppScale)を掛けて、最終的なスケールにする
             const finalTargetScale = targetScale * baseAppScale;
 
-            // 4. スムージング
-            cameraScale += (finalTargetScale - cameraScale) * 0.04 * gameSpeed;
-
-            // 5. ズームが進むほど強制的に中央へ寄せる補正
-            // ★修正：ズームイン時の補正割合を baseAppScale 基準に変更
-            let zoomFactor = Math.max(0, Math.min(1, (baseAppScale - cameraScale) / (0.8 * baseAppScale)));
-            const centerStrength = Math.pow(zoomFactor, 3);
-
-            focusX = focusX * (1 - centerStrength) + (worldSize / 2) * centerStrength;
-            focusY = focusY * (1 - centerStrength) + (worldSize / 2) * centerStrength;
+            // 4. スケールのスムージング
+            cameraScale += (finalTargetScale - cameraScale) * 0.05 * gameSpeed;
 
             const viewW = width / cameraScale;
             const viewH = height / cameraScale;
 
-            // 6. 最終座標の算出
+            // 5. 最終目標座標の算出（自機が画面の中央・やや下に来るように）
             let tx = focusX - viewW / 2;
-            //let ty = focusY - viewH / 2;
             let ty = focusY - viewH * CAMERA_Y_OFFSET;
 
-            // 7. クランプ処理（境界チェック）
-            // ★修正：UI等のパディングもスケールに合わせて調整
+            // ==========================================
+            // 6. 境界クランプ処理（画面端でカメラを止める、ワープ防止）
+            // ==========================================
             let padX = 150 / baseAppScale;
             let padY = 125 / baseAppScale;
             if (height > width) { padX = 0; } else { padY = 0; }
 
-            if (viewW < worldSize) {
-                tx = Math.max(-padX, Math.min(worldSize - viewW + padX, tx));
+            const limitMinX = -padX;
+            const limitMaxX = worldSize - viewW + padX;
+
+            // X軸の境界計算
+            if (limitMinX <= limitMaxX) {
+                tx = Math.max(limitMinX, Math.min(limitMaxX, tx));
             } else {
                 tx = (worldSize - viewW) / 2;
             }
 
-            if (viewH < worldSize) {
-                ty = Math.max(-padY, Math.min(worldSize - viewH + padY, ty));
+            const limitMinY = -padY;
+            const limitMaxY = worldSize - viewH + padY;
+
+            // Y軸の境界計算
+            if (limitMinY <= limitMaxY) {
+                ty = Math.max(limitMinY, Math.min(limitMaxY, ty));
             } else {
                 ty = (worldSize - viewH) / 2;
             }
 
-            // 8. カメラ座標のスムージング
+            // 7. カメラ座標のスムージング（追従スピード）
             camera.x += (tx - camera.x) * 0.1 * gameSpeed;
             camera.y += (ty - camera.y) * 0.1 * gameSpeed;
         }
@@ -3468,29 +3479,35 @@
                 spawnedCount++;
                 // spawnEnemy関数内の最後の方に追加
             } else if (type === 'battleship') {
+                // BOSS_VARIANTS の一番最後の要素（GENESIS-ARK）を取得
+                const variant = BOSS_VARIANTS[BOSS_VARIANTS.length - 1];
+
                 enemies.push({
                     x: x, y: y,
                     spawnX: x, spawnY: y,
                     vx: 0, vy: 0,
-                    hp: 3000, maxHp: 3000, // 通常ボスの10倍以上のHP
-                    speed: 0.3 * SPEED_SCALE, // 超重厚な動き
-                    color: '#ffffff',
-                    type: 'battleship', // ★タイプ名
+                    hp: variant.hp,
+                    maxHp: variant.hp,
+                    // 定数の speedFactor を適用（超重厚な動き）
+                    speed: variant.speedFactor * SPEED_SCALE,
+                    color: variant.color,
+                    type: 'battleship',
                     angle: 0,
                     drop: 'none',
-                    scale: 1.0, // 描画時に1.5倍にするのでここは1.0でOK
+                    scale: 1.0,
 
                     fireTimer: 0,
                     flashTimer: 0,
-                    spawnTimer: 0, spawnMax: 240,
+                    spawnTimer: 0,
+                    spawnMax: 240,
                     isSpawning: true,
 
-                    // 戦艦専用: 12門の砲台の状態などを持たせることも可能だが、今回はシンプルに
-                    variant: { name: "X-BATTLESHIP", sides: 12 } // UI表示用
+                    // variant 情報をそのまま持たせる
+                    variant: variant
                 });
                 spawnedCount++;
 
-                AudioSys.playSE('explode_large');
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_large');
             } else if (type === 'phantom') {
                 enemies.push({
                     x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
@@ -3597,7 +3614,7 @@
                         case 'triangle': updateTriangleAI(e); break;
                         case 'cube': updateCubeAI(e); break;
                         case 'asteroid': updateAsteroidAI(e); break;
-                        case 'bubble': updateAsteroidAI(e); break; // ★bubbleもasteroidと同じAIを使用
+                        case 'bubble': updateAsteroidAI(e); break;
                         case 'hunter': updateHunterAI(e); break;
                         case 'phantom': updatePhantomAI(e); break;
                         case 'eclipse': updateEclipseAI(e); break;
@@ -3615,9 +3632,15 @@
                     }
                 }
 
-                applySeparation(e);
+                // ========================================================
+                // ★根本解決ロジック：
+                // ボスや巨大戦艦は質量が大きいため、雑魚敵との重なり反発処理を
+                // 受けないように除外する（これで出現後のガクつきが消滅します）
+                // ========================================================
+                if (e.type !== 'boss' && e.type !== 'battleship') {
+                    applySeparation(e);
+                }
 
-                // --- 衝突判定の修正 ---
                 // bubble または asteroid の場合に衝突ロジックを適用
                 if (e.type === 'asteroid' || e.type === 'bubble') {
                     applyAsteroidCollisions(e);
@@ -3643,10 +3666,8 @@
                     }
 
                     // --- 分裂処理の修正 ---
-                    // bubble または asteroid が壊れたときに分裂させる
                     if ((e.type === 'asteroid' || e.type === 'bubble') && e.size < 3 && !e.noSplit) {
                         for (let i = 0; i < 2; i++) {
-                            // 親と同じ type と variant を引き継いで分裂
                             spawnEnemy(e.x, e.y, e.type, e.size + 1, e.variant);
                         }
                     }
@@ -4905,15 +4926,16 @@
             // --- 1. 出現演出中の処理 ---
             if (e.isSpawning) {
                 e.spawnTimer++;
+                // 出現中は物理演算を完全に止めて spawnX に固定する
+                e.x = e.spawnX;
+                e.y = e.spawnY;
+                e.vx = 0;
+                e.vy = 0;
+
                 if (e.spawnTimer >= e.spawnMax) {
                     e.isSpawning = false;
-                } else {
-                    e.x = e.spawnX;
-                    e.y = e.spawnY;
-                    e.vx = 0;
-                    e.vy = 0;
-                    return;
                 }
+                return; // 出現中はここで終了し、以下の移動処理を通さない
             }
 
             // --- 2. 移動ロジック ---
@@ -5151,151 +5173,231 @@
                 e.spawnTimer++;
                 if (e.spawnTimer >= e.spawnMax) {
                     e.isSpawning = false;
-                    ui.bossContainer.style.display = 'block';
-                    ui.bossNameLabel.innerText = "GENESIS-ARK";
-                    ui.bossNameLabel.style.color = "#0ff";
-                    ui.bossHpBarInline.style.backgroundColor = "#0ff";
-                    ui.bossBarFrame.style.borderColor = "#0ff";
+                    if (ui.bossContainer) ui.bossContainer.style.display = 'block';
+                    if (ui.bossNameLabel) {
+                        ui.bossNameLabel.innerText = "GENESIS-ARK";
+                        ui.bossNameLabel.style.color = "#0ff";
+                    }
+                    if (ui.bossHpBarInline) ui.bossHpBarInline.style.backgroundColor = "#0ff";
+                    if (ui.bossBarFrame) ui.bossBarFrame.style.borderColor = "#0ff";
                 }
                 return;
             }
 
-            // --- 全体のサイクル管理（23秒周期に変更して「間」を作る） ---
+            // --- ★HP割合の計算と発狂モード判定 ---
+            const hpPct = e.hp / e.maxHp;
+            const isDesperationMode = hpPct <= 0.10; // HP 10% 以下で発動
+
             e.fireTimer++;
-            const cycle = e.fireTimer % 1380; // 1200 から 1380 に延長
-            const sides = e.variant.sides || 12;
 
-            // 攻撃パターン4（突進）の間だけ判定するフラグ
-            const isRushing = (cycle >= 900 && cycle < 1200);
-
-            // 2. 基本移動（プレイヤーへの追尾）
+            // 2. 基本移動（追尾）
             const dx = player.x - e.x;
             const dy = player.y - e.y;
             const d = Math.hypot(dx, dy) || 0.1;
 
-            const moveSpeed = isRushing ? e.speed * 2.5 : e.speed;
-            const accel = isRushing ? 0.05 : 0.01;
+            if (isDesperationMode) {
+                // 発狂モード時は移動を停止し、その場で超重力を展開
+                e.vx *= 0.95;
+                e.vy *= 0.95;
+            } else {
+                // 通常時の移動
+                const cycle = e.fireTimer % 1380;
+                const isRushing = (cycle >= 900 && cycle < 1200);
+                const moveSpeed = isRushing ? e.speed * 2.5 : e.speed;
+                const accel = isRushing ? 0.05 : 0.01;
 
-            e.vx += (dx / d) * accel * SPEED_SCALE;
-            e.vy += (dy / d) * accel * SPEED_SCALE;
-            const cv = Math.hypot(e.vx, e.vy);
-            if (cv > moveSpeed) {
-                e.vx = (e.vx / cv) * moveSpeed;
-                e.vy = (e.vy / cv) * moveSpeed;
+                e.vx += (dx / d) * accel * SPEED_SCALE;
+                e.vy += (dy / d) * accel * SPEED_SCALE;
+                const cv = Math.hypot(e.vx, e.vy);
+                if (cv > moveSpeed) {
+                    e.vx = (e.vx / cv) * moveSpeed;
+                    e.vy = (e.vy / cv) * moveSpeed;
+                }
             }
             e.x += e.vx * gameSpeed;
             e.y += e.vy * gameSpeed;
 
-            // 3. 旋回ロジック
-            if (isRushing) {
-                e.angle += 0.15 * gameSpeed; // パターン4: 高速回転
+            // 3. 旋回・発光演出（UI更新含む）
+            if (isDesperationMode) {
+                // 超高速回転とUIの警告表示
+                e.angle += 0.25 * gameSpeed;
+                if (ui.bossNameLabel) {
+                    ui.bossNameLabel.innerText = "CRITICAL: EVENT HORIZON";
+                    ui.bossNameLabel.style.color = "#f0f";
+                }
+                if (ui.bossHpBarInline) {
+                    // 赤紫と白の激しい点滅
+                    ui.bossHpBarInline.style.backgroundColor = (frame % 4 < 2) ? "#fff" : "#f0f";
+                    ui.bossHpBarInline.style.boxShadow = "0 0 15px #f0f";
+                }
+                if (ui.bossBarFrame) ui.bossBarFrame.style.borderColor = "#f0f";
             } else {
+                // プレイヤーの方へゆっくり旋回
                 const targetAngle = Math.atan2(dy, dx);
                 let diff = targetAngle - e.angle;
                 while (diff <= -Math.PI) diff += Math.PI * 2;
                 while (diff > Math.PI) diff -= Math.PI * 2;
-                e.angle += diff * 0.01 * gameSpeed;
+
+                const cycle = e.fireTimer % 1380;
+                if (cycle >= 900 && cycle < 1200) {
+                    e.angle += 0.15 * gameSpeed; // 突進時は回転
+                } else {
+                    e.angle += diff * 0.01 * gameSpeed; // 通常旋回
+                }
             }
 
+            // ==========================================
             // 4. 攻撃パターン
-            // --- パターン1: 収束・拡散レーザー (0-5秒) ---
-            if (cycle < 300) {
-                // 各砲台から同時に放射状に3発発射
-                if (cycle % 60 === 0) {
-                    const spawnRadius = 100;
-                    for (let j = 0; j < sides; j++) {
-                        const baseAngle = e.angle + (Math.PI * 2 / sides) * j;
-                        const spawnX = e.x + Math.cos(baseAngle) * spawnRadius;
-                        const spawnY = e.y + Math.sin(baseAngle) * spawnRadius;
+            // ==========================================
+            if (isDesperationMode) {
+                // 【最終フェーズ: グラビティ・ドロー極】
 
-                        for (let i = -1; i <= 1; i++) {
-                            const a = baseAngle + (i * 0.2);
+                // A. 超強力な引き寄せ（プレイヤーを直接吸い込む）
+                const pullDist = 1200; // ほぼ画面全体をカバー
+                if (d < pullDist) {
+                    // ボスに近づくほど指数関数的に吸引力が上がる
+                    const force = Math.pow(1.2 - (d / pullDist), 2) * 8.0 * SPEED_SCALE;
+                    player.x += (dx / d) * force * gameSpeed;
+                    player.y += (dy / d) * force * gameSpeed;
+
+                    // プレイヤーの慣性を奪う（重力による移動制限・デバフ）
+                    player.vx *= 0.85;
+                    player.vy *= 0.85;
+
+                    // 画面揺れエフェクト
+                    camera.x += (Math.random() - 0.5) * 5 * gameSpeed;
+                    camera.y += (Math.random() - 0.5) * 5 * gameSpeed;
+                }
+
+                // B. 空間崩壊エフェクト（グリッドとパーティクル）
+                if (frame % 2 === 0) {
+                    if (typeof distortGrid === 'function') {
+                        distortGrid(e.x, e.y, 600, 400); // 強烈な空間の歪み
+                    }
+                    // 外側から中心へ吸い込まれる光
+                    const edgeA = Math.random() * Math.PI * 2;
+                    particles.push({
+                        x: e.x + Math.cos(edgeA) * 600,
+                        y: e.y + Math.sin(edgeA) * 600,
+                        vx: -Math.cos(edgeA) * 25 * SPEED_SCALE, // 中心に向かって超加速
+                        vy: -Math.sin(edgeA) * 25 * SPEED_SCALE,
+                        color: (frame % 2 === 0) ? '#f0f' : '#fff', // 赤紫と白
+                        life: 0.4,
+                        size: 2
+                    });
+                }
+
+                // C. 螺旋状の全方位レーザー弾幕
+                if (e.fireTimer % 15 === 0) {
+                    const ways = 16;
+                    // 発射角度を少しずつズラして、逃げ場を狭める螺旋弾幕
+                    const offset = e.fireTimer * 0.05;
+                    for (let i = 0; i < ways; i++) {
+                        const a = e.angle + (Math.PI * 2 / ways) * i + offset;
+                        enemyBullets.push({
+                            x: e.x + Math.cos(a) * 50,
+                            y: e.y + Math.sin(a) * 50,
+                            vx: Math.cos(a) * 6 * SPEED_SCALE,
+                            vy: Math.sin(a) * 6 * SPEED_SCALE,
+                            life: 250,
+                            color: '#f0f',
+                            isLaserMissile: true
+                        });
+                    }
+                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
+                }
+
+            } else {
+                // 【通常時の攻撃サイクル】
+                const cycle = e.fireTimer % 1380;
+                const sides = e.variant.sides || 12;
+
+                if (cycle < 300) {
+                    // パターン1: 収束・拡散レーザー
+                    if (cycle % 60 === 0) {
+                        const spawnRadius = 100;
+                        for (let j = 0; j < sides; j++) {
+                            const baseAngle = e.angle + (Math.PI * 2 / sides) * j;
+                            const spawnX = e.x + Math.cos(baseAngle) * spawnRadius;
+                            const spawnY = e.y + Math.sin(baseAngle) * spawnRadius;
+                            for (let i = -1; i <= 1; i++) {
+                                const a = baseAngle + (i * 0.2);
+                                enemyBullets.push({
+                                    x: spawnX, y: spawnY,
+                                    vx: Math.cos(a) * 12 * SPEED_SCALE,
+                                    vy: Math.sin(a) * 12 * SPEED_SCALE,
+                                    life: 200, color: '#0ff', isLaserMissile: true
+                                });
+                            }
+                        }
+                        if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
+                    }
+                }
+                else if (cycle < 600) {
+                    // パターン2: グラビティ・ハッチ（通常版）
+                    if (cycle % 10 === 0 && typeof distortGrid === 'function') {
+                        distortGrid(e.x, e.y, 250, -15);
+                    }
+                    if (cycle % 15 === 0) {
+                        const a = e.angle + (cycle * 0.1);
+                        const hatchRadius = 90;
+                        enemyBullets.push({
+                            x: e.x + Math.cos(a) * hatchRadius,
+                            y: e.y + Math.sin(a) * hatchRadius,
+                            vx: Math.cos(a) * 3 * SPEED_SCALE,
+                            vy: Math.sin(a) * 3 * SPEED_SCALE,
+                            life: 400, isMissile: true, isFighter: true, color: '#0ff'
+                        });
+                        if (typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
+                    }
+                }
+                else if (cycle < 900) {
+                    // パターン3: 放射状ホーミングミサイル
+                    const subCycle = cycle % 100;
+                    if (subCycle < 60 && subCycle % 20 === 0) {
+                        const ways = 6;
+                        const offsetAngle = e.angle + (subCycle * 0.03);
+                        for (let i = 0; i < ways; i++) {
+                            const a = offsetAngle + (Math.PI * 2 / ways) * i;
                             enemyBullets.push({
-                                x: spawnX, y: spawnY,
-                                vx: Math.cos(a) * 12 * SPEED_SCALE,
-                                vy: Math.sin(a) * 12 * SPEED_SCALE,
+                                x: e.x, y: e.y,
+                                vx: Math.cos(a) * 5 * SPEED_SCALE,
+                                vy: Math.sin(a) * 5 * SPEED_SCALE,
+                                life: 800, color: '#00ffff', isMissile: true, trail: []
+                            });
+                        }
+                        if (typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
+                    }
+                }
+                else if (cycle < 1200) {
+                    // パターン4: アーク・ディビジョン・突進
+                    if (cycle % 10 === 0) {
+                        for (let i = 0; i < 8; i++) {
+                            const a = e.angle + (Math.PI * 2 / 8) * i;
+                            enemyBullets.push({
+                                x: e.x + Math.cos(a) * 80, y: e.y + Math.sin(a) * 80,
+                                vx: Math.cos(a) * 4, vy: Math.sin(a) * 4,
                                 life: 200, color: '#0ff', isLaserMissile: true
                             });
                         }
                     }
-                    AudioSys.playSE('shoot');
-                }
-            }
-
-            // --- パターン2: グラビティ・ハッチ (5-10秒) ---
-            else if (cycle < 600) {
-                if (cycle % 10 === 0) distortGrid(e.x, e.y, 250, -15);
-
-                if (cycle % 15 === 0) {
-                    const a = e.angle + (cycle * 0.1);
-                    const hatchRadius = 90;
-                    const spawnX = e.x + Math.cos(a) * hatchRadius;
-                    const spawnY = e.y + Math.sin(a) * hatchRadius;
-
-                    enemyBullets.push({
-                        x: spawnX, y: spawnY,
-                        vx: Math.cos(a) * 3 * SPEED_SCALE,
-                        vy: Math.sin(a) * 3 * SPEED_SCALE,
-                        life: 400, isMissile: true, isFighter: true, color: '#0ff'
-                    });
-                    AudioSys.playSE('launch');
-                }
-            }
-
-            // --- パターン3: 放射状ホーミングミサイル6連射 (10-15秒) ---
-            else if (cycle < 900) {
-                const subCycle = cycle % 100;
-                // 10F間隔で6回（計60F）撃つ設定
-                if (subCycle < 60 && subCycle % 20 === 0) {
-                    const ways = 6; // 12方向に一斉発射
-                    const offsetAngle = e.angle + (subCycle * 0.03);
-
-                    for (let i = 0; i < ways; i++) {
-                        const a = offsetAngle + (Math.PI * 2 / ways) * i;
-                        enemyBullets.push({
-                            x: e.x, y: e.y,
-                            vx: Math.cos(a) * 5 * SPEED_SCALE,
-                            vy: Math.sin(a) * 5 * SPEED_SCALE,
-                            life: 800,
-                            color: '#00ffff', // ラスボスらしいマゼンタ
-                            isMissile: true,
-                            // ★重要：ミサイルごとに軌跡を保存する配列を追加
-                            trail: []
-                        });
-                    }
-                    AudioSys.playSE('launch');
-                }
-            }
-
-            // --- パターン4: アーク・ディビジョン・突進 (15-20秒) ---
-            else if (cycle < 1200) {
-                if (cycle % 10 === 0) {
-                    for (let i = 0; i < 8; i++) {
-                        const a = e.angle + (Math.PI * 2 / 8) * i;
-                        enemyBullets.push({
-                            x: e.x + Math.cos(a) * 80, y: e.y + Math.sin(a) * 80,
-                            vx: Math.cos(a) * 4, vy: Math.sin(a) * 4,
-                            life: 200, color: '#0ff', isLaserMissile: true
-                        });
+                    if (Math.random() < 0.3) {
+                        createExplosion(e.x + (Math.random() - 0.5) * 150, e.y + (Math.random() - 0.5) * 150, '#0ff', 5);
                     }
                 }
-                if (Math.random() < 0.3) createExplosion(e.x + (Math.random() - 0.5) * 150, e.y + (Math.random() - 0.5) * 150, '#0ff', 5);
-            }
-
-            // --- パターン5: クールダウン・排熱 (20-23秒) ---
-            else {
-                // 攻撃は一切行わず、プレイヤーにゆっくりと向き直る隙の大きな時間
-                // 機体から冷却用の蒸気（白い煙）を吹き出させる演出
-                if (frame % 5 === 0) {
-                    particles.push({
-                        x: e.x + (Math.random() - 0.5) * 150,
-                        y: e.y + (Math.random() - 0.5) * 150,
-                        vx: (Math.random() - 0.5) * 2,
-                        vy: (Math.random() - 0.5) * 2,
-                        color: 'rgba(255, 255, 255, 0.5)', // 白煙
-                        life: 1.0,
-                        size: 4 + Math.random() * 3
-                    });
+                else {
+                    // パターン5: クールダウン・排熱
+                    if (frame % 5 === 0) {
+                        particles.push({
+                            x: e.x + (Math.random() - 0.5) * 150,
+                            y: e.y + (Math.random() - 0.5) * 150,
+                            vx: (Math.random() - 0.5) * 2,
+                            vy: (Math.random() - 0.5) * 2,
+                            color: 'rgba(255, 255, 255, 0.5)',
+                            life: 1.0,
+                            size: 4 + Math.random() * 3
+                        });
+                    }
                 }
             }
         }
