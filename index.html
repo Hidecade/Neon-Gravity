@@ -1117,7 +1117,8 @@
         const WALL_MARGIN = 5;        // 画面端の見えない壁の余白
         const GRID_SPACING = 32;      // 背景グリッド線の間隔（小さいほど網目が細かい）
 
-        // ★追加：iPhoneの画面サイズ（長辺）を基準とする
+        const CAMERA_Y_OFFSET = 0.60;
+
         const REFERENCE_SIZE = 850;
         let baseAppScale = 1.0; // 画面サイズによる基本拡大率
 
@@ -2204,7 +2205,7 @@
             const viewH = height / cameraScale;
             camera.x = player.x - viewW / 2;
             //camera.y = player.y - viewH / 2;
-            camera.y = player.y - viewH * 0.65;
+            camera.y = player.y - viewH * CAMERA_Y_OFFSET;
 
             // スムージングのラグを消すため、強制的にカメラ座標を確定
             updateCamera();
@@ -2338,7 +2339,7 @@
             const viewH = height / cameraScale;
             camera.x = player.x - viewW / 2;
             //camera.y = player.y - viewH / 2;
-            camera.y = player.y - viewH * 0.65;
+            camera.y = player.y - viewH * CAMERA_Y_OFFSET;
 
             // これにより、スムージングの計算（ Lerp ）をリセット
             updateCamera();
@@ -2969,7 +2970,7 @@
             // 6. 最終座標の算出
             let tx = focusX - viewW / 2;
             //let ty = focusY - viewH / 2;
-            let ty = focusY - viewH * 0.65;
+            let ty = focusY - viewH * CAMERA_Y_OFFSET;
 
             // 7. クランプ処理（境界チェック）
             // ★修正：UI等のパディングもスケールに合わせて調整
