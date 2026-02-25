@@ -959,6 +959,17 @@
             <div id="track-list"></div>
         </div>
 
+        <div id="ost-controls" style="display: none; width: 90%; max-width: 500px; margin-top: 10px; flex-direction: column; align-items: center;">
+            <div id="ost-now-playing" style="color: #0ff; font-size: 14px; margin-bottom: 8px;">SELECT A TRACK</div>
+            <div style="display: flex; width: 100%; align-items: center; gap: 10px;">
+                <span id="ost-time-current" style="color: #aaa; font-size: 12px; width: 40px; text-align: right;">0:00</span>
+                <div id="ost-progress-bar" style="flex: 1; height: 10px; background: rgba(0,255,255,0.1); border: 1px solid #0ff; border-radius: 5px; cursor: pointer; position: relative;">
+                    <div id="ost-progress-fill" style="width: 0%; height: 100%; background: rgba(0,255,255,0.8); border-radius: 5px; pointer-events: none; box-shadow: 0 0 8px #0ff;"></div>
+                </div>
+                <span id="ost-time-total" style="color: #aaa; font-size: 12px; width: 40px;">0:00</span>
+            </div>
+        </div>
+
         <div class="menu-btn" id="btn-back" style="margin-top:20px;">BACK</div>
     </div>
 
@@ -1499,6 +1510,8 @@
         // 2. オーディオシステム (Audio System)
         // =========================================================
 
+ 
+
         const BGM_FILES = {
             title: 'audio/Neon_Gravity_Title.mp3',
             clear: 'audio/Neon_Gravity_Clear.mp3',
@@ -1900,6 +1913,16 @@
                     this.bgmEl = new Audio();
                     this.bgmEl.loop = true;
                     this.bgmEl.volume = 0.4;
+                    // ★追加：曲が終わった時の自動再生イベント
+                    this.bgmEl.addEventListener('ended', () => {
+                        if (gameState === 'OST' && typeof playNextOST === 'function') {
+                            playNextOST(); // OSTなら次の曲へ
+                        } else if (this.bgmEl.loop) {
+                            // ゲーム中は何らかの理由で止まってもループさせる
+                            this.bgmEl.currentTime = 0;
+                            this.bgmEl.play();
+                        }
+                    });
                 }
             },
 
@@ -2018,6 +2041,9 @@
                     return; // すでに再生中なら何もしない
                 }
 
+                // ★追加：OST画面ならループを解除（endedイベントを発火させるため）
+                this.bgmEl.loop = (gameState !== 'OST');
+
                 // 別の曲を再生する場合
                 this.bgmEl.pause();
                 this.bgmEl.src = src;
@@ -2073,7 +2099,11 @@
             }
         };
 
-        // --- Menu Logic ---
+        // --- Menu & OST Logic ---
+        let ostTracks = [];
+        let currentOstIndex = -1;
+        let ostUpdateInterval = null;
+
         function openOST() {
             AudioSys.resume();
             ui.overlay.style.display = 'none';
@@ -2083,43 +2113,124 @@
             const list = document.getElementById('track-list');
             list.innerHTML = '';
 
-            // 1. Titleを最初に定義
-            const tracks = [
+            // 曲のリストを作成
+            ostTracks = [
                 { n: 'Title Theme', k: 'title' }
             ];
-
-            // 2. STAGE 1-8 を自動追加（Titleのすぐ後ろに配置）
             BGM_FILES.stages.forEach((path, index) => {
-                tracks.push({ n: `Stage ${index + 1} BGM`, k: 'stage', i: index });
+                ostTracks.push({ n: `Stage ${index + 1} BGM`, k: 'stage', i: index });
             });
-
-            // 3. 残りの特殊トラックを順番に追加
-            tracks.push(
+            ostTracks.push(
                 { n: 'Boss Encounter', k: 'boss' },
                 { n: 'The Final Ark', k: 'last' },
                 { n: 'Mission Complete', k: 'clear' },
-                { n: 'Story Mode', k: 'story' } // Storyを最後に配置
+                { n: 'Story Mode', k: 'story' }
             );
 
-            // 描画処理（変更なし）
-            tracks.forEach(t => {
+            // リストの描画
+            ostTracks.forEach((t, idx) => {
                 const d = document.createElement('div');
                 d.className = 'track-item';
                 d.innerText = t.n;
-                d.onclick = () => {
-                    AudioSys.playBGM(t.k, t.i);
-                    document.querySelectorAll('.track-item').forEach(e => e.classList.remove('playing'));
-                    d.classList.add('playing');
-                };
+                d.onclick = () => playOSTTrack(idx); // ★専用関数を呼ぶ
                 list.appendChild(d);
             });
-            window.refreshMenuButtons(); 
+
+            // UIリセットとプログレスバーの更新開始
+            document.getElementById('ost-controls').style.display = 'flex';
+            document.getElementById('ost-now-playing').innerText = "SELECT A TRACK";
+            document.getElementById('ost-progress-fill').style.width = "0%";
+            document.getElementById('ost-time-current').innerText = "0:00";
+            document.getElementById('ost-time-total').innerText = "0:00";
+
+            startOstProgressUpdate();
+            window.refreshMenuButtons();
         }
 
+        // 指定したインデックスのOSTを再生する
+        function playOSTTrack(idx) {
+            if (idx < 0 || idx >= ostTracks.length) return;
+            currentOstIndex = idx;
+            const t = ostTracks[idx];
+
+            AudioSys.playBGM(t.k, t.i);
+
+            // リストの見た目を更新
+            const items = document.querySelectorAll('#track-list .track-item');
+            items.forEach((e, i) => {
+                if (i === idx) e.classList.add('playing');
+                else e.classList.remove('playing');
+            });
+
+            document.getElementById('ost-now-playing').innerText = "NOW PLAYING: " + t.n;
+        }
+
+        // 次の曲へ進む（AudioSysのendedイベントから呼ばれる）
+        window.playNextOST = function () {
+            if (currentOstIndex >= 0 && currentOstIndex < ostTracks.length - 1) {
+                playOSTTrack(currentOstIndex + 1);
+            } else {
+                playOSTTrack(0); // 最後まで行ったら最初に戻る
+            }
+        };
+
+        // 秒数を 0:00 形式に変換
+        function formatTime(seconds) {
+            if (isNaN(seconds) || !isFinite(seconds)) return "0:00";
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // 再生バーの定期更新
+        function startOstProgressUpdate() {
+            if (ostUpdateInterval) clearInterval(ostUpdateInterval);
+            ostUpdateInterval = setInterval(() => {
+                if (gameState !== 'OST' || !AudioSys.bgmEl) return;
+
+                const bgm = AudioSys.bgmEl;
+                const cur = bgm.currentTime || 0;
+                const tot = bgm.duration || 0;
+
+                document.getElementById('ost-time-current').innerText = formatTime(cur);
+                document.getElementById('ost-time-total').innerText = formatTime(tot);
+
+                let pct = 0;
+                if (tot > 0) pct = (cur / tot) * 100;
+                document.getElementById('ost-progress-fill').style.width = `${pct}%`;
+            }, 200);
+        }
+
+        // OSTを閉じる処理
         function closeOST() {
+            if (ostUpdateInterval) clearInterval(ostUpdateInterval);
             AudioSys.stopBGM();
+            if (AudioSys.bgmEl) AudioSys.bgmEl.loop = true; // ゲーム用にループを戻す
             returnToTitle();
         }
+
+        // シークバー（再生バー）のクリック・タップ操作
+        const ostProgressBar = document.getElementById('ost-progress-bar');
+
+        const seekOst = (e) => {
+            if (gameState !== 'OST' || !AudioSys.bgmEl || !AudioSys.bgmEl.duration) return;
+            const rect = ostProgressBar.getBoundingClientRect();
+            // タッチかマウスかを判定してX座標を取得
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clickX = clientX - rect.left;
+            const pct = Math.max(0, Math.min(1, clickX / rect.width)); // 0.0 ~ 1.0の範囲に収める
+
+            AudioSys.bgmEl.currentTime = AudioSys.bgmEl.duration * pct;
+        };
+
+        ostProgressBar.addEventListener('mousedown', seekOst);
+        ostProgressBar.addEventListener('touchstart', (e) => { e.preventDefault(); seekOst(e); }, { passive: false });
+
+        // 既存のイベント割り当て部分を少し整理
+        document.getElementById('btn-start').onclick = startGame;
+        document.getElementById('btn-ost').onclick = openOST;
+        document.getElementById('btn-back').onclick = closeOST;
+
 
 
         // =========================================================
@@ -9155,9 +9266,7 @@
 
             // --- 1. 出現予定地点にターゲットサイトを描画 ---
             ctx.save();
-
             ctx.scale(cameraScale, cameraScale);
-
             ctx.translate(-camera.x, -camera.y);
 
             const p = warningTimer / 180;
@@ -9177,49 +9286,75 @@
             ctx.stroke();
             ctx.restore();
 
-            // --- 2. 警告メッセージの描画 (BOSS HPバーの位置に合わせる) ---
+            // --- 2. 警告メッセージの描画 ---
             if (warningTimer > 20 && Math.floor(warningTimer / (WARNING_SOUND_INTERVAL / 2)) % 2 !== 0) {
                 ctx.save();
                 ctx.globalCompositeOperation = 'source-over';
 
-                // 右端の余白設定（CSSのpadding等に合わせる）
-                const marginRight = 10;
-                const x = width - marginRight;
+                // ★追加：横画面と縦画面で表示レイアウトを切り替える
+                if (width > height) {
+                    // ==========================================
+                    // 【横画面】画面の中央・上部に大きく表示（帯付き）
+                    // ==========================================
+                    const cy = height * 0.18; // 上から18%の位置
 
-                // 表示位置：SHIELD(約40px) + ENEMY(約40px) = 80px 以上の高さから開始
-                // boss-ui-containerが出る想定位置 (110〜120pxあたり)
-                const y = 115;
+                    // 背景の黒い透過帯
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+                    ctx.fillRect(0, cy - 35, width, 75);
 
-                // ボスHPバーと同じ幅 (gauge-boxのwidth: 120px)
-                const boxW = 120;
-                const boxH = 45;
+                    // 帯の上下にボスのテーマカラーのラインを引く
+                    ctx.fillStyle = bossColor;
+                    ctx.fillRect(0, cy - 35, width, 2);
+                    ctx.fillRect(0, cy + 40, width, 2);
 
-                // 背景ボックス
-                ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-                ctx.fillRect(x - boxW, y, boxW, boxH);
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
 
-                // ボスカラーのサイドバー
-                ctx.fillStyle = bossColor;
-                ctx.fillRect(x - boxW, y, 3, boxH);
+                    // WARNING !!
+                    ctx.font = "900 36px Orbitron, sans-serif";
+                    ctx.fillStyle = "#ff0000";
+                    ctx.shadowColor = "#ff0000";
+                    ctx.shadowBlur = 15;
+                    ctx.fillText("WARNING !!", width / 2, cy - 5);
 
-                ctx.textAlign = "right";
-                ctx.textBaseline = "top";
+                    // サブメッセージ
+                    ctx.font = "700 14px Orbitron, sans-serif";
+                    ctx.fillStyle = "#ffffff";
+                    ctx.shadowBlur = 0;
+                    ctx.globalAlpha = 0.8;
+                    ctx.fillText("BOSS APPROACHING", width / 2, cy + 22);
 
-                // "WARNING !!"
-                // 幅に合わせてフォントサイズを微調整 (16px)
-                ctx.font = "900 16px Orbitron, sans-serif";
-                ctx.fillStyle = "#ff0000";
-                ctx.shadowColor = "#ff0000";
-                ctx.shadowBlur = 8;
-                ctx.fillText("WARNING !!", x - 5, y + 5);
+                } else {
+                    // ==========================================
+                    // 【縦画面】右側のUIの下にコンパクトに表示（元の処理）
+                    // ==========================================
+                    const marginRight = 10;
+                    const x = width - marginRight;
+                    const y = 115; // HUDの下あたり
+                    const boxW = 120;
+                    const boxH = 45;
 
-                // サブメッセージ
-                ctx.font = "700 8px Orbitron, sans-serif";
-                ctx.fillStyle = "#ffffff";
-                ctx.shadowBlur = 0;
-                ctx.globalAlpha = 0.8;
-                const msg = "BOSS APPROACHING";
-                ctx.fillText(msg, x - 5, y + 26);
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+                    ctx.fillRect(x - boxW, y, boxW, boxH);
+
+                    ctx.fillStyle = bossColor;
+                    ctx.fillRect(x - boxW, y, 3, boxH);
+
+                    ctx.textAlign = "right";
+                    ctx.textBaseline = "top";
+
+                    ctx.font = "900 16px Orbitron, sans-serif";
+                    ctx.fillStyle = "#ff0000";
+                    ctx.shadowColor = "#ff0000";
+                    ctx.shadowBlur = 8;
+                    ctx.fillText("WARNING !!", x - 5, y + 5);
+
+                    ctx.font = "700 8px Orbitron, sans-serif";
+                    ctx.fillStyle = "#ffffff";
+                    ctx.shadowBlur = 0;
+                    ctx.globalAlpha = 0.8;
+                    ctx.fillText("BOSS APPROACHING", x - 5, y + 26);
+                }
 
                 ctx.restore();
             }
