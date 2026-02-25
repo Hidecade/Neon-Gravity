@@ -243,7 +243,7 @@
             width: 100%;
             text-align: center;
             color: #f00;
-            font-size: 24px;
+            font-size: calc(24px * var(--ui-scale, 1)); /* ★変更 */
             animation: blink 0.2s infinite; /* 点滅警告 */
         }
 
@@ -254,15 +254,13 @@
             width: 100%;
             text-align: center;
             color: #fff;
-            font-size: 32px;
+            font-size: calc(32px * var(--ui-scale, 1)); /* ★変更 */
             font-weight: 900;
-            /* 静止した状態での強力な発光 */
             text-shadow: 0 0 15px #0ff, 0 0 30px #0ff, 0 0 60px #0ff;
             letter-spacing: 12px;
             z-index: 100;
             pointer-events: none;
             font-family: 'Orbitron', sans-serif;
-            /* 揺れを削除し、透明度と輝度の変化のみ適用 */
             animation: clear-glow 2.5s ease-in-out infinite;
             white-space: pre-wrap;
             transition: opacity 0.2s;
@@ -1163,7 +1161,8 @@
         const CAMERA_Y_OFFSET = 0.60;
 
         const REFERENCE_SIZE = 850;
-        let baseAppScale = 1.0; // 画面サイズによる基本拡大率
+        let baseAppScale = 1.0;         // 画面サイズによる基本拡大率
+        let globalUiScale = 1.0;
 
         let gameSpeed = 1.0;          // ゲーム速度係数（動的なスロー演出用）
         let cameraScale = 1.0;        // カメラのズーム倍率（1.0=通常、0.75=縮小）
@@ -2303,36 +2302,46 @@
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
 
-            // 現在の画面サイズと基準サイズ(850)を比較して、拡大率を計算
             const maxDim = Math.max(width, height);
             baseAppScale = maxDim / REFERENCE_SIZE;
 
-            // 横画面の時は1.1倍ズームアウトして視界を広げる
             if (width > height) {
                 baseAppScale /= 1.1;
             }
 
             // ==========================================
-            // ★画面サイズに合わせたHUD(UI)のスケール調整
+            // ★画面サイズに合わせたHUD(UI)とメッセージのスケール調整
             // ==========================================
+            const screenBaseSize = Math.max(width, height);
+            globalUiScale = screenBaseSize / 800;
+
+            globalUiScale = Math.max(0.8, Math.min(globalUiScale, 2.0));
+
+            const maxAllowedScale = width / Math.min(width, 800);
+            globalUiScale = Math.min(globalUiScale, maxAllowedScale);
+
+            // スコアやゲージの拡大
             const hudRow = document.querySelector('.hud-row');
             if (hudRow) {
-                // 画面の長辺を基準に計算
-                const screenBaseSize = Math.max(width, height);
-                let uiScale = screenBaseSize / 800;
-
-                // 極端に大きくなりすぎないように制限
-                uiScale = Math.max(0.8, Math.min(uiScale, 2.0));
-
-                // ★修正箇所：縦画面（横幅が狭い場合）のはみ出し防止ロジック
-                // 「画面の物理的な横幅」を超えて拡大されないように、スケールの上限を計算して抑え込む
-                const maxAllowedScale = width / Math.min(width, 800);
-                uiScale = Math.min(uiScale, maxAllowedScale);
-
-                // 画面の上部中央を基準点として拡大縮小を適用
                 hudRow.style.transformOrigin = 'top center';
-                hudRow.style.transform = `scale(${uiScale})`;
+                hudRow.style.transform = `scale(${globalUiScale})`;
             }
+
+            // ★追加：STAGE CLEAR や GAME OVER のテキスト拡大
+            const stageMsg = document.getElementById('stage-msg');
+            if (stageMsg) {
+                stageMsg.style.transformOrigin = 'center center';
+                stageMsg.style.transform = `scale(${globalUiScale})`;
+            }
+
+            // ★追加：SHIELD LOW 等の警告テキスト拡大
+            const warningMsg = document.getElementById('warning-msg');
+            if (warningMsg) {
+                warningMsg.style.transformOrigin = 'center center';
+                warningMsg.style.transform = `scale(${globalUiScale})`;
+            }
+
+            document.documentElement.style.setProperty('--ui-scale', globalUiScale);
 
             initGrid();
             initStars();
@@ -3255,7 +3264,7 @@
             }
             if (dyingTimer === 120) {
                 ui.msg.innerText = "GAME OVER";
-                ui.msg.style.fontSize = "32px"; // GAME OVERは少し大きく
+                ui.msg.style.fontSize = "calc(32px * var(--ui-scale, 1))"; // ★変更
                 ui.msg.style.opacity = "1";     // 再びフェードイン
             }
 
@@ -3468,7 +3477,7 @@
                 AudioSys.stopSE('warning');
 
                 // --- メッセージ表示の初期化 ---
-                ui.msg.style.fontSize = "24px";
+                ui.msg.style.fontSize = "calc(24px * var(--ui-scale, 1))"; // ★変更
                 ui.msg.style.opacity = "0";
                 ui.msg.innerText = "SHIELD LOST";
                 ui.msg.style.color = "#f00"; // 文字自体を濃い赤に
@@ -9403,75 +9412,75 @@
                 ctx.save();
                 ctx.globalCompositeOperation = 'source-over';
 
-                // ★追加：横画面と縦画面で表示レイアウトを切り替える
+                // ★スケール値を取得
+                const s = globalUiScale;
+
                 if (width > height) {
                     // ==========================================
                     // 【横画面】画面の中央・上部にコンパクトな枠で表示
                     // ==========================================
-                    const cy = height * 0.18; // 上から18%の位置
+                    const cy = height * 0.18;
 
-                    // ★修正：枠の幅を文字サイズ＋アルファ（400px）に設定
-                    const boxW = 400;
-                    const boxH = 75;
-                    const startX = (width - boxW) / 2; // 画面中央に配置するためのX座標
+                    // ★サイズと座標にスケール(s)を掛ける
+                    const boxW = 300 * s;
+                    const boxH = 60 * s;
+                    const startX = (width - boxW) / 2;
+                    const topY = cy - 30 * s;
 
-                    // 背景の黒い透過ボックス
-                    ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-                    ctx.fillRect(startX, cy - 35, boxW, boxH);
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.4)"; // 少し透けさせる
+                    ctx.fillRect(startX, topY, boxW, boxH);
 
-                    // ボスのテーマカラーで上下左右の枠を描画
                     ctx.fillStyle = bossColor;
-                    ctx.fillRect(startX, cy - 35, boxW, 2); // 上ライン
-                    ctx.fillRect(startX, cy + 40, boxW, 2); // 下ライン
-                    ctx.fillRect(startX, cy - 35, 3, boxH); // 左ライン（少し太め）
-                    ctx.fillRect(startX + boxW - 3, cy - 35, 3, boxH); // 右ライン（少し太め）
+                    ctx.fillRect(startX, topY, boxW, 2);
+                    ctx.fillRect(startX, topY + boxH, boxW, 2);
+                    ctx.fillRect(startX, topY, 3 * s, boxH); // 線の太さもスケール
+                    ctx.fillRect(startX + boxW - 3 * s, topY, 3 * s, boxH);
 
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
 
-                    // WARNING !!
-                    ctx.font = "900 36px Orbitron, sans-serif";
+                    // 文字サイズや光彩（シャドウ）もスケールに合わせる
+                    ctx.font = `900 ${24 * s}px Orbitron, sans-serif`;
                     ctx.fillStyle = "#ff0000";
                     ctx.shadowColor = "#ff0000";
-                    ctx.shadowBlur = 15;
-                    ctx.fillText("WARNING !!", width / 2, cy - 5);
+                    ctx.shadowBlur = 10 * s;
+                    ctx.fillText("WARNING !!", width / 2, cy - 6 * s);
 
-                    // サブメッセージ
-                    ctx.font = "700 14px Orbitron, sans-serif";
+                    ctx.font = `700 ${12 * s}px Orbitron, sans-serif`;
                     ctx.fillStyle = "#ffffff";
                     ctx.shadowBlur = 0;
                     ctx.globalAlpha = 0.8;
-                    ctx.fillText("BOSS APPROACHING", width / 2, cy + 22);
+                    ctx.fillText("BOSS APPROACHING", width / 2, cy + 16 * s);
                 } else {
                     // ==========================================
-                    // 【縦画面】右側のUIの下にコンパクトに表示（元の処理）
+                    // 【縦画面】右側のUIの下にコンパクトに表示
                     // ==========================================
-                    const marginRight = 10;
+                    const marginRight = 10 * s;
                     const x = width - marginRight;
-                    const y = 115; // HUDの下あたり
-                    const boxW = 120;
-                    const boxH = 45;
+                    const y = 115 * s; // HUDの下あたり
+                    const boxW = 120 * s;
+                    const boxH = 45 * s;
 
                     ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
                     ctx.fillRect(x - boxW, y, boxW, boxH);
 
                     ctx.fillStyle = bossColor;
-                    ctx.fillRect(x - boxW, y, 3, boxH);
+                    ctx.fillRect(x - boxW, y, 3 * s, boxH);
 
                     ctx.textAlign = "right";
                     ctx.textBaseline = "top";
 
-                    ctx.font = "900 16px Orbitron, sans-serif";
+                    ctx.font = `900 ${16 * s}px Orbitron, sans-serif`;
                     ctx.fillStyle = "#ff0000";
                     ctx.shadowColor = "#ff0000";
-                    ctx.shadowBlur = 8;
-                    ctx.fillText("WARNING !!", x - 5, y + 5);
+                    ctx.shadowBlur = 8 * s;
+                    ctx.fillText("WARNING !!", x - 5 * s, y + 5 * s);
 
-                    ctx.font = "700 8px Orbitron, sans-serif";
+                    ctx.font = `700 ${8 * s}px Orbitron, sans-serif`;
                     ctx.fillStyle = "#ffffff";
                     ctx.shadowBlur = 0;
                     ctx.globalAlpha = 0.8;
-                    ctx.fillText("BOSS APPROACHING", x - 5, y + 26);
+                    ctx.fillText("BOSS APPROACHING", x - 5 * s, y + 26 * s);
                 }
 
                 ctx.restore();
