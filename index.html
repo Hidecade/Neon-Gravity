@@ -199,6 +199,7 @@
             height: 8px; /* ★高さも統一 */
             display: flex;
             justify-content: space-between;
+            margin-top: 4px;
         }
 
         /* 左側WEAPON用の特殊幅調整（もし必要なら） */
@@ -280,8 +281,8 @@
         }
 
         /* =========================================================
-                6. オーバーレイ（タイトル・ポーズ）
-                ========================================================= */
+           6. オーバーレイ（タイトル・ポーズ）
+           ========================================================= */
         #overlay {
             position: absolute;
             top: 0;
@@ -730,8 +731,8 @@
         }
 
         /* =========================================================
-           14. ミニマップ (配置変更版)
-           ========================================================= */
+            14. ミニマップ (配置変更版)
+            ========================================================= */
         #minimap-container {
             /* --- デフォルト（横画面）設定 --- */
             /* 絶対配置をやめ、info-boxの流れに従って下に配置 */
@@ -739,7 +740,8 @@
             top: auto;
             left: auto;
             transform: none;
-            margin-top: 15px; /* 上の要素との間隔 */
+            /* 【変更前】 margin-top: 15px; */
+            margin-top: 5px; /* ★変更: 15pxから5pxに減らして余白を狭くする */
 
             width: 100px;
             height: 100px;
@@ -2093,6 +2095,7 @@
             },
 
             pauseBGM() { if (this.bgmEl && !this.bgmEl.paused) this.bgmEl.pause(); },
+
             resumeBGM() {
                 // currentSrcの代わりに、bgmElにsrcがセットされているかを確認する
                 if (this.bgmEl && this.bgmEl.paused && this.bgmEl.src) {
@@ -2304,11 +2307,31 @@
             const maxDim = Math.max(width, height);
             baseAppScale = maxDim / REFERENCE_SIZE;
 
-            // ==========================================
-            // ★追加：横画面の時は1.1倍ズームアウトして視界を広げる
-            // ==========================================
+            // 横画面の時は1.1倍ズームアウトして視界を広げる
             if (width > height) {
                 baseAppScale /= 1.1;
+            }
+
+            // ==========================================
+            // ★画面サイズに合わせたHUD(UI)のスケール調整
+            // ==========================================
+            const hudRow = document.querySelector('.hud-row');
+            if (hudRow) {
+                // 画面の長辺を基準に計算
+                const screenBaseSize = Math.max(width, height);
+                let uiScale = screenBaseSize / 800;
+
+                // 極端に大きくなりすぎないように制限
+                uiScale = Math.max(0.8, Math.min(uiScale, 2.0));
+
+                // ★修正箇所：縦画面（横幅が狭い場合）のはみ出し防止ロジック
+                // 「画面の物理的な横幅」を超えて拡大されないように、スケールの上限を計算して抑え込む
+                const maxAllowedScale = width / Math.min(width, 800);
+                uiScale = Math.min(uiScale, maxAllowedScale);
+
+                // 画面の上部中央を基準点として拡大縮小を適用
+                hudRow.style.transformOrigin = 'top center';
+                hudRow.style.transform = `scale(${uiScale})`;
             }
 
             initGrid();
@@ -9650,7 +9673,7 @@
                 return; // メニュー画面中は以下の移動・射撃処理をスキップ
             }
 
-            // --- ★ここからプレイ中の操作（Aボタンを有効化） ---
+            // --- ここからプレイ中の操作（Aボタンを有効化） ---
             input.padAPressed = aBtn; // これにより update 関数内で射撃判定が通るようになります
 
             const moveDeadzone = 0.2;
