@@ -190,15 +190,32 @@
             box-shadow: 0 0 8px #0ff;
         }
 
+        /* 左側WEAPON枠のコンテナ設定 */
+        #weapon-display {
+            width: 120px; /* ★右のSHIELDゲージ等と同じ幅にピタッと合わせる */
+            height: 8px; /* ★高さも統一 */
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* 左側WEAPON用の特殊幅調整（もし必要なら） */
+        .laser-bar-frame {
+            margin-bottom: 0; /* コンテナ内でのズレを防止 */
+        }
+
         /* 武器レベル表示用ブロック（ショットモード時） */
         .w-block {
-            width: 12px;
-            height: 8px;
+            flex: 1; /* ★ブロックが何個あっても、120pxの中で均等に幅を自動調整する */
+            height: 100%;
             margin-right: 3px;
             background: rgba(255,255,255,0.1);
             border: 1px solid #444;
-            display: inline-block;
+            box-sizing: border-box;
         }
+
+            .w-block:last-child {
+                margin-right: 0; /* ★最後のブロックの右側の隙間を消す */
+            }
 
             .w-block.active {
                 background: #0f0;
@@ -826,12 +843,12 @@
                 <div><span class="hud-label">STAGE</span><span id="stage-num">1</span></div>
                 <div>
                     <span class="hud-label">WEAPON</span>
-                    <div id="weapon-display" style="height:12px; display:flex; align-items:center;"></div>
+                    <div id="weapon-display"></div>
                 </div>
                 <div id="invuln-wrapper" style="display:none; margin-top: 2px;">
-                    <span class="bar-label" style="color:#ff0; font-size:10px;">INVINCIBLE</span>
+                    <span class="bar-label" style="color:#ff0;">INVINCIBLE</span>
                     <div class="bar-frame"
-                         style="border-color:#ff0; background:rgba(40,40,0,0.5); width:80px; height:6px;">
+                         style="border-color:#ff0; background:rgba(40,40,0,0.5); width:120px;">
                         <div id="invuln-bar" style="width:0%; height:100%; background:#ff0; box-shadow:0 0 5px #ff0;">
                         </div>
                     </div>
@@ -1142,6 +1159,10 @@
         let gameState = 'TITLE';      // 現在のゲーム状態 ('TITLE', 'PLAYING', 'PAUSED', 'DYING', 'GAMEOVER_UI', 'ENDING', 'OST')
         let previousGameState = '';   // ポーズ前の状態保存用
 
+        // ★追加：iOS判定用変数
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+
         // =========================================================
         // 2. ステージ・難易度・進行管理
         // =========================================================
@@ -1188,7 +1209,7 @@
 
         // 各ステージの出現エネミープール
         const STAGE_ENEMIES = {
-            1: ['triangle', 'triangle', 'triangle', 'dragon'],
+            1: ['triangle', 'triangle', 'triangle', 'tadpole'],
             2: ['triangle', 'triangle', 'tadpole', 'dragon'],
             3: ['bubble', 'bubble', 'bubble', 'jellyfish', 'spark_jelly'],           
             4: ['phantom', 'triangle', 'tadpole', 'asteroid'],
@@ -2216,11 +2237,25 @@
             }
         }
 
+        function requestFullScreen() {
+            const el = document.documentElement;
+            if (el.requestFullscreen) {
+                el.requestFullscreen().catch(e => console.log("Fullscreen blocked", e));
+            } else if (el.webkitRequestFullscreen) {
+                el.webkitRequestFullscreen();
+            } else if (isIOS) {
+                window.scrollTo(0, 0);
+            }
+        }
+
 
         // =========================================================
         // 4. シーン・ステージ管理 (Scene & Stage Management)
         // =========================================================
         function startGame() {
+
+            requestFullScreen();
+
             // 1. オーディオシステムの初期化
             AudioSys.init();
             AudioSys.resume();
@@ -4760,7 +4795,11 @@
                 // 予告レーザーの表示
                 e.isAiming = (e.timer < 30);
 
-                if (e.timer === 30) {
+ 
+
+                // ★修正：スローモーション時に発射しなくなるバグを防止するため、
+                // === 30 ではなく、範囲で判定するように変更
+                if (e.timer >= 30 && e.timer < 30 + gameSpeed) {
                     e.isAiming = false;
                     for (let i = 0; i < 4; i++) {
                         const orbitAngle = e.rotAngle + (Math.PI / 2) * i;
@@ -4768,7 +4807,7 @@
                         const shootX = e.x + Math.cos(orbitAngle) * orbitDist;
                         const shootY = e.y + Math.sin(orbitAngle) * orbitDist;
 
-                        // ★ 弾速を10から20へ倍増。この敵のみの専用設定
+                        // 弾速を10から20へ倍増。この敵のみの専用設定
                         const bulletSpd = 20 * SPEED_SCALE;
                         const aim = Math.atan2(player.y - shootY, player.x - shootX);
 
@@ -4783,7 +4822,11 @@
                         });
                     }
                     if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
-                    distortGrid(e.x, e.y, 40, 100);
+
+                    // 関数が存在する場合のみ実行（エラー防止）
+                    if (typeof distortGrid === 'function') {
+                        distortGrid(e.x, e.y, 40, 100);
+                    }
                 }
 
                 if (e.timer > 60) {
