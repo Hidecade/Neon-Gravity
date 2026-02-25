@@ -478,7 +478,7 @@
                 box-shadow: 0 0 10px #fff;
             }
 
-        /* --- 特殊攻撃（BOMB/LAUNCH）ボタン --- */
+      /* --- 特殊攻撃（BOMB/LAUNCH）ボタン --- */
         #launch-btn {
             position: absolute;
             width: 60px;
@@ -496,10 +496,13 @@
             font-size: 11px;
             letter-spacing: 1px;
             box-shadow: 0 0 15px rgba(255, 255, 0, 0.3), inset 0 0 10px rgba(255, 255, 0, 0.2);
+            /* ▼ 修正点: z-indexを追加して確実に最前面でタッチを受け取る */
             pointer-events: auto;
+            z-index: 100; 
             text-shadow: 0 0 5px #ff0;
+            user-select: none; /* スマホでのテキスト選択防止 */
+            -webkit-user-select: none;
         }
-
             /* ボタン周りの回転リング */
             #launch-btn::before {
                 content: '';
