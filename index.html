@@ -3358,7 +3358,7 @@
             const viewH = height / cameraScale;
 
             // 画面の「長辺の半分強」（＝画面の四隅ギリギリに届くくらいの半径）を最大値とする
-            const maxRadius = Math.max(viewW, viewH) * 0.6;
+            const maxRadius = Math.max(viewW, viewH) * 0.5;
 
             const baseRadius = 50; // 基本の攻撃半径（初期は自機の周辺のみ）
 
@@ -9383,18 +9383,25 @@
                 // ★追加：横画面と縦画面で表示レイアウトを切り替える
                 if (width > height) {
                     // ==========================================
-                    // 【横画面】画面の中央・上部に大きく表示（帯付き）
+                    // 【横画面】画面の中央・上部にコンパクトな枠で表示
                     // ==========================================
                     const cy = height * 0.18; // 上から18%の位置
 
-                    // 背景の黒い透過帯
-                    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-                    ctx.fillRect(0, cy - 35, width, 75);
+                    // ★修正：枠の幅を文字サイズ＋アルファ（400px）に設定
+                    const boxW = 400;
+                    const boxH = 75;
+                    const startX = (width - boxW) / 2; // 画面中央に配置するためのX座標
 
-                    // 帯の上下にボスのテーマカラーのラインを引く
+                    // 背景の黒い透過ボックス
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+                    ctx.fillRect(startX, cy - 35, boxW, boxH);
+
+                    // ボスのテーマカラーで上下左右の枠を描画
                     ctx.fillStyle = bossColor;
-                    ctx.fillRect(0, cy - 35, width, 2);
-                    ctx.fillRect(0, cy + 40, width, 2);
+                    ctx.fillRect(startX, cy - 35, boxW, 2); // 上ライン
+                    ctx.fillRect(startX, cy + 40, boxW, 2); // 下ライン
+                    ctx.fillRect(startX, cy - 35, 3, boxH); // 左ライン（少し太め）
+                    ctx.fillRect(startX + boxW - 3, cy - 35, 3, boxH); // 右ライン（少し太め）
 
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
@@ -9412,7 +9419,6 @@
                     ctx.shadowBlur = 0;
                     ctx.globalAlpha = 0.8;
                     ctx.fillText("BOSS APPROACHING", width / 2, cy + 22);
-
                 } else {
                     // ==========================================
                     // 【縦画面】右側のUIの下にコンパクトに表示（元の処理）
