@@ -9,7 +9,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>NEON GRAVITY</title>
-    
+
     <link rel="icon" href="img/NeonGravity.ico" type="image/x-icon">
     <link rel="apple-touch-icon" href="img/NeonGravity.png">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
@@ -288,7 +288,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.85); /* 半透明の暗幕 */
+            background-color: #000000 !important; /* 完全に真っ黒にする */
 
             display: flex;
             flex-direction: column;
@@ -828,7 +828,6 @@
             transform: scale(1.05);
             border-color: #fff !important;
         }
-
     </style>
 
 </head>
@@ -3346,43 +3345,88 @@
         }
 
         function launchSatellites() {
-            // サテライトがなければ何もしない
+            // サテライト（回収したクリスタル）がなければ発動しない
             if (!player.satellites || player.satellites.length === 0) return;
 
-            // 1. 音を鳴らす
-            AudioSys.playSE('launch');
+            // ==========================================
+            // 1. 攻撃範囲（半径）の計算（見えている範囲に制限）
+            // ==========================================
+            const crystalCount = player.satellites.length;
 
-            // 2. ミサイルを発射（エラーが起きてもサテライト消去まで進むように try-catch で囲む手もありますが、まずは計算式を安全にします）
-            player.satellites.forEach(s => {
-                // ★修正: 「自機から見たサテライトの方向」を計算して、外側に飛ばす
-                // s.angle (回転用) を使うと、変な方向に飛んだりNaNになったりします
-                const angle = Math.atan2(s.y - player.y, s.x - player.x);
+            // 現在のカメラで見えている画面の幅と高さを取得
+            const viewW = width / cameraScale;
+            const viewH = height / cameraScale;
 
-                // スピード計算（SPEED_SCALEが未定義の可能性も考慮して安全策をとる）
-                const scale = (typeof SPEED_SCALE !== 'undefined') ? SPEED_SCALE : 0.25;
-                const speed = 12 * scale;
+            // 画面の「長辺の半分強」（＝画面の四隅ギリギリに届くくらいの半径）を最大値とする
+            const maxRadius = Math.max(viewW, viewH) * 0.6;
 
-                // ミサイル配列に安全に追加
-                if (typeof missiles !== 'undefined') {
-                    missiles.push({
-                        x: s.x,
-                        y: s.y,
-                        vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed,
-                        target: null, // 初期ターゲットなし
-                        life: 200,    // 寿命
-                        speed: speed  // 最高速度
-                    });
+            const baseRadius = 50; // 基本の攻撃半径（初期は自機の周辺のみ）
+
+            // クリスタル最大数(12個)の時に、ちょうど maxRadius になるように1個あたりの増加量を自動計算
+            const bonusPerCrystal = (maxRadius - baseRadius) / 12;
+
+            const bombRadius = baseRadius + (crystalCount * bonusPerCrystal);
+
+            AudioSys.playSE('explode_large'); // 爆発音
+
+            // ==========================================
+            // 2. 敵を一掃する
+            // ==========================================
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const e = enemies[i];
+                // 出現中のボス・戦艦はすり抜ける（無敵）
+                if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) continue;
+
+                const dist = Math.hypot(e.x - player.x, e.y - player.y);
+                if (dist <= bombRadius) {
+                    if (e.type === 'boss' || e.type === 'battleship' || e.type === 'dragon') {
+                        // ボス級にはクリスタル数に応じたダメージ（少しマイルドに調整）
+                        e.hp -= crystalCount * 2;
+                        e.flashTimer = 10;
+                        createExplosion(e.x, e.y, '#ff0', 8);
+                    } else {
+                        // 雑魚敵は即死
+                        e.hp = 0;
+                        e.noDrop = true; // ボムで倒した時はアイテムを出さない
+                        createExplosion(e.x, e.y, e.color, 10);
+                    }
                 }
+            }
+
+            // ==========================================
+            // 3. 敵の弾も範囲内なら消し去る
+            // ==========================================
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                const eb = enemyBullets[i];
+                const dist = Math.hypot(eb.x - player.x, eb.y - player.y);
+                if (dist <= bombRadius) {
+                    createExplosion(eb.x, eb.y, eb.color || '#fff', 2);
+                    enemyBullets.splice(i, 1);
+                }
+            }
+
+            // ==========================================
+            // 4. 巨大な波紋エフェクトを登録する
+            // ==========================================
+            rings.push({
+                x: player.x,
+                y: player.y,
+                r: 10,                 // 初期半径
+                targetR: bombRadius,   // 目標半径
+                color: '#0ff',         // ネオンシアン
+                life: 1.0,             // 寿命 (1.0 = 100%)
+                isBomb: true           // ボム用フラグ
             });
 
-            // 3. ★重要: ここでサテライトを空にしないと、自機の周りに残り続けます
-            player.satellites = [];
-
-            // 4. 画面歪み演出（関数がある場合のみ実行）
+            // 空間を大きく歪ませる演出
             if (typeof distortGrid === 'function') {
-                distortGrid(player.x, player.y, 300, 400);
+                distortGrid(player.x, player.y, bombRadius * 0.5, bombRadius);
             }
+
+            // ==========================================
+            // 5. サテライト（クリスタル）を全て消費する
+            // ==========================================
+            player.satellites = [];
         }
 
         function damage(v) {
@@ -6351,8 +6395,15 @@
             particles = particles.filter(p => p.life > 0);
 
             rings.forEach(r => {
-                r.r += 8 * SPEED_SCALE * gameSpeed;
-                r.life -= 0.08 * SPEED_SCALE * gameSpeed;
+                if (r.isBomb) {
+                    // ★ボムの波紋：目標半径に向かって減速しながら広がる
+                    r.r += (r.targetR - r.r) * 0.15 * gameSpeed;
+                    r.life -= 0.02 * gameSpeed; // 約50フレームかけて消える
+                } else {
+                    // 通常のリング
+                    r.r += 8 * SPEED_SCALE * gameSpeed;
+                    r.life -= 0.08 * SPEED_SCALE * gameSpeed;
+                }
             });
             rings = rings.filter(r => r.life > 0);
         }
@@ -6974,26 +7025,61 @@
 
             // リングエフェクト
             rings.forEach(r => {
-                if (!isOnScreen({ x: r.x, y: r.y }, r.r + 50)) return;
+                // スケールを考慮して画面外判定
+                if (!isOnScreen({ x: r.x, y: r.y }, r.r * G_SCALE + 50)) return;
 
                 ctx.save();
-                ctx.globalAlpha = r.life;
+                ctx.globalCompositeOperation = 'lighter'; // 加算合成で発光
 
-                // 1. 外側の太い光
-                ctx.strokeStyle = r.color;
-                ctx.lineWidth = 4 * G_SCALE;
-                ctx.globalAlpha = r.life * 0.3;
-                ctx.beginPath();
-                ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
-                ctx.stroke();
+                if (r.isBomb) {
+                    // ==========================================
+                    // ★ BOMB専用の描画：中塗り＋極太の衝撃波
+                    // ==========================================
+                    // 1. ボム専用の塗りつぶし（内側が淡く光る）
+                    ctx.fillStyle = r.color;
+                    ctx.globalAlpha = Math.max(0, r.life * 0.25);
+                    ctx.beginPath();
+                    ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
+                    ctx.fill();
 
-                // 2. 内側の鋭い光（白い芯）
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1 * G_SCALE;
-                ctx.globalAlpha = r.life;
-                ctx.beginPath();
-                ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
-                ctx.stroke();
+                    // 2. 極太の衝撃波の縁
+                    ctx.strokeStyle = r.color;
+                    ctx.lineWidth = 20 * r.life * G_SCALE; // 消えるにつれて細くなる
+                    ctx.globalAlpha = Math.max(0, r.life * 0.8);
+                    ctx.beginPath();
+                    ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // 3. 真っ白な芯
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 4 * G_SCALE;
+                    ctx.globalAlpha = Math.max(0, r.life);
+                    ctx.beginPath();
+                    ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                } else {
+                    // ==========================================
+                    // 通常のリング描画（既存の処理）
+                    // ==========================================
+                    ctx.globalAlpha = r.life;
+
+                    // 外側の太い光
+                    ctx.strokeStyle = r.color;
+                    ctx.lineWidth = 4 * G_SCALE;
+                    ctx.globalAlpha = r.life * 0.3;
+                    ctx.beginPath();
+                    ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // 内側の鋭い光（白い芯）
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1 * G_SCALE;
+                    ctx.globalAlpha = r.life;
+                    ctx.beginPath();
+                    ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
 
                 ctx.restore();
             });
