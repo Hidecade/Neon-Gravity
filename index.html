@@ -1180,7 +1180,7 @@
         // =========================================================
         // 2. ステージ・難易度・進行管理
         // =========================================================
-        const START_STAGE = 1;        // 開始ステージ番号
+        const START_STAGE = 6;        // 開始ステージ番号
 
         const MAX_STAGE = 10;          // 最大ステージ数
         let currentStage = 1;         // 現在のステージ番号
@@ -3610,7 +3610,8 @@
                     x: x, y: y, vx: vx, vy: vy,
                     hp: 1,
                     speed: ENEMY_SPEEDS.TADPOLE * spd * stageMag,
-                    color: '#0ff', type: 'tadpole', angle: 0,
+                    color: '#0ff',
+                    type: 'tadpole', angle: 0,
                     drop: 'none',
                     scale: 0.6, history: []
                 });
@@ -3820,7 +3821,7 @@
                     x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
                     hp: 4 + Math.floor(hpMag),
                     speed: ENEMY_SPEEDS.PHANTOM * spd * stageMag,
-                    color: '#0ff', // ネオン
+                    color:  '#0ff',
                     type: 'phantom',
                     angle: 0,
                     drop: dropType,
@@ -4873,23 +4874,21 @@
             // 時間経過のカウント
             e.spawnTimer = (e.spawnTimer || 0) + 1;
 
-            // --- 覚醒判定（通常仕様に戻す） ---
-            // "stage !== 9" の制限を削除。時間が来れば追尾モードへ移行。
             if (!e.isTracking && e.spawnTimer > e.trackingStart) {
                 e.isTracking = true;
-                // モード切替時の速度変換と減速
                 e.vx = (e.vx * e.speed) * 0.2;
                 e.vy = (e.vy * e.speed) * 0.2;
                 e.speed = 1;
-                // 回転を速くする
                 e.rotSpd *= 3;
             }
 
             if (e.isTracking) {
                 // --- 追跡モード ---
                 if (e.type === 'asteroid') {
+    
                     const gb = Math.floor(215 + 40 * Math.sin(frame * 0.1));
                     e.color = `rgb(255, ${gb}, ${gb})`;
+                    
                 }
 
                 const dx = player.x - e.x;
@@ -4913,7 +4912,7 @@
             } else {
                 // --- 通常モード（漂流） ---
                 if (e.type === 'asteroid') {
-                    e.color = '#ffffff';
+                    e.color =  '#ffffff';
                 }
 
                 e.x += e.vx * e.speed * gameSpeed;
@@ -8007,12 +8006,13 @@
                 }
 
             } else {
-                // 岩の描画
+                // 岩の描画（影を消してソリッドな質感に）
                 ctx.rotate(e.angle);
                 ctx.strokeStyle = e.color;
-                ctx.lineWidth = 1.5 / s;
-                ctx.shadowBlur = 12 / s;
-                ctx.shadowColor = '#fff';
+                ctx.lineWidth = 1.5 / s; // 少し線を太くして視認性を確保
+
+                ctx.shadowBlur = 0;
+
                 ctx.beginPath();
                 for (let i = 0; i < 8; i++) {
                     const r = 22 * (0.8 + Math.sin(i * 2.1 + e.size * 5) * 0.25);
@@ -8022,8 +8022,15 @@
                 }
                 ctx.closePath();
                 ctx.stroke();
-                ctx.globalAlpha = 0.2;
-                ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(5, 8); ctx.stroke();
+
+                // 内部のひび割れライン
+                ctx.globalAlpha = 0.3; // 少しだけ濃くする
+                ctx.beginPath();
+                ctx.moveTo(-10, -5);
+                ctx.lineTo(5, 8);
+
+                ctx.fillStyle = 'rgba(20, 10, 0, 0.5)'; ctx.fill();
+                ctx.stroke();
             }
 
             ctx.restore();
