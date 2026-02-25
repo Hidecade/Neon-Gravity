@@ -71,7 +71,7 @@
             color: #0ff; /* ネオン水色 */
             text-shadow: 0 0 10px #0ff; /* 発光エフェクト */
             letter-spacing: 0px; /* 数字の間隔 */
-            margin-bottom: 5px;
+            margin-bottom: 0px;
         }
 
         .sub-text {
@@ -136,7 +136,7 @@
 
         /* 左側WEAPON用の特殊幅調整（もし必要なら） */
         .laser-bar-frame {
-            width: 80px;
+            width: 100%;
         }
 
         /* 敵・ボス用の枠色上書き */
@@ -478,11 +478,11 @@
                 box-shadow: 0 0 10px #fff;
             }
 
-      /* --- 特殊攻撃（BOMB/LAUNCH）ボタン --- */
+        /* --- 特殊攻撃（BOMB/LAUNCH）ボタン --- */
         #launch-btn {
             position: absolute;
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             background: rgba(255, 255, 0, 0.1);
             border: 2px solid #ff0;
@@ -496,19 +496,16 @@
             font-size: 11px;
             letter-spacing: 1px;
             box-shadow: 0 0 15px rgba(255, 255, 0, 0.3), inset 0 0 10px rgba(255, 255, 0, 0.2);
-            /* ▼ 修正点: z-indexを追加して確実に最前面でタッチを受け取る */
             pointer-events: auto;
-            z-index: 100; 
             text-shadow: 0 0 5px #ff0;
-            user-select: none; /* スマホでのテキスト選択防止 */
-            -webkit-user-select: none;
         }
+
             /* ボタン周りの回転リング */
             #launch-btn::before {
                 content: '';
                 position: absolute;
-                width: 90px;
-                height: 90px;
+                width: 70px;
+                height: 70px;
                 border: 1px dashed rgba(255, 255, 0, 0.4);
                 border-radius: 50%;
                 animation: rotate 4s linear infinite;
@@ -530,17 +527,19 @@
         /* --- デフォルト設定（横向き：Landscape） --- */
         #stick-left {
             left: 20px;
-            bottom: 30px;
+            bottom: 20px;
         }
 
         #stick-right {
             right: 20px;
-            bottom: 30px;
+            bottom: 20px;
         }
 
         #launch-btn {
-            right: 20px;
-            bottom: 200px;
+            right: 40px; 
+            bottom: 180px;
+            z-index: 100; 
+            pointer-events: auto; 
         }
 
         /* --- 縦向き設定（Portrait） --- */
@@ -672,8 +671,8 @@
 
 
         /* =========================================================
-                12. エンディング画面
-                ========================================================= */
+           12. エンディング画面
+           ========================================================= */
         #ending-msg {
             display: none;
             position: fixed;
@@ -755,13 +754,13 @@
             position: absolute;
             /* 横画面時：BOMBボタン(#launch-btn)の上に配置 */
             right: 30px;
-            bottom: 280px;
+            bottom: 250px;
             width: 40px;
             height: 40px;
             background: rgba(0, 20, 40, 0.8);
             border: 2px solid rgba(0, 255, 255, 0.5);
             color: #0ff;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
             display: none; /* 初期は非表示 */
             justify-content: center;
@@ -769,7 +768,7 @@
             cursor: pointer;
             z-index: 100;
             pointer-events: auto;
-            border-radius: 8px;
+            border-radius: 50px;
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
             font-family: 'Orbitron', sans-serif;
             user-select: none;
@@ -789,7 +788,7 @@
                 left: 50%;
                 transform: translateX(-50%);
                 bottom: 15px;
-                width: 60px;
+                width: 40px;
                 height: 40px;
             }
 
@@ -1190,7 +1189,7 @@
             1: ['triangle', 'triangle', 'triangle', 'dragon'],
             2: ['triangle', 'triangle', 'tadpole', 'dragon'],
             3: ['bubble', 'bubble', 'bubble', 'jellyfish', 'spark_jelly'],           
-            4: ['phantom', 'triangle', 'tadpole', 'tadpole', 'asteroid'],
+            4: ['phantom', 'triangle', 'tadpole', 'asteroid'],
             5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'asteroid'],
             6: ['asteroid', 'asteroid', 'phantom', 'tadpole', 'tadpole'],
             7: ['triangle', 'tadpole', 'dragon', 'triangle', 'eclipse', 'triangle', 'asteroid'],
@@ -1218,7 +1217,7 @@
         const PLAYER_BASE_SPEED = 10; // 自機の基本移動速度
         const PLAYER_BASE_SHIELD = 100; // 100
         const MAX_WEAPON_LEVEL = 7;    // 通常ショットの最大強化レベル
-        const DEFAULT_WEAPON_LEVEL = 1;    // 初期武器レベル
+        const DEFAULT_WEAPON_LEVEL = 7;    // 初期武器レベル
 
         // プレイヤーオブジェクト初期化
         const player = {
@@ -2322,7 +2321,8 @@
 
                 }, 4000);
 
-                enemiesToSpawn = 1;
+                // ラスボス戦は雑魚が無限に湧けるようにする
+                enemiesToSpawn = 9999;
                 gameSpeed = 1.0;
 
                 // Stage 9 (Boss Rush)
@@ -3293,7 +3293,7 @@
             distortGrid(wormholes[wormholes.length - 1].x, wormholes[wormholes.length - 1].y, 50, 150);
         }
 
-        function spawnEnemy(x, y, type, size = 1) {
+        function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
 
             if (isStageClear) return;
             if (stage === 9 && rushBossIndex >= 8) return;
@@ -3391,24 +3391,36 @@
                 const pattern = patterns[Math.floor(Math.random() * patterns.length)];
                 const initialAngle = Math.atan2(vy, vx);
 
-                const formationTypes = ['blue', 'purple', 'yellow'];
-                const currentFormationType = formationTypes[Math.floor(Math.random() * formationTypes.length)];
+                // ==========================================
+                // ★ 修正：色指定の確実な継承
+                // 引数 overrideColor が指定されている場合はそれを使用し、
+                // なければランダムに選ぶ
+                // ==========================================
+                let selectedColor;
+                let selectedFormationType = 'custom'; // デフォルトはカスタム扱い
 
-                const colorMap = {
-                    blue: '#00f0ff',
-                    purple: '#bf00ff',
-                    yellow: '#ffdf00'
-                };
-                const selectedColor = colorMap[currentFormationType];
+                if (overrideColor) {
+                    selectedColor = overrideColor;
+                } else {
+                    const formationTypes = ['blue', 'purple', 'yellow'];
+                    selectedFormationType = formationTypes[Math.floor(Math.random() * formationTypes.length)];
+                    const colorMap = {
+                        blue: '#00f0ff',
+                        purple: '#bf00ff',
+                        yellow: '#ffdf00'
+                    };
+                    selectedColor = colorMap[selectedFormationType];
+                }
+                // ==========================================
 
                 // --- 1. リーダー（中心機）の生成 ---
                 const leader = {
                     x: x, y: y, vx: vx, vy: vy,
                     hp: 1 + Math.floor(hpMag * 0.5),
                     speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
-                    color: selectedColor,
+                    color: selectedColor, // ★ リーダーの色をセット
                     type: 'triangle',
-                    formationType: currentFormationType,
+                    formationType: selectedFormationType,
                     angle: initialAngle,
                     drop: dropType,
                     scale: 0.1,
@@ -3452,9 +3464,9 @@
                         x: x, y: y, vx: vx, vy: vy,
                         hp: 1,
                         speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
-                        color: selectedColor,
+                        color: selectedColor, // ★ フォロワーにも「同じ色」をセット
                         type: 'triangle',
-                        formationType: currentFormationType,
+                        formationType: selectedFormationType,
                         angle: initialAngle,
                         drop: 'none',
                         scale: 0.1,
@@ -3469,6 +3481,7 @@
                     leader.followers.push(enemies[enemies.length - 1]);
                     spawnedCount += 0.2;
                 }
+            
             } else if (type === 'boss') {
                 const variantIndex = (stage - 1) % BOSS_VARIANTS.length;
                 const variant = BOSS_VARIANTS[variantIndex];
@@ -4411,36 +4424,39 @@
             const dy = player.y - e.y;
             const d = Math.hypot(dx, dy) || 0.001;
 
-            // --- 1. 慣性と加速のロジック ---
-            // ターゲットに向かってじわじわと加速を加える（ステアリング）
-            const accel = 0.15 * SPEED_SCALE * gameSpeed;
+            // --- 1. 超高速・高慣性移動ロジック ---
+            // 加速度をさらに強化。これで自機に向かって「突き刺さる」ような動きになります。
+            const accel = 0.6 * SPEED_SCALE * gameSpeed;
             e.vx += (dx / d) * accel;
             e.vy += (dy / d) * accel;
 
-            // 微弱な摩擦（これがないと加速し続けて制御不能になる）
-            e.vx *= 0.985;
-            e.vy *= 0.985;
+            // 摩擦をほぼ撤廃 (0.999)。
+            // これにより、避けたあとに「勢い余って遠くへ滑っていく」慣性が強く出ます。
+            e.vx *= 0.998;
+            e.vy *= 0.998;
 
-            // --- 2. 速度制限 ---
             const currentV = Math.hypot(e.vx, e.vy);
-            const maxSpd = e.speed; // 生成時に設定されたベーススピード
+            // 最高速度制限を少し高めに設定（逃げ切るのが難しい速さ）
+            const maxSpd = e.speed * 1.2;
+
             if (currentV > maxSpd) {
                 e.vx = (e.vx / currentV) * maxSpd;
                 e.vy = (e.vy / currentV) * maxSpd;
             }
 
-            // --- 3. 座標更新 ---
+            // 座標更新
             e.x += e.vx * gameSpeed;
             e.y += e.vy * gameSpeed;
 
-            // --- 4. 向きの決定（進行方向を向く） ---
-            // 自機の方を向くのではなく、移動ベクトル(vx, vy)の方を向かせることで、
-            // 「行き過ぎて戻る時」のドリフト感を表現します
+            // 進行方向を向く（慣性で滑っている間も「向いている方向」と「進む方向」を一致させます）
             e.angle = Math.atan2(e.vy, e.vx);
 
-            // --- 5. 軌跡の更新 ---
+            // --- 2. 攻撃ロジックは削除（ご要望通り中止） ---
+
+            // --- 3. 軌跡の更新 ---
             e.history.unshift({ x: e.x, y: e.y });
-            if (e.history.length > 60) e.history.pop();
+            // 軌跡（しっぽ）を長めにすると、高速移動の残像がより美しく見えます
+            if (e.history.length > 80) e.history.pop();
         }
 
         function updateDragonAI(e) {
@@ -5084,9 +5100,6 @@
                 if (eb.timer > 100) eb.hp = 0;
             }
 
-            // ==========================================
-            // ★修正: 消してしまった座標更新を復活（これがないと動かない）
-            // ==========================================
             eb.x += eb.vx * gameSpeed;
             eb.y += eb.vy * gameSpeed;
 
@@ -5376,7 +5389,7 @@
 
             // --- ★HP割合の計算と発狂モード判定 ---
             const hpPct = e.hp / e.maxHp;
-            const isDesperationMode = hpPct <= 0.20;
+            const isDesperationMode = hpPct <= 0.50;
 
             e.fireTimer++;
 
@@ -5434,20 +5447,26 @@
 
                     // 0.5秒後に敵を出現させる
                     setTimeout(() => {
-                        if (gameState === 'PLAYING' && hpPct <= 0.10) {
+                        if (gameState === 'PLAYING' && isDesperationMode) {
                             const types = ['triangle', 'tadpole', 'dragon', 'asteroid'];
                             const randomType = types[Math.floor(Math.random() * types.length)];
 
-                            // 敵を生成
-                            spawnEnemy(targetX, targetY, randomType);
+                            // 1. 敵を生成（spawnEnemy内部でステージ10の速度補正 1.72倍 がすでにかかります）
+                            spawnEnemy(targetX, targetY, randomType, 1, '#e00');
 
-                            // 生成した最後の敵を取得して速度を倍にする
                             const newEnemy = enemies[enemies.length - 1];
                             if (newEnemy) {
-                                newEnemy.speed *= 2.0; // ★速度を2倍に強化
-                                newEnemy.vx *= 2.0;
-                                newEnemy.vy *= 2.0;
-                                newEnemy.color = '#f0f'; // 発狂モードの敵として色を統一（任意）
+                                // ==========================================
+                                // ★ 修正：2倍補正を削除し、ステージ10の最高速度にリセット
+                                // ==========================================
+                                // newEnemy.speed はすでに計算済み（ベース速度 × 0.25 × 1.72）
+
+                                // 登場時の勢い（vx, vy）を現在の進行方向に合わせる
+                                const angle = Math.random() * Math.PI * 2;
+                                newEnemy.vx = Math.cos(angle) * newEnemy.speed;
+                                newEnemy.vy = Math.sin(angle) * newEnemy.speed;
+
+                                newEnemy.color = '#e00'; // 発狂モードの敵として赤色に統一
                             }
                             if (typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
                         }
@@ -7542,7 +7561,7 @@
                     const alpha = (1 - ratio) * 0.6;
 
                     // 尾も水色のグラデーションに
-                    ctx.strokeStyle = `rgba(0, 255, 255, ${alpha})`;
+                    ctx.strokeStyle = `hsla(${hue}, 100%, 50%, ${alpha})`;
                     ctx.lineWidth = (14 - ratio * 14) * G_SCALE;
 
                     ctx.beginPath();
@@ -7599,7 +7618,7 @@
             ctx.strokeStyle = lightColor;
             ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.moveTo(25, -9); ctx.lineTo(42, 0); ctx.lineTo(25, 9);   // 内側の ＜
+            ctx.moveTo(25, -9); ctx.lineTo(42, 0); ctx.lineTo(25, 9);   // 内側の ＜
             ctx.stroke();
             ctx.restore();
 
@@ -7615,6 +7634,7 @@
             ctx.restore();
             ctx.shadowBlur = 0;
         }
+
 
         function drawAsteroidEnemy(ctx, e) {
             ctx.save();
@@ -8976,8 +8996,13 @@
                 const progress = rushBossIndex / 8;
                 ui.enemyBar.style.width = `${(1 - progress) * 100}%`;
                 document.querySelector('.bar-label.enemy').innerText = `BOSS RUSH: ${rushBossIndex}/8`;
+            } else if (stage === 10) {
+                // ==========================================
+                // ★追加: ラスボス戦は無限湧きなので「∞」と表示する
+                ui.enemyBar.style.width = "100%";
+                document.querySelector('.bar-label.enemy').innerText = `ENEMY: ∞`;
+                // ==========================================
             } else {
-                // ★修正4: 浮動小数点の誤差を消すため Math.ceil() で整数に切り上げる
                 const rawRemains = enemiesToSpawn - enemiesKilled;
                 const enemyRemains = Math.max(0, Math.ceil(rawRemains));
                 ui.enemyBar.style.width = `${(enemyRemains / enemiesToSpawn) * 100}%`;
