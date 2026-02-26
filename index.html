@@ -9776,14 +9776,29 @@
         // 11. 入力・イベントリスナー (Input & Event Listeners)
         // =========================================================
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) setPaused(true); else setPaused(false);
+            if (document.hidden) {
+                setPaused(true);
+                // ページが隠れたら強制的にBGMも一時停止
+                if (AudioSys && AudioSys.bgmEl) AudioSys.bgmEl.pause();
+            } else {
+                setPaused(false);
+                // ページが戻ってきたら、ポーズ中でなければBGM再開
+                if (gameState !== 'PAUSED' && AudioSys) AudioSys.resumeBGM();
+            }
         });
 
-        window.addEventListener('blur', () => setPaused(true));
-        window.addEventListener('focus', () => setPaused(false));
+        window.addEventListener('blur', () => {
+            setPaused(true);
+            if (AudioSys && AudioSys.bgmEl) AudioSys.bgmEl.pause();
+        });
 
-        // ポーズ解除の処理（例：resumeAction）
-        const resumeAction = async (e) => { // ★asyncを忘れずに
+        window.addEventListener('focus', () => {
+            setPaused(false);
+            if (gameState !== 'PAUSED' && AudioSys) AudioSys.resumeBGM();
+        });
+
+        // ポーズ解除の処理
+        const resumeAction = async (e) => {
             if (e) e.preventDefault();
 
             // 1. まずWeb Audio APIのコンテキストを起こす
@@ -9795,10 +9810,9 @@
 
             // 3. 準備が整ってから音を出す
             AudioSys.resumeBGM();
-            // AudioSys.playSE('target_ping'); // もし鳴らしたいならここ
         };
 
-        // ★修正：画面全体クリックを廃止し、個別のボタンに処理を割り当てる
+        // 画面全体クリックを廃止し、個別のボタンに処理を割り当てる
         document.getElementById('btn-resume').onclick = (e) => {
             if (e) { e.preventDefault(); e.stopPropagation(); }
             resumeAction();
