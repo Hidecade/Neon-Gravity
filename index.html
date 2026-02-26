@@ -16,8 +16,8 @@
 
     <style>
         /* =========================================================
-            1. グローバル基本設定
-            ========================================================= */
+           1. グローバル基本設定
+           ========================================================= */
         body {
             margin: 0; /* 余白を完全に除去 */
             background: #050505; /* ネオン表現に最適な暗い背景 */
@@ -32,8 +32,8 @@
         }
 
         /* =========================================================
-                2. キャンバスとメインUIコンテナ
-                ========================================================= */
+           2. キャンバスとメインUIコンテナ
+           ========================================================= */
         canvas {
             display: block; /* 余計な隙間を防ぐ */
             position: absolute; /* 画面全体に固定 */
@@ -59,8 +59,8 @@
 
 
         /* =========================================================
-                3. HUDレイアウト（スコア・ステージ・武器）
-                ========================================================= */
+           3. HUDレイアウト（スコア・ステージ・武器）
+           ========================================================= */
         .hud-row {
             display: flex; /* 左右に要素を配置 */
             justify-content: space-between; /* 両端に寄せる */
@@ -91,7 +91,7 @@
         }
 
         #stage-num {
-            font-size: 28px; /* ステージ番号を強調 */
+            font-size: 24px; /* ステージ番号を強調 */
             color: #fff;
             font-weight: bold;
             line-height: 1.0;
@@ -99,8 +99,8 @@
         }
 
         /* =========================================================
-        4. ゲージ・バーコンポーネント (整理済み)
-        ========================================================= */
+           4. ゲージ・バーコンポーネント (整理済み)
+           ========================================================= */
 
         /* 左右のゲージコンテナ共通設定 */
         #gauge-box, #info-box > div {
@@ -234,8 +234,8 @@
         }
 
         /* =========================================================
-                5. ゲーム中メッセージ
-                ========================================================= */
+           5. ゲーム中メッセージ
+           ========================================================= */
         #warning-msg {
             display: none; /* 初期は非表示 */
             position: absolute;
@@ -843,7 +843,12 @@
 
         <div class="hud-row">
             <div id="info-box" style="display:flex; flex-direction:column; gap:8px;">
-                <div id="score-display">000000</div>
+
+                <div>
+                    <span class="hud-label">SCORE</span>
+                    <div id="score-display">000000</div>
+                </div>
+
                 <div><span class="hud-label">STAGE</span><span id="stage-num">1</span></div>
                 <div>
                     <span class="hud-label">WEAPON</span>
@@ -1208,6 +1213,13 @@
         let rushBossIndex = 0;          // ボスラッシュモード:現在戦っているボスの番号 (0~7)
         let rushIntervalTimer = 0;      // ボスラッシュモード:ボス撃破後のインターバルタイマー
 
+        // ==========================================
+        // ★追加：Stage 10のイントロ演出用変数
+        // ==========================================
+        let stage10Timer = 0;
+        let stage10BeatCount = 0;
+
+
         // ステージごとの敵総出現数
         const STAGE_ENEMY_COUNTS = [
             60,  // Stage 1
@@ -1336,9 +1348,9 @@
             boss: 3000,        // ステージボス
 
             // 中型・強敵級
-            phantom: 1500,     // ステルス・超高速狙撃
-            dragon: 1200,      // 多関節ドラゴンの追尾
-            eclipse: 1000,     // 弾幕・狙撃（高耐久）
+            phantom: 1000,     // ステルス・超高速狙撃
+            dragon: 500,      // 多関節ドラゴンの追尾
+            eclipse: 1500,     // 弾幕・狙撃（高耐久）
 
             // 特殊・環境
             asteroid: 150,     // アステロイド（分裂するため、大サイズのベース値）
@@ -1943,6 +1955,9 @@
             noiseBuffer: null,
             activeNodes: [],
             bgmFadeInterval: null,
+            bgmSource: null,
+            analyser: null,
+            beatCooldown: 0, // 連続反応を防ぐタイマー
 
             init() {
                 if (!this.ctx) {
@@ -1966,6 +1981,48 @@
                         }
                     });
                 }
+
+                // ★修正：ローカルファイル(file://)で実行している場合はアナライザーを接続しない（強制ミュート回避）
+                if (window.location.protocol !== 'file:' && this.ctx && this.bgmEl && !this.analyser) {
+                    try {
+                        this.bgmSource = this.ctx.createMediaElementSource(this.bgmEl);
+                        this.analyser = this.ctx.createAnalyser();
+                        this.analyser.fftSize = 256; // 解析の解像度
+                        this.bgmSource.connect(this.analyser);
+                        this.analyser.connect(this.ctx.destination);
+                    } catch (e) {
+                        console.warn("Analyser setup failed.", e);
+                    }
+                }
+            },
+
+            // ★追加：バスドラム（低音）のビートを検出する関数
+            detectBeat() {
+                if (!this.analyser || this.ctx.state !== 'running') return false;
+
+                const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+                this.analyser.getByteFrequencyData(dataArray);
+
+                // 低音域（0〜4番目のデータ）の平均音量を計算
+                let sum = 0;
+                const lowFreqBins = 5;
+                for (let i = 0; i < lowFreqBins; i++) {
+                    sum += dataArray[i];
+                }
+                const lowAverage = sum / lowFreqBins;
+
+                // クールダウンの処理
+                if (this.beatCooldown > 0) {
+                    this.beatCooldown--;
+                }
+
+                // 音量が閾値（200〜240あたり、BGMによって調整）を超えたらビートと判定
+                const THRESHOLD = 210;
+                if (lowAverage > THRESHOLD && this.beatCooldown <= 0) {
+                    this.beatCooldown = 20; // 連続で歪まないように20フレーム休む
+                    return true;
+                }
+                return false;
             },
 
             async resume() {
@@ -2119,17 +2176,26 @@
             },
 
             fadeOutBGM() {
-                if (!this.bgmEl || this.bgmEl.paused) return;
-                this.stopBgmInterval();
-                this.bgmFadeInterval = setInterval(() => {
-                    if (this.bgmEl.volume > 0.05) {
-                        this.bgmEl.volume -= 0.05;
-                    } else {
-                        this.bgmEl.volume = 0;
-                        this.bgmEl.pause();
-                        this.stopBgmInterval();
+                return new Promise((resolve) => {
+                    if (!this.bgmEl || this.bgmEl.paused) {
+                        resolve();
+                        return;
                     }
-                }, 100);
+                    this.stopBgmInterval();
+                    let vol = this.bgmEl.volume;
+                    this.bgmFadeInterval = setInterval(() => {
+                        if (vol > 0.05) {
+                            vol -= 0.05;
+                            if (vol < 0) vol = 0;
+                            this.bgmEl.volume = vol;
+                        } else {
+                            this.bgmEl.volume = 0;
+                            this.bgmEl.pause();
+                            this.stopBgmInterval();
+                            resolve(); // フェードアウト完了を通知
+                        }
+                    }, 50); // 約0.4秒かけてスッと消える
+                });
             },
 
             stopBGM() {
@@ -2253,8 +2319,9 @@
         // OSTを閉じる処理
         function closeOST() {
             if (ostUpdateInterval) clearInterval(ostUpdateInterval);
-            AudioSys.stopBGM();
-            AudioSys.currentSrc = null;
+
+            // ★変更：即座に止める処理を削除（returnToTitle側でフェードアウトさせるため）
+
             if (AudioSys.bgmEl) AudioSys.bgmEl.loop = true; // ゲーム用にループを戻す
             returnToTitle();
         }
@@ -2513,7 +2580,6 @@
             startStage();
         }
 
-        // --- startStage関数の修正 ---
         function startStage() {
             const hud = document.querySelector('.hud-row');
             if (hud) hud.style.display = 'flex';
@@ -2536,9 +2602,11 @@
 
             // ★Stage 10 (Battleship Boss) の初期化
             if (stage === 10) {
-                // ==========================================
-                // ★変更：文字サイズと間隔を調整してはみ出しを防止
-                // ==========================================
+
+                // ★追加：BGMと同期させるためのタイマー＆回数リセット
+                stage10Timer = 0;
+                stage10BeatCount = 0;
+
                 const warningHTML = `<span style="font-size: 1.2em; letter-spacing: 8px; margin-right: -8px;">WARNING</span><br><span style="display: inline-block; margin-top: 15px; font-size: 0.7em; letter-spacing: 4px; margin-right: -4px;">GENESIS-ARK APPROACHING</span>`;
 
                 showMessage(warningHTML, 'red');
@@ -2946,11 +3014,11 @@
             ui.nameInputArea.style.display = 'none';
             ui.overlay.style.display = 'flex';
 
-            // タイトル設定
-            let titleHTML = `GAME OVER<br><span style="font-size:20px;color:#f00;">SCORE: ${score.toLocaleString()}</span>`;
+            let titleHTML = `GAME OVER`;
             let titleColor = '#f00';
 
             if (isStageClear) {
+                // クリア時はスコアを表示する
                 titleHTML = `MISSION COMPLETE<br><span style="font-size:20px;color:#0ff;">SCORE: ${score.toLocaleString()}</span>`;
                 titleColor = '#0ff';
             }
@@ -2984,7 +3052,13 @@
         function returnToTitle() {
             gameState = 'TITLE';
 
-            AudioSys.stopBGM();
+            // ==========================================
+            // ★変更：BGMを軽くフェードアウトしてからタイトル曲へ切り替える
+            // ==========================================
+            AudioSys.fadeOutBGM().then(() => {
+                AudioSys.currentSrc = null; // リセット
+                //AudioSys.playBGM('title');
+            });
 
             ui.ost.style.display = 'none';
             ui.overlay.style.display = 'flex';
@@ -3119,7 +3193,7 @@
 
                     // 通常ステージのボス出現処理（Stage 9, 10以外）
                     // ★修正: stage !== 10 を追加
-                    if (stage !== 9 && stage !== 10) {
+                    if (stage !== 9 && stage !== 20) {
                         wormholes.unshift({ x: nextBossSpawnX, y: nextBossSpawnY, life: 300, maxLife: 300, active: true });
                         spawnEnemy(nextBossSpawnX, nextBossSpawnY, 'boss');
                         distortGrid(nextBossSpawnX, nextBossSpawnY, 250, 400);
@@ -3141,6 +3215,33 @@
             }
 
             frame++;
+
+
+            // ==========================================
+            // ★変更：Stage 10 BGMのバスドラム連動グリッド歪み
+            // ==========================================
+            if (stage === 10 && gameState === 'PLAYING') {
+                stage10Timer++; // ★BGM再生開始からの時間をカウント
+
+                let isBeat = false;
+                const PSEUDO_BEAT_INTERVAL = 110;
+
+                // ★変更：frame の代わりに stage10Timer を使い、4回未満の時だけ反応させる
+                if (stage10BeatCount < 5 && stage10Timer % PSEUDO_BEAT_INTERVAL === 20) {
+                    isBeat = true;
+                    stage10BeatCount++; // 歪んだ回数をカウントアップ
+                }
+
+                if (isBeat) {
+                    // ラスボスが存在すればボスを中心に、いなければ画面中央を中心に歪ませる
+                    const boss = enemies.find(e => e.type === 'battleship');
+                    const targetX = boss ? boss.x : worldSize / 2;
+                    const targetY = boss ? boss.y : worldSize / 2;
+
+                    // ボスの鼓動のように空間を大きく歪ませる
+                    distortGrid(targetX, targetY, 250, 500);
+                }
+            }
 
             // --- プレイヤー座標の安全装置 ---
             if (!Number.isFinite(player.x)) { player.x = worldSize / 2; player.y = worldSize / 2; player.vx = 0; player.vy = 0; }
@@ -4117,29 +4218,35 @@
                 e.inActiveRange = inActiveRange;
 
                 // ========================================================
-                // ★ボスの死亡アニメーション（縮小＆誘爆＆スピン）
+                // ★修正：ボスの死亡アニメーション（フェードアウト＆誘爆）
                 // ========================================================
                 if (e.isDying) {
                     e.dyingTimer -= 1;
-                    e.scale *= 0.98;
-                    e.angle += 0.15;
-                    e.x += (Math.random() - 0.5) * 5;
-                    e.y += (Math.random() - 0.5) * 5;
+                    e.scale *= 0.98
+                    // 小さくなるエフェクト(e.scale *= 0.98)を削除し、透明度を初期化/減少させる
+                    if (e.opacity === undefined) e.opacity = 1.0;
+                    // 60フレーム（dyingTimerの初期値）かけて 1.0 から 0 へ
+                    e.opacity = Math.max(0, e.dyingTimer / 60);
 
-                    // 毎フレーム 40% の確率で誘爆
+                    // 回転は重厚感を出すために極低速に設定
+                    e.angle += 0.01;
+
+                    // 激震（ガタガタ震える演出）
+                    e.x += (Math.random() - 0.5) * 8;
+                    e.y += (Math.random() - 0.5) * 8;
+
+                    // 誘爆エフェクト（確率は0.4のまま）
                     if (Math.random() < 0.4) {
-                        const ox = (Math.random() - 0.5) * 150 * e.scale;
-                        const oy = (Math.random() - 0.5) * 150 * e.scale;
+                        const ox = (Math.random() - 0.5) * 180 * e.scale;
+                        const oy = (Math.random() - 0.5) * 180 * e.scale;
                         const sparkColor = Math.random() > 0.5 ? '#fff' : (e.color || '#f00');
-                        const expSize = 3 + Math.random() * 5;
+                        const expSize = 5 + Math.random() * 8;
 
                         createExplosion(e.x + ox, e.y + oy, sparkColor, expSize);
                         rings.push({ x: e.x + ox, y: e.y + oy, r: expSize, color: sparkColor, life: 0.5 });
 
-                        // ==========================================
-                        // ★追加：既存の isShard 仕組みを使って破片を飛ばす
-                        // ==========================================
-                        if (Math.random() < 0.3) { // 30%の確率で破片も混ざる
+                        // 三角の破片（デブリ）
+                        if (Math.random() < 0.3) {
                             const shardAngle = Math.random() * Math.PI * 2;
                             const shardSpeed = 2 + Math.random() * 4;
                             particles.push({
@@ -4148,14 +4255,13 @@
                                 vy: Math.sin(shardAngle) * shardSpeed,
                                 color: sparkColor,
                                 life: 1.0 + Math.random() * 0.5,
-                                size: 0.5 + Math.random(), // 大きさ
-                                isShard: true,      // 破片フラグ
-                                shardType: 'tri',   // ★既存の三角形描画を呼び出す
+                                size: 0.5 + Math.random(),
+                                isShard: true,
+                                shardType: 'tri',
                                 angle: shardAngle,
-                                rotV: (Math.random() - 0.5) * 0.4 // クルクル回る
+                                rotV: (Math.random() - 0.5) * 0.4
                             });
                         }
-
                         if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_small');
                     }
 
@@ -4166,7 +4272,6 @@
                     }
                     return;
                 }
-                // ========================================================
 
                 const isTriangle = (e.type === 'triangle');
 
@@ -4228,11 +4333,13 @@
                     if (e.type === 'boss' || e.type === 'battleship') {
                         // ボス級は即死させず、死亡演出ステートへ
                         e.isDying = true;
-                        e.dyingTimer = 90; // 約1.5秒（90フレーム）かけて断末魔
+                        e.dyingTimer = 60; // 約1.5秒（90フレーム）かけて断末魔
                         e.hp = 1;          // 削除されないようにHPを維持
 
                         // ★追加：爆発開始の瞬間から全体をスローモーションにする
-                        gameSpeed = 0.25;
+                        if (stage != 9) {
+                            gameSpeed = 0.25;
+                        }
 
                         // ボスが死にかけたら、安全のために敵弾をすべて消す
                         enemyBullets = [];
@@ -6011,6 +6118,13 @@
                         }
                     }
                     if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
+                    // ==========================================
+                    // ★追加：全方位レーザー発射時の軽い歪み
+                    // ==========================================
+                    if (typeof distortGrid === 'function') {
+                        distortGrid(e.x, e.y, 100, 300);
+                    }
+
                 }
             }
             // ==========================================
@@ -6041,6 +6155,13 @@
                         });
                     }
                     if (typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
+
+                    // ==========================================
+                    // ★追加：ファイター射出時の歪み（射出の反動を表現）
+                    // ==========================================
+                    if (typeof distortGrid === 'function') {
+                        distortGrid(e.x, e.y, 150, 400);
+                    }
                 }
             }
             // ==========================================
@@ -6086,6 +6207,13 @@
                             vx: Math.cos(a) * 4, vy: Math.sin(a) * 4,
                             life: 200, color: '#0ff', isLaserMissile: true
                         });
+                    }
+
+                    // ==========================================
+                    // ★追加：回転連射中の継続的な軽い歪み
+                    // ==========================================
+                    if (cycle === 900 && typeof distortGrid === 'function') {
+                        distortGrid(e.x, e.y, 140, 150);
                     }
                 }
                 if (Math.random() < 0.3) createExplosion(e.x + (Math.random() - 0.5) * 150, e.y + (Math.random() - 0.5) * 150, '#0ff', 5);
@@ -8697,14 +8825,21 @@
             ctx.save();
             ctx.translate(e.x, e.y);
 
+            // ==========================================
+            // ★追加：フェードアウト用のベース透明度を取得
+            // ==========================================
+            const baseAlpha = e.opacity !== undefined ? e.opacity : 1.0;
+
             // 1. 出現演出
             if (e.isSpawning) {
                 const t = e.spawnTimer / e.spawnMax;
                 const easeOut = 1 - Math.pow(1 - t, 4);
-                ctx.globalAlpha = t;
+                ctx.globalAlpha = t * baseAlpha; // ★ baseAlpha を掛ける
                 const spawnScale = 0.1 + 0.9 * easeOut;
                 ctx.scale(spawnScale, spawnScale);
                 ctx.globalCompositeOperation = 'lighter';
+            } else {
+                ctx.globalAlpha = baseAlpha; // ★ 通常時も baseAlpha を設定
             }
 
             // 2. 基本回転とスケーリング
@@ -8725,6 +8860,7 @@
 
             // --- 4. 中層：土台・トラス構造 ---
             ctx.save();
+            ctx.globalAlpha = baseAlpha; // ★追加
             ctx.fillStyle = 'rgba(5, 10, 15, 0.95)';
             ctx.beginPath(); drawPolygonPath(ctx, baseRadius, sides); ctx.fill();
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
@@ -8742,7 +8878,7 @@
 
             ctx.strokeStyle = mainStroke;
             ctx.lineWidth = 0.8;
-            ctx.globalAlpha = 0.5;
+            ctx.globalAlpha = 0.5 * baseAlpha; // ★ baseAlpha を掛ける
 
             ctx.beginPath();
             for (let i = 0; i < sides; i++) {
@@ -8762,7 +8898,6 @@
             ctx.stroke();
             ctx.restore();
 
-            // ★軽量化ポイント1: 砲台のグラデーションをループの外で1回だけ生成して使い回す
             const modGrad = ctx.createLinearGradient(-10, -20, 10, 20);
             modGrad.addColorStop(0, 'rgba(40, 40, 40, 0.95)');
             modGrad.addColorStop(0.5, 'rgba(10, 10, 10, 0.95)');
@@ -8771,6 +8906,7 @@
             // --- 5. 精密砲台モジュール ---
             for (let i = 0; i < sides; i++) {
                 ctx.save();
+                ctx.globalAlpha = baseAlpha; // ★追加
                 ctx.rotate((Math.PI * 2 / sides) * i);
                 ctx.translate(0, -baseRadius + 5);
                 ctx.scale(0.5, 0.5);
@@ -8785,7 +8921,6 @@
 
                 // B. 天面
                 ctx.translate(0, -3);
-                // ★軽量化: 生成済みのグラデーションを適用
                 ctx.fillStyle = modGrad;
                 ctx.beginPath();
                 ctx.moveTo(-12, -35); ctx.lineTo(12, -35); ctx.lineTo(14, 15);
@@ -8798,7 +8933,7 @@
                 ctx.globalCompositeOperation = 'lighter';
                 const energyPulse = Math.sin(frame * 0.3 + i) * 0.3 + 0.7;
                 ctx.fillStyle = reactorColor;
-                ctx.globalAlpha = energyPulse;
+                ctx.globalAlpha = energyPulse * baseAlpha; // ★ baseAlpha を掛ける
                 for (let k = 0; k < 5; k++) {
                     const y = -10 + k * 6;
                     const w = 14 + k * 1.5;
@@ -8837,14 +8972,14 @@
                 drawPolygonPath(ctx, r, sides);
                 ctx.strokeStyle = mainStroke;
                 ctx.lineWidth = Math.max(0.5, layerWidth);
-                ctx.globalAlpha = layerAlpha;
+                ctx.globalAlpha = layerAlpha * baseAlpha; // ★ baseAlpha を掛ける
                 ctx.stroke();
             }
 
             ctx.beginPath();
             ctx.lineWidth = 2.0;
             ctx.strokeStyle = mainStroke;
-            ctx.globalAlpha = 0.5;
+            ctx.globalAlpha = 0.5 * baseAlpha; // ★ baseAlpha を掛ける
             for (let i = 0; i < sides; i++) {
                 const angle = (Math.PI * 2 / sides) * i - Math.PI / 2;
                 ctx.moveTo(Math.cos(angle) * innerRad, Math.sin(angle) * innerRad);
@@ -8856,6 +8991,7 @@
             // --- 7. コア・ソケット ---
             const socketRad = baseRadius * 0.45;
             ctx.save();
+            ctx.globalAlpha = baseAlpha; // ★追加
             ctx.fillStyle = '#080808'; ctx.strokeStyle = mainStroke; ctx.lineWidth = 1.5;
             ctx.beginPath(); drawPolygonPath(ctx, socketRad, sides); ctx.fill(); ctx.stroke();
             for (let i = 0; i < sides; i++) {
@@ -8875,16 +9011,15 @@
 
             ctx.globalCompositeOperation = 'lighter';
 
-            // ★軽量化ポイント2: shadowBlurを廃止し、疑似グロー（半透明の重ね塗り）で発光を表現
             const glowSize = isDmg ? 1.8 : 1.4;
             ctx.fillStyle = mainStroke;
-            ctx.globalAlpha = isDmg ? 0.5 : 0.15;
+            ctx.globalAlpha = (isDmg ? 0.5 : 0.15) * baseAlpha; // ★ baseAlpha を掛ける
             ctx.beginPath();
             drawPolygonPath(ctx, coreSize * glowSize, sides);
             ctx.fill();
 
             // コア下塗り
-            ctx.globalAlpha = 1.0;
+            ctx.globalAlpha = 1.0 * baseAlpha; // ★ baseAlpha を掛ける
             ctx.fillStyle = 'rgba(10, 0, 0, 0.8)';
             ctx.beginPath(); drawPolygonPath(ctx, coreSize, sides); ctx.fill();
 
@@ -8896,7 +9031,7 @@
                 ctx.rotate(frame * (0.02 + l * 0.01) * (l % 2 === 0 ? 1 : -1));
                 ctx.strokeStyle = `rgba(255, 255, 255, ${alpha3d})`;
                 ctx.fillStyle = mainStroke;
-                ctx.globalAlpha = alpha3d * 0.3;
+                ctx.globalAlpha = (alpha3d * 0.3) * baseAlpha; // ★ baseAlpha を掛ける
                 ctx.lineWidth = 1.5;
                 ctx.beginPath(); drawPolygonPath(ctx, coreSize * scale3d, sides);
                 ctx.fill(); ctx.stroke();
@@ -8909,13 +9044,12 @@
                 ctx.stroke(); ctx.restore();
             }
 
-            // ★軽量化ポイント3: 中心の白い光も疑似グローへ変更
             ctx.fillStyle = mainStroke;
-            ctx.globalAlpha = 0.5;
+            ctx.globalAlpha = 0.5 * baseAlpha; // ★ baseAlpha を掛ける
             ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
 
             ctx.fillStyle = '#ffffff';
-            ctx.globalAlpha = 1.0;
+            ctx.globalAlpha = 1.0 * baseAlpha; // ★ baseAlpha を掛ける
             ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
 
             ctx.restore(); // コア終了
@@ -8941,13 +9075,20 @@
             ctx.save();
             ctx.translate(e.x, e.y);
 
+            // ==========================================
+            // ★追加：フェードアウト用のベース透明度を取得
+            // ==========================================
+            const baseAlpha = e.opacity !== undefined ? e.opacity : 1.0;
+
             if (e.isSpawning) {
                 const t = e.spawnTimer / e.spawnMax;
                 const easeOut = 1 - Math.pow(1 - t, 4);
-                ctx.globalAlpha = t;
+                ctx.globalAlpha = t * baseAlpha; // ★ baseAlpha を掛ける
                 const spawnScale = 0.1 + 0.9 * easeOut;
                 ctx.scale(spawnScale, spawnScale);
                 ctx.globalCompositeOperation = 'lighter';
+            } else {
+                ctx.globalAlpha = baseAlpha; // ★ 通常時も baseAlpha を設定
             }
 
             ctx.rotate(e.angle);
@@ -8972,6 +9113,7 @@
 
             // --- 4. 中層：土台・トラス構造 ---
             ctx.save();
+            ctx.globalAlpha = baseAlpha; // ★追加
             ctx.fillStyle = 'rgba(5, 10, 15, 0.95)';
             ctx.beginPath();
             drawPolygonPath(ctx, baseRadius, sides);
@@ -8993,7 +9135,7 @@
             const innerFrameRad = baseRadius * 0.85;
             ctx.strokeStyle = mainStroke;
             ctx.lineWidth = 0.8;
-            ctx.globalAlpha = 0.5;
+            ctx.globalAlpha = 0.5 * baseAlpha; // ★ baseAlpha を掛ける
             ctx.beginPath();
             for (let i = 0; i < sides; i++) {
                 const angle1 = (Math.PI * 2 / sides) * i - Math.PI / 2;
@@ -9009,9 +9151,15 @@
             ctx.stroke();
             ctx.restore();
 
+            const modGrad = ctx.createLinearGradient(-10, -20, 10, 20);
+            modGrad.addColorStop(0, 'rgba(30, 0, 5, 0.95)');
+            modGrad.addColorStop(0.5, 'rgba(60, 10, 20, 0.95)');
+            modGrad.addColorStop(1, 'rgba(20, 0, 0, 0.95)');
+
             // --- 5. 精密砲台モジュール ---
             for (let i = 0; i < sides; i++) {
                 ctx.save();
+                ctx.globalAlpha = baseAlpha; // ★追加
                 ctx.rotate((Math.PI * 2 / sides) * i);
                 ctx.translate(0, -baseRadius + 12);
                 ctx.scale(0.8, 0.8);
@@ -9027,10 +9175,6 @@
                 ctx.stroke();
 
                 ctx.translate(0, -3);
-                const modGrad = ctx.createLinearGradient(-10, -20, 10, 20);
-                modGrad.addColorStop(0, 'rgba(30, 0, 5, 0.95)');
-                modGrad.addColorStop(0.5, 'rgba(60, 10, 20, 0.95)');
-                modGrad.addColorStop(1, 'rgba(20, 0, 0, 0.95)');
                 ctx.fillStyle = modGrad;
                 ctx.beginPath();
                 ctx.moveTo(-12, -35); ctx.lineTo(12, -35); ctx.lineTo(14, 15);
@@ -9045,7 +9189,7 @@
                 ctx.globalCompositeOperation = 'lighter';
                 const energyPulse = Math.sin(frame * 0.3 + i) * 0.3 + 0.7;
                 ctx.fillStyle = reactorColor;
-                ctx.globalAlpha = energyPulse;
+                ctx.globalAlpha = energyPulse * baseAlpha; // ★ baseAlpha を掛ける
                 for (let k = 0; k < 5; k++) {
                     const y = -10 + k * 6;
                     const w = 14 + k * 1.5;
@@ -9081,14 +9225,14 @@
                 drawPolygonPath(ctx, r, sides);
                 ctx.strokeStyle = colorCyan;
                 ctx.lineWidth = Math.max(0.5, layerWidth);
-                ctx.globalAlpha = layerAlpha;
+                ctx.globalAlpha = layerAlpha * baseAlpha; // ★ baseAlpha を掛ける
                 ctx.stroke();
             }
 
             ctx.beginPath();
             ctx.lineWidth = 1.0;
             ctx.strokeStyle = mainStroke;
-            ctx.globalAlpha = 0.5;
+            ctx.globalAlpha = 0.5 * baseAlpha; // ★ baseAlpha を掛ける
             for (let i = 0; i < sides; i++) {
                 const angle = (Math.PI * 2 / sides) * i - Math.PI / 2;
                 ctx.moveTo(Math.cos(angle) * innerRad, Math.sin(angle) * innerRad);
@@ -9100,6 +9244,7 @@
             // --- 7. コア・ソケット ---
             const socketRad = baseRadius * 0.45;
             ctx.save();
+            ctx.globalAlpha = baseAlpha; // ★追加
             ctx.fillStyle = '#080000';
             ctx.strokeStyle = colorCyan;
             ctx.lineWidth = 1.5;
@@ -9136,6 +9281,7 @@
             ctx.shadowColor = colorRedNeon;
 
             ctx.fillStyle = colorDeepRed;
+            ctx.globalAlpha = baseAlpha; // ★追加
             ctx.beginPath(); drawPolygonPath(ctx, coreSize, sides); ctx.fill();
 
             const coreLayers = 4;
@@ -9146,6 +9292,7 @@
                 ctx.rotate(frame * (0.01 + l * 0.005) * (l % 2 === 0 ? 1 : -1));
                 ctx.strokeStyle = `rgba(255, 200, 200, ${alpha3d})`;
                 ctx.fillStyle = `rgba(255, 0, 50, ${alpha3d * 0.2})`;
+                ctx.globalAlpha = baseAlpha; // ★ rgba のアルファとは別に全体に掛ける
                 ctx.lineWidth = 1.0;
                 ctx.shadowBlur = 0;
 
@@ -9171,9 +9318,10 @@
             ctx.fillStyle = '#ffffff';
             ctx.shadowBlur = 10;
             ctx.shadowColor = '#fff';
+            ctx.globalAlpha = baseAlpha; // ★追加
             ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
 
-            ctx.globalAlpha = 0.3 + pulse * 0.1;
+            ctx.globalAlpha = (0.3 + pulse * 0.1) * baseAlpha; // ★ baseAlpha を掛ける
             ctx.strokeStyle = colorHighLight;
             ctx.lineWidth = 0.5;
             ctx.shadowBlur = 0;
