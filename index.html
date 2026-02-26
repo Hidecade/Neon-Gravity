@@ -1103,14 +1103,21 @@
                         else if (rank === 2) { rankClass = "rank-2"; rankText = "2ND"; }
                         else if (rank === 3) { rankClass = "rank-3"; rankText = "3RD"; }
 
-                        const stageVal = data.stage ? "ST." + data.stage : "-";
+                        const stageVal = data.stage;
+                        let stageText = "-";
+
+                        if (stageVal === "CLEAR" || stageVal === "ALL") {
+                            stageText = '<span style="color:#ffd700; font-weight:bold;">ALL</span>'; // 金色のALL表示
+                        } else if (typeof stageVal === 'number' || !isNaN(stageVal)) {
+                            stageText = "ST." + stageVal;
+                        }
 
                         tr.innerHTML = `
-                                                <td class="${rankClass}" style="text-align:center;">${rankText}</td>
-                                                <td style="text-align:left;">${escapeHtml(data.name)}</td>
-                                                <td style="color:#aaa; text-align:center;">${stageVal}</td>
-                                                <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
-                                            `;
+                            <td class="${rankClass}" style="text-align:center;">${rankText}</td>
+                            <td style="text-align:left;">${escapeHtml(data.name)}</td>
+                            <td style="text-align:center;">${stageText}</td> 
+                            <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
+                        `;
                         rankingBody.appendChild(tr);
                         rank++;
                     });
@@ -2746,8 +2753,14 @@
                     ui.submitBtn.innerText = "SENDING...";
                     const name = nameInp.value.trim() || "PILOT";
 
+                    // stage変数が10で、かつisStageClearがtrueならクリア扱い
+                    let displayStage = stage;
+                    if (stage === 10 && isStageClear) {
+                        displayStage = "CLEAR"; // 文字列として送信（Firebaseは動的型なので通ります）
+                    }
+
                     try {
-                        await window.firebaseOps.submitAndCleanup(score, stage, name);
+                        await window.firebaseOps.submitAndCleanup(score, displayStage, name);
                         localStorage.setItem("neonGravity_last_name", name);
                         ui.nameInputArea.style.display = "none";
 
