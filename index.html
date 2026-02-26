@@ -62,7 +62,7 @@
            3. HUDレイアウト（スコア・ステージ・武器）
            ========================================================= */
         .hud-row {
-            display: flex; /* 左右に要素を配置 */
+            display: none; /* ★変更：初期状態では非表示にしておく */
             justify-content: space-between; /* 両端に寄せる */
             width: 100%;
             max-width: 800px; /* 大画面での最大幅 */
@@ -297,8 +297,7 @@
             align-items: center;
             z-index: 100;
             pointer-events: auto; /* 操作を受け付ける */
-
-            transition: opacity 0.3s ease; /* 0.3秒でふわっと消える */
+            transition: opacity 0.5s ease;
             opacity: 1;
         }
 
@@ -315,7 +314,6 @@
             align-items: center;
             z-index: 105;
             pointer-events: auto;
-            backdrop-filter: blur(5px); /* 背景ぼかし */
         }
 
 
@@ -830,6 +828,120 @@
             transform: scale(1.05);
             border-color: #fff !important;
         }
+
+        /* =========================================================
+           15. How to Play (アトラクトデモ)
+           ========================================================= */
+        #howto-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000000 !important;
+            z-index: 150;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        /* ★追加：メインタイトルの設定 */
+        #howto-main-title {
+            color: #0ff;
+            text-shadow: 0 0 20px #0ff;
+            font-size: 32px;
+            margin: 0 0 10px 0;
+            letter-spacing: 4px;
+            text-align: center; /* ★ここで常に中央揃えにする */
+            line-height: 1.2; /* 改行された時の行間を調整 */
+        }
+
+        .howto-container {
+            display: flex;
+            gap: 30px;
+            width: 90%;
+            max-width: 700px;
+            margin-top: 20px;
+        }
+
+        @media (orientation: portrait) {
+            .howto-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+
+        .howto-panel {
+            flex: 1;
+            background: rgba(0, 20, 40, 0.6);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1) inset;
+            backdrop-filter: blur(5px);
+            text-align: left;
+        }
+
+        .howto-title {
+            color: #fff;
+            border-bottom: 1px solid #0ff;
+            padding-bottom: 5px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 18px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        .howto-text {
+            color: #aaa;
+            font-size: 13px;
+            line-height: 2.2;
+            font-family: 'Orbitron', monospace;
+        }
+
+        .howto-highlight {
+            color: #0ff;
+            text-shadow: 0 0 5px #0ff;
+        }
+
+        .howto-highlight-y {
+            color: #ff0;
+            text-shadow: 0 0 5px #ff0;
+        }
+
+        .item-desc {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .item-icon {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 22px;
+            height: 22px;
+            border: 2px solid;
+            font-weight: bold;
+            font-size: 14px;
+            margin-right: 15px;
+            box-sizing: border-box;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .crystal-icon {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            background: #008000;
+            border: 1px solid #0f0;
+            transform: rotate(45deg);
+            margin: 4px 19px 4px 4px;
+            box-shadow: 0 0 8px #0f0;
+        }
     </style>
 
 </head>
@@ -929,6 +1041,34 @@
         <div id="menu-footer" style="font-size:12px;color:#888;margin-top:20px;">
             PC: [X] Bomb | MOBILE: Small Button to Bomb
         </div>
+    </div>
+
+    <div id="howto-overlay">
+        <h2 id="howto-main-title">SYSTEM BOOT SEQUENCE</h2>
+
+        <div class="howto-container">
+            <div class="howto-panel">
+                <h3 class="howto-title">CONTROLS</h3>
+                <div class="howto-text">
+                    <span class="howto-highlight">MOVE:</span> Left Stick / WASD / Left Half Touch<br>
+                    <span class="howto-highlight">AIM & FIRE:</span> Right Stick / Arrows / Right Half Touch<br>
+                    <span class="howto-highlight-y">SATELLITE BOMB:</span> X Key / Pad-B / Launch Button<br>
+                    <br>
+                    <span style="color:#888; font-size:11px;">* Bomb power scales with collected crystals.</span>
+                </div>
+            </div>
+
+            <div class="howto-panel">
+                <h3 class="howto-title">ITEMS</h3>
+                <div class="item-desc"><span class="item-icon" style="color:#0f0; border-color:#0f0; box-shadow: 0 0 5px #0f0;">W</span> <span class="howto-text">WEAPON UPGRADE</span></div>
+                <div class="item-desc"><span class="item-icon" style="color:#0ff; border-color:#0ff; box-shadow: 0 0 5px #0ff;">L</span> <span class="howto-text">SPECIAL LASER</span></div>
+                <div class="item-desc"><span class="item-icon" style="color:#0ff; border-color:#0ff; box-shadow: 0 0 5px #0ff;">S</span> <span class="howto-text">SHIELD RECOVER</span></div>
+                <div class="item-desc"><span class="item-icon" style="color:#ff0; border-color:#ff0; box-shadow: 0 0 5px #ff0;">I</span> <span class="howto-text">INVINCIBLE</span></div>
+                <div class="item-desc"><span class="crystal-icon"></span> <span class="howto-text">SATELLITE BOMB STOCK</span></div>
+            </div>
+        </div>
+
+        <div style="color:#555; margin-top: 30px; font-size: 14px; letter-spacing: 2px; animation: blink 1.5s infinite;">PRESS ANY BUTTON TO RETURN</div>
     </div>
 
 
@@ -1120,11 +1260,11 @@
                         }
 
                         tr.innerHTML = `
-                            <td class="${rankClass}" style="text-align:center;">${rankText}</td>
-                            <td style="text-align:left;">${escapeHtml(data.name)}</td>
-                            <td style="text-align:center;">${stageText}</td> 
-                            <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
-                        `;
+                                <td class="${rankClass}" style="text-align:center;">${rankText}</td>
+                                <td style="text-align:left;">${escapeHtml(data.name)}</td>
+                                <td style="text-align:center;">${stageText}</td>
+                                <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
+                            `;
                         rankingBody.appendChild(tr);
                         rank++;
                     });
@@ -1186,6 +1326,10 @@
 
         let gameState = 'TITLE';      // 現在のゲーム状態 ('TITLE', 'PLAYING', 'PAUSED', 'DYING', 'GAMEOVER_UI', 'ENDING', 'OST')
         let previousGameState = '';   // ポーズ前の状態保存用
+
+        // ★追加：操作説明用のタイマー
+        let titleIdleTimer = 0;
+        const HOWTO_WAIT_TIME = 180; // 600フレーム = 約10秒放置で表示
 
         let isFadingOut = false; // フェードアウト中かどうかのフラグ
         let fadeAlpha = 0.0;     // 黒色の透明度（0.0:透明 ～ 1.0:真っ黒）
@@ -1249,7 +1393,7 @@
         const STAGE_ENEMIES = {
             1: ['triangle', 'triangle', 'triangle', 'tadpole'],
             2: ['triangle', 'triangle', 'tadpole', 'dragon'],
-            3: ['bubble', 'bubble', 'bubble', 'jellyfish', 'spark_jelly'],           
+            3: ['bubble', 'bubble', 'bubble', 'jellyfish', 'spark_jelly'],
             4: ['phantom', 'triangle', 'tadpole', 'asteroid'],
             5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'asteroid'],
             6: ['asteroid', 'asteroid', 'phantom', 'tadpole', 'tadpole'],
@@ -1563,7 +1707,7 @@
         // 2. オーディオシステム (Audio System)
         // =========================================================
 
- 
+
 
         const BGM_FILES = {
             title: 'audio/Neon_Gravity_Title.mp3',
@@ -2372,7 +2516,7 @@
                 const pauseBtns = document.querySelectorAll('#pause-overlay .menu-btn');
                 pauseBtns.forEach(btn => currentMenuButtons.push(btn));
             } else if (ui.nameInputArea.style.display === 'flex') {
-            // 名前入力中
+                // 名前入力中
                 const inputBtns = document.querySelectorAll('#name-input-area .menu-btn');
                 inputBtns.forEach(btn => {
                     if (window.getComputedStyle(btn).display !== 'none') currentMenuButtons.push(btn);
@@ -3065,6 +3209,13 @@
             ui.controls.style.display = 'none';
             ui.msg.style.display = 'none';
 
+            // ==========================================
+            // ★追加：タイトル画面ではスコアやポーズボタンを完全に隠す
+            // ==========================================
+            ui.pauseBtn.style.display = 'none';
+            const hud = document.querySelector('.hud-row');
+            if (hud) hud.style.display = 'none';
+
             ui.titleText.innerHTML = `NEON GRAVITY<br><span style="font-size:20px;color:#fff;">ORBITAL</span>`;
             ui.titleText.style.color = '#0ff';
             ui.titleText.style.textShadow = '0 0 20px #0ff';
@@ -3167,6 +3318,14 @@
             if (gameState === 'PAUSED') return;
             ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, width, height);
 
+            // ★追加：タイトル画面での放置タイマー
+            if (gameState === 'TITLE') {
+                titleIdleTimer++;
+                if (titleIdleTimer > HOWTO_WAIT_TIME) {
+                    showHowTo();
+                }
+            }
+
             if (gameState === 'PLAYING') {
                 update();
             } else if (gameState === 'DYING') {
@@ -3181,6 +3340,50 @@
 
             draw();
         }
+
+        function showHowTo() {
+            gameState = 'HOWTO';
+            ui.overlay.style.display = 'none'; // 通常のタイトルUIを隠す
+
+            const howtoUI = document.getElementById('howto-overlay');
+            howtoUI.style.display = 'flex';
+            // CSSのtransitionを効かせるため、少し遅らせてopacityを1にする
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    howtoUI.style.opacity = '1';
+                });
+            });
+        }
+
+        function hideHowTo() {
+            gameState = 'TITLE';
+            titleIdleTimer = 0; // タイマーをリセット
+
+            const howtoUI = document.getElementById('howto-overlay');
+            howtoUI.style.opacity = '0';
+
+            setTimeout(() => {
+                howtoUI.style.display = 'none';
+                ui.overlay.style.display = 'flex'; // タイトルUIを復活させる
+                window.refreshMenuButtons();
+            }, 500); // 0.5秒のフェードアウトを待つ
+        }
+
+        // 何らかの入力があったらタイマーをリセット（またはHOWTO画面を閉じる）
+        function resetTitleIdle() {
+            if (gameState === 'TITLE') {
+                titleIdleTimer = 0;
+                return false;
+            } else if (gameState === 'HOWTO') {
+                hideHowTo();
+                return true; // ★追加：HOWTO画面を閉じたことを呼び出し元に知らせる
+            }
+            return false;
+        }
+
+        // 各種イベントに入力監視をフックする
+        document.addEventListener('mousedown', resetTitleIdle);
+        document.addEventListener('touchstart', resetTitleIdle, { passive: true });
 
         function update() {
 
@@ -3964,7 +4167,7 @@
                     leader.followers.push(enemies[enemies.length - 1]);
                     spawnedCount += 0.2;
                 }
-            
+
             } else if (type === 'boss') {
                 const variantIndex = (stage - 1) % BOSS_VARIANTS.length;
                 const variant = BOSS_VARIANTS[variantIndex];
@@ -4073,7 +4276,7 @@
                     x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
                     hp: 4 + Math.floor(hpMag),
                     speed: ENEMY_SPEEDS.PHANTOM * spd * stageMag,
-                    color:  '#0ff',
+                    color: '#0ff',
                     type: 'phantom',
                     angle: 0,
                     drop: dropType,
@@ -4177,8 +4380,8 @@
                             vx: Math.cos(shardAngle) * shardSpeed,
                             vy: Math.sin(shardAngle) * shardSpeed,
                             color: Math.random() > 0.5 ? '#fff' : '#0ff',
-                            life: 1.5 + Math.random() , // 寿命を長くして画面外まで飛ばす
-                            size: 0.5 + Math.random() , // 少し大きめの破片も混ぜる
+                            life: 1.5 + Math.random(), // 寿命を長くして画面外まで飛ばす
+                            size: 0.5 + Math.random(), // 少し大きめの破片も混ぜる
                             isShard: true,
                             shardType: 'tri',
                             angle: shardAngle,
@@ -5250,10 +5453,10 @@
             if (e.isTracking) {
                 // --- 追跡モード ---
                 if (e.type === 'asteroid') {
-    
+
                     const gb = Math.floor(215 + 40 * Math.sin(frame * 0.1));
                     e.color = `rgb(255, ${gb}, ${gb})`;
-                    
+
                 }
 
                 const dx = player.x - e.x;
@@ -5277,7 +5480,7 @@
             } else {
                 // --- 通常モード（漂流） ---
                 if (e.type === 'asteroid') {
-                    e.color =  '#ffffff';
+                    e.color = '#ffffff';
                 }
 
                 e.x += e.vx * e.speed * gameSpeed;
@@ -5349,7 +5552,7 @@
                 // 予告レーザーの表示
                 e.isAiming = (e.timer < 30);
 
- 
+
 
                 // ★修正：スローモーション時に発射しなくなるバグを防止するため、
                 // === 30 ではなく、範囲で判定するように変更
@@ -6911,7 +7114,7 @@
             ctx.restore();
 
             // 4. 死亡・エンディング・名前入力時のフェード演出
-            if (gameState === 'DYING' || gameState === 'ENDING' || gameState === 'GAMEOVER_UI') {
+            if (gameState === 'DYING' || gameState === 'ENDING' || gameState === 'GAMEOVER_UI' || gameState === 'TITLE' || gameState === 'HOWTO') {
                 // カメラの影響を受けないように座標系をリセット
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
 
@@ -6920,7 +7123,7 @@
                     // 死亡時は徐々に暗くする
                     fade = Math.max(0, (60 - dyingTimer) / 60);
                 } else {
-                    // ENDING や GAMEOVER_UI の時は「強制的に真っ黒(1.0)」にする
+                    // ENDING, GAMEOVER_UI, TITLE, HOWTO の時は「強制的に真っ黒(1.0)」にする
                     fade = 1.0;
                 }
 
@@ -7058,7 +7261,7 @@
                     drawFighterJet(ctx, eb);
                 } else if (eb.isMissile) {
                     drawHomingMissile(ctx, eb);
-                } else if (eb.isShockwave) { 
+                } else if (eb.isShockwave) {
                     drawShockwave(ctx, eb);
                 } else {
                     drawNormalBullet(ctx, eb);
@@ -8928,7 +9131,7 @@
                 ctx.closePath(); ctx.fill();
                 ctx.strokeStyle = mainStroke; ctx.lineWidth = 1; ctx.stroke();
 
-                // C. リアクター 
+                // C. リアクター
                 ctx.save();
                 ctx.globalCompositeOperation = 'lighter';
                 const energyPulse = Math.sin(frame * 0.3 + i) * 0.3 + 0.7;
@@ -8941,7 +9144,7 @@
                 }
                 ctx.restore();
 
-                // D. 砲身 
+                // D. 砲身
                 ctx.strokeStyle = mainStroke;
                 ctx.lineWidth = 1;
                 ctx.beginPath();
@@ -10029,6 +10232,12 @@
             if (document.activeElement === document.getElementById('player-name-input')) return;
             if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyZ', 'KeyX'].includes(e.code)) e.preventDefault();
             input.keys[e.code] = true;
+
+            // ==========================================
+            // ★追加：HOWTO画面を閉じた直後は、ゲーム開始（Spaceキー）をブロックする
+            // ==========================================
+            if (resetTitleIdle()) return;
+
             if (gameState === 'TITLE' && e.code === 'Space') startGame();
             if (gameState === 'PLAYING' && e.code === 'KeyX') launchSatellites();
         });
@@ -10062,6 +10271,13 @@
             }
 
             if (!activeGp) return;
+
+            // ==========================================
+            // ★修正：HOWTO画面を閉じたフレームは、その後の決定ボタンなどを無効化する
+            // ==========================================
+            if (activeGp.buttons.some(b => b.pressed) || activeGp.axes.some(a => Math.abs(a) > 0.2)) {
+                if (resetTitleIdle()) return;
+            }
 
             // --- プレイ中のUI非表示処理 ---
             if (gameState === 'PLAYING') {
