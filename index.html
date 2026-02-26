@@ -2766,7 +2766,6 @@
                 const ostBtns = document.querySelectorAll('#ost-ui .track-item, #ost-ui .menu-btn');
                 ostBtns.forEach(btn => currentMenuButtons.push(btn));
             } else if (gameState === 'STORY') {
-                // ★変更：STORY画面のボタンを直接IDで取得して配列に入れる
                 const backBtn = document.getElementById('btn-story-back');
                 if (backBtn) currentMenuButtons.push(backBtn);
             } else if (gameState === 'ENDING') {
@@ -3419,8 +3418,6 @@
             ui.btnStart.onclick = () => resetGame();
 
             ui.btnTitle.style.display = 'block';
-            ui.btnTitle.style.borderColor = titleColor;
-            ui.btnTitle.style.color = titleColor;
             ui.btnTitle.onclick = () => returnToTitle();
 
             ui.pauseBtn.style.display = 'none';
@@ -3429,6 +3426,9 @@
             const btnRanking = document.getElementById('btn-ranking');
             if (btnRanking) btnRanking.style.display = 'none';
             if (ui.btnOst) ui.btnOst.style.display = 'none';
+
+            const btnStory = document.getElementById('btn-story');
+            if (btnStory) btnStory.style.display = 'none';
 
             window.refreshMenuButtons();
         }
