@@ -254,10 +254,12 @@
             width: 100%;
             text-align: center;
             color: #fff;
-            font-size: calc(32px * var(--ui-scale, 1)); /* ★変更 */
+            /* サイズを少し落とし、文字間隔も詰める */
+            font-size: calc(28px * var(--ui-scale, 1));
             font-weight: 900;
             text-shadow: 0 0 15px #0ff, 0 0 30px #0ff, 0 0 60px #0ff;
-            letter-spacing: 12px;
+            letter-spacing: 8px; /* 12pxから8pxに縮小 */
+            margin-right: -8px; /* letter-spacingによるズレの補正 */
             z-index: 100;
             pointer-events: none;
             font-family: 'Orbitron', sans-serif;
@@ -1180,6 +1182,9 @@
         let gameState = 'TITLE';      // 現在のゲーム状態 ('TITLE', 'PLAYING', 'PAUSED', 'DYING', 'GAMEOVER_UI', 'ENDING', 'OST')
         let previousGameState = '';   // ポーズ前の状態保存用
 
+        let isFadingOut = false; // フェードアウト中かどうかのフラグ
+        let fadeAlpha = 0.0;     // 黒色の透明度（0.0:透明 ～ 1.0:真っ黒）
+
         // ★追加：iOS判定用変数
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -1187,7 +1192,7 @@
         // =========================================================
         // 2. ステージ・難易度・進行管理
         // =========================================================
-        const START_STAGE = 1;        // 開始ステージ番号
+        const START_STAGE = 4;        // 開始ステージ番号
 
         const MAX_STAGE = 10;          // 最大ステージ数
         let currentStage = 1;         // 現在のステージ番号
@@ -1515,6 +1520,32 @@
         let currentMenuButtons = [];
         let selectedMenuIndex = 0;
 
+        // =========================================================
+        // ★追加：メッセージ表示の共通関数
+        // これを使うことで、色やサイズが他の場面に引き継がれるバグを防ぎます
+        // =========================================================
+        function showMessage(textHTML, colorType = 'default') {
+            ui.msg.innerHTML = textHTML;
+            ui.msg.style.display = 'block';
+
+            // アニメーションや変形状態を毎回確実にリセットする
+            ui.msg.style.transition = "none";
+            ui.msg.style.opacity = "1";
+            ui.msg.style.transform = `scale(${globalUiScale})`;
+            ui.msg.style.fontSize = "calc(28px * var(--ui-scale, 1))"; // CSSに合わせた基準サイズ
+
+            // カラーテーマの適用
+            if (colorType === 'red') {
+                ui.msg.style.color = "#f00";
+                ui.msg.style.textShadow = "0 0 15px #f00, 0 0 30px #f00";
+            } else if (colorType === 'gold') {
+                ui.msg.style.color = "#ffd700";
+                ui.msg.style.textShadow = "0 0 20px #ffd700, 0 0 40px #ffaa00";
+            } else { // default (Cyan neon)
+                ui.msg.style.color = "#fff";
+                ui.msg.style.textShadow = "0 0 15px #0ff, 0 0 30px #0ff, 0 0 60px #0ff";
+            }
+        }
 
         // =========================================================
         // 2. オーディオシステム (Audio System)
@@ -1525,9 +1556,10 @@
         const BGM_FILES = {
             title: 'audio/Neon_Gravity_Title.mp3',
             clear: 'audio/Neon_Gravity_Clear.mp3',
+            all_clear: 'audio/Neon_Gravity_All_Clear.mp3',
             boss: 'audio/Neon_Gravity_Boss.mp3',
             last: 'audio/Neon_Gravity_Last.mp3',
-            story: 'audio/Neon_Gravity_Story.mp3',
+            name: 'audio/Neon_Gravity_Name.mp3',
             stages: [
                 'audio/Neon_Gravity_01.mp3',
                 'audio/Neon_Gravity_02.mp3',
@@ -2043,12 +2075,17 @@
                     src = BGM_FILES[key];
                 }
 
-                // 現在再生中のURLと、これから再生するURLを比較（重複再生防止）
-                const currentFull = new URL(this.bgmEl.src, window.location.href).href;
-                const nextFull = new URL(src, window.location.href).href;
+                if (!src) {
+                    this.bgmEl.pause();
+                    this.bgmEl.src = "";
+                    this.currentSrc = null;
+                    return;
+                }
 
-                if (currentFull === nextFull && !this.bgmEl.paused) {
-                    return; // すでに再生中なら何もしない
+                const nextFull = new URL(src, window.location.href).href;
+                // すでに同じ曲が再生中なら何もしない
+                if (this.currentSrc === nextFull && !this.bgmEl.paused) {
+                    return;
                 }
 
                 // ★追加：OST画面ならループを解除（endedイベントを発火させるため）
@@ -2100,11 +2137,11 @@
                 if (this.bgmEl) this.bgmEl.pause();
             },
 
-            pauseBGM() { if (this.bgmEl && !this.bgmEl.paused) this.bgmEl.pause(); },
+            pauseBGM() { if (this.bgmEl && !!this.bgmEl.paused) this.bgmEl.pause(); },
 
             resumeBGM() {
                 // currentSrcの代わりに、bgmElにsrcがセットされているかを確認する
-                if (this.bgmEl && this.bgmEl.paused && this.bgmEl.src) {
+                if (this.bgmEl && this.bgmEl.paused && this.currentSrc != null && this.bgmEl.src) {
                     this.bgmEl.play().catch(() => { });
                 }
             }
@@ -2135,7 +2172,8 @@
                 { n: 'Boss Encounter', k: 'boss' },
                 { n: 'The Final Ark', k: 'last' },
                 { n: 'Mission Complete', k: 'clear' },
-                { n: 'Story Mode', k: 'story' }
+                { n: 'All Mission Complete', k: 'all_clear' }, // ★Stage 10クリアを追加
+                { n: 'Name Entry', k: 'name' }
             );
 
             // リストの描画
@@ -2216,6 +2254,7 @@
         function closeOST() {
             if (ostUpdateInterval) clearInterval(ostUpdateInterval);
             AudioSys.stopBGM();
+            AudioSys.currentSrc = null;
             if (AudioSys.bgmEl) AudioSys.bgmEl.loop = true; // ゲーム用にループを戻す
             returnToTitle();
         }
@@ -2382,7 +2421,6 @@
                 AudioSys.pauseBGM();
             } else {
                 if (gameState === 'PAUSED') {
-                    // Do nothing, wait for user interaction
                 } else {
                     AudioSys.resumeBGM();
                 }
@@ -2498,11 +2536,12 @@
 
             // ★Stage 10 (Battleship Boss) の初期化
             if (stage === 10) {
-                ui.msg.innerText = "WARNING\nTHE COLOSSUS APPROACHING";
-                ui.msg.style.color = "#f00";
-                ui.msg.style.textShadow = "0 0 20px #f00";
-                ui.msg.style.display = 'block';
+                // ==========================================
+                // ★変更：文字サイズと間隔を調整してはみ出しを防止
+                // ==========================================
+                const warningHTML = `<span style="font-size: 1.2em; letter-spacing: 8px; margin-right: -8px;">WARNING</span><br><span style="display: inline-block; margin-top: 15px; font-size: 0.7em; letter-spacing: 4px; margin-right: -4px;">GENESIS-ARK APPROACHING</span>`;
 
+                showMessage(warningHTML, 'red');
                 AudioSys.playBGM('last');
 
                 setTimeout(() => {
@@ -2510,7 +2549,6 @@
                     // ラスボス生成
                     spawnEnemy(worldSize / 2, worldSize / 2, 'battleship');
                     isBossSpawned = true;
-
                 }, 4000);
 
                 // ラスボス戦は雑魚が無限に湧けるようにする
@@ -2522,9 +2560,7 @@
                 rushBossIndex = 0;
                 rushIntervalTimer = 0;
                 enemiesToSpawn = 9999;
-                ui.msg.innerText = "FINAL MISSION\nBOSS RUSH";
-                ui.msg.style.color = "#f00";
-                ui.msg.style.display = 'block';
+                showMessage("FINAL MISSION\nBOSS RUSH", 'red');
                 AudioSys.playBGM('boss');
                 setTimeout(() => { ui.msg.style.display = 'none'; }, 4000);
                 gameSpeed = 1.0;
@@ -2535,7 +2571,6 @@
                 else enemiesToSpawn = STAGE_ENEMY_COUNTS[STAGE_ENEMY_COUNTS.length - 1] + 50;
 
                 if (gameState === 'PLAYING') {
-                    // ★修正: 2ステージ毎ではなく、ステージ番号に直接連動させる
                     const bgmIndex = (stage - 1) % BGM_FILES.stages.length;
                     AudioSys.playBGM('stage', bgmIndex);
                 }
@@ -2548,7 +2583,7 @@
 
             const isConnected = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).some(gp => gp !== null);
             ui.controls.style.display = isConnected ? 'none' : 'block';
-            ui.pauseBtn.style.display = isConnected ? 'none' : 'flex'; // ★追加
+            ui.pauseBtn.style.display = isConnected ? 'none' : 'flex';
         }
 
         function resetGame() {
@@ -2621,7 +2656,6 @@
             if (stage === 9) {
                 if (rushBossIndex >= 8) isClearCondition = true;
             } else if (stage === 10) {
-                // ラスボス撃破チェック
                 if (enemies.length === 0 && isBossSpawned) isClearCondition = true;
             } else {
                 const noEnemies = enemies.length === 0;
@@ -2632,18 +2666,115 @@
             if (!isStageClear && isClearCondition) {
                 isStageClear = true;
 
-                // ★Stage 10 クリア時はエンディングへ
                 if (stage === MAX_STAGE) {
-                    setTimeout(() => showEnding(), 3000);
+                    gameSpeed = 0.25;
+                    distortGrid(worldSize / 2, worldSize / 2, 1000, worldSize);
+                    player.invuln = 1200;
+
+                    if (AudioSys.bgmEl) AudioSys.bgmEl.pause();
+                    AudioSys.playBGM('all_clear');
+
+                    // 共通関数で基本設定を作った後、アニメーション用の特殊設定を上書き
+                    const clearText = `ALL MISSION CLEAR<br><span id="clear-score-text" style="opacity: 0; display: inline-block; margin-top: 20px; font-size: 0.6em; color: #fff; text-shadow: 0 0 10px #fff, 0 0 20px #0ff; letter-spacing: 4px; margin-right: -4px;">TOTAL SCORE: ${score.toLocaleString()}</span>`;
+                    showMessage(clearText, 'gold');
+
+                    ui.msg.style.transition = "none";
+                    ui.msg.style.opacity = "0";
+                    ui.msg.style.transform = `translateY(100px) scale(${globalUiScale})`;
+
+                    let fireworksActive = true;
+                    const startTime = Date.now();
+                    const duration = 18000;
+
+                    function triggerRandomFirework() {
+                        if (gameState !== 'PLAYING' || !fireworksActive) return;
+
+                        const elapsed = Date.now() - startTime;
+                        const progress = Math.min(1.0, elapsed / duration);
+
+                        const baseDelay = 50 + progress * 750;
+                        const randomDelay = 150 + progress * 1500;
+                        const nextDelay = baseDelay + Math.random() * randomDelay;
+
+                        const viewW = width / cameraScale;
+                        const viewH = height / cameraScale;
+                        const pad = 100;
+                        const fx = camera.x + pad + Math.random() * (viewW - pad * 2);
+                        const fy = camera.y + pad + Math.random() * (viewH - pad * 2);
+
+                        if (progress < 0.4) {
+                            createExplosion(fx, fy, '#ffffff', 80 + Math.random() * 40);
+                            createExplosion(fx, fy, '#00ffff', 40);
+                            rings.push({ x: fx, y: fy, r: 10, color: '#ffffff', life: 1.0 });
+                            rings.push({ x: fx, y: fy, r: 60, color: '#00ffff', life: 0.8 });
+                            distortGrid(fx, fy, 200, 400);
+                            if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_large');
+                        }
+                        else if (progress < 0.7) {
+                            const colors = ['#00ffff', '#ff00ff', '#ffff00', '#ffffff'];
+                            const c = colors[Math.floor(Math.random() * colors.length)];
+                            createExplosion(fx, fy, '#ffffff', 30);
+                            createExplosion(fx, fy, c, 30);
+                            rings.push({ x: fx, y: fy, r: 10, color: c, life: 0.6 });
+                            distortGrid(fx, fy, 100, 200);
+                            if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_medium');
+                        }
+                        else {
+                            const colors = ['#0088ff', '#ff00ff', '#ffffff'];
+                            const c = colors[Math.floor(Math.random() * colors.length)];
+                            createExplosion(fx, fy, c, 15);
+                            distortGrid(fx, fy, 40, 100);
+                            if (typeof AudioSys !== 'undefined' && Math.random() > progress) {
+                                AudioSys.playSE('explode_small');
+                            }
+                        }
+
+                        if (elapsed < duration) {
+                            setTimeout(triggerRandomFirework, nextDelay);
+                        }
+                    }
+
+                    triggerRandomFirework();
+
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            ui.msg.style.transition = "opacity 6s ease-out, transform 6s ease-out";
+                            ui.msg.style.opacity = "1";
+                            ui.msg.style.transform = `translateY(0px) scale(${globalUiScale})`;
+                        });
+                    });
+
+                    setTimeout(() => {
+                        const scoreSpan = document.getElementById("clear-score-text");
+                        if (scoreSpan) {
+                            scoreSpan.style.transition = "opacity 3s ease-in";
+                            scoreSpan.style.opacity = "1";
+                        }
+                    }, 8000);
+
+                    setTimeout(() => {
+                        ui.msg.style.transition = "opacity 2s ease-in";
+                        ui.msg.style.opacity = "0";
+                    }, 16000);
+
+                    setTimeout(() => {
+                        fireworksActive = false;
+                        ui.msg.style.display = 'none';
+                        showGameOver();
+                    }, 18000);
+
                     return;
                 }
 
+                // ==========================================
+                // 通常のクリア処理
+                // ==========================================
                 gameSpeed = 0.25;
                 distortGrid(worldSize / 2, worldSize / 2, 1000, worldSize);
                 AudioSys.playBGM('clear');
 
-                ui.msg.innerText = "STAGE " + stage + " CLEAR";
-                ui.msg.style.display = 'block';
+                // ★共通関数で表示
+                showMessage("STAGE " + stage + " CLEAR", 'default');
 
                 setTimeout(() => {
                     ui.msg.style.display = 'none';
@@ -2678,16 +2809,21 @@
             AudioSys.stopSE('warning');
             AudioSys.stopSE('boss_engine'); // ボス音なども念のため停止
 
+            // ==========================================
+            // ★追加：名前入力画面（ネームエントリー）のBGMを再生
+            // ==========================================
+            AudioSys.playBGM('name');
+
             ui.controls.style.display = 'none';
 
-            // --- ★追加修正：画面上のあらゆる浮遊テキスト・UIを確実に消す ---
+            // --- 画面上のあらゆる浮遊テキスト・UIを確実に消す ---
             const hud = document.querySelector('.hud-row');
             if (hud) hud.style.display = 'none';
 
             ui.endingHud.style.display = 'none'; // MISSION COMPLETE画面
             ui.overlay.style.display = 'none';   // タイトル画面
 
-            // ★これらも消さないと黒画面の上に残ることがある
+            // これらも消さないと黒画面の上に残ることがある
             ui.msg.style.display = 'none';       // "ALL MISSION CLEAR" 等のメッセージ
             ui.warn.style.display = 'none';      // "WARNING" 等の警告
             if (ui.bossContainer) ui.bossContainer.style.display = 'none'; // ボスHPバー
@@ -2741,11 +2877,11 @@
                 window.refreshMenuButtons();
 
                 // --- ボタン処理 ---
-                // ★追加: 二重送信を完全に防ぐためのフラグ
+                // 二重送信を完全に防ぐためのフラグ
                 let isSubmitting = false;
 
                 ui.submitBtn.onclick = async () => {
-                    // ★追加: すでに送信処理中なら、その後のクリックは全て無視する
+                    // すでに送信処理中なら、その後のクリックは全て無視する
                     if (isSubmitting) return;
                     isSubmitting = true;
 
@@ -2764,6 +2900,11 @@
                         localStorage.setItem("neonGravity_last_name", name);
                         ui.nameInputArea.style.display = "none";
 
+                        // ==========================================
+                        // ★追加：送信成功後にBGMをリセット（次のタイトルBGMへ繋ぐため）
+                        // ==========================================
+                        AudioSys.currentSrc = null;
+
                         if (window.showRanking) {
                             window.showRanking(() => {
                                 proceedToNextMenu();
@@ -2777,18 +2918,26 @@
                         ui.submitBtn.style.pointerEvents = "auto";
                         ui.submitBtn.innerText = "SUBMIT";
 
-                        // ★エラーが起きて再試行させるときだけフラグを解除する
+                        // エラーが起きて再試行させるときだけフラグを解除する
                         isSubmitting = false;
                     }
                 };
 
                 ui.skipScoreBtn.onclick = (e) => {
                     e.preventDefault();
+                    // ==========================================
+                    // ★追加：スキップ時もBGMをリセット
+                    // ==========================================
+                    AudioSys.currentSrc = null;
                     proceedToNextMenu();
                 };
 
             } catch (e) {
                 console.error("Critical error in showGameOver:", e);
+                // ==========================================
+                // ★追加：エラーで抜ける時もBGMをリセット
+                // ==========================================
+                AudioSys.currentSrc = null;
                 proceedToNextMenu();
             }
         }
@@ -3271,17 +3420,15 @@
         function updateDying() {
             dyingTimer--;
 
-            // --- メッセージの切り替え演出 ---
-            if (dyingTimer === 135) { // 120の少し前にフェードアウト開始
+            if (dyingTimer === 135) {
                 ui.msg.style.opacity = "0";
             }
             if (dyingTimer === 120) {
-                ui.msg.innerText = "GAME OVER";
-                ui.msg.style.fontSize = "calc(32px * var(--ui-scale, 1))"; // ★変更
-                ui.msg.style.opacity = "1";     // 再びフェードイン
+                // ★共通関数を使用し、ゲームオーバーだけ文字を少し大きく
+                showMessage("GAME OVER", 'red');
+                ui.msg.style.fontSize = "calc(32px * var(--ui-scale, 1))";
             }
 
-            // ゲームオーバー直前のフェードアウト
             if (dyingTimer === 20) {
                 ui.msg.style.opacity = "0";
             }
@@ -3302,7 +3449,7 @@
 
             if (dyingTimer <= 0) {
                 gameSpeed = 1.0;
-                ui.msg.style.display = 'none'; // ★次の画面に行く前にメッセージを隠す
+                ui.msg.style.display = 'none';
                 showGameOver();
             }
         }
@@ -3482,27 +3629,18 @@
             ui.shieldBar.style.width = shieldPercent + "%";
 
             AudioSys.playSE('damage');
-
             distortGrid(player.x, player.y, 50, 100);
 
             if (player.shield <= 0) {
                 gameState = 'DYING';
                 AudioSys.stopSE('warning');
 
-                // --- メッセージ表示の初期化 ---
-                ui.msg.style.fontSize = "calc(24px * var(--ui-scale, 1))"; // ★変更
+                // ★共通関数を使用（これだけ少し光を弱くする）
+                showMessage("SHIELD LOST", 'red');
                 ui.msg.style.opacity = "0";
-                ui.msg.innerText = "SHIELD LOST";
-                ui.msg.style.color = "#f00"; // 文字自体を濃い赤に
-
-                // 光を1層だけ、かつ距離を短く(5px〜8px程度)設定
                 ui.msg.style.textShadow = "0 0 5px #f00";
-
-                ui.msg.style.display = 'block';
-                // 次のフレームで不透明にしてフェードインさせる
                 setTimeout(() => { ui.msg.style.opacity = "1"; }, 10);
 
-                // --- 死亡時の状態リセット ---
                 player.invuln = 0;
                 player.laserTimer = 0;
                 gameSpeed = 0.1;
@@ -3907,6 +4045,65 @@
             // 攻撃や当たり判定を許可するマージン（画面外200pxまで）
             const ACTIVE_MARGIN = 200;
 
+            // ========================================================
+            // ★本来の撃破処理をまとめた関数
+            // ========================================================
+            const executeRealDeath = (e) => {
+                // ラスボス撃破演出
+                if (e.type === 'battleship') {
+                    gameSpeed = 0.05; // 完全撃破時にさらに超スローにする
+                    bullets = [];
+                    enemyBullets = [];
+                    createExplosion(e.x, e.y, '#fff', 200);
+
+                    // ==========================================
+                    // ★変更：大爆発で大量の装甲破片を画面の端まで吹き飛ばす
+                    // ==========================================
+                    // 数を60個に増量
+                    for (let i = 0; i < 60; i++) {
+                        const shardAngle = Math.random() * Math.PI * 2;
+                        // スローモーションに負けないよう、初速を以前の約2.5倍に強化
+                        const shardSpeed = (30 + Math.random() * 50) * SPEED_SCALE;
+
+                        // 中心の一点からではなく、少し広い範囲から発生させて広がり感を出す
+                        const offsetDist = Math.random() * 120;
+                        const startX = e.x + Math.cos(shardAngle) * offsetDist;
+                        const startY = e.y + Math.sin(shardAngle) * offsetDist;
+
+                        particles.push({
+                            x: startX,
+                            y: startY,
+                            vx: Math.cos(shardAngle) * shardSpeed,
+                            vy: Math.sin(shardAngle) * shardSpeed,
+                            color: Math.random() > 0.5 ? '#fff' : '#0ff',
+                            life: 1.5 + Math.random() , // 寿命を長くして画面外まで飛ばす
+                            size: 0.5 + Math.random() , // 少し大きめの破片も混ぜる
+                            isShard: true,
+                            shardType: 'tri',
+                            angle: shardAngle,
+                            rotV: (Math.random() - 0.5) * 1.2 // 回転も少し激しく
+                        });
+                    }
+
+                    if (typeof AudioSys !== 'undefined') {
+                        AudioSys.playSE('explode_large');
+                        if (AudioSys.bgmEl) {
+                            AudioSys.bgmEl.pause();
+                        }
+                        AudioSys.playBGM('clear');
+                    }
+                }
+
+                // --- 分裂処理の修正 ---
+                if ((e.type === 'asteroid' || e.type === 'bubble') && e.size < 3 && !e.noSplit) {
+                    for (let i = 0; i < 2; i++) {
+                        spawnEnemy(e.x, e.y, e.type, e.size + 1, e.variant);
+                    }
+                }
+
+                destroyEnemy(e);
+            };
+
             enemies.forEach(e => {
                 // --- 画面内（＋マージン）にいるかどうかの判定 ---
                 const inActiveRange = (
@@ -3918,6 +4115,58 @@
 
                 // 敵のプロパティとしてフラグを保存（プレイヤーの弾との判定に使うため）
                 e.inActiveRange = inActiveRange;
+
+                // ========================================================
+                // ★ボスの死亡アニメーション（縮小＆誘爆＆スピン）
+                // ========================================================
+                if (e.isDying) {
+                    e.dyingTimer -= 1;
+                    e.scale *= 0.98;
+                    e.angle += 0.15;
+                    e.x += (Math.random() - 0.5) * 5;
+                    e.y += (Math.random() - 0.5) * 5;
+
+                    // 毎フレーム 40% の確率で誘爆
+                    if (Math.random() < 0.4) {
+                        const ox = (Math.random() - 0.5) * 150 * e.scale;
+                        const oy = (Math.random() - 0.5) * 150 * e.scale;
+                        const sparkColor = Math.random() > 0.5 ? '#fff' : (e.color || '#f00');
+                        const expSize = 3 + Math.random() * 5;
+
+                        createExplosion(e.x + ox, e.y + oy, sparkColor, expSize);
+                        rings.push({ x: e.x + ox, y: e.y + oy, r: expSize, color: sparkColor, life: 0.5 });
+
+                        // ==========================================
+                        // ★追加：既存の isShard 仕組みを使って破片を飛ばす
+                        // ==========================================
+                        if (Math.random() < 0.3) { // 30%の確率で破片も混ざる
+                            const shardAngle = Math.random() * Math.PI * 2;
+                            const shardSpeed = 2 + Math.random() * 4;
+                            particles.push({
+                                x: e.x + ox, y: e.y + oy,
+                                vx: Math.cos(shardAngle) * shardSpeed,
+                                vy: Math.sin(shardAngle) * shardSpeed,
+                                color: sparkColor,
+                                life: 1.0 + Math.random() * 0.5,
+                                size: 0.5 + Math.random(), // 大きさ
+                                isShard: true,      // 破片フラグ
+                                shardType: 'tri',   // ★既存の三角形描画を呼び出す
+                                angle: shardAngle,
+                                rotV: (Math.random() - 0.5) * 0.4 // クルクル回る
+                            });
+                        }
+
+                        if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_small');
+                    }
+
+                    if (e.dyingTimer <= 0) {
+                        e.isDying = false;
+                        e.isDead = true;
+                        executeRealDeath(e);
+                    }
+                    return;
+                }
+                // ========================================================
 
                 const isTriangle = (e.type === 'triangle');
 
@@ -3954,11 +4203,7 @@
                     }
                 }
 
-                // ========================================================
-                // ★根本解決ロジック：
-                // ボスや巨大戦艦は質量が大きいため、雑魚敵との重なり反発処理を
-                // 受けないように除外する（これで出現後のガクつきが消滅します）
-                // ========================================================
+                // ボスや巨大戦艦は質量が大きいため、雑魚敵との重なり反発処理を受けないように除外する
                 if (e.type !== 'boss' && e.type !== 'battleship') {
                     applySeparation(e);
                 }
@@ -3976,37 +4221,35 @@
                     checkSatelliteCollision(e);
                 }
 
-                // --- 撃破判定 ---
-                if (e.hp <= 0) {
-                    // ラスボス撃破演出
-                    if (e.type === 'battleship') {
-                        gameSpeed = 0.05;
-                        bullets = [];
+                // ========================================================
+                // ★変更：撃破判定のトリガー
+                // ========================================================
+                if (e.hp <= 0 && !e.isDying && !e.isDead) {
+                    if (e.type === 'boss' || e.type === 'battleship') {
+                        // ボス級は即死させず、死亡演出ステートへ
+                        e.isDying = true;
+                        e.dyingTimer = 90; // 約1.5秒（90フレーム）かけて断末魔
+                        e.hp = 1;          // 削除されないようにHPを維持
+
+                        // ★追加：爆発開始の瞬間から全体をスローモーションにする
+                        gameSpeed = 0.25;
+
+                        // ボスが死にかけたら、安全のために敵弾をすべて消す
                         enemyBullets = [];
-                        createExplosion(e.x, e.y, '#fff', 200);
-                        if (typeof AudioSys !== 'undefined') {
-                            AudioSys.playSE('explode_large');
 
-                            // ★ここにBGM切り替えを追加
-                            // 一旦BGMを止めてから勝利BGMを再生
-                            if (AudioSys.bgmEl) {
-                                AudioSys.bgmEl.pause();
-                            }
-                            AudioSys.playBGM('clear'); 
-                        }
+                        // 演出開始時の音と画面揺れ
+                        if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_medium');
+                        distortGrid(e.x, e.y, 100, 200);
+                    } else {
+                        // 雑魚敵は今まで通り即時撃破
+                        e.isDead = true;
+                        executeRealDeath(e);
                     }
-
-                    // --- 分裂処理の修正 ---
-                    if ((e.type === 'asteroid' || e.type === 'bubble') && e.size < 3 && !e.noSplit) {
-                        for (let i = 0; i < 2; i++) {
-                            spawnEnemy(e.x, e.y, e.type, e.size + 1, e.variant);
-                        }
-                    }
-
-                    destroyEnemy(e);
                 }
             });
-            enemies = enemies.filter(e => e.hp > 0);
+
+            // isDeadフラグが立ったものだけを配列から削除
+            enemies = enemies.filter(e => !e.isDead);
         }
 
         function updateFormationMovement(e) {
@@ -4341,6 +4584,8 @@
                     }
                 });
                 wormholes.forEach(w => w.life = 0);
+
+
             }
             // --- 通常の敵の撃破 ---
             else {
@@ -4436,7 +4681,7 @@
                         x: partX, y: partY,
                         vx: pvx, vy: pvy,
                         color: e.color || '#f05',
-                        life: 2,           // 粘り強く残す
+                        life: 1.5,           // 粘り強く残す
                         size: e.scale || 1.0,
                         isShard: true,
                         shardType: 'eclipseBit', // ★Eclipse専用ビットフラグ
@@ -6990,7 +7235,8 @@
                         ctx.restore();
                     }
                     else if (p.shardType === 'tri') {
-                        // ...（既存のTriangle描画）
+                        ctx.lineWidth = 1.0 / s;
+
                         // --- ランダムに生成された三角形ワイヤーフレーム ---
                         ctx.beginPath();
                         if (p.vertices && p.vertices.length === 3) {
@@ -9451,10 +9697,9 @@
                     ctx.fillRect(startX, topY, boxW, boxH);
 
                     ctx.fillStyle = bossColor;
+                    // ★変更：左右の線を消し、上下の線だけを描画
                     ctx.fillRect(startX, topY, boxW, 2);
                     ctx.fillRect(startX, topY + boxH, boxW, 2);
-                    ctx.fillRect(startX, topY, 3 * s, boxH); // 線の太さもスケール
-                    ctx.fillRect(startX + boxW - 3 * s, topY, 3 * s, boxH);
 
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
@@ -9485,7 +9730,9 @@
                     ctx.fillRect(x - boxW, y, boxW, boxH);
 
                     ctx.fillStyle = bossColor;
-                    ctx.fillRect(x - boxW, y, 3 * s, boxH);
+                    // ★変更：縦画面も上下の線だけにする
+                    ctx.fillRect(x - boxW, y, boxW, 2);
+                    ctx.fillRect(x - boxW, y + boxH, boxW, 2);
 
                     ctx.textAlign = "right";
                     ctx.textBaseline = "top";
