@@ -3850,7 +3850,7 @@
                             }
                         }
 
-                        // ★修正2: ボス戦闘中も雑魚を出し続ける
+                        // ボス戦闘中も雑魚を出し続ける
                         const bossExists = enemies.some(e => e.type === 'boss');
                         if (spawnedCount < enemiesToSpawn || bossExists) {
                             if (Math.random() < 0.15) {
@@ -3864,13 +3864,32 @@
                     }
                     if (w.life <= 0) w.active = false;
 
-                    // 吸い込み効果
+                    // プレイヤーの吸い込み効果
                     const dx = player.x - w.x; const dy = player.y - w.y;
                     const d = Math.hypot(dx, dy) || 0.01;
                     if (d < 180) {
                         const f = 500 / (d + 1);
                         player.x += (dx / d) * f * 0.01 * SPEED_SCALE * gameSpeed;
                         player.y += (dy / d) * f * 0.01 * SPEED_SCALE * gameSpeed;
+                    }
+
+                    // ==========================================
+                    // ★追加：ワームホールによる背景グリッドの持続的な歪み（重力場）
+                    // ==========================================
+                    // 毎フレームやると重い＆歪みすぎるので2フレームに1回実行
+                    if (frame % 2 === 0 && typeof distortGrid === 'function') {
+
+                        // マイナスの力を与えることで、内側に吸い込む「引力」を作る
+                        // 少しSin波を混ぜて、穴が脈動している（ウネウネしている）ように見せる
+                        let pullForce = -15 + Math.sin(frame * 0.1) * 5;
+
+                        // 消滅間近（残り60フレーム以下）は徐々に引力を弱めて空間を元に戻す
+                        if (w.life < 60) {
+                            pullForce *= (Math.max(0, w.life) / 60);
+                        }
+
+                        // 半径250pxのグリッドを中心へ引き寄せる
+                        distortGrid(w.x, w.y, pullForce, 250);
                     }
                 }
             });
@@ -7525,15 +7544,17 @@
             });
             ctx.globalAlpha = 1.0;
 
-            // --- グリッド描画 (軽量化版) ---
+            // --- グリッド描画 ---
             ctx.save();
             ctx.beginPath();
-            ctx.rect(0, 0, worldSize, worldSize);
+
+            // ==========================================
+            // ★修正：クリッピング領域を WALL_MARGIN（枠線）の内側に設定
+            // ==========================================
+            ctx.rect(WALL_MARGIN, WALL_MARGIN, worldSize - WALL_MARGIN * 2, worldSize - WALL_MARGIN * 2);
             ctx.clip();
 
-            // shadowBlurを廃止し、加算合成(lighter)でネオン感を出す
             ctx.globalCompositeOperation = 'lighter';
-            //ctx.strokeStyle = 'rgba(0, 150, 255, 0.4)'; // 少し濃いめに
 
             const stageColors = {
                 1: 'rgba(0, 200, 255, 0.4)', // シアン
@@ -7545,22 +7566,34 @@
             };
 
             ctx.strokeStyle = stageColors[stage] || 'rgba(0, 150, 255, 0.4)';
-
-
-            ctx.lineWidth = 1.5; // 少し太めに
+            ctx.lineWidth = 1.5;
 
             ctx.beginPath();
             const viewW = width / cameraScale;
             const viewH = height / cameraScale;
 
-            for (let i = 0; i < gridPoints.length; i++) {
-                for (let j = 0; j < gridPoints[i].length; j++) {
+            const buffer = 3;
+            const startX = Math.max(0, Math.floor(camera.x / GRID_SPACING) - buffer);
+            const endX = Math.min(gridPoints.length - 1, Math.ceil((camera.x + viewW) / GRID_SPACING) + buffer);
+            const startY = Math.max(0, Math.floor(camera.y / GRID_SPACING) - buffer);
+            const endY = Math.min(gridPoints[0].length - 1, Math.ceil((camera.y + viewH) / GRID_SPACING) + buffer);
+
+            for (let i = startX; i <= endX; i++) {
+                for (let j = startY; j <= endY; j++) {
                     const p = gridPoints[i][j];
-                    if (!p || p.x < camera.x - 50 || p.x > camera.x + viewW + 50 || p.y < camera.y - 50 || p.y > camera.y + viewH + 50) continue;
-                    if (i > 0 && gridPoints[i - 1][j]) { ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y); ctx.lineTo(p.x, p.y); }
-                    if (j > 0 && gridPoints[i][j - 1]) { ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y); ctx.lineTo(p.x, p.y); }
+                    if (!p) continue;
+
+                    if (i > startX && gridPoints[i - 1][j]) {
+                        ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y);
+                        ctx.lineTo(p.x, p.y);
+                    }
+                    if (j > startY && gridPoints[i][j - 1]) {
+                        ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y);
+                        ctx.lineTo(p.x, p.y);
+                    }
                 }
             }
+
             ctx.stroke();
             ctx.restore();
         }
@@ -7585,8 +7618,9 @@
                     grad.addColorStop(0, '#333'); grad.addColorStop(0.2, '#000'); grad.addColorStop(0.8, '#000'); grad.addColorStop(1, '#0ff');
                     ctx.fillStyle = grad;
                     ctx.beginPath(); ctx.arc(0, 0, 20 + Math.sin(frame * 0.1) * 2, 0, Math.PI * 2); ctx.fill();
-                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)'; ctx.lineWidth = 1;
-                    ctx.beginPath(); ctx.arc(0, 0, 35 + Math.cos(frame * 0.05) * 5, 0, Math.PI * 2); ctx.stroke();
+
+                    // 外側の枠線を描画していた部分を削除
+
                     ctx.globalCompositeOperation = 'lighter';
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
                     ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(5, 5); ctx.stroke();
