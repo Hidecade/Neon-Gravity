@@ -3694,8 +3694,10 @@
             if (!Number.isFinite(player.x)) { player.x = worldSize / 2; player.y = worldSize / 2; player.vx = 0; player.vy = 0; }
 
             // --- コントロール入力と移動 ---
-            let mx = input.keys['ArrowLeft'] ? -1 : input.keys['ArrowRight'] ? 1 : input.move.x;
-            let my = input.keys['ArrowUp'] ? -1 : input.keys['ArrowDown'] ? 1 : input.move.y;
+            // ★ WASDキーに対応 (W=上, A=左, S=下, D=右)
+            let mx = input.keys['KeyA'] ? -1 : input.keys['KeyD'] ? 1 : input.move.x;
+            let my = input.keys['KeyW'] ? -1 : input.keys['KeyS'] ? 1 : input.move.y;
+
             const mag = Math.hypot(mx, my); if (mag > 1) { mx /= mag; my /= mag; }
             player.vx = mx * PLAYER_BASE_SPEED * SPEED_SCALE * gameSpeed;
             player.vy = my * PLAYER_BASE_SPEED * SPEED_SCALE * gameSpeed;
@@ -3714,14 +3716,21 @@
             if (player.x < WALL_MARGIN) player.x = WALL_MARGIN; if (player.x > worldSize - WALL_MARGIN) player.x = worldSize - WALL_MARGIN;
             if (player.y < WALL_MARGIN) player.y = WALL_MARGIN; if (player.y > worldSize - WALL_MARGIN) player.y = worldSize - WALL_MARGIN;
 
-
-
             // --- 向きと射撃のロジック修正 ---
+            // ★ 矢印キー（エイム）の入力取得
+            let aimX = input.keys['ArrowLeft'] ? -1 : input.keys['ArrowRight'] ? 1 : 0;
+            let aimY = input.keys['ArrowUp'] ? -1 : input.keys['ArrowDown'] ? 1 : 0;
+            let isArrowAiming = (aimX !== 0 || aimY !== 0);
+
             // 1. 右スティック（エイム）が動いている場合はそちらを優先
             if (input.aim.active) {
                 player.angle = Math.atan2(input.aim.y, input.aim.x);
             }
-            // 2. 移動している場合は、移動方向を向く
+            // 2. ★ 矢印キーで狙っている場合、その方向を向く
+            else if (isArrowAiming) {
+                player.angle = Math.atan2(aimY, aimX);
+            }
+            // 3. 移動している場合は、移動方向を向く
             else if (Math.hypot(mx, my) > 0.1) {
                 player.angle = Math.atan2(my, mx);
             }
@@ -3729,8 +3738,10 @@
             // ショット間隔（レーザー時は高速）
             const fireInterval = player.laserTimer > 0 ? 4 : 6;
 
-            // ★ Aボタン（input.padAPressed）または スペース/Zキー で射撃
-            if ((input.aim.active || input.keys['Space'] || input.keys['KeyZ'] || input.padAPressed) && frame % fireInterval === 0) {
+            // ★ 矢印キー(Arrows) または 右スティック または Space/Z/Aボタン で射撃
+            let isFiring = input.aim.active || isArrowAiming || input.keys['Space'] || input.keys['KeyZ'] || input.padAPressed;
+
+            if (isFiring && frame % fireInterval === 0) {
                 fire();
             }
 
@@ -5019,15 +5030,26 @@
 
                 // checkPlayerCollision(e) 内の無敵処理部分
                 if (player.invuln > 0) {
-                    // ★修正: 戦艦も「即死しない」グループに追加
                     if (e.type === 'boss' || e.type === 'battleship' || e.type === 'dragon' || e.type === 'asteroid') {
-                        // ボスや岩へのダメージ
-                        e.hp -= 0.8;
+
+                        // ★修正1：ダメージを大幅に下げる (0.8 -> 0.15)
+                        e.hp -= 0.15;
+
+                        // ★修正2：ボス級に張り付いている間は無敵時間を早く消費する (特攻ペナルティ)
+                        if (e.type === 'boss' || e.type === 'battleship') {
+                            player.invuln -= 1; // 通常の1F減少に加え、さらに減る（実質2倍の速さで切れる）
+
+                            // ★修正3：めり込みすぎないよう、プレイヤーをボスの外側へ少し反発させる
+                            const pushAngle = Math.atan2(player.y - e.y, player.x - e.x);
+                            player.x += Math.cos(pushAngle) * 3;
+                            player.y += Math.sin(pushAngle) * 3;
+                        }
 
                         // ヒットバック演出
                         if (e.type === 'boss' || e.type === 'battleship') e.flashTimer = 5;
 
-                        if (frame % 2 === 0) {
+                        // 火花演出は少し間引いて描画負荷を下げる
+                        if (frame % 4 === 0) {
                             createExplosion(e.x, e.y, '#ff0', 2);
                             if (typeof AudioSys !== 'undefined') AudioSys.playSE('boss_hit');
                         }
@@ -10654,12 +10676,12 @@
 
         window.addEventListener('keydown', e => {
             if (document.activeElement === document.getElementById('player-name-input')) return;
-            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyZ', 'KeyX'].includes(e.code)) e.preventDefault();
+
+            // ★ 配列の中に 'KeyW', 'KeyA', 'KeyS', 'KeyD' を追加
+            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyZ', 'KeyX', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) e.preventDefault();
+
             input.keys[e.code] = true;
 
-            // ==========================================
-            // ★追加：HOWTO画面を閉じた直後は、ゲーム開始（Spaceキー）をブロックする
-            // ==========================================
             if (resetTitleIdle()) return;
 
             if (gameState === 'TITLE' && e.code === 'Space') startGame();
@@ -10787,7 +10809,8 @@
                 input.move.x = moveX;
                 input.move.y = moveY;
             } else {
-                if (input.move.active && !input.keys['ArrowLeft']) {
+                // ★ 修正：WASDキーがどれも押されていない場合のみスティック入力をリセットする
+                if (input.move.active && !input.keys['KeyA'] && !input.keys['KeyD'] && !input.keys['KeyW'] && !input.keys['KeyS']) {
                     input.move.x = 0; input.move.y = 0; input.move.active = false;
                 }
             }
