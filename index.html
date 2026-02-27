@@ -3583,7 +3583,6 @@
             if (gameState === 'TITLE') {
                 return false;
             } else if (gameState === 'HOWTO') {
-                hideHowTo();
                 return true;
             }
             return false;
@@ -10496,22 +10495,9 @@
 
             if (!activeGp) return;
 
-            // ==========================================
-            // ★修正：HOWTO画面を閉じたフレームは、その後の決定ボタンなどを無効化する
-            // ==========================================
-            if (activeGp.buttons.some(b => b.pressed) || activeGp.axes.some(a => Math.abs(a) > 0.2)) {
-                if (resetTitleIdle()) {
-                    input.padAPressed = activeGp.buttons[0]?.pressed;
-                    return;
-                }
-            }
-
-            // --- プレイ中のUI非表示処理 ---
-            if (gameState === 'PLAYING') {
-                if (ui.controls.style.display !== 'none') ui.controls.style.display = 'none';
-                if (ui.pauseBtn.style.display !== 'none') ui.pauseBtn.style.display = 'none';
-            }
-
+            // ボタン・スティックの状態取得
+            const aBtn = activeGp.buttons[0]?.pressed; // Aボタン
+            const startBtn = activeGp.buttons[9]?.pressed; // START
             const moveX = activeGp.axes[0];
             const moveY = activeGp.axes[1];
 
@@ -10519,43 +10505,65 @@
             const dpadDown = activeGp.buttons[13]?.pressed || moveY > 0.5;
             const dpadLeft = activeGp.buttons[14]?.pressed || moveX < -0.5;
             const dpadRight = activeGp.buttons[15]?.pressed || moveX > 0.5;
-            const aBtn = activeGp.buttons[0]?.pressed; // Aボタン
-            const startBtn = activeGp.buttons[9]?.pressed; // START/OPTIONS ボタン
+
+            // --- プレイ中のUI表示制御 ---
+            if (gameState === 'PLAYING') {
+                if (ui.controls.style.display !== 'none') ui.controls.style.display = 'none';
+                if (ui.pauseBtn.style.display !== 'none') ui.pauseBtn.style.display = 'none';
+            }
 
             // --- STARTボタンでポーズ切り替え ---
             if (startBtn && !input.padStartPressed) {
-                if (gameState === 'PLAYING') {
-                    setPaused(true);
-                } else if (gameState === 'PAUSED') {
-                    resumeAction();
-                }
+                if (gameState === 'PLAYING') setPaused(true);
+                else if (gameState === 'PAUSED') resumeAction();
             }
             input.padStartPressed = startBtn;
 
-            // --- メニュー画面での操作 ---
+            // ==========================================
+            // メニュー画面・HOWTO画面での操作（PLAYING以外）
+            // ==========================================
             if (gameState !== 'PLAYING') {
+
+                // 1. 十字キーでの選択移動
                 if ((dpadUp || dpadDown || dpadLeft || dpadRight) && !input.padDirPressed) {
                     if (dpadUp || dpadLeft) selectedMenuIndex--;
                     if (dpadDown || dpadRight) selectedMenuIndex++;
                     updateMenuSelectionUI();
                 }
+                input.padDirPressed = (dpadUp || dpadDown || dpadLeft || dpadRight);
 
-                if (aBtn && !input.padAPressed) {
-                    if (currentMenuButtons[selectedMenuIndex]) {
-                        currentMenuButtons[selectedMenuIndex].click(); // Aボタンで決定
+                // 2. Aボタンでの決定処理
+                if (aBtn) {
+                    if (!input.padAPressed) {
+                        // --- ここが修正の肝 ---
+                        if (gameState === 'HOWTO') {
+                            // HOWTO画面なら閉じる処理だけを行う
+                            hideHowTo();
+                        } else if (gameState === 'TITLE' || gameState === 'GAMEOVER_UI' || gameState === 'OST' || gameState === 'STORY') {
+                            // タイトルやその他のメニューなら、選択中のボタンをクリック
+                            if (currentMenuButtons[selectedMenuIndex]) {
+                                currentMenuButtons[selectedMenuIndex].click();
+                            }
+                        }
+
+                        input.padAPressed = true; // 押しっぱなし防止
+
                         setTimeout(() => {
                             if (window.refreshMenuButtons) window.refreshMenuButtons(false);
                         }, 100);
                     }
+                } else {
+                    // Aボタンを離したらフラグをリセット
+                    input.padAPressed = false;
                 }
 
-                input.padDirPressed = (dpadUp || dpadDown || dpadLeft || dpadRight);
-                input.padAPressed = aBtn;
-                return; // メニュー画面中は以下の移動・射撃処理をスキップ
+                return; // メニュー操作時はここで処理終了
             }
 
-            // --- ここからプレイ中の操作（Aボタンを有効化） ---
-            input.padAPressed = aBtn; // これにより update 関数内で射撃判定が通るようになります
+            // ==========================================
+            // プレイ中の操作（PLAYING時）
+            // ==========================================
+            input.padAPressed = aBtn; // ショット連射用
 
             const moveDeadzone = 0.2;
             if (Math.abs(moveX) > moveDeadzone || Math.abs(moveY) > moveDeadzone) {
@@ -10580,7 +10588,7 @@
             }
 
             const bombBtn = activeGp.buttons[2]?.pressed || activeGp.buttons[5]?.pressed || activeGp.buttons[7]?.pressed;
-            if (bombBtn && !input.padBombPressed && gameState === 'PLAYING') {
+            if (bombBtn && !input.padBombPressed) {
                 launchSatellites();
             }
             input.padBombPressed = bombBtn;
