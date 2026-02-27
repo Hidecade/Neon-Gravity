@@ -2307,9 +2307,6 @@
             noiseBuffer: null,
             activeNodes: [],
             bgmFadeInterval: null,
-            bgmSource: null,
-            analyser: null,
-            beatCooldown: 0, // 連続反応を防ぐタイマー
 
             init() {
                 if (!this.ctx) {
@@ -2333,48 +2330,6 @@
                         }
                     });
                 }
-
-                // ★修正：ローカルファイル(file://)で実行している場合はアナライザーを接続しない（強制ミュート回避）
-                if (window.location.protocol !== 'file:' && this.ctx && this.bgmEl && !this.analyser) {
-                    try {
-                        this.bgmSource = this.ctx.createMediaElementSource(this.bgmEl);
-                        this.analyser = this.ctx.createAnalyser();
-                        this.analyser.fftSize = 256; // 解析の解像度
-                        this.bgmSource.connect(this.analyser);
-                        this.analyser.connect(this.ctx.destination);
-                    } catch (e) {
-                        console.warn("Analyser setup failed.", e);
-                    }
-                }
-            },
-
-            // ★追加：バスドラム（低音）のビートを検出する関数
-            detectBeat() {
-                if (!this.analyser || this.ctx.state !== 'running') return false;
-
-                const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
-                this.analyser.getByteFrequencyData(dataArray);
-
-                // 低音域（0〜4番目のデータ）の平均音量を計算
-                let sum = 0;
-                const lowFreqBins = 5;
-                for (let i = 0; i < lowFreqBins; i++) {
-                    sum += dataArray[i];
-                }
-                const lowAverage = sum / lowFreqBins;
-
-                // クールダウンの処理
-                if (this.beatCooldown > 0) {
-                    this.beatCooldown--;
-                }
-
-                // 音量が閾値（200〜240あたり、BGMによって調整）を超えたらビートと判定
-                const THRESHOLD = 210;
-                if (lowAverage > THRESHOLD && this.beatCooldown <= 0) {
-                    this.beatCooldown = 20; // 連続で歪まないように20フレーム休む
-                    return true;
-                }
-                return false;
             },
 
             async resume() {
