@@ -2342,21 +2342,34 @@
             },
 
             async resume() {
-                if (!this.ctx) return;
+                // コンテキストがまだ無い場合は初期化する
+                if (!this.ctx) {
+                    this.init();
+                    return;
+                }
 
-                // すでに running なら何もしない
+                // すでに正常に動いている場合は何もしない
                 if (this.ctx.state === 'running') return;
 
                 try {
-                    // iOS safari は await を嫌うことがあるので、Promiseチェーンで確実に拾う
                     await this.ctx.resume();
 
-                    // それでも回復しない場合（iOSのバグや厳しい制限）は、AudioContext自体を作り直す荒技を入れる
+                    // resumeしても動かない場合は強制的に init(再生成) する
                     if (this.ctx.state !== 'running') {
-                        console.warn("AudioContext remains suspended. Re-creating...");
+                        console.warn("AudioContext remains suspended. Forcing Re-Init...");
+
+                        // 古いコンテキストを破棄（エラーは握り潰す）
+                        try { await this.ctx.close(); } catch (e) { }
+
+                        // 新しい AudioContext を作り直す
                         const AC = window.AudioContext || window.webkitAudioContext;
                         this.ctx = new AC();
-                        this.createNoise(); // ノイズバッファも再作成
+
+                        // 爆発音などに使うノイズバッファも新しいコンテキストで再生成する
+                        this.createNoise();
+
+                        // 生成直後にユーザーアクションのコンテキスト内で即座に起動させる
+                        await this.ctx.resume();
                     }
                 } catch (e) {
                     console.log("AudioContext resume failed:", e);
