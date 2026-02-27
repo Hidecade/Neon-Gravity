@@ -1681,6 +1681,7 @@
             PHANTOM: 2.0,   // ★追加: ステルス時の基本速度。突進時は別計算
             ECLIPSE: 1.5,
             JELLYFISH: 2.5,     // ★追加: クラゲ（基本は遅いが脈動で加速する）
+            SENTINEL: 4.0,
         };
 
         const DRAGON_ACCELERATION = 0.2; // ドラゴンのプレイヤー追尾加速力
@@ -1696,7 +1697,8 @@
             JELLYFISH: 18,
             ECLIPSE: 40,    // ★追加: 巨大な当たり判定
             BULLET: 8,          // 赤い敵弾の判定サイズ
-            BOSS: 45
+            BOSS: 45,
+            SENTINEL: 15,
         };
 
         // --- 敵の撃破スコア設定テーブル ---
@@ -1719,6 +1721,7 @@
             triangle: 150,     // フォーメーション機
             tadpole: 100,      // 高速移動機（基本雑魚）
             jellyfish: 180,
+            sentinel: 150,
 
             // 特殊判定がない場合のフォールバック（ワームホールなど）
             default: 100
@@ -2339,8 +2342,24 @@
             },
 
             async resume() {
-                if (this.ctx && this.ctx.state === 'suspended') {
-                    await this.ctx.resume().catch(e => console.log("Resume blocked"));
+                if (!this.ctx) return;
+
+                // すでに running なら何もしない
+                if (this.ctx.state === 'running') return;
+
+                try {
+                    // iOS safari は await を嫌うことがあるので、Promiseチェーンで確実に拾う
+                    await this.ctx.resume();
+
+                    // それでも回復しない場合（iOSのバグや厳しい制限）は、AudioContext自体を作り直す荒技を入れる
+                    if (this.ctx.state !== 'running') {
+                        console.warn("AudioContext remains suspended. Re-creating...");
+                        const AC = window.AudioContext || window.webkitAudioContext;
+                        this.ctx = new AC();
+                        this.createNoise(); // ノイズバッファも再作成
+                    }
+                } catch (e) {
+                    console.log("AudioContext resume failed:", e);
                 }
             },
 
@@ -2730,7 +2749,7 @@
                 if (backBtn) currentMenuButtons.push(backBtn);
             } else if (gameState === 'HOWTO') { // これを追加
                 const howtoOverlay = document.getElementById('howto-overlay');
-           
+
             } else if (gameState === 'ENDING') {
                 const endBtns = document.querySelectorAll('#ending-msg .menu-btn');
                 endBtns.forEach(btn => currentMenuButtons.push(btn));
@@ -3404,7 +3423,7 @@
             gameState = 'TITLE';
 
             AudioSys.fadeOutBGM().then(() => {
-                AudioSys.currentSrc = null; 
+                AudioSys.currentSrc = null;
             });
 
             ui.ost.style.display = 'none';
@@ -4549,9 +4568,26 @@
                     chargeLevel: 0
                 });
                 spawnedCount++;
+            } else if (type === 'sentinel') {
+                enemies.push({
+                    x: x, y: y, vx: 0, vy: 0,
+                    hp: 3 + Math.floor(hpMag),
+                    speed: ENEMY_SPEEDS.SENTINEL * spd * stageMag,
+                    color: '#ff3366', // 鮮やかなネオンピンク
+                    type: 'sentinel',
+                    angle: 0,
+                    drop: dropType,
+                    scale: 1.1,
+                    timer: Math.random() * 100, // 個体ごとにタイミングをずらす
+                    orbitDist: 200 + Math.random() * 100, // プレイヤーとの距離
+                    orbitDir: Math.random() > 0.5 ? 1 : -1, // 右回りか左回りか
+                    state: 'orbit' // orbit: 周回, scan: 照準, fire: 発射
+                });
+                spawnedCount++;
             }
-
         }
+
+            
 
         function updateEnemies() {
             // 現在の表示範囲（カメラ位置＋画面サイズ）
@@ -4709,6 +4745,7 @@
                         case 'phantom': updatePhantomAI(e); break;
                         case 'eclipse': updateEclipseAI(e); break;
                         case 'jellyfish': updateJellyfishAI(e); break;
+                        case 'sentinel': updateSentinelAI(e); break;
                         case 'fighter': updateFighterJetAI(e); break;
                         case 'boss':
                             if (stage === 9) updateBossSpecialAI(e);
@@ -6028,6 +6065,71 @@
                 }
             }
         }
+
+        function updateSentinelAI(e) {
+            e.timer += gameSpeed;
+            const cycleTime = e.timer % 240;
+
+            let targetAngle = e.angle; // 旋回する目標の角度
+
+            if (cycleTime < 150) {
+                // --- 周回モード (Orbit) ---
+                e.state = 'orbit';
+                const currentAngle = Math.atan2(e.y - player.y, e.x - player.x);
+                const nextAngle = currentAngle + (0.02 * e.orbitDir * gameSpeed);
+
+                const tx = player.x + Math.cos(nextAngle) * e.orbitDist;
+                const ty = player.y + Math.sin(nextAngle) * e.orbitDist;
+
+                // ★修正：0.9 だとワープするので、0.05 に下げて滑らかに追従させる
+                e.vx = (tx - e.x) * 0.1;
+                e.vy = (ty - e.y) * 0.1;
+
+                // 目標角度：進行方向を向く
+                targetAngle = Math.atan2(e.vy, e.vx);
+
+            } else if (cycleTime < 210) {
+                // --- スキャンモード (Scan) ---
+                e.state = 'scan';
+                e.vx *= 0.9; // その場で停止して狙う
+                e.vy *= 0.9;
+
+                // 目標角度：プレイヤー（自機）の方を向く
+                targetAngle = Math.atan2(player.y - e.y, player.x - e.x);
+
+            } else if (cycleTime >= 210 && cycleTime < 220) {
+                // --- 発射 (Fire) ---
+                // 目標角度：発射中もプレイヤーの方を向いたまま
+                targetAngle = Math.atan2(player.y - e.y, player.x - e.x);
+
+                if (e.state !== 'fire') {
+                    e.state = 'fire';
+                    // 高速弾を発射
+                    const bSpd = 22 * SPEED_SCALE;
+                    enemyBullets.push({
+                        x: e.x, y: e.y,
+                        vx: Math.cos(e.angle) * bSpd, // 現在向いている方向に撃つ
+                        vy: Math.sin(e.angle) * bSpd,
+                        life: 180, color: e.color, isLaserMissile: true
+                    });
+                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
+                    if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 30, 80);
+                }
+            }
+
+            // --- 向きの滑らかな旋回処理 ---
+            let diff = targetAngle - e.angle;
+            while (diff <= -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+
+            // スキャン時は素早く自機を向き、移動中は自然な速度で向く
+            const turnSpeed = (e.state === 'scan' || e.state === 'fire') ? 0.15 : 0.08;
+            e.angle += diff * turnSpeed * gameSpeed;
+
+            e.x += e.vx * gameSpeed;
+            e.y += e.vy * gameSpeed;
+        }
+
 
         // ==========================================
         // BOSS
@@ -7468,6 +7570,7 @@
                 else if (e.type === 'phantom') drawPhantomEnemy(ctx, e);
                 else if (e.type === 'eclipse') drawEclipseEnemy(ctx, e);
                 else if (e.type === 'jellyfish') drawJellyfishEnemy(ctx, e);
+                else if (e.type === 'sentinel') drawSentinelEnemy(ctx, e);
                 else if (e.type === 'fighter') drawFighterJet(ctx, e);
 
                 else if (e.type === 'boss') drawBossEnemy(ctx, e);
@@ -9254,6 +9357,71 @@
             ctx.restore();
         }
 
+        function drawSentinelEnemy(ctx, e) {
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            ctx.rotate(e.angle);
+            const s = G_SCALE * e.scale;
+            ctx.scale(s, s);
+
+            ctx.globalCompositeOperation = 'lighter';
+            const isScan = (e.state === 'scan');
+            const color = isScan && frame % 4 < 2 ? '#fff' : e.color;
+
+            // --- 1. 本体（六角形のセンサーポッド） ---
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = color;
+
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const ang = (Math.PI * 2 / 6) * i;
+                const r = i % 2 === 0 ? 15 : 10;
+                ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // --- 2. 左右のスタビライザー ---
+            ctx.beginPath();
+            ctx.moveTo(0, 8); ctx.lineTo(-15, 15);
+            ctx.moveTo(0, -8); ctx.lineTo(-15, -15);
+            ctx.stroke();
+
+            // --- 3. スキャン演出（自機までの長さに制限） ---
+            if (isScan) {
+                const scanPulse = Math.sin(frame * 0.5) * 0.5 + 0.5;
+
+                // ★ 自機までの実際の距離を計算
+                const distToPlayer = Math.hypot(player.x - e.x, player.y - e.y);
+
+                // ★ スケール(s)で割ることで、描画上の長さを正確に合わせる
+                const lineLength = distToPlayer / s;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.setLineDash([5, 10]);
+                ctx.lineDashOffset = -frame * 2; // レーザーが流れるアニメーション
+                ctx.strokeStyle = `rgba(255, 50, 100, ${0.3 + scanPulse * 0.4})`;
+
+                ctx.moveTo(15, 0);
+                ctx.lineTo(lineLength, 0); // 自機の位置でピタッと止まる
+                ctx.stroke();
+
+   
+
+                ctx.restore();
+            }
+
+            // --- 4. コア ---
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(5, 0, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
 
         function drawBossEnemy(ctx, e) {
             ctx.save();
@@ -10379,18 +10547,18 @@
             if (gameState !== 'PAUSED' && AudioSys) AudioSys.resumeBGM();
         });
 
-        // ポーズ解除の処理
-        const resumeAction = async (e) => {
+        // 修正後: 同期的に呼び出し、Promiseの完了を待たずにUIを戻す
+        const resumeAction = (e) => {
             if (e) e.preventDefault();
 
-            // 1. まずWeb Audio APIのコンテキストを起こす
-            await AudioSys.resume();
+            // await を外して、裏で復帰させる。ユーザーのタップ起因なので発動しやすい。
+            AudioSys.resume();
 
-            // 2. 状態を戻す
+            // 状態を戻す
             gameState = 'PLAYING';
             ui.pauseOverlay.style.display = 'none';
 
-            // 3. 準備が整ってから音を出す
+            // BGM再開
             AudioSys.resumeBGM();
         };
 
@@ -10481,16 +10649,31 @@
         window.addEventListener('resize', resize);
 
 
-        let isInit = false;
+        // 修正後: 1回きりではなく、常に「タップされたらContextが死んでいないかチェック」する
         const handleInteraction = () => {
-            if (isInit) return;
-            isInit = true;
-            AudioSys.resume();
-
-            document.removeEventListener('click', handleInteraction);
-            document.removeEventListener('touchstart', handleInteraction);
-            document.removeEventListener('keydown', handleInteraction);
+            if (AudioSys && AudioSys.ctx && AudioSys.ctx.state !== 'running') {
+                AudioSys.resume();
+            }
         };
+
+        // 一度きりではなく、常にリスニングしておく（iOSではこれが有効）
+        document.addEventListener('click', handleInteraction, { passive: true });
+        document.addEventListener('touchstart', handleInteraction, { passive: true });
+        document.addEventListener('keydown', handleInteraction, { passive: true });
+
+        // 追加：画面が戻ってきたときにも強力に復帰を試みる
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                setPaused(true);
+                if (AudioSys && AudioSys.bgmEl) AudioSys.bgmEl.pause();
+            } else {
+                setPaused(false);
+                if (gameState !== 'PAUSED' && AudioSys) {
+                    AudioSys.resumeBGM();
+                    AudioSys.resume(); // ここでも呼ぶ
+                }
+            }
+        });
 
 
         document.addEventListener('click', handleInteraction);
