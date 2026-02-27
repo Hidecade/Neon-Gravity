@@ -1610,7 +1610,7 @@
             3: ['bubble', 'bubble', 'bubble', 'jellyfish', 'spark_jelly'],
             4: ['phantom', 'triangle', 'tadpole', 'asteroid'],
             5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'asteroid'],
-            6: ['asteroid', 'asteroid', 'phantom', 'tadpole', 'tadpole'],
+            6: ['asteroid', 'asteroid', 'asteroid', 'phantom', 'tadpole', 'tadpole'],
             7: ['triangle', 'tadpole', 'dragon', 'triangle', 'eclipse', 'triangle', 'asteroid'],
             8: ['triangle', 'hunter', 'phantom', 'tadpole', 'eclipse', 'dragon', 'jellyfish', 'asteroid']
         };
@@ -7389,7 +7389,20 @@
 
             // shadowBlurを廃止し、加算合成(lighter)でネオン感を出す
             ctx.globalCompositeOperation = 'lighter';
-            ctx.strokeStyle = 'rgba(0, 150, 255, 0.4)'; // 少し濃いめに
+            //ctx.strokeStyle = 'rgba(0, 150, 255, 0.4)'; // 少し濃いめに
+
+            const stageColors = {
+                1: 'rgba(0, 200, 255, 0.4)', // シアン
+                2: 'rgba(255, 255, 255, 0.3)', // ホワイト
+                3: 'rgba(0, 100, 255, 0.5)',   // 深海ブルー
+                4: 'rgba(150, 0, 255, 0.4)',   // パープル
+                6: 'rgba(255, 150, 0, 0.3)',   // オレンジ（岩石）
+                10: 'rgba(255, 0, 50, 0.4)'    // 警告レッド
+            };
+
+            ctx.strokeStyle = stageColors[stage] || 'rgba(0, 150, 255, 0.4)';
+
+
             ctx.lineWidth = 1.5; // 少し太めに
 
             ctx.beginPath();
