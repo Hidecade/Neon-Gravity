@@ -397,13 +397,18 @@
             background: rgba(0, 255, 255, 0.1);
             border: 1px solid #0ff;
             color: #0ff;
-            padding: 10px 30px;
+            /* paddingを 10px 30px から 6px 20px に縮小 */
+            padding: 8px 20px;
+            /* 余白を 8px から 5px に縮小 */
             margin: 8px;
-            font-size: 22px;
+            /* フォントサイズを 22px から 16px 前後に縮小 */
+            font-size: 18px;
             cursor: pointer;
-            min-width: 240px;
+            /* 最小幅を 240px から 180px に縮小 */
+            min-width: 200px;
             text-align: center;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2); /* 影も少し控えめに */
+            transition: transform 0.2s, background 0.2s;
         }
 
             .menu-btn:active {
@@ -1090,6 +1095,7 @@
 
         <div id="menu-buttons-container" style="display:flex; flex-direction:column; align-items:center;">
             <div class="menu-btn" id="btn-start">START GAME</div>
+            <div class="menu-btn" id="btn-howto">HOW TO PLAY</div> 
             <div class="menu-btn" id="btn-ranking">WORLD RANKING</div>
             <div class="menu-btn" id="btn-ost">SOUNDTRACK</div>
             <div class="menu-btn" id="btn-story">ARCHIVE (STORY)</div>
@@ -2690,7 +2696,6 @@
         // =========================================================
         // 3. 初期化・システム制御 (Core Logic)
         // =========================================================
-        // ★修正：表示されているメニューボタンを抽出する関数（参照エラー修正版）
         window.refreshMenuButtons = function (resetIndex = true) {
             currentMenuButtons = [];
             if (resetIndex) {
@@ -2723,6 +2728,9 @@
             } else if (gameState === 'STORY') {
                 const backBtn = document.getElementById('btn-story-back');
                 if (backBtn) currentMenuButtons.push(backBtn);
+            } else if (gameState === 'HOWTO') { // これを追加
+                const howtoOverlay = document.getElementById('howto-overlay');
+           
             } else if (gameState === 'ENDING') {
                 const endBtns = document.querySelectorAll('#ending-msg .menu-btn');
                 endBtns.forEach(btn => currentMenuButtons.push(btn));
@@ -3377,7 +3385,10 @@
 
             ui.pauseBtn.style.display = 'none';
 
-            // リザルト画面ではランキングとOSTボタンは隠す
+
+            const btnHowto = document.getElementById('btn-howto');
+            if (btnHowto) btnHowto.style.display = 'none';
+
             const btnRanking = document.getElementById('btn-ranking');
             if (btnRanking) btnRanking.style.display = 'none';
             if (ui.btnOst) ui.btnOst.style.display = 'none';
@@ -3389,14 +3400,11 @@
         }
 
         function returnToTitle() {
+
             gameState = 'TITLE';
 
-            // ==========================================
-            // ★変更：BGMを軽くフェードアウトしてからタイトル曲へ切り替える
-            // ==========================================
             AudioSys.fadeOutBGM().then(() => {
-                AudioSys.currentSrc = null; // リセット
-                //AudioSys.playBGM('title');
+                AudioSys.currentSrc = null; 
             });
 
             ui.ost.style.display = 'none';
@@ -3424,13 +3432,25 @@
             ui.btnOst.style.display = 'block';
             ui.btnTitle.style.display = 'none';
 
-            // ★タイトルに戻ったのでランキングボタンを復活させる
+            const btnHowto = document.getElementById('btn-howto');
+            if (btnHowto) {
+                btnHowto.style.display = 'block';
+                btnHowto.style.borderColor = '#0ff';
+                btnHowto.style.color = '#0ff';
+            }
+
+            const btnStory = document.getElementById('btn-story');
+            if (btnStory) {
+                btnStory.style.display = 'block';
+                btnStory.style.borderColor = '#0ff';
+                btnStory.style.color = '#0ff';
+            }
+
             const btnRanking = document.getElementById('btn-ranking');
             if (btnRanking) {
                 btnRanking.style.display = 'block';
                 btnRanking.style.borderColor = '#0ff';
                 btnRanking.style.color = '#0ff';
-                // タイトルからの呼び出しは閉じた後何もしない(null)
                 btnRanking.onclick = () => window.showRanking(null);
             }
             window.refreshMenuButtons();
@@ -3506,25 +3526,13 @@
         // 5. メインループ (Main Loop)
         // =========================================================
         function loop() {
+
             requestAnimationFrame(loop);
 
             handleGamepadInput();
 
             if (gameState === 'PAUSED') return;
             ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, width, height);
-
-            // ★追加：タイトル画面での放置タイマー
-            if (gameState === 'TITLE') {
-                titleIdleTimer++;
-                if (titleIdleTimer > HOWTO_WAIT_TIME) {
-                    showHowTo();
-                }
-            } else if (gameState === 'HOWTO') {
-                titleIdleTimer++;
-                if (titleIdleTimer > HOWTO_WAIT_TIME) {
-                    hideHowTo();
-                }
-            }
 
             if (gameState === 'PLAYING') {
                 update();
@@ -3573,13 +3581,9 @@
 
         function resetTitleIdle() {
             if (gameState === 'TITLE') {
-                titleIdleTimer = 0;
                 return false;
             } else if (gameState === 'HOWTO') {
                 hideHowTo();
-                return true;
-            } else if (gameState === 'HOWTO_CLOSING') {
-                // ★追加：閉じている最中（0.5秒間）は入力をすべて無視して裏への貫通を防ぐ
                 return true;
             }
             return false;
@@ -3588,6 +3592,11 @@
         // 各種イベントに入力監視をフックする
         document.addEventListener('mousedown', resetTitleIdle);
         document.addEventListener('touchstart', resetTitleIdle, { passive: true });
+
+
+
+        // HOWTO画面内の「ANY BUTTON TO RETURN」を実現するために、オーバーレイ自体をクリックしても閉じるように設定
+        document.getElementById('howto-overlay').onclick = hideHowTo;
 
         function update() {
 
@@ -10437,6 +10446,11 @@
         document.getElementById('btn-start').onclick = startGame;
         document.getElementById('btn-ost').onclick = openOST;
         document.getElementById('btn-back').onclick = closeOST;
+
+        document.getElementById('btn-howto').onclick = (e) => {
+            if (e) e.stopPropagation();
+            showHowTo();
+        };
 
         window.addEventListener('keydown', e => {
             if (document.activeElement === document.getElementById('player-name-input')) return;
