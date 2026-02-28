@@ -702,7 +702,6 @@
             font-size: calc(16px * var(--ui-scale));
             box-sizing: border-box;
             cursor: pointer;
-        }  cursor: pointer;
         }
 
             .track-item.playing {
@@ -729,13 +728,18 @@
             transition: opacity 0.5s ease;
         }
 
+        /* --- 8.7 HOW TO PLAY 画面 --- */
         #howto-main-title {
             color: #0ff;
             text-shadow: 0 0 20px #0ff;
-            /* ★修正 */
+            /* サイズ調整 */
             font-size: calc(28px * var(--ui-scale)) !important;
             margin: 0 0 calc(10px * var(--ui-scale)) 0;
             letter-spacing: 4px;
+            /* ★追加：これで確実に中央寄せになります */
+            width: 100%;
+            text-align: center;
+            display: block;
         }
 
         .howto-container {
@@ -1650,7 +1654,7 @@
 
         // ステージごとのテーマカラー定義
         const STAGE_THEMES = {
-            1: '#00ffff', // Cyan (Default)
+            1: '#00bbff', // Cyan (Default)
             2: '#ffffff', // White
             3: '#3355ff', // Deep Blue
             4: '#aa00ff', // Purple
