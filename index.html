@@ -10,15 +10,17 @@
     <meta http-equiv="Expires" content="0">
     <title>NEON GRAVITY</title>
 
+
     <link rel="icon" href="img/NeonGravity.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 
+
     <link rel="manifest" href="manifest.json">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="NeonGravity">
     <link rel="apple-touch-icon" href="img/NeonGravity.png">
+
 
     <style>
         /* =========================================================
@@ -508,6 +510,7 @@
             z-index: 105;
             pointer-events: auto;
         }
+
             #pause-overlay h1 {
                 color: #fff;
                 text-shadow: 0 0 10px #fff;
@@ -1586,7 +1589,7 @@
         // =========================================================
         // 2. ステージ・難易度・進行管理
         // =========================================================
-        const START_STAGE = 1;        // 開始ステージ番号
+        const START_STAGE = 9;        // 開始ステージ番号
 
         const MAX_STAGE = 10;          // 最大ステージ数
         let currentStage = 1;         // 現在のステージ番号
@@ -11151,6 +11154,15 @@ function drawBossEnemy(ctx, e) {
         init();
         window.refreshMenuButtons();
         loop();
+
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW registered!', reg))
+                    .catch(err => console.log('SW failed', err));
+            });
+        }
     </script>
 </body>
 
