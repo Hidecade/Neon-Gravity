@@ -391,23 +391,20 @@
         }
 
         /* =========================================================
-           7. 共通ボタン類
+           7. 共通ボタン類 (サイズを可変に対応)
            ========================================================= */
         .menu-btn {
             background: rgba(0, 255, 255, 0.1);
             border: 1px solid #0ff;
             color: #0ff;
-            /* paddingを 10px 30px から 6px 20px に縮小 */
-            padding: 8px 20px;
-            /* 余白を 8px から 5px に縮小 */
-            margin: 8px;
-            /* フォントサイズを 22px から 16px 前後に縮小 */
-            font-size: 18px;
+            /* ★修正：固定pxではなく --ui-scale を掛け算する */
+            padding: calc(8px * var(--ui-scale)) calc(20px * var(--ui-scale));
+            margin: calc(8px * var(--ui-scale));
+            font-size: calc(18px * var(--ui-scale));
+            min-width: calc(200px * var(--ui-scale));
             cursor: pointer;
-            /* 最小幅を 240px から 180px に縮小 */
-            min-width: 200px;
             text-align: center;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2); /* 影も少し控えめに */
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
             transition: transform 0.2s, background 0.2s;
         }
 
@@ -423,16 +420,19 @@
                 border-color: #fff !important;
             }
 
+        /* ポーズボタンやフッターもスケール対応 */
         #pause-btn {
+            /* 位置やサイズもスケールさせる */
+            right: calc(30px * var(--ui-scale));
+            bottom: calc(240px * var(--ui-scale));
+            width: calc(40px * var(--ui-scale));
+            height: calc(40px * var(--ui-scale));
+            font-size: calc(18px * var(--ui-scale));
+            /* 以下デザインはそのまま */
             position: absolute;
-            right: 30px;
-            bottom: 240px;
-            width: 40px;
-            height: 40px;
             background: rgba(0, 20, 40, 0.8);
             border: 2px solid rgba(0, 255, 255, 0.5);
             color: #0ff;
-            font-size: 18px;
             font-weight: bold;
             display: none;
             justify-content: center;
@@ -440,15 +440,14 @@
             cursor: pointer;
             z-index: 100;
             pointer-events: auto;
-            border-radius: 50px;
+            border-radius: 50%;
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
         }
 
-            #pause-btn:active {
-                background: #0ff;
-                color: #000;
-                transform: scale(0.9);
-            }
+        #menu-footer {
+            font-size: calc(12px * var(--ui-scale)) !important;
+            margin-top: calc(20px * var(--ui-scale)) !important;
+        }
 
         /* =========================================================
            8. 各種オーバーレイ画面
@@ -472,17 +471,20 @@
             opacity: 1;
         }
 
+        /* --- 8.1 タイトル画面 --- */
         #menu-title {
             color: #0ff;
             text-shadow: 0 0 20px #0ff;
             text-align: center;
-            margin-bottom: 10px;
-            font-size: 28.8px;
+            /* ★修正：タイトルサイズを可変に */
+            margin-bottom: calc(20px * var(--ui-scale));
+            font-size: calc(36px * var(--ui-scale));
+            line-height: 1.2;
         }
 
             #menu-title span {
                 color: #fff;
-                font-size: 16px;
+                font-size: calc(20px * var(--ui-scale));
             }
 
         /* --- 8.2 ポーズ画面 --- */
@@ -500,6 +502,13 @@
             z-index: 105;
             pointer-events: auto;
         }
+            #pause-overlay h1 {
+                color: #fff;
+                text-shadow: 0 0 10px #fff;
+                /* ★修正 */
+                font-size: calc(40px * var(--ui-scale)) !important;
+                margin-bottom: calc(30px * var(--ui-scale)) !important;
+            }
 
         /* --- 8.3 エンディング画面 --- */
         #ending-msg {
@@ -573,6 +582,14 @@
             box-sizing: border-box;
         }
 
+            #ranking-overlay h1 {
+                color: #0ff;
+                text-shadow: 0 0 20px #0ff;
+                /* ★修正 */
+                font-size: calc(32px * var(--ui-scale)) !important;
+                margin-bottom: calc(10px * var(--ui-scale)) !important;
+            }
+
         #ranking-scroll-container {
             width: 95%;
             max-width: 600px;
@@ -585,7 +602,7 @@
         #ranking-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
+            font-size: calc(14px * var(--ui-scale));
         }
 
             #ranking-table th {
@@ -638,6 +655,14 @@
             opacity: 1;
         }
 
+            #ost-ui h2 {
+                color: #0ff;
+                text-shadow: 0 0 20px #0ff;
+                font-size: calc(28px * var(--ui-scale)) !important;
+                margin-bottom: calc(10px * var(--ui-scale)) !important;
+            }
+
+
         #ost-scroll-container {
             width: 90%;
             max-width: 500px;
@@ -669,14 +694,15 @@
                 }
 
         .track-item {
-            padding: 15px 20px;
-            width: 100%;
+            padding: calc(15px * var(--ui-scale)) calc(20px * var(--ui-scale));
             border-bottom: 1px solid #333;
             color: #888;
             text-align: center;
-            font-size: 16px;
+            /* ★修正 */
+            font-size: calc(16px * var(--ui-scale));
             box-sizing: border-box;
             cursor: pointer;
+        }  cursor: pointer;
         }
 
             .track-item.playing {
@@ -706,15 +732,10 @@
         #howto-main-title {
             color: #0ff;
             text-shadow: 0 0 20px #0ff;
-            font-size: clamp(24px, 3.6vw, 25.6px);
-            margin: 0 0 10px 0;
+            /* ★修正 */
+            font-size: calc(28px * var(--ui-scale)) !important;
+            margin: 0 0 calc(10px * var(--ui-scale)) 0;
             letter-spacing: 4px;
-            margin-right: -4px;
-            width: 100%;
-            padding: 0 10px;
-            box-sizing: border-box;
-            text-align: center;
-            line-height: 1.2;
         }
 
         .howto-container {
@@ -740,16 +761,16 @@
             border-bottom: 1px solid #0ff;
             padding-bottom: 5px;
             margin-top: 0;
-            margin-bottom: 15px;
-            font-size: 14.4px;
+            margin-bottom: calc(15px * var(--ui-scale));
+            font-size: calc(16px * var(--ui-scale));
             letter-spacing: 2px;
             text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
 
         .howto-text {
             color: #aaa;
-            font-size: 10.4px;
-            line-height: 2.2;
+            font-size: calc(12px * var(--ui-scale));
+            line-height: 2.0;
         }
 
         .howto-highlight {
@@ -765,7 +786,7 @@
         .item-desc {
             display: flex;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: calc(12px * var(--ui-scale));
         }
 
         .item-icon {
@@ -795,8 +816,8 @@
 
         .howto-footer-text {
             color: #555;
-            margin-top: 30px;
-            font-size: 11.2px;
+            margin-top: calc(30px * var(--ui-scale));
+            font-size: calc(12px * var(--ui-scale));
             letter-spacing: 2px;
             animation: blink 1.5s infinite;
         }
@@ -883,7 +904,7 @@
 
         .ja-text {
             color: #888;
-            font-size: 11px;
+            font-size: 13px;
             font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Meiryo', sans-serif;
             margin-top: 0;
             margin-bottom: 2.5em;
@@ -1571,9 +1592,6 @@
         let rushBossIndex = 0;          // ボスラッシュモード:現在戦っているボスの番号 (0~7)
         let rushIntervalTimer = 0;      // ボスラッシュモード:ボス撃破後のインターバルタイマー
 
-        // ==========================================
-        // ★追加：Stage 10のイントロ演出用変数
-        // ==========================================
         let stage10Timer = 0;
         let stage10BeatCount = 0;
 
@@ -1628,6 +1646,20 @@
             PHASE1_LASER_SPD: 2,  // フェーズ1：拡散レーザーの速度倍率
             PHASE2_SNIPE_SPD: 15,   // フェーズ2：狙撃弾の基本速度
             PHASE3_MISSILE_SPD: 1.5 // フェーズ3：誘導ミサイルの速度倍率
+        };
+
+        // ステージごとのテーマカラー定義
+        const STAGE_THEMES = {
+            1: '#00ffff', // Cyan (Default)
+            2: '#ffffff', // White
+            3: '#3355ff', // Deep Blue
+            4: '#aa00ff', // Purple
+            5: '#ffaa00', // Gold
+            6: '#ff4400', // Orange
+            7: '#00ff88', // Green
+            8: '#ff00ff', // Magenta
+            9: '#ff0055', // Boss Rush Red
+            10: '#ff0000' // Final Red
         };
 
         // =========================================================
@@ -3881,7 +3913,9 @@
 
                         // マイナスの力を与えることで、内側に吸い込む「引力」を作る
                         // 少しSin波を混ぜて、穴が脈動している（ウネウネしている）ように見せる
-                        let pullForce = -15 + Math.sin(frame * 0.1) * 5;
+                        // 振幅が5（強め）、速度が0.1（早め）
+                        //let pullForce = -15 + Math.sin(frame * 0.1) * 5;
+                        let pullForce = -15 + Math.sin(frame * 0.07) * 2;
 
                         // 消滅間近（残り60フレーム以下）は徐々に引力を弱めて空間を元に戻す
                         if (w.life < 60) {
@@ -5930,6 +5964,7 @@
             e.x = Math.max(100, Math.min(worldSize - 100, e.x));
             e.y = Math.max(100, Math.min(worldSize - 100, e.y));
         }
+
         function updateEclipseAI(e) {
             // NaNやInfinityの混入を初期段階で防ぐ
             if (!Number.isFinite(e.x)) e.x = worldSize / 2;
@@ -7408,18 +7443,37 @@
             const viewW = width / cameraScale;
             const viewH = height / cameraScale;
 
-            // バッファを少し多め（10 -> 15）に設定
             const buffer = 15;
             const startX = Math.max(0, Math.floor(camera.x / GRID_SPACING) - buffer);
             const endX = Math.min(gridPoints.length - 1, Math.ceil((camera.x + viewW) / GRID_SPACING) + buffer);
             const startY = Math.max(0, Math.floor(camera.y / GRID_SPACING) - buffer);
             const endY = Math.min(gridPoints[0].length - 1, Math.ceil((camera.y + viewH) / GRID_SPACING) + buffer);
 
+            // 右端と下端のインデックス最大値を取得
+            const lastColIndex = gridPoints.length - 1;
+            const lastRowIndex = gridPoints[0].length - 1;
+
             for (let i = startX; i <= endX; i++) {
                 for (let j = startY; j <= endY; j++) {
                     const p = gridPoints[i][j];
                     if (!p) continue;
 
+                    // ==========================================
+                    // ★修正：外枠のアンカー留め（端の点は絶対に動かさない）
+                    // ==========================================
+                    // 上下左右のいずれかの端にある点かチェック
+                    const isEdge = (i === 0 || i === lastColIndex || j === 0 || j === lastRowIndex);
+
+                    if (isEdge) {
+                        // 強制的に初期位置に戻し、速度もゼロにする
+                        p.x = p.ox;
+                        p.y = p.oy;
+                        p.vx = 0;
+                        p.vy = 0;
+                        continue; // 物理演算をスキップ
+                    }
+
+                    // --- 以下、通常の物理演算 ---
                     const dx = p.x - p.ox, dy = p.y - p.oy;
                     const dist = Math.hypot(dx, dy);
 
@@ -7445,10 +7499,42 @@
         }
 
         function distortGrid(x, y, force, radius) {
-            const cx = Math.floor(x / GRID_SPACING), cy = Math.floor(y / GRID_SPACING), r = Math.ceil(radius / GRID_SPACING);
-            for (let i = Math.max(0, cx - r); i < Math.min(gridPoints.length, cx + r); i++) for (let j = Math.max(0, cy - r); j < Math.min(gridPoints[0].length, cy + r); j++) {
-                const p = gridPoints[i][j], d = Math.hypot(p.x - x, p.y - y);
-                if (d < radius) { const f = force * (1 - d / radius), a = Math.atan2(p.y - y, p.x - x); p.vx += Math.cos(a) * f; p.vy += Math.sin(a) * f; }
+            const cx = Math.floor(x / GRID_SPACING);
+            const cy = Math.floor(y / GRID_SPACING);
+            const r = Math.ceil(radius / GRID_SPACING);
+
+            for (let i = Math.max(0, cx - r); i < Math.min(gridPoints.length, cx + r); i++) {
+                for (let j = Math.max(0, cy - r); j < Math.min(gridPoints[0].length, cy + r); j++) {
+                    const p = gridPoints[i][j];
+                    const d = Math.hypot(p.x - x, p.y - y);
+
+                    if (d < radius) {
+                        const f = force * (1 - d / radius);
+                        const a = Math.atan2(p.y - y, p.x - x);
+
+                        // 力を加える
+                        p.vx += Math.cos(a) * f;
+                        p.vy += Math.sin(a) * f;
+
+                        // ==========================================
+                        // ★修正：反転（交差）防止のリミッター（改良版）
+                        // ==========================================
+                        // 吸い込み（force < 0）の時だけ発動
+                        if (force < 0) {
+                            // 現在の速度
+                            const speed = Math.hypot(p.vx, p.vy);
+
+                            // 「今の距離(d)の半分」より速度が速い場合、
+                            // そのままだと中心を突き抜けてしまう可能性が高いので、速度を強制的に落とす
+                            // （ゼノのパラドックスのように、近づくほど遅くなり、決して中心には到達しない）
+                            if (speed > d * 0.5) {
+                                const brake = (d * 0.5) / speed;
+                                p.vx *= brake;
+                                p.vy *= brake;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -7556,17 +7642,13 @@
 
             ctx.globalCompositeOperation = 'lighter';
 
-            const stageColors = {
-                1: 'rgba(0, 200, 255, 0.4)', // シアン
-                2: 'rgba(255, 255, 255, 0.3)', // ホワイト
-                3: 'rgba(0, 100, 255, 0.5)',   // 深海ブルー
-                4: 'rgba(150, 0, 255, 0.4)',   // パープル
-                6: 'rgba(255, 150, 0, 0.3)',   // オレンジ（岩石）
-                10: 'rgba(255, 0, 50, 0.4)'    // 警告レッド
-            };
+            const baseColor = STAGE_THEMES[stage] || '#00f0ff';
 
-            ctx.strokeStyle = stageColors[stage] || 'rgba(0, 150, 255, 0.4)';
+            ctx.strokeStyle = baseColor;
             ctx.lineWidth = 1.5;
+
+            // グリッド全体の透明度を少し下げて、背景に馴染ませる
+            ctx.globalAlpha = 0.3;
 
             ctx.beginPath();
             const viewW = width / cameraScale;
@@ -7599,9 +7681,26 @@
         }
 
         function drawWorldBounds() {
-            ctx.strokeStyle = '#0ff';
+            // 現在のステージの色を取得（定義がなければデフォルトのシアン）
+            const color = STAGE_THEMES[stage] || '#00f0ff';
+
+            ctx.save();
+
+            // ネオンのように光らせる設定
+            ctx.strokeStyle = color;
             ctx.lineWidth = 3;
+            ctx.shadowBlur = 20;       // 強く光らせる
+            ctx.shadowColor = color;   // 光の色も合わせる
+
+            // 枠線を描画
             ctx.strokeRect(WALL_MARGIN, WALL_MARGIN, worldSize - WALL_MARGIN * 2, worldSize - WALL_MARGIN * 2);
+
+            // さらに内側にもう一本、薄い線を引いて「二重結界」っぽくする（お好みで）
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.5;
+            ctx.strokeRect(WALL_MARGIN + 5, WALL_MARGIN + 5, worldSize - WALL_MARGIN * 2 - 10, worldSize - WALL_MARGIN * 2 - 10);
+
+            ctx.restore();
         }
 
         function drawWormholes() {
@@ -7682,7 +7781,6 @@
             ctx.globalCompositeOperation = 'source-over';
         }
 
-        // 三日月型の衝撃波（消える直前までうっすら視認可能版）
         function drawShockwave(ctx, eb) {
             const angle = Math.atan2(eb.vy, eb.vx);
             ctx.rotate(angle);
@@ -7832,24 +7930,33 @@
         }
 
         function drawItems() {
-            // クリスタル
+            // --- 1. クリスタル（スコアアイテム） ---
             ctx.fillStyle = '#008000';
             crystals.forEach(c => {
                 if (!isOnScreen(c, 50)) return;
                 ctx.save();
                 ctx.translate(c.x, c.y);
                 ctx.rotate(frame * 0.1);
-                const scale = c.life > 60 ? 1 : c.life / 60; ctx.scale(scale, scale);
-                ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(4, 0); ctx.lineTo(0, 6); ctx.lineTo(-4, 0); ctx.fill();
+                const scale = c.life > 60 ? 1 : c.life / 60;
+                ctx.scale(scale, scale);
+
+                // クリスタルも少し光らせる
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = '#0f0';
+
+                ctx.beginPath();
+                ctx.moveTo(0, -6); ctx.lineTo(4, 0); ctx.lineTo(0, 6); ctx.lineTo(-4, 0);
+                ctx.fill();
                 ctx.restore();
             });
 
-            // パワーアップ
+            // --- 2. パワーアップアイテム ---
             powerups.forEach(p => {
                 if (!isOnScreen(p, 50)) return;
 
                 let char = '?';
                 let color = '#fff';
+
                 if (p.type === 'laser') { color = '#aff'; char = 'L'; }
                 else if (p.type === 'level') { color = '#0f0'; char = 'W'; }
                 else if (p.type === 'invincible') { color = '#ff0'; char = 'I'; }
@@ -7857,10 +7964,27 @@
 
                 ctx.save();
                 ctx.translate(p.x, p.y);
-                const scale = p.life > 60 ? 1 : p.life / 60; ctx.scale(scale, scale);
-                ctx.lineWidth = 2; ctx.strokeRect(-8, -8, 16, 16);
-                ctx.fillStyle = color; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                const scale = p.life > 60 ? 1 : p.life / 60;
+                ctx.scale(scale, scale);
+
+                // ==========================================
+                // ★修正：枠線の色と発光を明示的に指定
+                // ==========================================
+                ctx.strokeStyle = color;   // 枠線をアイテム色にする
+                ctx.lineWidth = 2;
+
+                ctx.shadowBlur = 10;       // ネオン発光
+                ctx.shadowColor = color;
+
+                ctx.strokeRect(-8, -8, 16, 16);
+
+                // 文字の描画
+                ctx.fillStyle = color;
+                ctx.font = 'bold 12px monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
                 ctx.fillText(char, 0, 0);
+
                 ctx.restore();
             });
         }
@@ -8198,10 +8322,37 @@
 
             // --- 2. サテライト（衛星）の描画 ---
             p.satellites.forEach(s => {
-                ctx.fillStyle = (p.laserTimer > 0) ? '#0ff' : '#0f0';
+                ctx.save();
+                ctx.translate(s.x, s.y);
+
+                // サテライト自体もゆっくり自転させる（キラキラ感アップ）
+                ctx.rotate(frame * 0.1);
+
+                // レーザーチャージ中かどうかで色を変える
+                ctx.fillStyle = '#0f0';
+
+                // 少しだけ発光させる
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = ctx.fillStyle;
+
+                // --- ひし形の描画 ---
+                const size = 4; // 大きさ
                 ctx.beginPath();
-                ctx.arc(s.x, s.y, 3, 0, Math.PI * 2);
+                ctx.moveTo(0, -size * 1.5); // 上
+                ctx.lineTo(size, 0);        // 右
+                ctx.lineTo(0, size * 1.5);  // 下
+                ctx.lineTo(-size, 0);       // 左
+                ctx.closePath();
                 ctx.fill();
+
+                // 芯を白くして硬質感と輝きを出す
+                ctx.fillStyle = '#fff';
+                ctx.globalAlpha = 0.6;
+                ctx.beginPath();
+                ctx.arc(0, 0, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
             });
         }
 
@@ -8505,20 +8656,37 @@
             ctx.lineWidth = 4;
             ctx.stroke();
 
-            // --- 3. センサーアイ：擬似発光（軽量化版） ---
-            const blink = (Math.sin(frame * 0.15) * 0.5) + 0.5;
-            // ぼかしの代わりに、背面に一回り大きい半透明の矩形を描く
-            if (blink > 0.2) {
-                ctx.fillStyle = '#ff8800';
-                ctx.globalAlpha = blink * 0.4;
-                // 外側の光輪
-                ctx.fillRect(3, -5, 12, 10);
-            }
+            // --- 3. 変更：センサーアイ（他の敵と統一した円形グローコア） ---
+            ctx.save();
+            // 目の位置へ移動
+            ctx.translate(10, 0);
+            ctx.globalCompositeOperation = 'lighter';
 
-            // 目本体
-            ctx.globalAlpha = 1.0;
-            ctx.fillStyle = `rgb(255, ${128 + 127 * blink}, 60)`;
-            ctx.fillRect(5, -3, 8, 6);
+            // 脈動計算
+            const pulse = 0.8 + Math.sin(frame * 0.15) * 0.2;
+
+            // レイヤー1：外側の強い輝き（オレンジ）
+            ctx.fillStyle = '#ff4400';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ff4400';
+            ctx.beginPath();
+            ctx.arc(0, 0, 5 * pulse, 0, Math.PI * 2);
+            ctx.fill();
+
+            // レイヤー2：中間の輝き（黄色）
+            ctx.shadowBlur = 0; // 重くなるので内側はぼかしなし
+            ctx.fillStyle = '#ffaa00';
+            ctx.beginPath();
+            ctx.arc(0, 0, 3 * pulse, 0, Math.PI * 2);
+            ctx.fill();
+
+            // レイヤー3：中心核（白）
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, 0, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
 
             // アンテナ
             ctx.strokeStyle = coreColor;
