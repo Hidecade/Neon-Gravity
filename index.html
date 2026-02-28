@@ -7623,41 +7623,78 @@
         }
 
         function drawBackground() {
-            ctx.fillStyle = '#fff';
-            stars.forEach(s => {
-                const sx = (s.x - camera.x * s.parallax) % worldSize;
-                const sy = (s.y - camera.y * s.parallax) % worldSize;
-                const dx = (sx + worldSize) % worldSize;
-                const dy = (sy + worldSize) % worldSize;
-                ctx.globalAlpha = s.brightness;
-                ctx.beginPath(); ctx.arc(dx, dy, s.size, 0, Math.PI * 2); ctx.fill();
-            });
-            ctx.globalAlpha = 1.0;
-
-            // --- グリッド描画 ---
+            // --- 1. 背景のベース色 ---
             ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, width, height);
+
+            // --- 2. 遠景：巨大な背景グリッド ---
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.03)';
+            ctx.lineWidth = 1;
             ctx.beginPath();
 
+            const bigGridSize = 200;
+            // ★変更：巨大グリッドの動きも少し速くしてスピード感アップ
+            // 0.1 -> 0.2 に変更
+            const parallax = 0.2;
+
+            const offX = (camera.x * parallax) % bigGridSize;
+            const offY = (camera.y * parallax) % bigGridSize;
+
+            for (let x = -offX; x < width; x += bigGridSize) {
+                ctx.moveTo(x, 0); ctx.lineTo(x, height);
+            }
+            for (let y = -offY; y < height; y += bigGridSize) {
+                ctx.moveTo(0, y); ctx.lineTo(width, y);
+            }
+            ctx.stroke();
+
+            // --- 3. 遠景：星空（無限スクロール＆強い視差） ---
+            stars.forEach(s => {
+                // ★重要変更点★
+                // s.parallax（星の奥行き値: 0.3〜1.0）を利用して移動速度に差をつける。
+                // 手前の星(1.0)ほど速く動き、奥の星(0.3)ほどゆっくり動く。
+                // 以前の係数 0.2 を 0.7 に変更し、全体の動きを大きく強調。
+                const moveFactor = s.parallax * 0.4;
+
+                const starX = (s.x - camera.x * moveFactor + worldSize * 10) % width;
+                const starY = (s.y - camera.y * moveFactor + worldSize * 10) % height;
+
+                // 画面外に出た星が反対側からスムーズに出てくるように調整
+                const finalX = (starX < 0) ? starX + width : starX;
+                const finalY = (starY < 0) ? starY + height : starY;
+
+                ctx.fillStyle = '#fff';
+                ctx.globalAlpha = s.brightness * 0.8;
+                ctx.beginPath();
+                // 手前の速い星は少し大きく描画して迫力を出す
+                const sizeBoost = s.parallax > 0.8 ? 1.2 : 1.0;
+                ctx.arc(finalX, finalY, s.size * 0.8 * sizeBoost, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            ctx.restore();
+
             // ==========================================
-            // ★修正：クリッピング領域を WALL_MARGIN（枠線）の内側に設定
+            // ここから下は「エリア内」の描画（変更なし）
             // ==========================================
+            ctx.globalAlpha = 1.0;
+
+            ctx.save();
+            ctx.beginPath();
             ctx.rect(WALL_MARGIN, WALL_MARGIN, worldSize - WALL_MARGIN * 2, worldSize - WALL_MARGIN * 2);
             ctx.clip();
 
             ctx.globalCompositeOperation = 'lighter';
-
             const baseColor = STAGE_THEMES[stage] || '#00f0ff';
-
             ctx.strokeStyle = baseColor;
             ctx.lineWidth = 1.5;
-
-            // グリッド全体の透明度を少し下げて、背景に馴染ませる
             ctx.globalAlpha = 0.3;
 
             ctx.beginPath();
             const viewW = width / cameraScale;
             const viewH = height / cameraScale;
-
             const buffer = 3;
             const startX = Math.max(0, Math.floor(camera.x / GRID_SPACING) - buffer);
             const endX = Math.min(gridPoints.length - 1, Math.ceil((camera.x + viewW) / GRID_SPACING) + buffer);
@@ -7668,18 +7705,10 @@
                 for (let j = startY; j <= endY; j++) {
                     const p = gridPoints[i][j];
                     if (!p) continue;
-
-                    if (i > startX && gridPoints[i - 1][j]) {
-                        ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y);
-                        ctx.lineTo(p.x, p.y);
-                    }
-                    if (j > startY && gridPoints[i][j - 1]) {
-                        ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y);
-                        ctx.lineTo(p.x, p.y);
-                    }
+                    if (i > startX && gridPoints[i - 1][j]) { ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y); ctx.lineTo(p.x, p.y); }
+                    if (j > startY && gridPoints[i][j - 1]) { ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y); ctx.lineTo(p.x, p.y); }
                 }
             }
-
             ctx.stroke();
             ctx.restore();
         }
