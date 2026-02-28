@@ -11260,21 +11260,106 @@
         ui.pauseBtn.addEventListener('click', handlePauseClick);
         ui.pauseBtn.addEventListener('touchstart', handlePauseClick, { passive: false });
 
-        // ▼▼▼ ここを追加：iOS インストール促進ロジック ▼▼▼
+        // ▼▼▼ 修正版：X/LINE/Chrome対応のロジック ▼▼▼
         function checkIOSInstallPrompt() {
-            // iOS判定
-            const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-            // スタンドアロン（ホーム画面から起動）モードかどうか
+            const ua = navigator.userAgent.toLowerCase();
+
+            // 1. iOS判定
+            const isIOS = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+            // 2. インストール済み（スタンドアロン）か判定
             const isStandalone = window.navigator.standalone === true;
-            // すでに閉じた履歴があるか
+
+            // 3. すでに閉じた履歴があるか
             const hasClosed = localStorage.getItem('neonGravity_install_closed');
 
-            // 「iOS」かつ「ブラウザで開いていて」かつ「まだ閉じていない」場合のみ表示
-            if (isIOS && !isStandalone && !hasClosed) {
-                const prompt = document.getElementById('ios-install-prompt');
-                if (prompt) {
-                    prompt.style.display = 'flex';
+            if (!isIOS || isStandalone || hasClosed) {
+                return; // iOSじゃない、または既にアプリ化済み、または閉じた履歴があれば何もしない
+            }
+
+            // 4. アプリ内ブラウザ (In-App Browser) 判定
+            // X(Twitter), LINE, Instagram, Facebook など
+            const isInApp = /twitter|fbav|line|instagram/.test(ua);
+
+            const prompt = document.getElementById('ios-install-prompt');
+            const textDiv = prompt.querySelector('.install-text');
+            const arrow = prompt.querySelector('.arrow-down');
+
+            // 言語設定取得
+            const lang = (window.navigator.languages && window.navigator.languages[0]) || window.navigator.language || window.navigator.userLanguage || window.navigator.browserLanguage;
+            const isJa = lang && lang.startsWith('ja');
+
+            if (isInApp) {
+                // ==========================================
+                // パターンA：XやLINEで開いている場合
+                // 「Safariで開き直して」と案内する
+                // ==========================================
+                if (isJa) {
+                    textDiv.innerHTML = `
+                        <span style="color:#f05; font-weight:bold;">ブラウザで開いてください</span><br>
+                        このままでは保存できません。<br>
+                        <span style="font-size:12px; color:#aaa;">
+                           右下や右上の <span class="share-icon"></span> や … を押し<br>
+                           <span style="color:#0ff; font-weight:bold;">「ブラウザで開く」</span>を選択してください
+                        </span>
+                    `;
+                } else {
+                    textDiv.innerHTML = `
+                        <span style="color:#f05; font-weight:bold;">OPEN IN BROWSER</span><br>
+                        Please open in Safari/Chrome.<br>
+                        <span style="font-size:12px; color:#aaa;">
+                           Tap menu icon and select<br>
+                           "Open in Browser"
+                        </span>
+                    `;
                 }
+                // アプリ内ブラウザでは下の矢印は意味がないので隠す（メニュー位置がバラバラなため）
+                if (arrow) arrow.style.display = 'none';
+
+                prompt.style.display = 'flex';
+
+            } else {
+                // ==========================================
+                // パターンB：Safari (またはChrome iOS) で開いている場合
+                // 「ホーム画面に追加して」と案内する
+                // ==========================================
+
+                // Chrome on iOS 対応
+                // Chromeも "CriOS" という文字がUAに含まれる
+                const isChrome = /crios/.test(ua);
+
+                // 文言の切り替え
+                if (isJa) {
+                    textDiv.innerHTML = `
+                        <span style="color:#0ff; font-weight:bold;">ホーム画面に追加</span><br>
+                        フルスクリーンで快適にプレイ<br>
+                        <span style="font-size:12px; color:#aaa;">
+                           ${isChrome ? "右上のシェア" : "画面下のシェア"} <span class="share-icon"></span> をタップして<br>
+                           「ホーム画面に追加」を選択
+                        </span>
+                    `;
+                } else {
+                    textDiv.innerHTML = `
+                        <span style="color:#0ff; font-weight:bold;">INSTALL APP</span><br>
+                        For Better Performance<br>
+                        <span style="font-size:12px; color:#aaa;">
+                           Tap ${isChrome ? "top-right" : "bottom"} <span class="share-icon"></span> and select<br>
+                           "Add to Home Screen"
+                        </span>
+                    `;
+                }
+
+                // Chromeの場合は矢印を上に向ける、または隠す（UIが上にあることが多いため）
+                if (isChrome && arrow) {
+                    arrow.innerHTML = "▲"; // 上向き矢印に変更
+                    arrow.style.position = "absolute";
+                    arrow.style.top = "-25px"; // 枠の上に移動
+                    arrow.style.bottom = "auto";
+                } else if (arrow) {
+                    arrow.style.display = 'block'; // Safariなら下矢印を表示
+                }
+
+                prompt.style.display = 'flex';
             }
         }
 
