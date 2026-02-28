@@ -769,6 +769,116 @@
             text-align: left;
         }
 
+        /* --- HOW TO アイコン・レイアウト用 --- */
+        .control-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: calc(15px * var(--ui-scale));
+            border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+            padding-bottom: calc(8px * var(--ui-scale));
+        }
+
+            .control-group:last-child {
+                border-bottom: none;
+                margin-bottom: 0;
+            }
+
+        .icon-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: calc(70px * var(--ui-scale));
+            margin-right: calc(15px * var(--ui-scale));
+            color: #0ff;
+        }
+
+        .control-icon {
+            width: calc(64px * var(--ui-scale));
+            height: calc(30px * var(--ui-scale));
+            margin-bottom: 4px;
+            filter: drop-shadow(0 0 5px rgba(0,255,255,0.5));
+        }
+
+        .device-label {
+            font-size: calc(9px * var(--ui-scale));
+            color: #0aa;
+            letter-spacing: 1px;
+        }
+
+        .control-desc {
+            font-size: calc(11px * var(--ui-scale));
+            color: #ccc;
+            line-height: 1.6;
+        }
+
+        .lbl {
+            display: inline-block;
+            width: calc(40px * var(--ui-scale));
+            color: #0ff;
+            font-weight: bold;
+        }
+
+        .lbl-y {
+            display: inline-block;
+            width: calc(40px * var(--ui-scale));
+            color: #ff0;
+            font-weight: bold;
+        }
+
+        .keyboard-icon {
+            color: #00ffff; /* 基本色をシアンに */
+            filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.8));
+        }
+
+        /* キーの共通スタイル（半透明の塗りと線） */
+        .key-group rect, .key-space {
+            fill: rgba(0, 255, 255, 0.15);
+            stroke: currentColor;
+            stroke-width: 1px;
+        }
+
+        /* WASDキー（移動）を少し強調 */
+        .wasd-keys rect {
+            fill: rgba(0, 255, 255, 0.3);
+        }
+
+        /* 矢印キー（攻撃）をピンク色にして区別 */
+        .arrow-keys rect {
+            color: #ff00ff; /* ピンク */
+            fill: rgba(255, 0, 255, 0.3);
+            filter: drop-shadow(0 0 3px rgba(255, 0, 255, 0.8));
+        }
+
+        /* スペースキー */
+        .key-space {
+            fill: rgba(255, 255, 0, 0.2); /* 黄色っぽく */
+            stroke: #ffff00;
+        }
+        .key {
+            display: inline-block;
+            padding: 1px 4px; /* 縦を1px, 横を4pxに短縮 */
+            margin: 0 1px; /* 左右のマージンを1pxに短縮 */
+            border: 1px solid #0ff;
+            border-radius: 4px;
+            background: rgba(0, 255, 255, 0.15);
+            font-family: 'Courier New', monospace;
+            font-size: 0.75em; /* フォントサイズを少し小さく (0.85em -> 0.75em) */
+            font-weight: bold;
+            color: #fff;
+            box-shadow: 0 0 5px rgba(0, 255, 255, 0.4), inset 0 0 5px rgba(0, 255, 255, 0.2);
+            text-shadow: 0 0 3px rgba(255,255,255,0.5);
+            vertical-align: middle; /* テキストとの縦位置を合わせる */
+        }
+
+        /* ボムのキーは黄色で強調 */
+        .lbl-y + .key,
+        .lbl-y ~ span + .key { /* SPACE と X の両方に適用 */
+            border-color: #ff0;
+            background: rgba(255, 255, 0, 0.15);
+            box-shadow: 0 0 5px rgba(255, 255, 0, 0.4), inset 0 0 5px rgba(255, 255, 0, 0.2);
+        }
+
         .howto-title {
             color: #fff;
             border-bottom: 1px solid #0ff;
@@ -1246,13 +1356,69 @@
         <div class="howto-container">
             <div class="howto-panel">
                 <h3 class="howto-title">CONTROLS</h3>
-                <div class="howto-text">
-                    <span class="howto-highlight">MOVE:</span> Left Stick / WASD / Left Touch<br>
-                    <span class="howto-highlight">FIRE:</span> Right Stick / Arrows / Right Touch<br>
-                    <span class="howto-highlight-y">BOMB:</span> Pad-B or R / X Key / Launch Button<br>
-                    <br>
-                    <span style="color:#888; font-size:11px;">* Bomb power scales with collected crystals.</span>
+
+                <div class="control-group">
+                    <div class="icon-box">
+                        <svg class="control-icon keyboard-icon" viewBox="0 0 64 40">
+                            <rect x="2" y="4" width="67" height="32" rx="3" stroke="currentColor" stroke-width="1.5" fill="rgba(0,20,40,0.5)" />
+
+                            <g class="key-group wasd-keys">
+                                <rect x="16" y="8" width="8" height="8" rx="1" />
+                                <rect x="6" y="18" width="8" height="8" rx="1" />
+                                <rect x="16" y="18" width="8" height="8" rx="1" />
+                                <rect x="26" y="18" width="8" height="8" rx="1" />
+                            </g>
+
+                            <g class="key-group arrow-keys">
+                                <rect x="48" y="8" width="8" height="8" rx="1" />
+                                <rect x="38" y="18" width="8" height="8" rx="1" />
+                                <rect x="48" y="18" width="8" height="8" rx="1" />
+                                <rect x="58" y="18" width="8" height="8" rx="1" />
+                            </g>
+
+                            <rect x="16" y="30" width="32" height="4" rx="1" class="key-space" />
+                        </svg>
+                        <span class="device-label">KEYBOARD</span>
+                    </div>
+                    <div class="control-desc">
+                        <div><span class="lbl">MOVE</span> <span class="key">WASD</span></div>
+                        <div><span class="lbl">FIRE</span> <span class="key">ARROWS</span></div>
+                        <div><span class="lbl-y">BOMB</span> <span class="key">SPACE</span> / <span class="key">X</span></div>
+                    </div>
                 </div>
+
+                <div class="control-group">
+                    <div class="icon-box">
+                        <svg class="control-icon" viewBox="0 0 64 40">
+                            <path d="M10 12 C10 6 18 6 22 10 L42 10 C46 6 54 6 54 12 L54 28 C54 34 44 34 42 28 L22 28 C20 34 10 34 10 28 Z" stroke="currentColor" stroke-width="2" fill="none" />
+                            <circle cx="20" cy="20" r="5" stroke="currentColor" stroke-width="1.5" fill="none" />
+                            <circle cx="44" cy="20" r="5" stroke="currentColor" stroke-width="1.5" fill="none" />
+                        </svg>
+                        <span class="device-label">GAMEPAD</span>
+                    </div>
+                    <div class="control-desc">
+                        <div><span class="lbl">MOVE</span> L-STICK</div>
+                        <div><span class="lbl">FIRE</span> R-STICK</div>
+                        <div><span class="lbl-y">BOMB</span> <span class="key">R1</span> / <span class="key">B</span></div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="icon-box">
+                        <svg class="control-icon" viewBox="0 0 64 40">
+                            <rect x="6" y="4" width="52" height="32" rx="3" stroke="currentColor" stroke-width="2" fill="none" />
+                            <circle cx="16" cy="20" r="6" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2" fill="none" />
+                            <circle cx="48" cy="20" r="6" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2" fill="none" />
+                        </svg>
+                        <span class="device-label">TOUCH</span>
+                    </div>
+                    <div class="control-desc">
+                        <div><span class="lbl">MOVE</span> LEFT DRAG</div>
+                        <div><span class="lbl">FIRE</span> RIGHT DRAG</div>
+                        <div><span class="lbl-y">BOMB</span> BTN <small>(Tap Icon)</small></div>
+                    </div>
+                </div>
+
             </div>
 
             <div class="howto-panel">
