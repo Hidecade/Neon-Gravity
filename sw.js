@@ -1,20 +1,31 @@
-﻿const CACHE_NAME = 'neon-gravity-v1';
+const CACHE_NAME = 'neon-gravity-v1';
 const ASSETS_TO_CACHE = [
     './',
-    './NeonGravity.html',  // ★重要：ここを実際のファイル名にする
+    './index.html',
     './manifest.json',
+    
+    // 画像
+    './img/NeonGravity.png',
+    './img/NeonGravity.ico',
 
-    // ▼ ここにアイコン画像のパスを追加してください（imgフォルダの中にある場合）
-    // './img/icon-192.png',
-    // './img/icon-512.png',
-
-    // ▼ オフラインでも音を鳴らしたい場合は、audioフォルダの中身も記述が必要です
-    // './audio/Neon_Gravity_Title.mp3',
-    // './audio/Neon_Gravity_01.mp3',
-    // ...必要なファイルをすべて列挙...
+    // 音楽ファイル (これらをキャッシュしないとオフラインで再生されません)
+    './audio/Neon_Gravity_Title.mp3',
+    './audio/Neon_Gravity_01.mp3',
+    './audio/Neon_Gravity_02.mp3',
+    './audio/Neon_Gravity_03.mp3',
+    './audio/Neon_Gravity_04.mp3',
+    './audio/Neon_Gravity_05.mp3',
+    './audio/Neon_Gravity_06.mp3',
+    './audio/Neon_Gravity_07.mp3',
+    './audio/Neon_Gravity_08.mp3',
+    './audio/Neon_Gravity_Boss.mp3',
+    './audio/Neon_Gravity_Last.mp3',
+    './audio/Neon_Gravity_Clear.mp3',
+    './audio/Neon_Gravity_All_Clear.mp3',
+    './audio/Neon_Gravity_Name.mp3'
 ];
 
-// インストール処理
+// インストール処理（ファイルをキャッシュに保存）
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
@@ -23,7 +34,7 @@ self.addEventListener('install', (event) => {
     );
 });
 
-// リクエスト処理（キャッシュがあればそれを返す）
+// リクエスト処理（オフラインならキャッシュから返す）
 self.addEventListener('fetch', (event) => {
     event.respondWith(
         caches.match(event.request).then((response) => {
