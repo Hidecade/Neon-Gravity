@@ -11260,25 +11260,30 @@
         ui.pauseBtn.addEventListener('click', handlePauseClick);
         ui.pauseBtn.addEventListener('touchstart', handlePauseClick, { passive: false });
 
-        // ▼▼▼ 修正版：マイルドな表現 ＆ 5秒で自動消去 ▼▼▼
+        // ▼▼▼ 修正版：テスト用リセット有効化 & マイルド表現 & 5秒消去 ▼▼▼
         function checkIOSInstallPrompt() {
-            // ★テスト用リセット（本番ではコメントアウトのままでOK）
-            // localStorage.removeItem('neonGravity_install_closed'); 
+            // ★テスト用：この行のコメントアウト(//)を外すと、リロードするたびに強制的に表示されます
+            // 確認が終わったら、本番公開前に再び // を付けて無効化してください。
+            localStorage.removeItem('neonGravity_install_closed');
 
             const ua = navigator.userAgent.toLowerCase();
 
             // 1. iOS判定
             const isIOS = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
             // 2. インストール済み（スタンドアロン）か判定
             const isStandalone = window.navigator.standalone === true;
+
             // 3. すでに閉じた履歴があるか
             const hasClosed = localStorage.getItem('neonGravity_install_closed');
 
+            // 条件に合わなければ終了
+            // (iOSでない OR アプリ化済み OR 過去に閉じた)
             if (!isIOS || isStandalone || hasClosed) {
                 return;
             }
 
-            // 4. アプリ内ブラウザ判定
+            // 4. アプリ内ブラウザ判定 (X, LINE, Instagram, Facebookなど)
             const isInApp = /twitter|fbav|line|instagram/.test(ua);
 
             const prompt = document.getElementById('ios-install-prompt');
@@ -11312,13 +11317,13 @@
                         </span>
                     `;
                 }
-                if (arrow) arrow.style.display = 'none';
+                if (arrow) arrow.style.display = 'none'; // 矢印は隠す
                 prompt.style.display = 'flex';
 
             } else {
                 // ==========================================
-                // パターンB：Safari (またはChrome)
-                // ★ここをマイルド＆自動消去に変更
+                // パターンB：Safari (またはChrome iOS)
+                // ★マイルドな表現 & 5秒後に自動消去
                 // ==========================================
                 const isChrome = /crios/.test(ua);
 
@@ -11345,6 +11350,7 @@
                     `;
                 }
 
+                // Chromeなら矢印を上向きに
                 if (isChrome && arrow) {
                     arrow.innerHTML = "▲";
                     arrow.style.position = "absolute";
@@ -11356,16 +11362,15 @@
 
                 prompt.style.display = 'flex';
 
-                // ★追加：5秒後に自動的に閉じる処理
+                // ★5秒後に自動的に閉じる
                 setTimeout(() => {
-                    // まだ表示されていたら閉じる関数を呼ぶ
                     if (prompt.style.display !== 'none') {
-                        // フェードアウトアニメーションっぽく消すならクラスを付け替えるのが理想ですが
-                        // ここではシンプルに閉じる処理を呼びます
+                        // 閉じる処理を呼ぶ
                         if (typeof window.closeInstallPrompt === 'function') {
                             window.closeInstallPrompt();
                         } else {
                             prompt.style.display = 'none';
+                            localStorage.setItem('neonGravity_install_closed', 'true');
                         }
                     }
                 }, 5000); // 5000ミリ秒 = 5秒
