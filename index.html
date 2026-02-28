@@ -11262,47 +11262,40 @@
 
         // ▼▼▼ 修正版：テスト用リセット有効化 & マイルド表現 & 5秒消去 ▼▼▼
         function checkIOSInstallPrompt() {
-            // ★テスト用：この行のコメントアウト(//)を外すと、リロードするたびに強制的に表示されます
-            // 確認が終わったら、本番公開前に再び // を付けて無効化してください。
-            localStorage.removeItem('neonGravity_install_closed');
+            // ★テスト用：表示確認したい場合はこの行のコメントアウト(//)を外してください
+            // localStorage.removeItem('neonGravity_install_closed'); 
 
             const ua = navigator.userAgent.toLowerCase();
 
             // 1. iOS判定
             const isIOS = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
             // 2. インストール済み（スタンドアロン）か判定
             const isStandalone = window.navigator.standalone === true;
-
             // 3. すでに閉じた履歴があるか
             const hasClosed = localStorage.getItem('neonGravity_install_closed');
 
-            // 条件に合わなければ終了
-            // (iOSでない OR アプリ化済み OR 過去に閉じた)
             if (!isIOS || isStandalone || hasClosed) {
                 return;
             }
 
-            // 4. アプリ内ブラウザ判定 (X, LINE, Instagram, Facebookなど)
+            // 4. アプリ内ブラウザ判定
             const isInApp = /twitter|fbav|line|instagram/.test(ua);
 
             const prompt = document.getElementById('ios-install-prompt');
             const textDiv = prompt.querySelector('.install-text');
             const arrow = prompt.querySelector('.arrow-down');
 
-            // 言語設定
             const lang = (window.navigator.languages && window.navigator.languages[0]) || window.navigator.language || window.navigator.userLanguage || window.navigator.browserLanguage;
             const isJa = lang && lang.startsWith('ja');
 
             if (isInApp) {
                 // ==========================================
-                // パターンA：XやLINEなどのアプリ内ブラウザ
-                // ※ここはゲームが動かない可能性が高いので、自動では消しません
+                // パターンA：アプリ内ブラウザ（変更なし）
                 // ==========================================
                 if (isJa) {
                     textDiv.innerHTML = `
-                        <span style="color:#f05; font-weight:bold;">ブラウザで開いてください</span><br>
-                        このままでは正常に動作しません。<br>
+                        <span style="color:#f05; font-weight:bold;">快適にプレイするには</span><br>
+                        ブラウザで開いてください<br>
                         <span style="font-size:12px; color:#aaa;">
                            メニューの <span class="share-icon"></span> や <span style="font-size:16px; line-height:1;">⋮</span> を押し<br>
                            <span style="color:#0ff; font-weight:bold;">「ブラウザで開く」</span>を選択してください
@@ -11310,20 +11303,21 @@
                     `;
                 } else {
                     textDiv.innerHTML = `
-                        <span style="color:#f05; font-weight:bold;">OPEN IN BROWSER</span><br>
+                        <span style="color:#f05; font-weight:bold;">Best Experience</span><br>
                         Please open in Safari/Chrome.<br>
                         <span style="font-size:12px; color:#aaa;">
                            Tap menu and select "Open in Browser"
                         </span>
                     `;
                 }
-                if (arrow) arrow.style.display = 'none'; // 矢印は隠す
+
+                if (arrow) arrow.style.display = 'none';
                 prompt.style.display = 'flex';
 
             } else {
                 // ==========================================
-                // パターンB：Safari (またはChrome iOS)
-                // ★マイルドな表現 & 5秒後に自動消去
+                // パターンB：Safari (またはChrome)
+                // ★横画面についてのメッセージを追加
                 // ==========================================
                 const isChrome = /crios/.test(ua);
 
@@ -11331,8 +11325,8 @@
                     textDiv.innerHTML = `
                         <span style="color:#0ff; font-weight:bold;">快適にプレイするには</span><br>
                         <span style="font-size:12px; color:#ddd;">
-                           全画面で遊べる「ホーム画面に追加」が<br>
-                           おすすめです
+                           特に横画面で遊ぶには<br>
+                           <span style="color:#f05;">ホーム画面への追加</span>が必要です
                         </span><br>
                         <span style="font-size:11px; color:#aaa;">
                            (${isChrome ? "右上の" : "画面下の"} <span class="share-icon"></span> から追加できます)
@@ -11340,9 +11334,10 @@
                     `;
                 } else {
                     textDiv.innerHTML = `
-                        <span style="color:#0ff; font-weight:bold;">Best Experience</span><br>
+                        <span style="color:#0ff; font-weight:bold;">Fullscreen Mode</span><br>
                         <span style="font-size:12px; color:#ddd;">
-                           Add to Home Screen for fullscreen play.
+                           Add to Home Screen to play in<br>
+                           Landscape Mode.
                         </span><br>
                         <span style="font-size:11px; color:#aaa;">
                            (Tap ${isChrome ? "top-right" : "bottom"} <span class="share-icon"></span> to add)
@@ -11350,7 +11345,6 @@
                     `;
                 }
 
-                // Chromeなら矢印を上向きに
                 if (isChrome && arrow) {
                     arrow.innerHTML = "▲";
                     arrow.style.position = "absolute";
@@ -11362,10 +11356,9 @@
 
                 prompt.style.display = 'flex';
 
-                // ★5秒後に自動的に閉じる
+                // 5秒後に自動的に閉じる
                 setTimeout(() => {
                     if (prompt.style.display !== 'none') {
-                        // 閉じる処理を呼ぶ
                         if (typeof window.closeInstallPrompt === 'function') {
                             window.closeInstallPrompt();
                         } else {
@@ -11373,7 +11366,7 @@
                             localStorage.setItem('neonGravity_install_closed', 'true');
                         }
                     }
-                }, 5000); // 5000ミリ秒 = 5秒
+                }, 5000);
             }
         }
 
