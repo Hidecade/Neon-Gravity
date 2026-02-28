@@ -1040,6 +1040,105 @@
                 transform: rotate(360deg);
             }
         }
+
+
+        /* iOS インストールプロンプトのスタイル ▼▼▼ */
+        #ios-install-prompt {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 350px;
+            background: rgba(0, 10, 20, 0.95);
+            border: 1px solid #0ff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        .install-text {
+            color: #fff;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .share-icon {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 1px solid #fff;
+            border-top: none;
+            position: relative;
+            margin: 0 2px;
+        }
+
+            .share-icon::before {
+                content: '';
+                position: absolute;
+                top: -4px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 1px;
+                height: 8px;
+                background: #fff;
+            }
+
+            .share-icon::after {
+                content: '';
+                position: absolute;
+                top: -4px;
+                left: 50%;
+                transform: translateX(-50%) rotate(45deg);
+                width: 4px;
+                height: 4px;
+                border-top: 1px solid #fff;
+                border-left: 1px solid #fff;
+            }
+
+        .arrow-down {
+            color: #0ff;
+            font-size: 16px;
+            animation: bounce 1.5s infinite;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            color: #555;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        @keyframes slideUp {
+            from {
+                bottom: -100px;
+                opacity: 0;
+            }
+
+            to {
+                bottom: 20px;
+                opacity: 1;
+            }
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(5px);
+            }
+        }
     </style>
 </head>
 
@@ -1129,7 +1228,7 @@
 
         <div id="menu-buttons-container" style="display:flex; flex-direction:column; align-items:center;">
             <div class="menu-btn" id="btn-start">START GAME</div>
-            <div class="menu-btn" id="btn-howto">HOW TO PLAY</div> 
+            <div class="menu-btn" id="btn-howto">HOW TO PLAY</div>
             <div class="menu-btn" id="btn-ranking">WORLD RANKING</div>
             <div class="menu-btn" id="btn-ost">SOUNDTRACK</div>
             <div class="menu-btn" id="btn-story">ARCHIVE (STORY)</div>
@@ -1380,6 +1479,16 @@
         <div id="launch-btn">BOMB</div>
     </div>
 
+    <div id="ios-install-prompt" style="display: none;">
+        <div class="close-btn" onclick="closeInstallPrompt()">×</div>
+        <div class="install-text">
+            <span style="color:#0ff; font-weight:bold;">INSTALL APP</span><br>
+            For Better Performance<br>
+            <span style="font-size:12px; color:#aaa;">Tap <span class="share-icon"></span> and select "Add to Home Screen"</span>
+        </div>
+        <div class="arrow-down">▼</div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
@@ -1508,11 +1617,11 @@
                         }
 
                         tr.innerHTML = `
-                                        <td class="${rankClass}" style="text-align:center;">${rankText}</td>
-                                        <td style="text-align:left;">${escapeHtml(data.name)}</td>
-                                        <td style="text-align:center;">${stageText}</td>
-                                        <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
-                                    `;
+                                            <td class="${rankClass}" style="text-align:center;">${rankText}</td>
+                                            <td style="text-align:left;">${escapeHtml(data.name)}</td>
+                                            <td style="text-align:center;">${stageText}</td>
+                                            <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
+                                        `;
                         rankingBody.appendChild(tr);
                         rank++;
                     });
@@ -4677,7 +4786,7 @@
             }
         }
 
-            
+
 
         function updateEnemies() {
             // 現在の表示範囲（カメラ位置＋画面サイズ）
@@ -9695,7 +9804,7 @@
                 ctx.lineTo(lineLength, 0); // 自機の位置でピタッと止まる
                 ctx.stroke();
 
-   
+
 
                 ctx.restore();
             }
@@ -9709,7 +9818,7 @@
             ctx.restore();
         }
 
-function drawBossEnemy(ctx, e) {
+        function drawBossEnemy(ctx, e) {
             ctx.save();
             ctx.translate(e.x, e.y);
 
@@ -9739,7 +9848,7 @@ function drawBossEnemy(ctx, e) {
             const baseColor = e.color;
             const mainStroke = isDmg ? '#ffffff' : baseColor;
             const reactorColor = isDmg ? '#ffffff' : '#cc0000';
-            
+
             // ★追加：書き込み用の極細線色（薄い白）
             const detailStroke = isDmg ? 'rgba(255,255,255,0.4)' : 'rgba(255, 255, 255, 0.2)';
 
@@ -9766,7 +9875,7 @@ function drawBossEnemy(ctx, e) {
                 ctx.moveTo(0, 0); ctx.lineTo(Math.cos(angle) * baseRadius, Math.sin(angle) * baseRadius);
             }
             ctx.stroke();
-            
+
             // ★追加書き込み1：装甲パネルの継ぎ目（極細の同心線）
             ctx.strokeStyle = detailStroke;
             ctx.lineWidth = 0.5; // 極細
@@ -9789,7 +9898,7 @@ function drawBossEnemy(ctx, e) {
                 const angle1 = (Math.PI * 2 / sides) * i - Math.PI / 2;
                 const angle2 = (Math.PI * 2 / sides) * (i + 1) - Math.PI / 2;
                 const midAngle = (angle1 + angle2) / 2;
-                
+
                 const r1x = Math.cos(angle1); const r1y = Math.sin(angle1);
                 const r2x = Math.cos(angle2); const r2y = Math.sin(angle2);
                 const rmx = Math.cos(midAngle); const rmy = Math.sin(midAngle);
@@ -9810,7 +9919,7 @@ function drawBossEnemy(ctx, e) {
             }
             drawPolygonPath(ctx, innerFrameRad * 0.3, sides);
             ctx.stroke();
-            
+
             ctx.restore();
 
             // 砲台の塗りつぶしグラデーションも一旦削除して線画中心にする方針だが、
@@ -9835,7 +9944,7 @@ function drawBossEnemy(ctx, e) {
                 ctx.lineTo(8, 30); ctx.lineTo(-8, 30); ctx.lineTo(-14, 25);
                 ctx.closePath(); ctx.fill();
                 ctx.strokeStyle = mainStroke; ctx.lineWidth = 2; ctx.stroke();
-                
+
                 // ★追加書き込み3：砲台のモールド線（極細）
                 ctx.strokeStyle = detailStroke; ctx.lineWidth = 0.5;
                 ctx.beginPath();
@@ -9898,19 +10007,19 @@ function drawBossEnemy(ctx, e) {
                 ctx.lineWidth = Math.max(0.5, layerWidth);
                 ctx.globalAlpha = layerAlpha * baseAlpha;
                 ctx.stroke();
-                
+
                 // ★追加書き込み4：外殻間の微細接続構造（極細ジグザグ線）
-                if (i > 0 && i < layers -1) {
-                    const prevR = innerRad + (outerRad - innerRad) * Math.pow((i-1) / (layers - 1), 1.2);
+                if (i > 0 && i < layers - 1) {
+                    const prevR = innerRad + (outerRad - innerRad) * Math.pow((i - 1) / (layers - 1), 1.2);
                     ctx.strokeStyle = detailStroke;
                     ctx.lineWidth = 0.5;
                     ctx.globalAlpha = 0.3 * baseAlpha;
                     ctx.beginPath();
-                    for(let j=0; j<sides*2; j++){
-                        const ang = (Math.PI*2 / (sides*2)) * j;
+                    for (let j = 0; j < sides * 2; j++) {
+                        const ang = (Math.PI * 2 / (sides * 2)) * j;
                         // 内側の円周上の点と外側の円周上の点を交互に結ぶ
-                        const targetR = (j%2===0) ? prevR : r;
-                        ctx.lineTo(Math.cos(ang)*targetR, Math.sin(ang)*targetR);
+                        const targetR = (j % 2 === 0) ? prevR : r;
+                        ctx.lineTo(Math.cos(ang) * targetR, Math.sin(ang) * targetR);
                     }
                     ctx.closePath();
                     ctx.stroke();
@@ -11151,6 +11260,37 @@ function drawBossEnemy(ctx, e) {
         ui.pauseBtn.addEventListener('click', handlePauseClick);
         ui.pauseBtn.addEventListener('touchstart', handlePauseClick, { passive: false });
 
+        // ▼▼▼ ここを追加：iOS インストール促進ロジック ▼▼▼
+        function checkIOSInstallPrompt() {
+            // iOS判定
+            const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            // スタンドアロン（ホーム画面から起動）モードかどうか
+            const isStandalone = window.navigator.standalone === true;
+            // すでに閉じた履歴があるか
+            const hasClosed = localStorage.getItem('neonGravity_install_closed');
+
+            // 「iOS」かつ「ブラウザで開いていて」かつ「まだ閉じていない」場合のみ表示
+            if (isIOS && !isStandalone && !hasClosed) {
+                const prompt = document.getElementById('ios-install-prompt');
+                if (prompt) {
+                    prompt.style.display = 'flex';
+                }
+            }
+        }
+
+        window.closeInstallPrompt = function () {
+            const prompt = document.getElementById('ios-install-prompt');
+            if (prompt) {
+                prompt.style.display = 'none';
+                localStorage.setItem('neonGravity_install_closed', 'true');
+            }
+        };
+
+        // 起動時にチェックを実行
+        checkIOSInstallPrompt();
+        // ▲▲▲ ここまで ▲▲▲
+
+        // （既存のコード）
         init();
         window.refreshMenuButtons();
         loop();
