@@ -1,0 +1,17 @@
+
+{
+  "name": "NEON GRAVITY",
+  "short_name": "NeonGravity",
+  "start_url": "./NeonGravity.html",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#00ffff",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "NeonGravity.png",
+      "sizes": "2047x2048",
+      "type": "image/png"
+    }
+  ]
+}
