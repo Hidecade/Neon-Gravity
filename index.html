@@ -2089,6 +2089,23 @@
             keys: {}
         };
 
+        function clearInputState() {
+            // 移動・エイム入力をゼロリセット
+            input.move.x = 0; input.move.y = 0; input.move.active = false;
+            input.aim.x = 0; input.aim.y = 0; input.aim.active = false;
+            input.keys = {};
+
+            // ゲームパッド用の入力フラグも全てリセット（これが重要）
+            input.padAPressed = false;
+            input.padBombPressed = false;
+            input.padDirPressed = false;
+            input.padStartPressed = false;
+
+            // 画面上のスティックUIの位置もリセット
+            if (ui.knobL) ui.knobL.style.transform = 'translate(0,0)';
+            if (ui.knobR) ui.knobR.style.transform = 'translate(0,0)';
+        }
+
         // カメラ座標
         let camera = { x: 0, y: 0 };
 
@@ -3321,8 +3338,10 @@
             if (paused) {
                 if (gameState === 'PLAYING') {
 
+                    // ★追加：ポーズ時に入力状態をリセット（バックグラウンド移行時の押しっぱなし防止）
+                    clearInputState();
+
                     if (isTrainingMode) {
-                        // 専用の終了関数を呼んで安全にタイトルへ
                         returnToTitleFromTraining();
                         return;
                     }
@@ -3335,6 +3354,7 @@
                 AudioSys.pauseBGM();
             } else {
                 if (gameState === 'PAUSED') {
+                    // ここはそのまま
                 } else {
                     AudioSys.resumeBGM();
                 }
@@ -3387,14 +3407,8 @@
             player.laserTimer = 0;
             player.history = [];
 
-            // --- ★追加：入力状態とスティックの見た目を強制リセット ---
-            input.move.x = 0; input.move.y = 0; input.move.active = false;
-            input.aim.x = 0; input.aim.y = 0; input.aim.active = false;
-            for (let key in input.keys) input.keys[key] = false; // キーボード入力もリセット
-            if (ui.knobL) ui.knobL.style.transform = 'translate(0,0)';
-            if (ui.knobR) ui.knobR.style.transform = 'translate(0,0)';
-            // --------------------------------------------------------
-
+            // --- 入力状態を強制リセット ---
+            clearInputState();
 
             // 4. 入力デバイスに応じたUI表示
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
@@ -3543,13 +3557,8 @@
             player.satellites = [];
             player.history = [];
 
-            // --- ★追加：入力状態とスティックの見た目を強制リセット ---
-            input.move.x = 0; input.move.y = 0; input.move.active = false;
-            input.aim.x = 0; input.aim.y = 0; input.aim.active = false;
-            for (let key in input.keys) input.keys[key] = false;
-            if (ui.knobL) ui.knobL.style.transform = 'translate(0,0)';
-            if (ui.knobR) ui.knobR.style.transform = 'translate(0,0)';
-            // --------------------------------------------------------
+            // --- 入力状態を強制リセット ---
+            clearInputState();
 
             // --- ★カメラの瞬間リセット ---
             cameraScale = 1.0;
