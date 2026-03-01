@@ -1403,7 +1403,7 @@
 
         <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
             PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
-            Version 1.00 | &copy; 2026 Hidecade
+            Version 1.01 | &copy; 2026 Hidecade
         </div>
     </div>
 
@@ -3377,17 +3377,23 @@
         // 4. シーン・ステージ管理 (Scene & Stage Management)
         // =========================================================
         function startGame() {
+            // ★変更：いきなり消さず、まずは透明にして当たり判定だけ消す（フォーカス維持のため）
+            ui.overlay.style.transition = 'opacity 0.2s';
+            ui.overlay.style.opacity = '0';
+            ui.overlay.style.pointerEvents = 'none'; // クリックだけできないようにする
 
-            // ★変更：前の requestFullScreen 等は削除/コメントアウトのまま
+            // 即座にキャンバスにフォーカス
+            canvas.focus();
 
-            // DOMの描画更新（display:noneなど）が終わるのを一瞬待ってからフォーカスする
-            // これにより「消えた要素」ではなく「現れたCanvas」に確実にフォーカスが乗ります
+            // 念のため少し遅らせてから完全に消す（これでフォーカス迷子を防ぐ）
             setTimeout(() => {
-                canvas.focus();
-            }, 50);
+                ui.overlay.style.display = 'none';
+                // 次回表示時のためにスタイルをリセットしておく（display:noneの状態で行うので見えない）
+                ui.overlay.style.transition = '';
+                ui.overlay.style.opacity = '1';
+                ui.overlay.style.pointerEvents = 'auto';
+            }, 500);
 
-            gameState = 'PLAYING';
-            ui.overlay.style.display = 'none';
             ui.ost.style.display = 'none';
 
             score = 0;
@@ -3406,7 +3412,7 @@
             player.laserTimer = 0;
             player.history = [];
 
-            // 入力リセットもシンプルに手動で行うだけに留める
+            // 入力リセット
             input.move.active = false;
             input.aim.active = false;
 
@@ -3431,6 +3437,7 @@
             ui.msg.style.display = 'none';
             ui.pauseBtn.style.display = 'flex';
 
+            gameState = 'PLAYING';
             startStage();
         }
 
@@ -3550,20 +3557,14 @@
             player.satellites = [];
             player.history = [];
 
-            // --- 入力状態を強制リセット ---
             clearInputState();
 
-            // --- ★カメラの瞬間リセット ---
             cameraScale = 1.0;
             const viewW = width / cameraScale;
             const viewH = height / cameraScale;
             camera.x = player.x - viewW / 2;
-            //camera.y = player.y - viewH / 2;
             camera.y = player.y - viewH * CAMERA_Y_OFFSET;
-
-            // これにより、スムージングの計算（ Lerp ）をリセット
             updateCamera();
-            // ---------------------------
 
             ui.score.innerText = "000000"; ui.stage.innerText = stage;
             ui.shieldBar.style.width = "100%"; ui.shieldBar.classList.remove('shield-critical');
@@ -3572,7 +3573,19 @@
             ui.warn.style.display = 'none'; ui.msg.style.display = 'none';
             ui.pauseBtn.style.display = 'flex';
             ui.bossContainer.style.display = 'none';
-            ui.overlay.style.display = 'none'; ui.controls.style.display = 'block';
+
+            // ★変更：ここも「ゴースト化」処理に変更
+            ui.overlay.style.transition = 'opacity 0.2s';
+            ui.overlay.style.opacity = '0';
+            ui.overlay.style.pointerEvents = 'none';
+            setTimeout(() => {
+                ui.overlay.style.display = 'none';
+                ui.overlay.style.transition = '';
+                ui.overlay.style.opacity = '1';
+                ui.overlay.style.pointerEvents = 'auto';
+            }, 500);
+
+            ui.controls.style.display = 'block';
 
             const bgmIndex = Math.floor((stage - 1) / 2) % BGM_FILES.stages.length;
             AudioSys.playBGM('stage', bgmIndex);
@@ -3581,7 +3594,7 @@
 
             const isConnected = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).some(gp => gp !== null);
             ui.controls.style.display = isConnected ? 'none' : 'block';
-            ui.pauseBtn.style.display = isConnected ? 'none' : 'flex'; // ★追加
+            ui.pauseBtn.style.display = isConnected ? 'none' : 'flex';
         }
 
         function checkStageClear() {
@@ -3927,7 +3940,6 @@
         }
 
         function returnToTitle() {
-
             gameState = 'TITLE';
 
             AudioSys.fadeOutBGM().then(() => {
@@ -3935,15 +3947,16 @@
             });
 
             ui.ost.style.display = 'none';
+
+            // ★変更：タイトル画面を表示する際、確実にスタイルを初期状態に戻す
             ui.overlay.style.display = 'flex';
+            ui.overlay.style.opacity = '1';
+            ui.overlay.style.pointerEvents = 'auto';
+
             ui.controls.style.display = 'none';
             ui.msg.style.display = 'none';
-
             document.getElementById('training-guide').style.display = 'none';
 
-            // ==========================================
-            // ★追加：タイトル画面ではスコアやポーズボタンを完全に隠す
-            // ==========================================
             ui.pauseBtn.style.display = 'none';
             const hud = document.querySelector('.hud-row');
             if (hud) hud.style.display = 'none';
@@ -3956,9 +3969,6 @@
             ui.btnStart.style.display = 'block';
             ui.btnStart.style.borderColor = '#0ff';
             ui.btnStart.style.color = '#0ff';
-
-            // ★削除：ここの onclick 行を削除しました
-            // ui.btnStart.onclick = startGame;
 
             ui.btnOst.style.display = 'block';
             ui.btnTitle.style.display = 'none';
@@ -11645,8 +11655,32 @@
 
             // STARTボタン処理
             if (startBtn && !input.padStartPressed) {
-                if (gameState === 'PLAYING') setPaused(true);
-                else if (gameState === 'PAUSED') resumeAction();
+                if (gameState === 'PLAYING') {
+                    setPaused(true);
+                }
+                else if (gameState === 'PAUSED') {
+                    resumeAction();
+                }
+                // ★追加：タイトル画面で押されたらゲーム開始
+                else if (gameState === 'TITLE') {
+                    // Aボタンの時と同じく、フォーカス対策をしてから起動
+                    window.focus();
+                    if (document.activeElement) document.activeElement.blur();
+
+                    if (typeof AudioSys !== 'undefined') {
+                        if (!AudioSys.ctx) AudioSys.init();
+                        AudioSys.resume();
+                    }
+                    startGame();
+                }
+                // ★追加：ゲームオーバー画面で押されたらリトライ
+                else if (gameState === 'GAMEOVER_UI') {
+                    resetGame();
+                }
+                // ★追加：トレーニング画面から戻る
+                else if (isTrainingMode) {
+                    returnToTitleFromTraining();
+                }
             }
             input.padStartPressed = startBtn;
 
