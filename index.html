@@ -1047,13 +1047,19 @@
         }
 
         .ja-text {
-            color: #888;
+            color: #ccc;
             font-size: 13px;
             font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Meiryo', sans-serif;
             margin-top: 0;
             margin-bottom: 2.5em;
             line-height: 1.6;
             letter-spacing: 0.5px;
+        }
+
+        #story-scroll-container strong {
+            color: #ffffff;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.9); /* 軽く白く光らせる */
         }
 
         /* =========================================================
@@ -11534,14 +11540,14 @@
         document.addEventListener('keydown', handleInteraction);
 
         // ゲームパッド制御用
+        // ゲームパッド制御用
         function handleGamepadInput() {
 
             // iOS Safari対応: getGamepads() は毎フレーム呼び出して最新状態を取得する必要がある
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             let activeGp = null;
 
-            // 接続されているコントローラーの中で、最初に見つかった有効なものを取得
-            // iOSでは配列の途中にnullが入ることがあるため、単純なループで探す
+            // 接続されているコントローラーを探す
             for (let i = 0; i < gamepads.length; i++) {
                 const gp = gamepads[i];
                 if (gp && gp.connected) {
@@ -11550,28 +11556,23 @@
                 }
             }
 
-            // コントローラーが見つからない場合は処理を終了
-            // ※iOSでは接続イベントが発火しない場合があるため、ここでUIの表示切替も行うと確実です
             if (!activeGp) {
-                // PC/Androidではイベントで制御しているが、念のためここでも確認
-                if (gameState === 'PLAYING' && ui.controls.style.display === 'none' && !isTrainingMode) {
-                    // 接続が切れたとみなせる場合の処理（必要に応じて記述）
-                }
                 return;
             }
 
-            // iOS対応: 接続が確認できたらタッチUIを消す（イベントが発火しない対策）
+            // iOS対応: 接続が確認できたらタッチUIを消す
             if (gameState === 'PLAYING' && ui.controls.style.display !== 'none') {
                 ui.controls.style.display = 'none';
                 ui.pauseBtn.style.display = 'none';
             }
 
             // ボタン・スティックの状態取得
-            const aBtn = activeGp.buttons[0]?.pressed; // Aボタン
+            const aBtn = activeGp.buttons[0]?.pressed; // Aボタン (決定/発射)
             const startBtn = activeGp.buttons[9]?.pressed; // START
-            const moveX = activeGp.axes[0];
-            const moveY = activeGp.axes[1];
+            const moveX = activeGp.axes[0]; // 左スティック X
+            const moveY = activeGp.axes[1]; // 左スティック Y (スクロールにも使用)
 
+            // 十字キーまたはスティックの判定
             const dpadUp = activeGp.buttons[12]?.pressed || moveY < -0.5;
             const dpadDown = activeGp.buttons[13]?.pressed || moveY > 0.5;
             const dpadLeft = activeGp.buttons[14]?.pressed || moveX < -0.5;
@@ -11591,42 +11592,68 @@
             input.padStartPressed = startBtn;
 
             // ==========================================
-            // メニュー画面・HOWTO画面での操作（PLAYING以外）
+            // メニュー画面・HOWTO画面・STORY画面での操作
             // ==========================================
             if (gameState !== 'PLAYING') {
 
-                // 1. 十字キーでの選択移動
-                if ((dpadUp || dpadDown || dpadLeft || dpadRight) && !input.padDirPressed) {
-                    if (dpadUp || dpadLeft) selectedMenuIndex--;
-                    if (dpadDown || dpadRight) selectedMenuIndex++;
-                    updateMenuSelectionUI();
+                // ▼▼▼ 追加：スクロール処理 (STORY, RANKING, OST) ▼▼▼
+                // スティックや十字キーでテキストをスクロールさせる
+                if (gameState === 'STORY' || gameState === 'RANKING' || gameState === 'OST') {
+                    let scrollTargetId = null;
+                    if (gameState === 'STORY') scrollTargetId = 'story-scroll-container';
+                    else if (gameState === 'RANKING') scrollTargetId = 'ranking-scroll-container';
+                    else if (gameState === 'OST') scrollTargetId = 'ost-scroll-container';
+
+                    const container = document.getElementById(scrollTargetId);
+                    if (container) {
+                        const scrollSpeed = 15; // スクロール速度
+
+                        // スティック入力 (デッドゾーンあり)
+                        if (Math.abs(moveY) > 0.2) {
+                            container.scrollTop += moveY * scrollSpeed;
+                        }
+                        // 十字キー入力
+                        else if (dpadUp) {
+                            container.scrollTop -= scrollSpeed;
+                        } else if (dpadDown) {
+                            container.scrollTop += scrollSpeed;
+                        }
+                    }
                 }
+
+                // 1. 十字キーでのボタン選択移動
+                // STORY画面はボタンが1つしかないので、上下キーはスクロール専用にしてカーソル移動させない
+                if (gameState !== 'STORY') {
+                    if ((dpadUp || dpadDown || dpadLeft || dpadRight) && !input.padDirPressed) {
+                        if (dpadUp || dpadLeft) selectedMenuIndex--;
+                        if (dpadDown || dpadRight) selectedMenuIndex++;
+                        window.updateMenuSelectionUI();
+                    }
+                }
+
                 input.padDirPressed = (dpadUp || dpadDown || dpadLeft || dpadRight);
 
+                // 2. Aボタンで決定
                 if (aBtn) {
                     if (!input.padAPressed) {
-                        // ▼▼▼ ここに 'PAUSED' を追加 ▼▼▼
                         if (gameState === 'HOWTO' ||
                             gameState === 'TITLE' ||
                             gameState === 'GAMEOVER_UI' ||
                             gameState === 'OST' ||
                             gameState === 'STORY' ||
-                            gameState === 'PAUSED') {
+                            gameState === 'PAUSED' ||
+                            document.getElementById("ranking-overlay").style.display === 'flex') {
 
                             if (currentMenuButtons[selectedMenuIndex]) {
-                                // ★修正点1: 実行前にボタンリストを空にして、連続入力を防ぐ
                                 const btnToClick = currentMenuButtons[selectedMenuIndex];
-                                currentMenuButtons = [];
+                                currentMenuButtons = []; // 連打防止
                                 btnToClick.click();
                             }
                         }
-
                         input.padAPressed = true;
-
-                        // ★修正点2: 画面切り替え後の誤判定を防ぐため、少し長めにウェイトを入れる
                         setTimeout(() => {
                             if (window.refreshMenuButtons) window.refreshMenuButtons(false);
-                        }, 250); // 100msから250msに延長
+                        }, 250);
                     }
                 } else {
                     input.padAPressed = false;
@@ -11646,7 +11673,6 @@
                 input.move.x = moveX;
                 input.move.y = moveY;
             } else {
-                // ★ 修正：WASDキーがどれも押されていない場合のみスティック入力をリセットする
                 if (input.move.active && !input.keys['KeyA'] && !input.keys['KeyD'] && !input.keys['KeyW'] && !input.keys['KeyS']) {
                     input.move.x = 0; input.move.y = 0; input.move.active = false;
                 }
