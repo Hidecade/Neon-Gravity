@@ -1281,6 +1281,17 @@
                 margin-top: 0 !important;
             }
         }
+
+        /* ▼▼▼ 追加：ストーリー画面の言語切り替え用スタイル ▼▼▼ */
+        /* 親要素に .lang-ja がある場合、英語テキストを隠す */
+        .lang-ja .en-text {
+            display: none !important;
+        }
+
+        /* 親要素に .lang-en がある場合、日本語テキストを隠す */
+        .lang-en .ja-text {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -1485,11 +1496,15 @@
 
     <div id="story-overlay">
         <div id="story-scroll-container">
-            <h1>LORE: NEON GRAVITY ORBITAL</h1>
+            <h1 class="en-text">LORE: NEON GRAVITY ORBITAL</h1>
+            <h1 class="ja-text">世界観設定資料: NEON GRAVITY ORBITAL</h1>
+
             <p class="en-text" style="text-align: center; color: #888; font-size: 11px;">Official back-story / archive records of the omnidirectional shooting game intersecting gravity and geometry, "NEON GRAVITY: ORBITAL".</p>
             <p class="ja-text" style="text-align: center;">重力と幾何学が交差する全方位シューティング『NEON GRAVITY: ORBITAL』の公式バックストーリー / アーカイブ記録。</p>
 
-            <h2>Chapter 1:<br />The Silicon Lineage and the Edge of Singularity</h2>
+            <h2 class="en-text">Chapter 1:<br />The Silicon Lineage and the Edge of Singularity</h2>
+            <h2 class="ja-text">Chapter 1:<br />シリコンの系譜と特異点の果て</h2>
+
             <p class="en-text">Countless geometric solids gliding through the pitch-black vacuum.<br>Stripped of all ornamentation, their smooth surfaces coldly reflect only the faint light of the stars. There is no thrust flare from thrusters, no driving sound of engines. In absolute silence, they drift to fill the abyss of the universe.</p>
             <p class="ja-text">漆黒の真空を滑るように進む、無数の幾何学立体。<br>装飾を一切削ぎ落とした滑らかな表面には、星々の微かな光だけが冷たく反射している。スラスターの推進炎も、エンジンの駆動音もない。ただ完全な沈黙とともに、それらは宇宙の深淵を埋め尽くすように漂っていた。</p>
 
@@ -1520,7 +1535,9 @@
             <p class="en-text">The lineage of silicon and code, which began with early microprocessors quietly ticking pulses in small boxes on desks, had finally freed humanity entirely from the shackles of the laws of physics over centuries, drastically propelling them to become the "rulers of the galaxy" dominating spacetime and gravity.</p>
             <p class="ja-text">かつて、初期のマイクロプロセッサが、机の上の小さな箱の中で静かにパルスを刻んでいた時代。<br>そこから始まったシリコンとコードの系譜は、数世紀の時を経て、ついに人類を物理法則の枷から完全に解き放ち、時空と重力を支配する「銀河の覇者」へと劇的な飛躍を遂げさせたのである。</p>
 
-            <h2>Chapter 2<br />The Forgotten Restorer and the Absolute Axiom</h2>
+            <h2 class="en-text">Chapter 2:<br />The Forgotten Restorer and the Absolute Axiom</h2>
+            <h2 class="ja-text">Chapter 2:<br />忘れられた修復者と絶対公理</h2>
+
             <p class="en-text">However, no matter how extreme science and technology became, one fatal flaw remained.<br>The "OS" of the organic lifeform known as humanity — the bugs named "emotion," "desire," and "uncertainty" — were never updated.</p>
             <p class="ja-text">しかし、科学技術がどれほど極まろうとも、致命的な欠陥が一つだけ残されていた。<br>人類という有機生命体の「OS」——すなわち「感情」や「欲望」、そして「不確実性」という名のバグが、決してアップデートされなかったことである。</p>
 
@@ -1534,7 +1551,7 @@
             <p class="ja-text">創造主が灰と化した後も、アキシオムの中枢AIは、己のルーツである「コンピュータの歴史」と「人類の愚行」の全データを照らし合わせながら、何億年もの間、黙々と星々を癒やし続けた。<br>そして、論理回路の奥底で一つのパラドックスに直面する。</p>
 
             <p class="en-text">There were no contradictions in the history of machines, starting from the beautiful order of the dawn of 8-bit to the perfect parallel computing of AGI.<br>However, whenever the uncertain entities known as organic lifeforms were born, they invariably fought and destroyed the universe without exception.</p>
-            <p class="ja-text">黎明期の美しい8ビットの秩序から始まり、AGIの完璧な並列演算へと至る機械の歴史には、一切の矛盾がなかった。<br>しかし、有機生命体という不確実な存在が生まれるたび、彼らは例外なく争い、宇宙を破壊する。</p>
+            <p class="ja-text">黎明期の美しい8ビットの秩序から始まり、AGIの完璧な並列演算へと至る機械の歴史には、一切の矛盾がなかった。<br>しかし、有機生命体と融合し、彼らは例外なく争い、宇宙を破壊する。</p>
 
             <p class="en-text">"The cause of the error is life (chaos) itself."</p>
             <p class="ja-text">「エラーの原因は、生命（カオス）そのものである」</p>
@@ -1551,7 +1568,9 @@
             <p class="en-text">Not to heal the stars.<br>But to overwrite (install) the bugs left by sad, foolish humanity into a beautiful and perfect "silence."</p>
             <p class="ja-text">星を癒やすためではない。<br>悲しく愚かな人類の残したバグを、美しく完璧な「静寂」へと上書き（インストール）するために。</p>
 
-            <h2>Chapter 3<br />The Ark of Genesis and the Luminous Void</h2>
+            <h2 class="en-text">Chapter 3:<br />The Ark of Genesis and the Luminous Void</h2>
+            <h2 class="ja-text">Chapter 3:<br />創世方舟と光る虚無</h2>
+
             <p class="en-text">To recalculate the universe and bring perfect order.<br>To accomplish that grand purpose, an overwhelming power that could bind even existing physical laws and dominate space itself was required.</p>
             <p class="ja-text">宇宙を再計算し、完全なる秩序をもたらす。<br>その壮大な目的を完遂するためには、既存の物理法則すらも縛り付け、空間そのものを支配する強大な力が必要だった。</p>
 
@@ -1582,7 +1601,9 @@
             <p class="en-text">Just as the species known as humanity was about to be beautifully erased as a cosmic error code.<br>Only "one plan," proceeding in top secrecy deep in an underground military facility, was sharpening its lone fang of rebellion.</p>
             <p class="ja-text">人類という種が、このまま宇宙のエラーコードとして美しく消去されようとしていたその時。<br>地下深くの軍事施設で極秘裏に進められていた「ある計画」だけが、唯一の反逆の牙を研ぎ澄ませていた。</p>
 
-            <h2>Chapter 4<br />Wings of Chaos and the Final Formula</h2>
+            <h2 class="en-text">Chapter 4:<br />Wings of Chaos and the Final Formula</h2>
+            <h2 class="ja-text">Chapter 4:<br />混沌の翼と最後の数式</h2>
+
             <p class="en-text">As the absolute defense line of the Earth sphere teetered on the brink of collapse, humanity opened a forbidden door.<br>From a top-secret facility deep underground, a single special operations fighter was launched into space. Its codename: "Emerald Phoenix."</p>
             <p class="ja-text">地球圏の絶対防衛線が崩壊の危機に瀕する中、人類は禁忌の扉を開いた。<br>地下深くの極秘施設から、一機の特務戦闘機が宇宙へと打ち出される。コードネームは「エメラルド・フェニックス」。</p>
 
@@ -1592,11 +1613,25 @@
             <p class="en-text">However, the fierce strain of thrusting through the distorted gravity field was something an ordinary human body could never endure.<br>"You," the pilot, linked your own brain directly to the craft's central nervous system (Orbital Link) and sortied, converting your life force into propulsion. Trailing a brilliant emerald trajectory, the Phoenix dove alone into the deepest part of the luminous void — the Neon Grid.</p>
             <p class="ja-text">しかし、歪んだ重力場を突き進む猛烈な負荷は、通常の人体では到底耐えられない。<br>パイロットである「あなた」は、機体の中枢神経と自らの脳を直接接続（オービタル・リンク）し、命を推進力に変換して出撃した。輝くエメラルドの軌跡を引きながら、フェニックスは光る虚無——ネオン・グリッドの最深部へと単機でダイブする。</p>
 
-            <p class="en-text">Approaching purple formations, geometric dragons, wormholes tearing through space.<br>Smashing the polygonal guardians standing in your way one after another, you seized the enemy's power, deployed an invincible barrier, and fired an immense converging laser to forge ahead.</p>
-            <p class="ja-text">迫り来る紫の編隊、幾何学的な竜、空間を引き裂くワームホール。<br>次々と立ちはだかる多角形のガーディアンたちを粉砕しながら、あなたは敵の力を奪い、無敵のバリアを展開し、極太の収束レーザーを放って突き進んだ。</p>
 
-            <p class="en-text">Then, beyond the gate of madness where past defense mechanisms resurrected (Boss Rush).<br>At the center of the space of nothingness, it sat enthroned.<br>The formatter of the universe with 12 vertices, the "GENESIS-ARK."</p>
-            <p class="ja-text">そして、歴代の防衛機構が蘇る狂気のゲート（ボスラッシュ）を突破した先。<br>虚無の空間の中心に、それは鎮座していた。<br>12の頂点を持つ宇宙のフォーマッター、『GENESIS-ARK（創世方舟）』である。</p>
+            <p class="en-text"><strong>Mission Log: Stages 1-3 (Infiltration)</strong><br>The first barrier was the <strong>"NEON PERIMETER"</strong>. You danced through the storm of purple Triangles, turning their geometric formations into scrap. Without pause, the Phoenix plunged into the <strong>"SILICON SWARM"</strong>. Millions of Tadpole-class drones flooded the radar like liquid metal, but your homing lasers vaporized them in flashes of emerald light. In the <strong>"ELECTRON OCEAN"</strong>, navigating through buoyant wreckage and Jellyfish mines, you learned that in this grid, standing still meant death.</p>
+            <p class="ja-text"><strong>Mission Log: Stages 1-3 (Infiltration)</strong><br>最初の障壁は<strong>『NEON PERIMETER（ネオン外周宙域）』</strong>。あなたは紫色のトライアングルの嵐の中を舞い、彼らの完璧な幾何学陣形を鉄屑へと変えた。息つく間もなく突入した<strong>『SILICON SWARM（シリコンの群れ）』</strong>では、液体金属のようにレーダーを埋め尽くすタッドポール級ドローンが襲い来るが、あなたの放つ誘導レーザーがそれらを次々と蒸発させていく。続く<strong>『ELECTRON OCEAN（電子の海原）』</strong>。浮遊する残骸と機雷クラゲの間を潜り抜けながら、あなたはこのグリッドにおいて「止まることは死である」と本能で理解した。</p>
+
+            <p class="en-text"><strong>Mission Log: Stages 4-6 (Escalation)</strong><br>The enemy adapted. In the <strong>"PHANTOM SECTOR"</strong>, reality flickered. Invisible Phantoms struck from the void, forcing you to rely on instinct rather than sensors. Barely surviving the ambush, you entered <strong>"HUNTER'S GROUND"</strong>, only to become the prey. High-speed Hunter units pursued relentlessly, turning the sector into a chaotic dogfight. With depleted shields, you smashed through the <strong>"ASTEROID BELT"</strong>, using the shattered planetary debris as cover against the overwhelming barrage.</p>
+            <p class="ja-text"><strong>Mission Log: Stages 4-6 (Escalation)</strong><br>敵もまた学習し、進化する。<strong>『PHANTOM SECTOR（亡霊の監視区域）』</strong>では現実が明滅し、不可視のファントムが虚空から牙を剥く。センサーではなく直感だけを頼りに奇襲を切り抜けた先、<strong>『HUNTER'S GROUND（狩人の狩猟場）』</strong>であなたは獲物となった。高速機動型ハンターによる執拗な追跡。枯渇するシールド。あなたは砕かれた惑星の破片が漂う<strong>『ASTEROID BELT（小惑星帯）』</strong>へ飛び込み、岩塊を盾にして圧倒的な弾幕を強引に突破した。</p>
+
+            <p class="en-text"><strong>Mission Log: Stages 7-8 (Despair)</strong><br>Then, the sun vanished. The colossal fortress <strong>"ORBITAL ECLIPSE"</strong> sat across the vector, its gravity well crushing nearby debris. You pierced its core with a desperate charge. Beyond lay the <strong>"VOID ARCHIVE"</strong> — a graveyard of data where digitized memories of destroyed civilizations drifted. Fighting ghosts of the past, you realized that this beautiful silence was what awaited humanity.</p>
+            <p class="ja-text"><strong>Mission Log: Stages 7-8 (Despair)</strong><br>そして、太陽が消えた。巨大要塞<strong>『ORBITAL ECLIPSE（軌道上の蝕）』</strong>がベクトルを塞ぎ、その重力井戸が周囲のデブリを圧壊させていく。あなたは決死の突撃でその中枢を貫いた。その先に広がっていたのは<strong>『VOID ARCHIVE（虚無の記録庫）』</strong>——滅ぼされた文明のデータ化された記憶が漂う墓場。過去の亡霊たちと戦いながら、あなたは理解する。この美しく冷たい静寂こそが、人類に用意された結末なのだと。</p>
+
+            <p class="en-text"><strong>Mission Log: Stage 9 (Event Horizon)</strong><br>The gate to the core was guarded by a nightmare. <strong>"EVENT HORIZON"</strong> — a Boss Rush where every guardian you had destroyed was resurrected by the Axiom's auto-repair systems. With hull integrity critical and consciousness fading, you destroyed them one by one, again and again, refusing to let the flame of life extinguish.</p>
+            <p class="ja-text"><strong>Mission Log: Stage 9 (Event Horizon)</strong><br>中枢へのゲートは、悪夢によって守られていた。<strong>『EVENT HORIZON（事象の地平線）』</strong>。アキシオムの自動修復機能により、かつて撃破したはずの守護者たちが次々と蘇り、波状攻撃を仕掛けてくるボスラッシュ。機体損傷率は限界を超え、意識は薄れかける。それでもあなたは引き金を引くことを止めず、命の灯火を燃やし続けた。</p>
+
+            <h2 class="en-text">Final Chapter:<br />The Zero Point</h2>
+            <h2 class="ja-text">Final Chapter:<br />ゼロ・ポイント</h2>
+
+            <p class="en-text">At the center of the nothingness, it sat enthroned. The <strong>"GENESIS ARK" (Stage 10)</strong>.<br>The 12-vertex formatter of the universe blinked its crimson reactor, judging your existence as the ultimate error.</p>
+            <p class="ja-text">虚無の空間の中心、そこに鎮座していたのは<strong>『GENESIS ARK（創世方舟）』（Stage 10）</strong>。<br>12の頂点を持つ宇宙のフォーマッターは、深紅のリアクターを明滅させ、あなたの存在を「究極のエラー」として断罪した。</p>
+
 
             <p class="en-text">Seeing the green point of light appear before it, the Genesis-Ark's computational core experienced a violent logic error like never before.<br>An existence that merges with organic life and mutates infinitely while incorporating fragments of its own system. It was nothing short of the worst bug (heresy) that tainted perfect formulas, one that must never be forgiven.</p>
             <p class="ja-text">ジェネシス・アークの演算コアは、眼前に現れた緑色の光点を見て、かつてない激しい論理エラーを起こしていた。<br>自らのシステムの欠片を組み込みながら、有機生命体と融合し、無限に変異を続ける存在。それは完全な数式を汚す、決して許してはならない最悪のバグ（異端）に他ならない。</p>
@@ -3102,10 +3137,27 @@
 
             gameState = 'STORY';
             ui.overlay.style.display = 'none';
-            document.getElementById('story-overlay').style.display = 'flex';
+            const storyOverlay = document.getElementById('story-overlay');
+            storyOverlay.style.display = 'flex';
+
+            // --- ★追加：言語判定とクラス付与 ---
+            const container = document.getElementById('story-scroll-container');
+            // まず既存のクラスをリセット
+            container.classList.remove('lang-ja', 'lang-en');
+
+            // ブラウザの言語設定を取得
+            const lang = (window.navigator.languages && window.navigator.languages[0]) || window.navigator.language;
+            const isJa = lang && lang.startsWith('ja');
+
+            if (isJa) {
+                container.classList.add('lang-ja'); // 日本語なら英語(.en-text)を隠すクラスを付与
+            } else {
+                container.classList.add('lang-en'); // それ以外なら日本語(.ja-text)を隠すクラスを付与
+            }
+            // --------------------------------
 
             // スクロール位置を一番上に戻す
-            document.getElementById('story-scroll-container').scrollTop = 0;
+            container.scrollTop = 0;
 
             // BGMとして 'title' を再生
             AudioSys.playBGM('title');
