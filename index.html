@@ -1279,13 +1279,19 @@
 
 
         @media (orientation: landscape) {
+            /* トレーニングモード全体のコンテナ調整 */
+            #training-guide {
+                padding-top: 25vh !important; /* 横画面ではタイトルを少し上に上げる（ボタンとの被り防止） */
+            }
+
             /* トレーニングモードのEXITボタンを画面下に固定 */
             #btn-training-exit {
                 position: absolute !important;
-                bottom: 10px !important;
+                bottom: 20px !important;
                 left: 50%;
                 transform: translateX(-50%);
                 margin-top: 0 !important;
+                background: rgba(0, 0, 0, 0.9) !important;
             }
         }
 
@@ -1488,10 +1494,10 @@
 
     </div>
 
-    <div id="training-guide" style="display:none; position:absolute; top:0; height:100%; width:100%; padding-top:25%; box-sizing:border-box; text-align:center; pointer-events:none; z-index:200;">
-        <h2 style="color:#0f8; text-shadow:0 0 10px #0f8; font-size:24px;">TRAINING MODE</h2>
+    <div id="training-guide" style="display:none; position:absolute; top:0; left:0; height:100%; width:100%; padding-top:30vh; box-sizing:border-box; text-align:center; pointer-events:none; z-index:200;">
+        <h2 style="color:#0f8; text-shadow:0 0 10px #0f8; font-size:24px; margin:0 0 20px 0;">TRAINING MODE</h2>
 
-        <div class="menu-btn" id="btn-training-exit" style="pointer-events:auto; margin-top:10px; display:inline-flex; flex-direction:column; align-items:center; background:rgba(0,0,0,0.8); border-color:#0f8; color:#0f8; padding: 15px 30px;">
+        <div class="menu-btn" id="btn-training-exit" style="pointer-events:auto; display:inline-flex; flex-direction:column; align-items:center; background:rgba(0,0,0,0.8); border-color:#0f8; color:#0f8; padding: 15px 30px;">
             <span style="font-size: 18px; margin-bottom: 5px;">EXIT TRAINING</span>
             <span style="font-size: 10px; color: #aaa; letter-spacing: 1px;">PRESS [START]</span>
         </div>
