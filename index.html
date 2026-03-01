@@ -1403,7 +1403,7 @@
 
         <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
             PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
-            Version 1.01 | &copy; 2026 Hidecade
+            Version 1.02 | &copy; 2026 Hidecade
         </div>
     </div>
 
@@ -2385,8 +2385,6 @@
         // 2. オーディオシステム (Audio System)
         // =========================================================
 
-
-
         const BGM_FILES = {
             title: 'audio/Neon_Gravity_Title.mp3',
             clear: 'audio/Neon_Gravity_Clear.mp3',
@@ -3364,6 +3362,7 @@
         }
 
         function requestFullScreen() {
+            return;
             const el = document.documentElement;
             if (el.requestFullscreen) {
                 el.requestFullscreen().catch(e => console.log("Fullscreen blocked", e));
