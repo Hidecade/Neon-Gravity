@@ -3378,10 +3378,14 @@
         // =========================================================
         function startGame() {
 
-            canvas.focus();
+            // 1. まずウィンドウ自体にフォーカスを当てる（これがiOSで最も確実です）
+            window.focus();
 
-            setTimeout(() => canvas.focus(), 500);
-            setTimeout(() => canvas.focus(), 1000);
+            // 2. 念のためbodyにもフォーカスを試みる
+            if (document.activeElement) {
+                document.activeElement.blur(); // 今のボタンからフォーカスを外す
+            }
+
 
             // requestFullScreen();
 
