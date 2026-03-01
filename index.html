@@ -1403,7 +1403,7 @@
 
         <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
             PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
-            Version 1.01 | &copy; 2026 Hidecade
+            Version 1.02 | &copy; 2026 Hidecade
         </div>
     </div>
 
@@ -3377,23 +3377,18 @@
         // 4. シーン・ステージ管理 (Scene & Stage Management)
         // =========================================================
         function startGame() {
-            // ★変更：いきなり消さず、まずは透明にして当たり判定だけ消す（フォーカス維持のため）
-            ui.overlay.style.transition = 'opacity 0.2s';
+            // ★変更：display:none を廃止。透明にして最背面に隠す手法に変更。
+            // これによりボタンは「存在し続ける」ため、フォーカス迷子によるポーズが発生しません。
+            ui.overlay.style.transition = 'opacity 0.3s';
             ui.overlay.style.opacity = '0';
-            ui.overlay.style.pointerEvents = 'none'; // クリックだけできないようにする
+            ui.overlay.style.pointerEvents = 'none'; // クリック判定を消す
+            ui.overlay.style.zIndex = '0';           // ★Canvas(z=1)より後ろに下げる
 
-            // 即座にキャンバスにフォーカス
+            // フォーカスをキャンバスへ
             canvas.focus();
+            window.focus();
 
-            // 念のため少し遅らせてから完全に消す（これでフォーカス迷子を防ぐ）
-            setTimeout(() => {
-                ui.overlay.style.display = 'none';
-                // 次回表示時のためにスタイルをリセットしておく（display:noneの状態で行うので見えない）
-                ui.overlay.style.transition = '';
-                ui.overlay.style.opacity = '1';
-                ui.overlay.style.pointerEvents = 'auto';
-            }, 500);
-
+            // OST画面は消す（こちらはdisplay:noneでOK）
             ui.ost.style.display = 'none';
 
             score = 0;
@@ -3412,7 +3407,6 @@
             player.laserTimer = 0;
             player.history = [];
 
-            // 入力リセット
             input.move.active = false;
             input.aim.active = false;
 
@@ -3574,16 +3568,11 @@
             ui.pauseBtn.style.display = 'flex';
             ui.bossContainer.style.display = 'none';
 
-            // ★変更：ここも「ゴースト化」処理に変更
-            ui.overlay.style.transition = 'opacity 0.2s';
+            // ★変更：ここも「隠して後ろへ」
+            ui.overlay.style.transition = 'opacity 0.3s';
             ui.overlay.style.opacity = '0';
             ui.overlay.style.pointerEvents = 'none';
-            setTimeout(() => {
-                ui.overlay.style.display = 'none';
-                ui.overlay.style.transition = '';
-                ui.overlay.style.opacity = '1';
-                ui.overlay.style.pointerEvents = 'auto';
-            }, 500);
+            ui.overlay.style.zIndex = '0'; // 最背面へ
 
             ui.controls.style.display = 'block';
 
@@ -3948,10 +3937,12 @@
 
             ui.ost.style.display = 'none';
 
-            // ★変更：タイトル画面を表示する際、確実にスタイルを初期状態に戻す
-            ui.overlay.style.display = 'flex';
+            // ★変更：隠していたオーバーレイを手前(z=100)に戻して表示
+            ui.overlay.style.display = 'flex'; //念のため
+            ui.overlay.style.transition = '';  // 瞬時に戻す
             ui.overlay.style.opacity = '1';
             ui.overlay.style.pointerEvents = 'auto';
+            ui.overlay.style.zIndex = '100';   // 最前面へ復帰
 
             ui.controls.style.display = 'none';
             ui.msg.style.display = 'none';
