@@ -1306,6 +1306,8 @@
             display: none !important;
         }
     </style>
+
+
 </head>
 
 <body>
@@ -1959,6 +1961,7 @@
         let stage10Timer = 0;
         let stage10BeatCount = 0;
 
+        let msgHideTimeout = null; // メッセージ消去用のタイマー変数
 
         // ステージごとの敵総出現数
         const STAGE_ENEMY_COUNTS = [
