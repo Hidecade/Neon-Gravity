@@ -1310,7 +1310,7 @@
 
 <body>
 
-    <canvas id="game" tabindex="0"></canvas>
+    <canvas id="game"></canvas>
 
     <div id="ui">
         <div id="pause-btn">||</div>
@@ -11428,12 +11428,13 @@
                 e.stopPropagation();
             }
 
-            // ★追加：フォーカスを強制的にゲーム画面（ウィンドウ全体）に戻す
+            // ★重要：フォーカスを強制的にゲーム画面（キャンバス）に戻す
+            // これを行わないと、ブラウザが「非アクティブ」と判定し、ゲームパッド入力を遮断し続けます
             if (document.activeElement && document.activeElement !== document.body) {
                 document.activeElement.blur();
             }
             window.focus();
-            canvas.focus(); // キャンバスにもフォーカスを試みる
+            canvas.focus();
 
             // SE用のコンテキストを復帰
             if (AudioSys) {
@@ -11584,10 +11585,8 @@
         document.addEventListener('touchstart', handleInteraction);
         document.addEventListener('keydown', handleInteraction);
 
-        // ゲームパッド制御用
-        // ゲームパッド制御用
-        function handleGamepadInput() {
 
+        function handleGamepadInput() {
             // iOS Safari対応: getGamepads() は毎フレーム呼び出して最新状態を取得する必要がある
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             let activeGp = null;
@@ -11605,19 +11604,18 @@
                 return;
             }
 
-            // ★追加：プレイ中なのにフォーカスが外れていたら戻す（強力なハック）
-            // ただし、頻繁に呼ぶと操作性を損なうため、入力があった瞬間にフォーカスを確認する
-
             // ボタン・スティックの状態取得
             const aBtn = activeGp.buttons[0]?.pressed; // Aボタン
             const startBtn = activeGp.buttons[9]?.pressed; // START
             const moveX = activeGp.axes[0];
             const moveY = activeGp.axes[1];
 
-            // ★追加：何かしらの入力（スティック含む）があったら、ウィンドウにフォーカスがあるか確認する
+            // ★追加：何かしらの入力（スティック含む）があったら、ウィンドウとキャンバスにフォーカスがあるか確認する
+            // これにより、バックグラウンド復帰後に操作した瞬間にフォーカスを取り戻します
             if (Math.abs(moveX) > 0.1 || Math.abs(moveY) > 0.1 || aBtn || startBtn) {
-                if (!document.hasFocus()) {
+                if (!document.hasFocus() || document.activeElement !== canvas) {
                     window.focus();
+                    canvas.focus(); // キャンバスにフォーカスを強制
                 }
             }
 
@@ -11626,12 +11624,6 @@
                 ui.controls.style.display = 'none';
                 ui.pauseBtn.style.display = 'none';
             }
-
-            // ボタン・スティックの状態取得
-            const aBtn = activeGp.buttons[0]?.pressed; // Aボタン (決定/発射)
-            const startBtn = activeGp.buttons[9]?.pressed; // START
-            const moveX = activeGp.axes[0]; // 左スティック X
-            const moveY = activeGp.axes[1]; // 左スティック Y (スクロールにも使用)
 
             // 十字キーまたはスティックの判定
             const dpadUp = activeGp.buttons[12]?.pressed || moveY < -0.5;
@@ -11658,7 +11650,6 @@
             if (gameState !== 'PLAYING') {
 
                 // ▼▼▼ 追加：スクロール処理 (STORY, RANKING, OST) ▼▼▼
-                // スティックや十字キーでテキストをスクロールさせる
                 if (gameState === 'STORY' || gameState === 'RANKING' || gameState === 'OST') {
                     let scrollTargetId = null;
                     if (gameState === 'STORY') scrollTargetId = 'story-scroll-container';
@@ -11668,13 +11659,9 @@
                     const container = document.getElementById(scrollTargetId);
                     if (container) {
                         const scrollSpeed = 15; // スクロール速度
-
-                        // スティック入力 (デッドゾーンあり)
                         if (Math.abs(moveY) > 0.2) {
                             container.scrollTop += moveY * scrollSpeed;
-                        }
-                        // 十字キー入力
-                        else if (dpadUp) {
+                        } else if (dpadUp) {
                             container.scrollTop -= scrollSpeed;
                         } else if (dpadDown) {
                             container.scrollTop += scrollSpeed;
@@ -11683,7 +11670,6 @@
                 }
 
                 // 1. 十字キーでのボタン選択移動
-                // STORY画面はボタンが1つしかないので、上下キーはスクロール専用にしてカーソル移動させない
                 if (gameState !== 'STORY') {
                     if ((dpadUp || dpadDown || dpadLeft || dpadRight) && !input.padDirPressed) {
                         if (dpadUp || dpadLeft) selectedMenuIndex--;
@@ -11697,7 +11683,6 @@
                 // 2. Aボタンで決定
                 if (aBtn) {
                     if (!input.padAPressed) {
-                        // 対象となる画面状態
                         if (gameState === 'HOWTO' ||
                             gameState === 'TITLE' ||
                             gameState === 'GAMEOVER_UI' ||
@@ -11711,10 +11696,11 @@
                                 currentMenuButtons = []; // 連打防止
                                 btnToClick.click();
 
-                                // ★修正：ボタンを押した後、ボタン自体のフォーカスを外してウィンドウにフォーカスを戻す
-                                // これにより「画面をタッチしないとコントローラーが効かない」現象を防ぎます
+                                // ★重要：ボタンを押した後、ボタンからフォーカスを外し、キャンバスに戻す
+                                // これがないと、フォーカスがボタンに残ってしまい、次のゲームパッド入力をブラウザが無視します
                                 btnToClick.blur();
                                 window.focus();
+                                canvas.focus();
                             }
                         }
                         input.padAPressed = true;
