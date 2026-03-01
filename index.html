@@ -1403,7 +1403,7 @@
 
         <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
             PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
-            Version 1.0 | &copy; 2026 Hidecade
+            Version 1.01 | &copy; 2026 Hidecade
         </div>
     </div>
 
@@ -11669,6 +11669,7 @@
                 // 2. Aボタンで決定
                 if (aBtn) {
                     if (!input.padAPressed) {
+                        // 対象となる画面状態
                         if (gameState === 'HOWTO' ||
                             gameState === 'TITLE' ||
                             gameState === 'GAMEOVER_UI' ||
@@ -11681,6 +11682,11 @@
                                 const btnToClick = currentMenuButtons[selectedMenuIndex];
                                 currentMenuButtons = []; // 連打防止
                                 btnToClick.click();
+
+                                // ★修正：ボタンを押した後、ボタン自体のフォーカスを外してウィンドウにフォーカスを戻す
+                                // これにより「画面をタッチしないとコントローラーが効かない」現象を防ぎます
+                                btnToClick.blur();
+                                window.focus();
                             }
                         }
                         input.padAPressed = true;
