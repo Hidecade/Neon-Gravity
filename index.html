@@ -243,6 +243,7 @@
             animation: clear-glow 2.5s ease-in-out infinite;
             white-space: pre-wrap;
             transition: opacity 0.2s;
+            line-height: 1.4;
         }
 
         /* =========================================================
@@ -1974,6 +1975,41 @@
             PHASE3_MISSILE_SPD: 1.5 // フェーズ3：誘導ミサイルの速度倍率
         };
 
+        // ---------------------------------------------------------
+        // ▼▼▼ 修正：エネミー特性に合わせたステージタイトル定義 ▼▼▼
+        const STAGE_TITLES = {
+            // Stage 1: Triangleメイン = 幾何学の始まり、外周
+            1: { en: "NEON PERIMETER", ja: "ネオン外周宙域" },
+
+            // Stage 2: Tadpole(オタマジャクシ型) = シリコンの群れ、奔流
+            2: { en: "SILICON SWARM", ja: "シリコンの群れ" },
+
+            // Stage 3: Jellyfish(クラゲ), Bubble(泡) = 電子の海
+            3: { en: "ELECTRON OCEAN", ja: "電子の海原" },
+
+            // Stage 4: Phantom(ステルス) = 亡霊の潜む区域
+            4: { en: "PHANTOM SECTOR", ja: "亡霊の監視区域" },
+
+            // Stage 5: Hunter(追尾・攻撃型) = 狩人の領域
+            5: { en: "HUNTER'S GROUND", ja: "狩人の狩猟場" },
+
+            // Stage 6: Asteroid(岩)大量 = 小惑星帯（ご提案の通り！）
+            6: { en: "ASTEROID BELT", ja: "小惑星帯突破" },
+
+            // Stage 7: Eclipse(日食・要塞型) = 軌道上の蝕
+            7: { en: "ORBITAL ECLIPSE", ja: "軌道上の蝕" },
+
+            // Stage 8: 全種混合 = 虚無の記録庫（総力戦）
+            8: { en: "VOID ARCHIVE", ja: "虚無の記録庫" },
+
+            // Stage 9: Boss Rush = 事象の地平線
+            9: { en: "EVENT HORIZON", ja: "Boss Rush" },
+
+            // Stage 10: Last Boss = 創世の方舟
+            10: { en: "GENESIS ARK", ja: "創世の方舟" }
+        };
+        // ▲▲▲ ここまで ▲▲▲
+
         // ステージごとのテーマカラー定義
         const STAGE_THEMES = {
             1: '#00bbff', // Cyan (Default)
@@ -2699,6 +2735,7 @@
                 }
             },
 
+
             async resume() {
                 // コンテキストがまだ無い場合は初期化する
                 if (!this.ctx) {
@@ -2710,23 +2747,24 @@
                 if (this.ctx.state === 'running') return;
 
                 try {
+                    // 一度 resume を試みる
                     await this.ctx.resume();
 
-                    // resumeしても動かない場合は強制的に init(再生成) する
+                    // ★重要：resumeしても動かない場合は強制的に再生成する
                     if (this.ctx.state !== 'running') {
                         console.warn("AudioContext remains suspended. Forcing Re-Init...");
 
-                        // 古いコンテキストを破棄（エラーは握り潰す）
+                        // 古いコンテキストを破棄
                         try { await this.ctx.close(); } catch (e) { }
 
                         // 新しい AudioContext を作り直す
                         const AC = window.AudioContext || window.webkitAudioContext;
                         this.ctx = new AC();
 
-                        // 爆発音などに使うノイズバッファも新しいコンテキストで再生成する
+                        // ノイズバッファも新しいコンテキストで再生成
                         this.createNoise();
 
-                        // 生成直後にユーザーアクションのコンテキスト内で即座に起動させる
+                        // ユーザーアクション直後なので、即座に起動させる
                         await this.ctx.resume();
                     }
                 } catch (e) {
@@ -3343,6 +3381,34 @@
             bullets = []; lasers = []; enemies = []; enemyBullets = [];
             missiles = []; wormholes = [];
             scorePopups = []; rings = [];
+
+            // ▼▼▼ ステージ開始メッセージ（日本語訳対応版） ▼▼▼
+            if (!isTrainingMode) {
+                const data = STAGE_TITLES[stage] || { en: "UNKNOWN SECTOR", ja: "未知の宙域" };
+
+                // 言語判定
+                const lang = (window.navigator.languages && window.navigator.languages[0]) || window.navigator.language;
+                const isJa = lang && lang.startsWith('ja');
+
+                // HTMLの組み立て
+                let startMsg = `<span style="font-size: 0.8em; letter-spacing: 4px; opacity: 0.8; display:block; margin-bottom:10px;">- STAGE ${stage} -</span>`;
+                startMsg += `<span style="display:block;">${data.en}</span>`;
+
+                // 日本語なら下に小さく表示
+                if (isJa) {
+                    startMsg += `<span style="font-size: 0.7em; font-family: sans-serif; letter-spacing: 2px; color: rgba(255,255,255,0.6); display:block; margin-top:10px;">${data.ja}</span>`;
+                }
+
+                showMessage(startMsg, 'default');
+
+                setTimeout(() => {
+                    if (!isBossWarning && gameState === 'PLAYING') {
+                        ui.msg.style.transition = "opacity 0.8s"; // 少しゆっくり消す
+                        ui.msg.style.opacity = "0";
+                        setTimeout(() => { ui.msg.style.display = 'none'; }, 800);
+                    }
+                }, 3000);
+            }
 
             // ★Stage 10 (Battleship Boss) の初期化
             if (stage === 10) {
@@ -11227,12 +11293,14 @@
             if (gameState !== 'PAUSED' && AudioSys) AudioSys.resumeBGM();
         });
 
-        // 修正後: 同期的に呼び出し、Promiseの完了を待たずにUIを戻す
         const resumeAction = (e) => {
             if (e) e.preventDefault();
 
-            // await を外して、裏で復帰させる。ユーザーのタップ起因なので発動しやすい。
-            AudioSys.resume();
+            // ★ここを追加：SE用のコンテキストを強制復帰させる
+            // ユーザーがボタンを押した「その瞬間」に呼ぶのがブラウザのルール上最も確実です
+            if (AudioSys) {
+                AudioSys.resume();
+            }
 
             // 状態を戻す
             gameState = 'PLAYING';
@@ -11362,14 +11430,36 @@
 
         // ゲームパッド制御用
         function handleGamepadInput() {
+
+            // iOS Safari対応: getGamepads() は毎フレーム呼び出して最新状態を取得する必要がある
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             let activeGp = null;
 
+            // 接続されているコントローラーの中で、最初に見つかった有効なものを取得
+            // iOSでは配列の途中にnullが入ることがあるため、単純なループで探す
             for (let i = 0; i < gamepads.length; i++) {
-                if (gamepads[i]) { activeGp = gamepads[i]; break; }
+                const gp = gamepads[i];
+                if (gp && gp.connected) {
+                    activeGp = gp;
+                    break;
+                }
             }
 
-            if (!activeGp) return;
+            // コントローラーが見つからない場合は処理を終了
+            // ※iOSでは接続イベントが発火しない場合があるため、ここでUIの表示切替も行うと確実です
+            if (!activeGp) {
+                // PC/Androidではイベントで制御しているが、念のためここでも確認
+                if (gameState === 'PLAYING' && ui.controls.style.display === 'none' && !isTrainingMode) {
+                    // 接続が切れたとみなせる場合の処理（必要に応じて記述）
+                }
+                return;
+            }
+
+            // iOS対応: 接続が確認できたらタッチUIを消す（イベントが発火しない対策）
+            if (gameState === 'PLAYING' && ui.controls.style.display !== 'none') {
+                ui.controls.style.display = 'none';
+                ui.pauseBtn.style.display = 'none';
+            }
 
             // ボタン・スティックの状態取得
             const aBtn = activeGp.buttons[0]?.pressed; // Aボタン
