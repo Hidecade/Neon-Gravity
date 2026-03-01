@@ -1403,7 +1403,7 @@
 
         <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
             PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
-            Version 1.00 | &copy; 2026 Hidecade
+            Version 1.02 | &copy; 2026 Hidecade
         </div>
     </div>
 
@@ -11518,19 +11518,33 @@
         ui.controls.addEventListener('touchmove', handleTouch, { passive: false });
         ui.controls.addEventListener('touchend', handleTouch, { passive: false });
 
-        // 既存のイベント割り当て部分を修正
+        // ★修正版：iOSでのフォーカス迷子を防ぐ強力なイベント処理
         const startBtnElement = document.getElementById('btn-start');
         if (startBtnElement) {
-            // タッチとクリックの両方に対応し、イベントを握りつぶしてフォーカス外れを防ぐ
             const handleStart = (e) => {
-                if (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
+                // デフォルト動作（ズームやスクロールなど）を完全に殺す
+                if (e && e.cancelable) e.preventDefault();
+                e.stopPropagation();
+
+                // ★重要1：ボタンが消える前に、明示的にウィンドウにフォーカスを当てる
+                window.focus();
+
+                // ★重要2：現在フォーカスされている要素（ボタン自体）からフォーカスを外す
+                // これにより、フォーカスが「消えるボタン」に残るのを防ぎ、body/windowに戻します
+                if (document.activeElement) {
+                    document.activeElement.blur();
                 }
-                startGame();
+
+                // わずかな遅延を入れて処理を分離する（iOSのおまじない）
+                setTimeout(() => {
+                    startGame();
+                }, 10);
             };
-            startBtnElement.onclick = handleStart;
-            startBtnElement.ontouchstart = handleStart;
+
+            // onclick ではなく touchend を優先的に使う
+            // (touchstartだと、指が触れた瞬間に画面が切り替わり、誤タップの原因になることがあるため)
+            startBtnElement.addEventListener('touchend', handleStart, { passive: false });
+            startBtnElement.addEventListener('click', handleStart);
         }
 
         document.getElementById('btn-ost').onclick = openOST;
