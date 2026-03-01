@@ -1310,7 +1310,7 @@
 
 <body>
 
-    <canvas id="game"></canvas>
+    <canvas id="game" tabindex="0"></canvas>
 
     <div id="ui">
         <div id="pause-btn">||</div>
@@ -1403,7 +1403,7 @@
 
         <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
             PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
-            Version 1.01 | &copy; 2026 Hidecade
+            Version 1.02 | &copy; 2026 Hidecade
         </div>
     </div>
 
@@ -11423,13 +11423,25 @@
         });
 
         const resumeAction = (e) => {
-            if (e) e.preventDefault();
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
 
-            // ★ここを追加：SE用のコンテキストを強制復帰させる
-            // ユーザーがボタンを押した「その瞬間」に呼ぶのがブラウザのルール上最も確実です
+            // ★追加：フォーカスを強制的にゲーム画面（ウィンドウ全体）に戻す
+            if (document.activeElement && document.activeElement !== document.body) {
+                document.activeElement.blur();
+            }
+            window.focus();
+            canvas.focus(); // キャンバスにもフォーカスを試みる
+
+            // SE用のコンテキストを復帰
             if (AudioSys) {
                 AudioSys.resume();
             }
+
+            // 入力状態をリセット（押しっぱなし防止）
+            clearInputState();
 
             // 状態を戻す
             gameState = 'PLAYING';
@@ -11591,6 +11603,22 @@
 
             if (!activeGp) {
                 return;
+            }
+
+            // ★追加：プレイ中なのにフォーカスが外れていたら戻す（強力なハック）
+            // ただし、頻繁に呼ぶと操作性を損なうため、入力があった瞬間にフォーカスを確認する
+
+            // ボタン・スティックの状態取得
+            const aBtn = activeGp.buttons[0]?.pressed; // Aボタン
+            const startBtn = activeGp.buttons[9]?.pressed; // START
+            const moveX = activeGp.axes[0];
+            const moveY = activeGp.axes[1];
+
+            // ★追加：何かしらの入力（スティック含む）があったら、ウィンドウにフォーカスがあるか確認する
+            if (Math.abs(moveX) > 0.1 || Math.abs(moveY) > 0.1 || aBtn || startBtn) {
+                if (!document.hasFocus()) {
+                    window.focus();
+                }
             }
 
             // iOS対応: 接続が確認できたらタッチUIを消す
