@@ -1403,7 +1403,7 @@
 
         <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
             PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
-            Version 1.0a | &copy; 2026 Hidecade
+            Version 1.00 | &copy; 2026 Hidecade
         </div>
     </div>
 
@@ -3377,16 +3377,25 @@
         // 4. シーン・ステージ管理 (Scene & Stage Management)
         // =========================================================
         function startGame() {
-            // 1. UIを即座に非表示に戻す
-            ui.overlay.style.display = 'none';
+            // ★変更：いきなり消さず、まずは透明にして当たり判定だけ消す（フォーカス維持のため）
+            ui.overlay.style.transition = 'opacity 0.2s';
+            ui.overlay.style.opacity = '0';
+            ui.overlay.style.pointerEvents = 'none'; // クリックだけできないようにする
+
+            // 即座にキャンバスにフォーカス
+            canvas.focus();
+
+            // 念のため少し遅らせてから完全に消す（これでフォーカス迷子を防ぐ）
+            setTimeout(() => {
+                ui.overlay.style.display = 'none';
+                // 次回表示時のためにスタイルをリセットしておく（display:noneの状態で行うので見えない）
+                ui.overlay.style.transition = '';
+                ui.overlay.style.opacity = '1';
+                ui.overlay.style.pointerEvents = 'auto';
+            }, 500);
+
             ui.ost.style.display = 'none';
 
-            // 2. ★重要：ボタンが消えた直後にキャンバスへフォーカスを叩き込む
-            // これにより、iPhoneが「操作対象がいなくなった」と判断する隙を与えません
-            canvas.focus();
-            window.focus();
-
-            // --- 以下、既存の初期化処理 ---
             score = 0;
             stage = START_STAGE;
             frame = 0;
@@ -3403,6 +3412,7 @@
             player.laserTimer = 0;
             player.history = [];
 
+            // 入力リセット
             input.move.active = false;
             input.aim.active = false;
 
@@ -3564,15 +3574,18 @@
             ui.pauseBtn.style.display = 'flex';
             ui.bossContainer.style.display = 'none';
 
-            // ★修正：元の表示・非表示ロジックに戻す
-            ui.overlay.style.display = 'none';
-            ui.overlay.style.opacity = '1';         // 透明度を1に戻しておく
-            ui.overlay.style.pointerEvents = 'auto'; // 操作を有効に戻しておく
-            ui.overlay.style.zIndex = '100';        // ZIndexを標準に戻しておく
+            // ★変更：ここも「ゴースト化」処理に変更
+            ui.overlay.style.transition = 'opacity 0.2s';
+            ui.overlay.style.opacity = '0';
+            ui.overlay.style.pointerEvents = 'none';
+            setTimeout(() => {
+                ui.overlay.style.display = 'none';
+                ui.overlay.style.transition = '';
+                ui.overlay.style.opacity = '1';
+                ui.overlay.style.pointerEvents = 'auto';
+            }, 500);
 
-            // UIを消した瞬間にフォーカスを奪い取る
-            canvas.focus();
-            window.focus();
+            ui.controls.style.display = 'block';
 
             const bgmIndex = Math.floor((stage - 1) / 2) % BGM_FILES.stages.length;
             AudioSys.playBGM('stage', bgmIndex);
@@ -3905,8 +3918,8 @@
             ui.btnStart.style.borderColor = titleColor;
             ui.btnStart.style.color = titleColor;
 
-            // ★重要：ここでの onclick 設定は削除したままにします
-            // 下の addEventListener('click', ...) 側で一括処理するためです
+            // ★削除：ここの onclick 行を削除しました（下のイベントリスナーに任せるため）
+            // ui.btnStart.onclick = () => resetGame();
 
             ui.btnTitle.style.display = 'block';
             ui.btnTitle.onclick = () => returnToTitle();
@@ -3927,66 +3940,65 @@
         }
 
         function returnToTitle() {
-            function returnToTitle() {
-                gameState = 'TITLE';
 
-                AudioSys.fadeOutBGM().then(() => {
-                    AudioSys.currentSrc = null;
-                });
+            gameState = 'TITLE';
 
-                ui.ost.style.display = 'none';
+            AudioSys.fadeOutBGM().then(() => {
+                AudioSys.currentSrc = null;
+            });
 
-                // ★修正：不自然な透明化やzIndex操作を削除し、シンプルに表示
-                ui.overlay.style.display = 'flex';
-                ui.overlay.style.opacity = '1';
-                ui.overlay.style.pointerEvents = 'auto';
-                ui.overlay.style.zIndex = '100';
+            ui.ost.style.display = 'none';
+            ui.overlay.style.display = 'flex';
+            ui.controls.style.display = 'none';
+            ui.msg.style.display = 'none';
 
-                ui.controls.style.display = 'none';
-                ui.msg.style.display = 'none';
-                document.getElementById('training-guide').style.display = 'none';
+            document.getElementById('training-guide').style.display = 'none';
 
-                ui.pauseBtn.style.display = 'none';
-                const hud = document.querySelector('.hud-row');
-                if (hud) hud.style.display = 'none';
+            // ==========================================
+            // ★追加：タイトル画面ではスコアやポーズボタンを完全に隠す
+            // ==========================================
+            ui.pauseBtn.style.display = 'none';
+            const hud = document.querySelector('.hud-row');
+            if (hud) hud.style.display = 'none';
 
-                ui.titleText.innerHTML = `NEON GRAVITY<br><span style="font-size:20px;color:#fff;">ORBITAL</span>`;
-                ui.titleText.style.color = '#0ff';
-                ui.titleText.style.textShadow = '0 0 20px #0ff';
+            ui.titleText.innerHTML = `NEON GRAVITY<br><span style="font-size:20px;color:#fff;">ORBITAL</span>`;
+            ui.titleText.style.color = '#0ff';
+            ui.titleText.style.textShadow = '0 0 20px #0ff';
 
-                ui.btnStart.innerText = 'START GAME';
-                ui.btnStart.style.display = 'block';
-                ui.btnStart.style.borderColor = '#0ff';
-                ui.btnStart.style.color = '#0ff';
+            ui.btnStart.innerText = 'START GAME';
+            ui.btnStart.style.display = 'block';
+            ui.btnStart.style.borderColor = '#0ff';
+            ui.btnStart.style.color = '#0ff';
 
-                // ★重要：ここでの onclick = startGame は書き込みません（末尾のイベント設定で一括管理するため）
+            // ★削除：ここの onclick 行を削除しました
+            // ui.btnStart.onclick = startGame;
 
-                ui.btnOst.style.display = 'block';
-                ui.btnTitle.style.display = 'none';
+            ui.btnOst.style.display = 'block';
+            ui.btnTitle.style.display = 'none';
 
-                const btnHowto = document.getElementById('btn-howto');
-                if (btnHowto) {
-                    btnHowto.style.display = 'block';
-                    btnHowto.style.borderColor = '#0ff';
-                    btnHowto.style.color = '#0ff';
-                }
-
-                const btnStory = document.getElementById('btn-story');
-                if (btnStory) {
-                    btnStory.style.display = 'block';
-                    btnStory.style.borderColor = '#0ff';
-                    btnStory.style.color = '#0ff';
-                }
-
-                const btnRanking = document.getElementById('btn-ranking');
-                if (btnRanking) {
-                    btnRanking.style.display = 'block';
-                    btnRanking.style.borderColor = '#0ff';
-                    btnRanking.style.color = '#0ff';
-                    btnRanking.onclick = () => window.showRanking(null);
-                }
-                window.refreshMenuButtons();
+            const btnHowto = document.getElementById('btn-howto');
+            if (btnHowto) {
+                btnHowto.style.display = 'block';
+                btnHowto.style.borderColor = '#0ff';
+                btnHowto.style.color = '#0ff';
             }
+
+            const btnStory = document.getElementById('btn-story');
+            if (btnStory) {
+                btnStory.style.display = 'block';
+                btnStory.style.borderColor = '#0ff';
+                btnStory.style.color = '#0ff';
+            }
+
+            const btnRanking = document.getElementById('btn-ranking');
+            if (btnRanking) {
+                btnRanking.style.display = 'block';
+                btnRanking.style.borderColor = '#0ff';
+                btnRanking.style.color = '#0ff';
+                btnRanking.onclick = () => window.showRanking(null);
+            }
+            window.refreshMenuButtons();
+        }
 
         function showEnding() {
             gameState = 'ENDING';
@@ -11515,37 +11527,48 @@
         ui.controls.addEventListener('touchmove', handleTouch, { passive: false });
         ui.controls.addEventListener('touchend', handleTouch, { passive: false });
 
-        // ★修正決定版：すべての開始・リトライ処理をここで一括管理
+        // ★修正決定版：すべての開始処理をここで安全に一括管理する
         const startBtnElement = document.getElementById('btn-start');
 
-        // 既存のイベントを一度クリアするために複製して置換
+        // 念のため既存のイベントをクリーンアップ（ボタンを複製して置換）
         const newBtn = startBtnElement.cloneNode(true);
         startBtnElement.parentNode.replaceChild(newBtn, startBtnElement);
+        // 参照を更新
         ui.btnStart = newBtn;
 
         if (newBtn) {
             const handleStart = (e) => {
-                // デフォルトのフォーカス処理を壊さないよう stopPropagation のみ
+                // 1. デフォルト動作の抑止
                 e.stopPropagation();
 
-                // オーディオの叩き起こし
+                // 2. オーディオの「先食い」（同期処理）
                 if (typeof AudioSys !== 'undefined') {
                     if (!AudioSys.ctx) AudioSys.init();
                     AudioSys.resume();
                 }
 
-                // 強制的にCanvasへフォーカスを移す
-                canvas.focus();
+                // 3. フォーカスの完全移動
+                // 押されたボタンからフォーカスを外し、Canvasに移します
+                if (e.target) e.target.blur();
+                if (document.activeElement) document.activeElement.blur();
+
+                const gameCanvas = document.getElementById('game');
+                if (gameCanvas) gameCanvas.focus();
                 window.focus();
 
-                // 現在のボタンのテキストで「開始」か「リトライ」かを判断して実行
-                if (newBtn.innerText === 'RETRY') {
-                    resetGame();
-                } else {
-                    startGame();
-                }
+                // 4. 【重要】遅延実行 + 状態分岐
+                // ゲームの状態を見て、スタートするかリトライするかを決める
+                setTimeout(() => {
+                    // ボタンの文字、またはgameStateで判断
+                    if (gameState === 'GAMEOVER_UI' || newBtn.innerText === 'RETRY') {
+                        resetGame();
+                    } else {
+                        startGame();
+                    }
+                }, 50);
             };
 
+            // 安全な click イベントのみを使用
             newBtn.addEventListener('click', handleStart);
         }
 
