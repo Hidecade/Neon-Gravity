@@ -1403,7 +1403,7 @@
 
         <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
             PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
-            Version 1.02 | &copy; 2026 Hidecade
+            Version 1.03 | &copy; 2026 Hidecade
         </div>
     </div>
 
@@ -3378,19 +3378,13 @@
         // =========================================================
         function startGame() {
 
-            // 1. まずウィンドウ自体にフォーカスを当てる（これがiOSで最も確実です）
-            window.focus();
+            canvas.focus();
 
-            // 2. 念のためbodyにもフォーカスを試みる
-            if (document.activeElement) {
-                document.activeElement.blur(); // 今のボタンからフォーカスを外す
-            }
+            // requestFullScreen(); // ←ここは既に削除/コメントアウト済みのはず
 
-
-            // requestFullScreen();
-
-            AudioSys.init();
-            AudioSys.resume();
+            // ★修正：ここはボタン側で実行済みなのでコメントアウトする
+            // AudioSys.init();
+            // AudioSys.resume();
 
             gameState = 'PLAYING';
             ui.overlay.style.display = 'none';
@@ -11518,32 +11512,38 @@
         ui.controls.addEventListener('touchmove', handleTouch, { passive: false });
         ui.controls.addEventListener('touchend', handleTouch, { passive: false });
 
-        // ★修正版：iOSでのフォーカス迷子を防ぐ強力なイベント処理
+        // ★修正決定版：オーディオ権限とフォーカス権限を同時に確保する
         const startBtnElement = document.getElementById('btn-start');
         if (startBtnElement) {
             const handleStart = (e) => {
-                // デフォルト動作（ズームやスクロールなど）を完全に殺す
+                // 1. ブラウザの拡大縮小などをキャンセル
                 if (e && e.cancelable) e.preventDefault();
                 e.stopPropagation();
 
-                // ★重要1：ボタンが消える前に、明示的にウィンドウにフォーカスを当てる
-                window.focus();
+                // 2. ★最重要：タッチした「その瞬間」にオーディオを強制的に再開させる
+                // これを setTimeout の中に入れると、iOSでは音が鳴らなくなります
+                if (typeof AudioSys !== 'undefined') {
+                    // まだ初期化されてなければ作る
+                    if (!AudioSys.ctx) AudioSys.init();
+                    // コンテキストがサスペンド状態なら叩き起こす
+                    AudioSys.resume();
+                }
 
-                // ★重要2：現在フォーカスされている要素（ボタン自体）からフォーカスを外す
-                // これにより、フォーカスが「消えるボタン」に残るのを防ぎ、body/windowに戻します
+                // 3. 今押したボタンからフォーカスを外し、ウィンドウ全体にフォーカスを戻す
                 if (document.activeElement) {
                     document.activeElement.blur();
                 }
+                window.focus();
 
-                // わずかな遅延を入れて処理を分離する（iOSのおまじない）
-                setTimeout(() => {
-                    startGame();
-                }, 10);
+                // 4. 遅延させずにゲームを開始する
+                // これによりオーディオ権限を持ったままゲームループへ移行します
+                startGame();
             };
 
-            // onclick ではなく touchend を優先的に使う
-            // (touchstartだと、指が触れた瞬間に画面が切り替わり、誤タップの原因になることがあるため)
+            // 'touchend' を使うことで、指が離れた瞬間に処理を確定させます
             startBtnElement.addEventListener('touchend', handleStart, { passive: false });
+
+            // PCでのクリック対応
             startBtnElement.addEventListener('click', handleStart);
         }
 
@@ -11672,10 +11672,35 @@
                 // Aボタン決定
                 if (aBtn) {
                     if (!input.padAPressed) {
-                        if (currentMenuButtons[selectedMenuIndex]) {
-                            // シンプルにクリックだけする
-                            currentMenuButtons[selectedMenuIndex].click();
+                        const targetBtn = currentMenuButtons[selectedMenuIndex];
+
+                        if (targetBtn) {
+                            // ★修正：スタートボタンの場合は .click() を使わず、直接起動する
+                            // これによりボタンへのフォーカス移動（＝迷子）を防ぎます
+                            if (targetBtn.id === 'btn-start') {
+
+                                // 1. フォーカスをウィンドウ自体に固定（最重要）
+                                window.focus();
+                                if (document.activeElement) {
+                                    document.activeElement.blur();
+                                }
+
+                                // 2. オーディオ再開を試みる
+                                // (注意: iOSではここを通っても、一度も画面タッチしていないと音が出ない場合があります)
+                                if (typeof AudioSys !== 'undefined') {
+                                    if (!AudioSys.ctx) AudioSys.init();
+                                    AudioSys.resume();
+                                }
+
+                                // 3. ゲーム開始
+                                startGame();
+
+                            } else {
+                                // その他のボタン（ランキングを閉じる、OST再生など）は .click() でOK
+                                targetBtn.click();
+                            }
                         }
+
                         input.padAPressed = true;
                         setTimeout(() => {
                             if (window.refreshMenuButtons) window.refreshMenuButtons(false);
