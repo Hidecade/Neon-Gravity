@@ -1403,7 +1403,7 @@
 
         <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
             PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
-            Version 1.04 | &copy; 2026 Hidecade
+            Version 1.00 | &copy; 2026 Hidecade
         </div>
     </div>
 
@@ -1931,6 +1931,9 @@
 
         let isFadingOut = false; // フェードアウト中かどうかのフラグ
         let fadeAlpha = 0.0;     // 黒色の透明度（0.0:透明 ～ 1.0:真っ黒）
+
+        // ★【追加】スタートアップ中のフォーカス外れによるポーズを防ぐフラグ
+        let isStartupTransition = false;
 
         // ★追加：iOS判定用変数
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -3381,10 +3384,32 @@
             // ★追加：シンプルにキャンバスにフォーカスを当てる
             canvas.focus();
 
-            // ★追加：フルスクリーン化などの処理が終わった後（0.5秒後、1秒後）にダメ押しでフォーカスを当てる
-            // これで「2秒後に切れる」現象を防ぎます
-            setTimeout(() => canvas.focus(), 500);
-            setTimeout(() => canvas.focus(), 1000);
+            // ★【変更・追加】スタートアップ遷移モードをON
+            isStartupTransition = true;
+
+            // ★【追加】3秒後に遷移モードをOFFにする
+            setTimeout(() => {
+                isStartupTransition = false;
+            }, 3000);
+
+            // ★【修正】フォーカス強制のタイミングを増やし、ウィンドウ自体へのフォーカスも追加
+            // 0.5秒後
+            setTimeout(() => {
+                window.focus();
+                canvas.focus();
+            }, 500);
+
+            // 1.0秒後
+            setTimeout(() => {
+                window.focus();
+                canvas.focus();
+            }, 1000);
+
+            // ★【追加】2.5秒後 (ここが「2秒後に切れる」対策の本命です)
+            setTimeout(() => {
+                window.focus();
+                canvas.focus();
+            }, 2500);
 
             requestFullScreen();
             AudioSys.init();
@@ -11409,7 +11434,11 @@
         });
 
         window.addEventListener('blur', () => {
+            // ★【追加】スタート直後の遷移中なら、フォーカスが外れてもポーズしない（無視する）
+            if (isStartupTransition) return;
+
             setPaused(true);
+            // ページが隠れたら強制的にBGMも一時停止
             if (AudioSys && AudioSys.bgmEl) AudioSys.bgmEl.pause();
         });
 
