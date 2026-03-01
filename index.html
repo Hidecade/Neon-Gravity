@@ -3396,7 +3396,7 @@
 
                 // 日本語なら下に小さく表示
                 if (isJa) {
-                    startMsg += `<span style="font-size: 0.7em; font-family: sans-serif; letter-spacing: 2px; color: rgba(255,255,255,0.6); display:block; margin-top:10px;">${data.ja}</span>`;
+                    startMsg += `<span style="font-size: 0.6em; font-family: sans-serif; letter-spacing: 2px; color: rgba(255,255,255,0.6); display:block; margin-top:10px;">${data.ja}</span>`;
                 }
 
                 showMessage(startMsg, 'default');
@@ -11498,10 +11498,16 @@
                 }
                 input.padDirPressed = (dpadUp || dpadDown || dpadLeft || dpadRight);
 
-                // 2. Aボタンでの決定処理
                 if (aBtn) {
                     if (!input.padAPressed) {
-                         if (gameState === 'HOWTO' ||gameState === 'TITLE' || gameState === 'GAMEOVER_UI' || gameState === 'OST' || gameState === 'STORY') {
+                        // ▼▼▼ ここに 'PAUSED' を追加 ▼▼▼
+                        if (gameState === 'HOWTO' ||
+                            gameState === 'TITLE' ||
+                            gameState === 'GAMEOVER_UI' ||
+                            gameState === 'OST' ||
+                            gameState === 'STORY' ||
+                            gameState === 'PAUSED') {
+
                             if (currentMenuButtons[selectedMenuIndex]) {
                                 // ★修正点1: 実行前にボタンリストを空にして、連続入力を防ぐ
                                 const btnToClick = currentMenuButtons[selectedMenuIndex];
