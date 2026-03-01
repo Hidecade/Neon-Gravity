@@ -1403,7 +1403,7 @@
 
         <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
             PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
-            Version 1.03 | &copy; 2026 Hidecade
+            Version 1.00 | &copy; 2026 Hidecade
         </div>
     </div>
 
@@ -3378,13 +3378,13 @@
         // =========================================================
         function startGame() {
 
-            canvas.focus();
+            // ★変更：前の requestFullScreen 等は削除/コメントアウトのまま
 
-            // requestFullScreen(); // ←ここは既に削除/コメントアウト済みのはず
-
-            // ★修正：ここはボタン側で実行済みなのでコメントアウトする
-            // AudioSys.init();
-            // AudioSys.resume();
+            // DOMの描画更新（display:noneなど）が終わるのを一瞬待ってからフォーカスする
+            // これにより「消えた要素」ではなく「現れたCanvas」に確実にフォーカスが乗ります
+            setTimeout(() => {
+                canvas.focus();
+            }, 50);
 
             gameState = 'PLAYING';
             ui.overlay.style.display = 'none';
@@ -11512,38 +11512,32 @@
         ui.controls.addEventListener('touchmove', handleTouch, { passive: false });
         ui.controls.addEventListener('touchend', handleTouch, { passive: false });
 
-        // ★修正決定版：オーディオ権限とフォーカス権限を同時に確保する
+        // ★修正版：シンプルかつ最強の click イベント一本化
         const startBtnElement = document.getElementById('btn-start');
         if (startBtnElement) {
             const handleStart = (e) => {
-                // 1. ブラウザの拡大縮小などをキャンセル
-                if (e && e.cancelable) e.preventDefault();
+                // デフォルトの挙動は残しつつ、バブリングだけ止める
+                // e.preventDefault(); は【絶対に】書かないこと！
                 e.stopPropagation();
 
-                // 2. ★最重要：タッチした「その瞬間」にオーディオを強制的に再開させる
-                // これを setTimeout の中に入れると、iOSでは音が鳴らなくなります
+                // 1. オーディオ権限の取得（clickイベント内なら確実に許可される）
                 if (typeof AudioSys !== 'undefined') {
-                    // まだ初期化されてなければ作る
                     if (!AudioSys.ctx) AudioSys.init();
-                    // コンテキストがサスペンド状態なら叩き起こす
                     AudioSys.resume();
                 }
 
-                // 3. 今押したボタンからフォーカスを外し、ウィンドウ全体にフォーカスを戻す
+                // 2. フォーカスリセット
                 if (document.activeElement) {
                     document.activeElement.blur();
                 }
                 window.focus();
 
-                // 4. 遅延させずにゲームを開始する
-                // これによりオーディオ権限を持ったままゲームループへ移行します
+                // 3. ゲーム開始
                 startGame();
             };
 
-            // 'touchend' を使うことで、指が離れた瞬間に処理を確定させます
-            startBtnElement.addEventListener('touchend', handleStart, { passive: false });
-
-            // PCでのクリック対応
+            // touchend は削除し、click のみにする
+            // これにより iOS が「正当なユーザー操作」として認識し、音もフォーカスも正常に処理します
             startBtnElement.addEventListener('click', handleStart);
         }
 
