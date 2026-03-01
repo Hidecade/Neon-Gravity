@@ -229,7 +229,7 @@
         #stage-msg {
             display: none;
             position: absolute;
-            top: 40%;
+            top: 35%;
             width: 100%;
             text-align: center;
             color: #fff;
@@ -426,11 +426,11 @@
             transform: scale(0.95);
         }
 
-            .menu-btn.selected, .track-item.selected {
-                color: #fff !important;
-                transform: scale(1.05);
-                border-color: #fff !important;
-            }
+        .menu-btn.selected, .track-item.selected {
+            color: #fff !important;
+            transform: scale(1.05);
+            border-color: #fff !important;
+        }
 
         /* ポーズボタンやフッターもスケール対応 */
         #pause-btn {
@@ -875,6 +875,7 @@
             fill: rgba(255, 255, 0, 0.2); /* 黄色っぽく */
             stroke: #ffff00;
         }
+
         .key {
             display: inline-block;
             padding: 1px 4px 0px 4px;
@@ -1151,12 +1152,12 @@
 
         @keyframes clear-glow {
             0%, 100% {
-                opacity: 0.8;
+                /* opacity は削除 */
                 filter: brightness(1);
             }
 
             50% {
-                opacity: 1;
+                /* opacity は削除 */
                 filter: brightness(1.8) scale(1.02);
             }
         }
@@ -1267,6 +1268,17 @@
 
             50% {
                 transform: translateY(5px);
+            }
+        }
+
+        @media (orientation: landscape) {
+            /* トレーニングモードのEXITボタンを画面下に固定 */
+            #btn-training-exit {
+                position: absolute !important;
+                bottom: 30px !important;
+                left: 50%;
+                transform: translateX(-50%);
+                margin-top: 0 !important;
             }
         }
     </style>
@@ -1458,7 +1470,7 @@
 
     </div>
 
-    <div id="training-guide" style="display:none; position:absolute; top:20%; width:100%; text-align:center; pointer-events:none; z-index:200;">
+    <div id="training-guide" style="display:none; position:absolute; top:0; height:100%; width:100%; padding-top:15%; box-sizing:border-box; text-align:center; pointer-events:none; z-index:200;">
         <h2 style="color:#0f8; text-shadow:0 0 10px #0f8; font-size:24px; margin-bottom:10px;">TRAINING MODE</h2>
         <p style="color:#fff; font-size:14px; opacity:0.8; line-height:1.6;">
             TEST MANEUVERS & WEAPONS<br>
@@ -1760,27 +1772,6 @@
                     stage: stage,
                     timestamp: serverTimestamp()
                 });
-
-                // 2. クリーンアップ処理
-                // ここで権限エラー（Firebaseのルール制限）が起きても、登録自体は成功しているので
-                // エラーを握り潰して（無視して）処理を続行させる
-                try {
-                    // 全件取得は負荷やルール違反の可能性があるため、limit(20)で上位20件だけを見るように修正
-                    const qAll = query(collection(db, SCORES_COLLECTION), orderBy("score", "desc"), limit(20));
-                    const snapshot = await getDocs(qAll);
-
-                    // 11件目以降があれば削除
-                    if (snapshot.size > 10) {
-                        const deletePromises = [];
-                        for (let i = 10; i < snapshot.size; i++) {
-                            deletePromises.push(deleteDoc(snapshot.docs[i].ref));
-                        }
-                        await Promise.all(deletePromises);
-                    }
-                } catch (cleanupError) {
-                    // 削除権限がない場合はここでエラーになるが、ログに残すだけに留める
-                    console.warn("Cleanup failed, but submission was successful:", cleanupError);
-                }
             }
         };
 
@@ -1820,11 +1811,11 @@
                         }
 
                         tr.innerHTML = `
-                                                    <td class="${rankClass}" style="text-align:center;">${rankText}</td>
-                                                    <td style="text-align:left;">${escapeHtml(data.name)}</td>
-                                                    <td style="text-align:center;">${stageText}</td>
-                                                    <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
-                                                `;
+                                                        <td class="${rankClass}" style="text-align:center;">${rankText}</td>
+                                                        <td style="text-align:left;">${escapeHtml(data.name)}</td>
+                                                        <td style="text-align:center;">${stageText}</td>
+                                                        <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
+                                                    `;
                         rankingBody.appendChild(tr);
                         rank++;
                     });
@@ -2135,6 +2126,7 @@
         let isBossSpawned = false;   // ボス出現済みフラグ
         let isBossWarning = false;   // 警告演出中フラグ
         let warningTimer = 0;        // 警告演出用タイマー
+        let stageMessageTimer = 0;   // ステージ開始メッセージ用のタイマー
         let nextBossSpawnX = 0;      // ボス出現予定座標X
         let nextBossSpawnY = 0;      // ボス出現予定座標Y
 
@@ -2283,35 +2275,47 @@
             nameInputArea: document.getElementById("name-input-area"),
         };
 
-        // ★追加：ゲームパッド用メニュー管理変数
+        // ゲームパッド用メニュー管理変数
         let currentMenuButtons = [];
         let selectedMenuIndex = 0;
 
-        // =========================================================
-        // ★追加：メッセージ表示の共通関数
-        // これを使うことで、色やサイズが他の場面に引き継がれるバグを防ぎます
-        // =========================================================
+        // メッセージ表示の共通関数
         function showMessage(textHTML, colorType = 'default') {
+            // ★追加：表示する直前に、消去予約されていたタイマーをキャンセルする
+            // これにより、新しいメッセージが出た瞬間に前の「消す処理」が走ってしまうのを防ぎます
+            if (typeof msgHideTimeout !== 'undefined' && msgHideTimeout) {
+                clearTimeout(msgHideTimeout);
+                msgHideTimeout = null;
+            }
+
             ui.msg.innerHTML = textHTML;
+
+            // 1. まずアニメーションなしで「透明」かつ「表示」状態にする
             ui.msg.style.display = 'block';
+            ui.msg.style.transition = 'none';
+            ui.msg.style.opacity = '0';
 
-            // アニメーションや変形状態を毎回確実にリセットする
-            ui.msg.style.transition = "none";
-            ui.msg.style.opacity = "1";
+            // デザイン調整
             ui.msg.style.transform = `scale(${globalUiScale})`;
-            ui.msg.style.fontSize = "calc(28px * var(--ui-scale, 1))"; // CSSに合わせた基準サイズ
+            ui.msg.style.fontSize = "calc(28px * var(--ui-scale, 1))";
 
-            // カラーテーマの適用
             if (colorType === 'red') {
                 ui.msg.style.color = "#f00";
                 ui.msg.style.textShadow = "0 0 15px #f00, 0 0 30px #f00";
             } else if (colorType === 'gold') {
                 ui.msg.style.color = "#ffd700";
                 ui.msg.style.textShadow = "0 0 20px #ffd700, 0 0 40px #ffaa00";
-            } else { // default (Cyan neon)
+            } else {
                 ui.msg.style.color = "#fff";
                 ui.msg.style.textShadow = "0 0 15px #0ff, 0 0 30px #0ff, 0 0 60px #0ff";
             }
+
+            // 2. わずかな遅延（50ms）を入れてからフェードインを開始
+            // これによりブラウザが確実に「透明状態」を描画してから変化させます
+            setTimeout(() => {
+                ui.msg.style.transition = "opacity 0.2s ease-out";
+                ui.msg.style.opacity = "1";
+            }, 50);
         }
 
         // =========================================================
@@ -3374,6 +3378,9 @@
             warningTimer = 0;
             levelItemsDroppedInStage = 0;
 
+            // ★リセット: 新しいステージ開始時はタイマーをリセット
+            stageMessageTimer = 0;
+
             ui.msg.style.display = 'none';
             ui.warn.style.display = 'none';
             if (ui.bossContainer) ui.bossContainer.style.display = 'none';
@@ -3382,80 +3389,66 @@
             missiles = []; wormholes = [];
             scorePopups = []; rings = [];
 
-            // ▼▼▼ ステージ開始メッセージ（日本語訳対応版） ▼▼▼
+            // ▼▼▼ メッセージ表示ロジックの共通化 ▼▼▼
             if (!isTrainingMode) {
-                const data = STAGE_TITLES[stage] || { en: "UNKNOWN SECTOR", ja: "未知の宙域" };
+                let msgContent = "";
+                let msgColor = "default";
+                let displayTime = 180; // デフォルト3.5秒 (60fps * 3.5)
 
-                // 言語判定
-                const lang = (window.navigator.languages && window.navigator.languages[0]) || window.navigator.language;
-                const isJa = lang && lang.startsWith('ja');
+                if (stage === 10) {
+                    // --- Stage 10 (Final) ---
+                    stage10Timer = 0;
+                    stage10BeatCount = 0;
+                    msgContent = `<span style="font-size: 1.2em; letter-spacing: 8px; margin-right: -8px;">WARNING</span><br><span style="display: inline-block; margin-top: 15px; font-size: 0.7em; letter-spacing: 4px; margin-right: -4px;">GENESIS-ARK APPROACHING</span>`;
+                    msgColor = "red";
+                    displayTime = 240; // 4秒
+                    AudioSys.playBGM('last');
 
-                // HTMLの組み立て
-                let startMsg = `<span style="font-size: 0.7em; letter-spacing: 4px; opacity: 0.8; display:block; margin-bottom:10px;">- STAGE ${stage} -</span>`;
-                startMsg += `<span style="display:block;">${data.en}</span>`;
+                    // 雑魚無限湧き設定
+                    enemiesToSpawn = 9999;
+                    gameSpeed = 1.0;
 
-                // 日本語なら下に小さく表示
-                if (isJa) {
-                    startMsg += `<span style="font-size: 0.6em; font-family: sans-serif; letter-spacing: 2px; color: rgba(255,255,255,0.6); display:block; margin-top:10px;">${data.ja}</span>`;
-                }
+                } else if (stage === 9) {
+                    // --- Stage 9 (Boss Rush) ---
+                    rushBossIndex = 0;
+                    rushIntervalTimer = 0;
+                    msgContent = "FINAL MISSION\nBOSS RUSH";
+                    msgColor = "red";
+                    displayTime = 240; // 4秒
+                    AudioSys.playBGM('boss');
+                    enemiesToSpawn = 9999;
+                    gameSpeed = 1.0;
 
-                showMessage(startMsg, 'default');
+                } else {
+                    // --- 通常ステージ (1-8) ---
+                    const data = STAGE_TITLES[stage] || { en: "UNKNOWN SECTOR", ja: "未知の宙域" };
+                    const lang = (window.navigator.languages && window.navigator.languages[0]) || window.navigator.language;
+                    const isJa = lang && lang.startsWith('ja');
 
-                setTimeout(() => {
-                    if (!isBossWarning && gameState === 'PLAYING') {
-                        ui.msg.style.transition = "opacity 0.8s"; // 少しゆっくり消す
-                        ui.msg.style.opacity = "0";
-                        setTimeout(() => { ui.msg.style.display = 'none'; }, 800);
+                    msgContent = `<span style="font-size: 0.7em; letter-spacing: 4px; opacity: 0.8; display:block; margin-bottom:10px;">- STAGE ${stage} -</span>`;
+                    msgContent += `<span style="display:block;">${data.en}</span>`;
+                    if (isJa) {
+                        msgContent += `<span style="font-size: 0.6em; font-family: sans-serif; letter-spacing: 2px; color: rgba(255,255,255,0.6); display:block; margin-top:10px;">${data.ja}</span>`;
                     }
-                }, 3000);
-            }
 
-            // ★Stage 10 (Battleship Boss) の初期化
-            if (stage === 10) {
-
-                // ★追加：BGMと同期させるためのタイマー＆回数リセット
-                stage10Timer = 0;
-                stage10BeatCount = 0;
-
-                const warningHTML = `<span style="font-size: 1.2em; letter-spacing: 8px; margin-right: -8px;">WARNING</span><br><span style="display: inline-block; margin-top: 15px; font-size: 0.7em; letter-spacing: 4px; margin-right: -4px;">GENESIS-ARK APPROACHING</span>`;
-
-                showMessage(warningHTML, 'red');
-                AudioSys.playBGM('last');
-
-                setTimeout(() => {
-                    ui.msg.style.display = 'none';
-                    // ラスボス生成
-                    spawnEnemy(worldSize / 2, worldSize / 2, 'battleship');
-                    isBossSpawned = true;
-                }, 4000);
-
-                // ラスボス戦は雑魚が無限に湧けるようにする
-                enemiesToSpawn = 9999;
-                gameSpeed = 1.0;
-
-                // Stage 9 (Boss Rush)
-            } else if (stage === 9) {
-                rushBossIndex = 0;
-                rushIntervalTimer = 0;
-                enemiesToSpawn = 9999;
-                showMessage("FINAL MISSION\nBOSS RUSH", 'red');
-                AudioSys.playBGM('boss');
-                setTimeout(() => { ui.msg.style.display = 'none'; }, 4000);
-                gameSpeed = 1.0;
-
-                // 通常ステージ
-            } else {
-                if (stage <= STAGE_ENEMY_COUNTS.length) enemiesToSpawn = STAGE_ENEMY_COUNTS[stage - 1];
-                else enemiesToSpawn = STAGE_ENEMY_COUNTS[STAGE_ENEMY_COUNTS.length - 1] + 50;
-
-                if (gameState === 'PLAYING') {
+                    // BGM再生
                     const bgmIndex = (stage - 1) % BGM_FILES.stages.length;
                     AudioSys.playBGM('stage', bgmIndex);
+
+                    // 敵出現設定
+                    if (stage <= STAGE_ENEMY_COUNTS.length) enemiesToSpawn = STAGE_ENEMY_COUNTS[stage - 1];
+                    else enemiesToSpawn = STAGE_ENEMY_COUNTS[STAGE_ENEMY_COUNTS.length - 1] + 50;
+
+                    const whCount = Math.max(1, Math.floor((stage + 1) / 2));
+                    for (let i = 0; i < whCount; i++) spawnWormhole();
+                    gameSpeed = 1.0;
                 }
-                const whCount = Math.max(1, Math.floor((stage + 1) / 2));
-                for (let i = 0; i < whCount; i++) spawnWormhole();
-                gameSpeed = 1.0;
+
+                // メッセージ表示実行（共通）
+                showMessage(msgContent, msgColor);
+                stageMessageTimer = displayTime;
             }
+            // ▲▲▲ ここまで ▲▲▲
 
             distortGrid(worldSize / 2, worldSize / 2, -200, worldSize);
 
@@ -3545,6 +3538,7 @@
                 isStageClear = true;
 
                 if (stage === MAX_STAGE) {
+                    // --- 全クリア時の演出（変更なし） ---
                     gameSpeed = 0.25;
                     distortGrid(worldSize / 2, worldSize / 2, 1000, worldSize);
                     player.invuln = 1200;
@@ -3552,7 +3546,6 @@
                     if (AudioSys.bgmEl) AudioSys.bgmEl.pause();
                     AudioSys.playBGM('all_clear');
 
-                    // 共通関数で基本設定を作った後、アニメーション用の特殊設定を上書き
                     const clearText = `ALL MISSION CLEAR<br><span id="clear-score-text" style="opacity: 0; display: inline-block; margin-top: 20px; font-size: 0.6em; color: #fff; text-shadow: 0 0 10px #fff, 0 0 20px #0ff; letter-spacing: 4px; margin-right: -4px;">TOTAL SCORE: ${score.toLocaleString()}</span>`;
                     showMessage(clearText, 'gold');
 
@@ -3560,20 +3553,21 @@
                     ui.msg.style.opacity = "0";
                     ui.msg.style.transform = `translateY(100px) scale(${globalUiScale})`;
 
+                    // ...（以下、花火演出などの長いコードはそのまま）...
+                    // ※ここはそのままでOKなので省略しませんが、修正が必要なのは下のelseブロックです
+
                     let fireworksActive = true;
                     const startTime = Date.now();
                     const duration = 18000;
 
                     function triggerRandomFirework() {
                         if (gameState !== 'PLAYING' || !fireworksActive) return;
-
+                        // ... (花火の処理は長いので省略、元のコードのまま動作します) ...
                         const elapsed = Date.now() - startTime;
                         const progress = Math.min(1.0, elapsed / duration);
-
                         const baseDelay = 50 + progress * 750;
                         const randomDelay = 150 + progress * 1500;
                         const nextDelay = baseDelay + Math.random() * randomDelay;
-
                         const viewW = width / cameraScale;
                         const viewH = height / cameraScale;
                         const pad = 100;
@@ -3587,8 +3581,7 @@
                             rings.push({ x: fx, y: fy, r: 60, color: '#00ffff', life: 0.8 });
                             distortGrid(fx, fy, 200, 400);
                             if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_large');
-                        }
-                        else if (progress < 0.7) {
+                        } else if (progress < 0.7) {
                             const colors = ['#00ffff', '#ff00ff', '#ffff00', '#ffffff'];
                             const c = colors[Math.floor(Math.random() * colors.length)];
                             createExplosion(fx, fy, '#ffffff', 30);
@@ -3596,8 +3589,7 @@
                             rings.push({ x: fx, y: fy, r: 10, color: c, life: 0.6 });
                             distortGrid(fx, fy, 100, 200);
                             if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_medium');
-                        }
-                        else {
+                        } else {
                             const colors = ['#0088ff', '#ff00ff', '#ffffff'];
                             const c = colors[Math.floor(Math.random() * colors.length)];
                             createExplosion(fx, fy, c, 15);
@@ -3611,7 +3603,6 @@
                             setTimeout(triggerRandomFirework, nextDelay);
                         }
                     }
-
                     triggerRandomFirework();
 
                     requestAnimationFrame(() => {
@@ -3642,24 +3633,32 @@
                     }, 18000);
 
                     return;
+
+                } else {
+                    // ==========================================
+                    // ★ここを修正：通常ステージクリア時のフェードアウト
+                    // ==========================================
+                    gameSpeed = 0.25;
+                    distortGrid(worldSize / 2, worldSize / 2, 1000, worldSize);
+                    AudioSys.playBGM('clear');
+
+                    // 1. フェードインして表示
+                    showMessage("STAGE " + stage + " CLEAR", 'default');
+
+                    // 2. ★追加：3.5秒後にフェードアウトを開始
+                    setTimeout(() => {
+                        ui.msg.style.transition = "opacity 0.5s ease-in";
+                        ui.msg.style.opacity = "0";
+                    }, 3500);
+
+                    // 3. 4.0秒後に完全に消して次へ
+                    setTimeout(() => {
+                        ui.msg.style.display = 'none';
+                        stage++;
+                        ui.stage.innerText = stage;
+                        startStage();
+                    }, 4000);
                 }
-
-                // ==========================================
-                // 通常のクリア処理
-                // ==========================================
-                gameSpeed = 0.25;
-                distortGrid(worldSize / 2, worldSize / 2, 1000, worldSize);
-                AudioSys.playBGM('clear');
-
-                // ★共通関数で表示
-                showMessage("STAGE " + stage + " CLEAR", 'default');
-
-                setTimeout(() => {
-                    ui.msg.style.display = 'none';
-                    stage++;
-                    ui.stage.innerText = stage;
-                    startStage();
-                }, 4000);
             }
         }
 
@@ -4072,7 +4071,7 @@
         function update() {
 
 
-            // ▼▼▼ 修正：トレーニングモード用の制限と補充ロジック ▼▼▼
+            // トレーニングモード用の制限と補充ロジック ▼▼▼
             if (isTrainingMode) {
                 spawnedCount = 9999;
                 enemiesToSpawn = 0;
@@ -4080,7 +4079,7 @@
                 warningTimer = 0;
                 wormholes = [];
 
-                // ★追加：BOMB（サテライト）が減っていたら自動補充する
+                // BOMB（サテライト）が減っていたら自動補充する
                 if (player.satellites.length < 12) {
                     player.satellites.push({
                         x: player.x,
@@ -4089,6 +4088,35 @@
                     });
                 }
             }
+
+            // メッセージ フェードアウト処理 ▼▼▼
+            if (stageMessageTimer > 0) {
+                stageMessageTimer--;
+
+                // タイマーが0になったらフェードアウト開始
+                if (stageMessageTimer === 0) {
+                    if (!isBossWarning) {
+                        // フェードアウト用のトランジションを設定
+                        ui.msg.style.transition = "opacity 0.3s ease-in";
+
+                        // 次のフレームで透明度を0にする（確実にアニメーションさせるため）
+                        requestAnimationFrame(() => {
+                            ui.msg.style.opacity = "0";
+                        });
+
+                        if (msgHideTimeout) clearTimeout(msgHideTimeout);
+
+                        msgHideTimeout = setTimeout(() => {
+                            // まだ次のメッセージが出ていない（タイマーが0のまま）なら隠す
+                            if (stageMessageTimer === 0 && !isBossWarning) {
+                                ui.msg.style.display = 'none';
+                            }
+                            msgHideTimeout = null;
+                        }, 300);
+                    }
+                }
+            }
+
 
             // --- 警告演出の管理 ---
             if (isBossWarning) {
@@ -4121,6 +4149,16 @@
             }
 
             frame++;
+
+            // --- 追加: Stage 10 ボス出現管理 ---
+            if (stage === 10 && !isBossSpawned) {
+                // stage10Timer は startStage でリセットされ、毎フレーム加算されています
+                // 4秒経過 (240フレーム) したら出現させる
+                if (stage10Timer === 240) {
+                    spawnEnemy(worldSize / 2, worldSize / 2, 'battleship');
+                    isBossSpawned = true;
+                }
+            }
 
 
             // ==========================================
@@ -11334,21 +11372,36 @@
             const lC = { x: lR.left + lR.width / 2, y: lR.top + lR.height / 2 };
             const rC = { x: rR.left + rR.width / 2, y: rR.top + rR.height / 2 };
 
+            // handleTouch 関数内の修正
             for (let i = 0; i < e.touches.length; i++) {
                 const t = e.touches[i];
-                const dL = Math.hypot(t.clientX - lC.x, t.clientY - lC.y);
-                const dR = Math.hypot(t.clientX - rC.x, t.clientY - rC.y);
 
-                if (dL < 100) {
-                    input.move.active = true; const a = Math.atan2(t.clientY - lC.y, t.clientX - lC.x); const d = Math.min(dL, 40);
-                    input.move.x = Math.cos(a) * (d / 40); input.move.y = Math.sin(a) * (d / 40);
-                    ui.knobL.style.transform = `translate(${input.move.x * 40}px,${input.move.y * 40}px)`;
-                } else if (dR < 100) {
-                    input.aim.active = true; const a = Math.atan2(t.clientY - rC.y, t.clientX - rC.x); const d = Math.min(dR, 40);
-                    input.aim.x = Math.cos(a) * (d / 40); input.aim.y = Math.sin(a) * (d / 40);
-                    ui.knobR.style.transform = `translate(${input.aim.x * 40}px,${input.aim.y * 40}px)`;
+                // 画面中央より左なら「左スティック」判定
+                if (t.clientX < window.innerWidth / 2) {
+                    const dL = Math.hypot(t.clientX - lC.x, t.clientY - lC.y);
+                    if (dL < 120) { // 判定範囲
+                        input.move.active = true;
+                        const a = Math.atan2(t.clientY - lC.y, t.clientX - lC.x);
+                        const d = Math.min(dL, 40);
+                        input.move.x = Math.cos(a) * (d / 40);
+                        input.move.y = Math.sin(a) * (d / 40);
+                        ui.knobL.style.transform = `translate(${input.move.x * 40}px,${input.move.y * 40}px)`;
+                    }
+                }
+                // 画面中央より右なら「右スティック」判定
+                else {
+                    const dR = Math.hypot(t.clientX - rC.x, t.clientY - rC.y);
+                    if (dR < 120) {
+                        input.aim.active = true;
+                        const a = Math.atan2(t.clientY - rC.y, t.clientX - rC.x);
+                        const d = Math.min(dR, 40);
+                        input.aim.x = Math.cos(a) * (d / 40);
+                        input.aim.y = Math.sin(a) * (d / 40);
+                        ui.knobR.style.transform = `translate(${input.aim.x * 40}px,${input.aim.y * 40}px)`;
+                    }
                 }
             }
+
             if (!input.move.active) { input.move.x = 0; input.move.y = 0; ui.knobL.style.transform = 'translate(0,0)'; }
             if (!input.aim.active) { input.aim.x = 0; input.aim.y = 0; ui.knobR.style.transform = 'translate(0,0)'; }
         }
@@ -11692,21 +11745,21 @@
                 // ==========================================
                 if (isJa) {
                     textDiv.innerHTML = `
-                                <span style="color:#f05; font-weight:bold;">快適にプレイするには</span><br>
-                                ブラウザで開いてください<br>
-                                <span style="font-size:12px; color:#aaa;">
-                                   メニューの <span class="share-icon"></span> や <span style="font-size:16px; line-height:1;">⋮</span> を押し<br>
-                                   <span style="color:#0ff; font-weight:bold;">「ブラウザで開く」</span>を選択してください
-                                </span>
-                            `;
+                                    <span style="color:#f05; font-weight:bold;">快適にプレイするには</span><br>
+                                    ブラウザで開いてください<br>
+                                    <span style="font-size:12px; color:#aaa;">
+                                       メニューの <span class="share-icon"></span> や <span style="font-size:16px; line-height:1;">⋮</span> を押し<br>
+                                       <span style="color:#0ff; font-weight:bold;">「ブラウザで開く」</span>を選択してください
+                                    </span>
+                                `;
                 } else {
                     textDiv.innerHTML = `
-                                <span style="color:#f05; font-weight:bold;">Best Experience</span><br>
-                                Please open in Safari/Chrome.<br>
-                                <span style="font-size:12px; color:#aaa;">
-                                   Tap menu and select "Open in Browser"
-                                </span>
-                            `;
+                                    <span style="color:#f05; font-weight:bold;">Best Experience</span><br>
+                                    Please open in Safari/Chrome.<br>
+                                    <span style="font-size:12px; color:#aaa;">
+                                       Tap menu and select "Open in Browser"
+                                    </span>
+                                `;
                 }
 
                 if (arrow) arrow.style.display = 'none';
@@ -11721,26 +11774,26 @@
 
                 if (isJa) {
                     textDiv.innerHTML = `
-                                <span style="color:#0ff; font-weight:bold;">快適にプレイするには</span><br>
-                                <span style="font-size:12px; color:#ddd;">
-                                   特に横画面で遊ぶには<br>
-                                   <span style="color:#f05;">ホーム画面への追加</span>が必要です
-                                </span><br>
-                                <span style="font-size:11px; color:#aaa;">
-                                   (${isChrome ? "右上の" : "画面下の"} <span class="share-icon"></span> から追加できます)
-                                </span>
-                            `;
+                                    <span style="color:#0ff; font-weight:bold;">快適にプレイするには</span><br>
+                                    <span style="font-size:12px; color:#ddd;">
+                                       特に横画面で遊ぶには<br>
+                                       <span style="color:#f05;">ホーム画面への追加</span>が必要です
+                                    </span><br>
+                                    <span style="font-size:11px; color:#aaa;">
+                                       (${isChrome ? "右上の" : "画面下の"} <span class="share-icon"></span> から追加できます)
+                                    </span>
+                                `;
                 } else {
                     textDiv.innerHTML = `
-                                <span style="color:#0ff; font-weight:bold;">Fullscreen Mode</span><br>
-                                <span style="font-size:12px; color:#ddd;">
-                                   Add to Home Screen to play in<br>
-                                   Landscape Mode.
-                                </span><br>
-                                <span style="font-size:11px; color:#aaa;">
-                                   (Tap ${isChrome ? "top-right" : "bottom"} <span class="share-icon"></span> to add)
-                                </span>
-                            `;
+                                    <span style="color:#0ff; font-weight:bold;">Fullscreen Mode</span><br>
+                                    <span style="font-size:12px; color:#ddd;">
+                                       Add to Home Screen to play in<br>
+                                       Landscape Mode.
+                                    </span><br>
+                                    <span style="font-size:11px; color:#aaa;">
+                                       (Tap ${isChrome ? "top-right" : "bottom"} <span class="share-icon"></span> to add)
+                                    </span>
+                                `;
                 }
 
                 if (isChrome && arrow) {
