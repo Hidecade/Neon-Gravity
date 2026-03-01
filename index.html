@@ -1310,7 +1310,7 @@
 
 <body>
 
-    <canvas id="game"></canvas>
+    <canvas id="game" tabindex="0"></canvas>
 
     <div id="ui">
         <div id="pause-btn">||</div>
@@ -1403,7 +1403,7 @@
 
         <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
             PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
-            Version 1.03 | &copy; 2026 Hidecade
+            Version 1.04 | &copy; 2026 Hidecade
         </div>
     </div>
 
@@ -3378,30 +3378,22 @@
         // 4. シーン・ステージ管理 (Scene & Stage Management)
         // =========================================================
         function startGame() {
-            // 1. まず入力をリセット
-            clearInputState();
-
-            // 2. フォーカスの引継ぎ処理（これが重要）
-            // 押されたボタンからフォーカスを外し、キャンバスに移動させる
-            if (document.activeElement) {
-                document.activeElement.blur();
-            }
+            // ★追加：シンプルにキャンバスにフォーカスを当てる
             canvas.focus();
-            window.focus();
 
-            // 3. フルスクリーン要求（非同期でフォーカスが外れる可能性があるため後述のイベントでもケア）
+            // ★追加：フルスクリーン化などの処理が終わった後（0.5秒後、1秒後）にダメ押しでフォーカスを当てる
+            // これで「2秒後に切れる」現象を防ぎます
+            setTimeout(() => canvas.focus(), 500);
+            setTimeout(() => canvas.focus(), 1000);
+
             requestFullScreen();
-
-            // 4. オーディオシステムの初期化
             AudioSys.init();
             AudioSys.resume();
 
-            // 5. ゲーム状態の設定
             gameState = 'PLAYING';
             ui.overlay.style.display = 'none';
             ui.ost.style.display = 'none';
 
-            // 6. パラメータの初期化
             score = 0;
             stage = START_STAGE;
             frame = 0;
@@ -3418,12 +3410,14 @@
             player.laserTimer = 0;
             player.history = [];
 
-            // 7. 入力デバイスに応じたUI表示
+            // 入力リセットもシンプルに手動で行うだけに留める
+            input.move.active = false;
+            input.aim.active = false;
+
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             const isConnected = Array.from(gamepads).some(gp => gp !== null);
             ui.controls.style.display = isConnected ? 'none' : 'block';
 
-            // 8. カメラの瞬間リセット
             cameraScale = 1.0;
             const viewW = width / cameraScale;
             const viewH = height / cameraScale;
@@ -3431,7 +3425,6 @@
             camera.y = player.y - viewH * CAMERA_Y_OFFSET;
             updateCamera();
 
-            // 9. HUD表示の更新
             ui.score.innerText = "000000";
             ui.stage.innerText = stage;
             ui.shieldBar.style.width = "100%";
@@ -3442,7 +3435,6 @@
             ui.msg.style.display = 'none';
             ui.pauseBtn.style.display = 'flex';
 
-            // 10. ステージ開始
             startStage();
         }
 
@@ -11432,27 +11424,16 @@
                 e.stopPropagation();
             }
 
-            // ★重要：フォーカスを強制的にゲーム画面（キャンバス）に戻す
-            // これを行わないと、ブラウザが「非アクティブ」と判定し、ゲームパッド入力を遮断し続けます
-            if (document.activeElement && document.activeElement !== document.body) {
-                document.activeElement.blur();
-            }
-            window.focus();
+            // ★追加：シンプルにキャンバスへフォーカスを戻す
             canvas.focus();
 
-            // SE用のコンテキストを復帰
-            if (AudioSys) {
-                AudioSys.resume();
-            }
+            // UIが消えた直後にも念押しでフォーカスする
+            setTimeout(() => canvas.focus(), 100);
 
-            // 入力状態をリセット（押しっぱなし防止）
-            clearInputState();
+            if (AudioSys) AudioSys.resume();
 
-            // 状態を戻す
             gameState = 'PLAYING';
             ui.pauseOverlay.style.display = 'none';
-
-            // BGM再開
             AudioSys.resumeBGM();
         };
 
@@ -11605,11 +11586,10 @@
 
 
         function handleGamepadInput() {
-            // iOS Safari対応: getGamepads() は毎フレーム呼び出して最新状態を取得する必要がある
+            // iOS Safari対応: 毎フレーム取得
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             let activeGp = null;
 
-            // 接続されているコントローラーを探す
             for (let i = 0; i < gamepads.length; i++) {
                 const gp = gamepads[i];
                 if (gp && gp.connected) {
@@ -11618,24 +11598,7 @@
                 }
             }
 
-            if (!activeGp) {
-                return;
-            }
-
-            // ボタン・スティックの状態取得
-            const aBtn = activeGp.buttons[0]?.pressed; // Aボタン
-            const startBtn = activeGp.buttons[9]?.pressed; // START
-            const moveX = activeGp.axes[0];
-            const moveY = activeGp.axes[1];
-
-            // ★追加：何かしらの入力（スティック含む）があったら、ウィンドウとキャンバスにフォーカスがあるか確認する
-            // これにより、バックグラウンド復帰後に操作した瞬間にフォーカスを取り戻します
-            if (Math.abs(moveX) > 0.1 || Math.abs(moveY) > 0.1 || aBtn || startBtn) {
-                if (!document.hasFocus() || document.activeElement !== canvas) {
-                    window.focus();
-                    canvas.focus(); // キャンバスにフォーカスを強制
-                }
-            }
+            if (!activeGp) return;
 
             // iOS対応: 接続が確認できたらタッチUIを消す
             if (gameState === 'PLAYING' && ui.controls.style.display !== 'none') {
@@ -11643,31 +11606,22 @@
                 ui.pauseBtn.style.display = 'none';
             }
 
-            // 十字キーまたはスティックの判定
-            const dpadUp = activeGp.buttons[12]?.pressed || moveY < -0.5;
-            const dpadDown = activeGp.buttons[13]?.pressed || moveY > 0.5;
-            const dpadLeft = activeGp.buttons[14]?.pressed || moveX < -0.5;
-            const dpadRight = activeGp.buttons[15]?.pressed || moveX > 0.5;
+            // --- ボタン・スティックの状態取得 ---
+            const aBtn = activeGp.buttons[0]?.pressed; // Aボタン
+            const startBtn = activeGp.buttons[9]?.pressed; // START
+            const moveX = activeGp.axes[0];
+            const moveY = activeGp.axes[1];
 
-            // --- プレイ中のUI表示制御 ---
-            if (gameState === 'PLAYING') {
-                if (ui.controls.style.display !== 'none') ui.controls.style.display = 'none';
-                if (ui.pauseBtn.style.display !== 'none') ui.pauseBtn.style.display = 'none';
-            }
-
-            // --- STARTボタンでポーズ切り替え ---
+            // STARTボタン処理
             if (startBtn && !input.padStartPressed) {
                 if (gameState === 'PLAYING') setPaused(true);
                 else if (gameState === 'PAUSED') resumeAction();
             }
             input.padStartPressed = startBtn;
 
-            // ==========================================
-            // メニュー画面・HOWTO画面・STORY画面での操作
-            // ==========================================
+            // --- メニュー操作 ---
             if (gameState !== 'PLAYING') {
-
-                // ▼▼▼ 追加：スクロール処理 (STORY, RANKING, OST) ▼▼▼
+                // スクロール処理 (STORY, RANKING, OST)
                 if (gameState === 'STORY' || gameState === 'RANKING' || gameState === 'OST') {
                     let scrollTargetId = null;
                     if (gameState === 'STORY') scrollTargetId = 'story-scroll-container';
@@ -11676,18 +11630,17 @@
 
                     const container = document.getElementById(scrollTargetId);
                     if (container) {
-                        const scrollSpeed = 15; // スクロール速度
-                        if (Math.abs(moveY) > 0.2) {
-                            container.scrollTop += moveY * scrollSpeed;
-                        } else if (dpadUp) {
-                            container.scrollTop -= scrollSpeed;
-                        } else if (dpadDown) {
-                            container.scrollTop += scrollSpeed;
-                        }
+                        const scrollSpeed = 15;
+                        if (Math.abs(moveY) > 0.2) container.scrollTop += moveY * scrollSpeed;
                     }
                 }
 
-                // 1. 十字キーでのボタン選択移動
+                // 十字キー判定
+                const dpadUp = activeGp.buttons[12]?.pressed || moveY < -0.5;
+                const dpadDown = activeGp.buttons[13]?.pressed || moveY > 0.5;
+                const dpadLeft = activeGp.buttons[14]?.pressed || moveX < -0.5;
+                const dpadRight = activeGp.buttons[15]?.pressed || moveX > 0.5;
+
                 if (gameState !== 'STORY') {
                     if ((dpadUp || dpadDown || dpadLeft || dpadRight) && !input.padDirPressed) {
                         if (dpadUp || dpadLeft) selectedMenuIndex--;
@@ -11695,31 +11648,14 @@
                         window.updateMenuSelectionUI();
                     }
                 }
-
                 input.padDirPressed = (dpadUp || dpadDown || dpadLeft || dpadRight);
 
-                // 2. Aボタンで決定
+                // Aボタン決定
                 if (aBtn) {
                     if (!input.padAPressed) {
-                        if (gameState === 'HOWTO' ||
-                            gameState === 'TITLE' ||
-                            gameState === 'GAMEOVER_UI' ||
-                            gameState === 'OST' ||
-                            gameState === 'STORY' ||
-                            gameState === 'PAUSED' ||
-                            document.getElementById("ranking-overlay").style.display === 'flex') {
-
-                            if (currentMenuButtons[selectedMenuIndex]) {
-                                const btnToClick = currentMenuButtons[selectedMenuIndex];
-                                currentMenuButtons = []; // 連打防止
-                                btnToClick.click();
-
-                                // ★重要：ボタンを押した後、ボタンからフォーカスを外し、キャンバスに戻す
-                                // これがないと、フォーカスがボタンに残ってしまい、次のゲームパッド入力をブラウザが無視します
-                                btnToClick.blur();
-                                window.focus();
-                                canvas.focus();
-                            }
+                        if (currentMenuButtons[selectedMenuIndex]) {
+                            // シンプルにクリックだけする
+                            currentMenuButtons[selectedMenuIndex].click();
                         }
                         input.padAPressed = true;
                         setTimeout(() => {
@@ -11729,13 +11665,10 @@
                 } else {
                     input.padAPressed = false;
                 }
-
-                return; // メニュー操作時はここで処理終了
+                return;
             }
 
-            // ==========================================
-            // プレイ中の操作（PLAYING時）
-            // ==========================================
+            // --- プレイ中の操作 ---
             input.padAPressed = aBtn; // ショット連射用
 
             const moveDeadzone = 0.2;
