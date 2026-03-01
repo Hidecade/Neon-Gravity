@@ -1403,7 +1403,7 @@
 
         <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
             PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
-            Version 1.00 | &copy; 2026 Hidecade
+            Version 1.01 | &copy; 2026 Hidecade
         </div>
     </div>
 
@@ -11512,32 +11512,41 @@
         ui.controls.addEventListener('touchmove', handleTouch, { passive: false });
         ui.controls.addEventListener('touchend', handleTouch, { passive: false });
 
-        // ★修正版：シンプルかつ最強の click イベント一本化
+        // ★修正版：フォーカス問題を解決する「遅延スタート」方式
         const startBtnElement = document.getElementById('btn-start');
         if (startBtnElement) {
             const handleStart = (e) => {
-                // デフォルトの挙動は残しつつ、バブリングだけ止める
-                // e.preventDefault(); は【絶対に】書かないこと！
+                // 1. デフォルト動作の抑止
+                // iOSではclickイベントでフォーカス移動が発生するため、ここでバブリングを止めます
                 e.stopPropagation();
 
-                // 1. オーディオ権限の取得（clickイベント内なら確実に許可される）
+                // 2. オーディオの「先食い」（同期処理）
+                // ここで確実にAudioContextをRunningにしておきます
                 if (typeof AudioSys !== 'undefined') {
                     if (!AudioSys.ctx) AudioSys.init();
                     AudioSys.resume();
                 }
 
-                // 2. フォーカスリセット
-                if (document.activeElement) {
-                    document.activeElement.blur();
-                }
-                window.focus();
+                // 3. フォーカスの完全移動
+                // 押されたボタン(e.target)からフォーカスを外し、Canvasに移します
+                if (e.target) e.target.blur();
+                if (document.activeElement) document.activeElement.blur();
 
-                // 3. ゲーム開始
-                startGame();
+                const gameCanvas = document.getElementById('game');
+                if (gameCanvas) {
+                    gameCanvas.focus();
+                }
+                window.focus(); // 念のためウィンドウも
+
+                // 4. 【重要】ゲーム開始を「一瞬」遅らせる
+                // ブラウザがフォーカス移動を完了させるための猶予（50ミリ秒）を与えます。
+                // オーディオ権限は手順2で確保済みなので、遅らせても音は鳴ります。
+                setTimeout(() => {
+                    startGame();
+                }, 50);
             };
 
-            // touchend は削除し、click のみにする
-            // これにより iOS が「正当なユーザー操作」として認識し、音もフォーカスも正常に処理します
+            // clickイベントのみを使用（安定性重視）
             startBtnElement.addEventListener('click', handleStart);
         }
 
