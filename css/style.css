@@ -1,6 +1,6 @@
 /* =========================================================
-1. グローバル基本設定
-========================================================= */
+   1. グローバル基本設定
+   ========================================================= */
 body {
     margin: 0;
     background: #050505;
@@ -22,8 +22,8 @@ canvas {
 }
 
 /* =========================================================
-2. メインUIコンテナ & HUD
-========================================================= */
+   2. メインUIコンテナ & HUD
+   ========================================================= */
 #ui {
     position: absolute;
     top: 0;
@@ -76,8 +76,8 @@ canvas {
 }
 
 /* =========================================================
-3. ゲージ・バーコンポーネント
-========================================================= */
+   3. ゲージ・バーコンポーネント
+   ========================================================= */
 #gauge-box, #info-box > div {
     pointer-events: none;
 }
@@ -188,8 +188,8 @@ canvas {
 }
 
 /* =========================================================
-4. ゲーム中メッセージ
-========================================================= */
+   4. ゲーム中メッセージ
+   ========================================================= */
 #warning-msg {
     display: none;
     position: absolute;
@@ -222,8 +222,8 @@ canvas {
 }
 
 /* =========================================================
-5. ミニマップ
-========================================================= */
+   5. ミニマップ
+   ========================================================= */
 #minimap-container {
     position: relative;
     top: auto;
@@ -246,8 +246,8 @@ canvas {
 }
 
 /* =========================================================
-6. 操作コントローラー
-========================================================= */
+   6. 操作コントローラー
+   ========================================================= */
 #controls {
     position: absolute;
     top: 0;
@@ -375,8 +375,8 @@ canvas {
 }
 
 /* =========================================================
-7. 共通ボタン類 (サイズを可変に対応)
-========================================================= */
+   7. 共通ボタン類 (サイズを可変に対応)
+   ========================================================= */
 .menu-btn {
     background: rgba(0, 255, 255, 0.1);
     border: 1px solid #0ff;
@@ -407,7 +407,7 @@ canvas {
     border-color: #fff !important;
 }
 
-/* ポーズボタンやフッターもスケール対応 */
+/* ポーズボタンやフッター */
 #pause-btn {
     /* 位置やサイズもスケールさせる */
     right: calc(30px * var(--ui-scale));
@@ -415,7 +415,7 @@ canvas {
     width: calc(40px * var(--ui-scale));
     height: calc(40px * var(--ui-scale));
     font-size: calc(18px * var(--ui-scale));
-    /* 以下デザインはそのまま */
+    /* 以下デザイン */
     position: absolute;
     background: rgba(0, 20, 40, 0.8);
     border: 2px solid rgba(0, 255, 255, 0.5);
@@ -437,8 +437,8 @@ canvas {
 }
 
 /* =========================================================
-8. 各種オーバーレイ画面
-========================================================= */
+   8. 各種オーバーレイ画面
+   ========================================================= */
 
 /* --- 8.1 タイトル画面 --- */
 #overlay {
@@ -458,12 +458,10 @@ canvas {
     opacity: 1;
 }
 
-/* --- 8.1 タイトル画面 --- */
 #menu-title {
     color: #0ff;
     text-shadow: 0 0 20px #0ff;
     text-align: center;
-    /* ★修正：タイトルサイズを可変に */
     margin-bottom: calc(20px * var(--ui-scale));
     font-size: calc(36px * var(--ui-scale));
     line-height: 1.2;
@@ -493,7 +491,6 @@ canvas {
     #pause-overlay h1 {
         color: #fff;
         text-shadow: 0 0 10px #fff;
-        /* ★修正 */
         font-size: calc(40px * var(--ui-scale)) !important;
         margin-bottom: calc(30px * var(--ui-scale)) !important;
     }
@@ -573,7 +570,6 @@ canvas {
     #ranking-overlay h1 {
         color: #0ff;
         text-shadow: 0 0 20px #0ff;
-        /* ★修正 */
         font-size: calc(32px * var(--ui-scale)) !important;
         margin-bottom: calc(10px * var(--ui-scale)) !important;
     }
@@ -650,7 +646,6 @@ canvas {
         margin-bottom: calc(10px * var(--ui-scale)) !important;
     }
 
-
 #ost-scroll-container {
     width: 90%;
     max-width: 500px;
@@ -686,7 +681,6 @@ canvas {
     border-bottom: 1px solid #333;
     color: #888;
     text-align: center;
-    /* ★修正 */
     font-size: calc(16px * var(--ui-scale));
     box-sizing: border-box;
     cursor: pointer;
@@ -716,15 +710,12 @@ canvas {
     transition: opacity 0.5s ease;
 }
 
-/* --- 8.7 HOW TO PLAY 画面 --- */
 #howto-main-title {
     color: #0ff;
     text-shadow: 0 0 20px #0ff;
-    /* サイズ調整 */
     font-size: calc(28px * var(--ui-scale)) !important;
     margin: 0 0 calc(10px * var(--ui-scale)) 0;
     letter-spacing: 4px;
-    /* ★追加：これで確実に中央寄せになります */
     width: 100%;
     text-align: center;
     display: block;
@@ -735,13 +726,10 @@ canvas {
     display: flex;
     gap: 20px;
     width: 95%;
-    /* 最大幅を 700px から 900px に拡大してゆとりを持たせる */
     max-width: 900px;
     margin-top: 20px;
-    align-items: stretch; /* 左右のパネルの高さを揃える */
+    align-items: stretch;
 }
-
-
 
 .howto-panel {
     flex: 1;
@@ -753,13 +741,12 @@ canvas {
     text-align: left;
 }
 
-    /* 左右のパネルの比率を調整（左側：操作説明を少し広くする） */
     .howto-panel:first-child {
-        flex: 1.2; /* 操作説明側を少し広く */
+        flex: 1.2;
     }
 
     .howto-panel:last-child {
-        flex: 1; /* アイテム説明側 */
+        flex: 1;
     }
 
 /* --- HOW TO アイコン・レイアウト用 --- */
@@ -781,7 +768,6 @@ canvas {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    /* 幅を 70px から 80px に微調整 */
     width: calc(80px * var(--ui-scale));
     min-width: calc(80px * var(--ui-scale));
     margin-right: calc(10px * var(--ui-scale));
@@ -822,54 +808,50 @@ canvas {
 }
 
 .keyboard-icon {
-    color: #00ffff; /* 基本色をシアンに */
+    color: #00ffff;
     filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.8));
 }
 
-/* キーの共通スタイル（半透明の塗りと線） */
+/* キーの共通スタイル */
 .key-group rect, .key-space {
     fill: rgba(0, 255, 255, 0.15);
     stroke: currentColor;
     stroke-width: 1px;
 }
 
-/* WASDキー（移動）を少し強調 */
 .wasd-keys rect {
     fill: rgba(0, 255, 255, 0.3);
 }
 
-/* 矢印キー（攻撃）をピンク色にして区別 */
 .arrow-keys rect {
-    color: #ff00ff; /* ピンク */
+    color: #ff00ff;
     fill: rgba(255, 0, 255, 0.3);
     filter: drop-shadow(0 0 3px rgba(255, 0, 255, 0.8));
 }
 
-/* スペースキー */
 .key-space {
-    fill: rgba(255, 255, 0, 0.2); /* 黄色っぽく */
+    fill: rgba(255, 255, 0, 0.2);
     stroke: #ffff00;
 }
 
 .key {
     display: inline-block;
     padding: 1px 4px 0px 4px;
-    margin: 0 1px; /* 左右のマージンを1pxに短縮 */
+    margin: 0 1px;
     border: 1px solid #0ff;
     border-radius: 4px;
     background: rgba(0, 255, 255, 0.15);
     font-family: 'Courier New', monospace;
-    font-size: 0.9em; /* フォントサイズを少し小さく (0.85em -> 0.75em) */
+    font-size: 0.9em;
     font-weight: bold;
     color: #fff;
     box-shadow: 0 0 5px rgba(0, 255, 255, 0.4), inset 0 0 5px rgba(0, 255, 255, 0.2);
     text-shadow: 0 0 3px rgba(255,255,255,0.5);
-    vertical-align: middle; /* テキストとの縦位置を合わせる */
+    vertical-align: middle;
 }
 
-/* ボムのキーは黄色で強調 */
 .lbl-y + .key,
-.lbl-y ~ span + .key { /* SPACE と X の両方に適用 */
+.lbl-y ~ span + .key {
     border-color: #ff0;
     background: rgba(255, 255, 0, 0.15);
     box-shadow: 0 0 5px rgba(255, 255, 0, 0.4), inset 0 0 5px rgba(255, 255, 0, 0.2);
@@ -1034,12 +1016,12 @@ canvas {
 #story-scroll-container strong {
     color: #ffffff;
     font-weight: bold;
-    text-shadow: 0 0 5px rgba(255, 255, 255, 0.9); /* 軽く白く光らせる */
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.9);
 }
 
 /* =========================================================
-9. レスポンシブ設定 (縦画面: Portrait)
-========================================================= */
+   9. レスポンシブ設定 (縦画面: Portrait)
+   ========================================================= */
 @media (orientation: portrait) {
     /* タイトル画面 */
     #menu-title {
@@ -1123,8 +1105,8 @@ canvas {
 }
 
 /* =========================================================
-10. アニメーション定義
-========================================================= */
+   10. アニメーション & iOSプロンプト
+   ========================================================= */
 @keyframes blink {
     50% {
         opacity: 0.5;
@@ -1133,12 +1115,10 @@ canvas {
 
 @keyframes clear-glow {
     0%, 100% {
-        /* opacity は削除 */
         filter: brightness(1);
     }
 
     50% {
-        /* opacity は削除 */
         filter: brightness(1.8) scale(1.02);
     }
 }
@@ -1153,8 +1133,29 @@ canvas {
     }
 }
 
+@keyframes slideUp {
+    from {
+        bottom: -100px;
+        opacity: 0;
+    }
 
-/* iOS インストールプロンプトのスタイル ▼▼▼ */
+    to {
+        bottom: 20px;
+        opacity: 1;
+    }
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(5px);
+    }
+}
+
+/* iOS インストールプロンプト */
 #ios-install-prompt {
     position: fixed;
     bottom: 20px;
@@ -1230,33 +1231,13 @@ canvas {
     cursor: pointer;
 }
 
-@keyframes slideUp {
-    from {
-        bottom: -100px;
-        opacity: 0;
-    }
-
-    to {
-        bottom: 20px;
-        opacity: 1;
-    }
-}
-
-@keyframes bounce {
-    0%, 100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(5px);
-    }
-}
-
-
+/* =========================================================
+   11. その他 (横画面設定・言語切り替え)
+   ========================================================= */
 @media (orientation: landscape) {
     /* トレーニングモード全体のコンテナ調整 */
     #training-guide {
-        padding-top: 25vh !important; /* 横画面ではタイトルを少し上に上げる（ボタンとの被り防止） */
+        padding-top: 25vh !important;
     }
 
     /* トレーニングモードのEXITボタンを画面下に固定 */
@@ -1270,13 +1251,11 @@ canvas {
     }
 }
 
-/* ▼▼▼ 追加：ストーリー画面の言語切り替え用スタイル ▼▼▼ */
-/* 親要素に .lang-ja がある場合、英語テキストを隠す */
+/* ストーリー画面の言語切り替え用スタイル */
 .lang-ja .en-text {
     display: none !important;
 }
 
-/* 親要素に .lang-en がある場合、日本語テキストを隠す */
 .lang-en .ja-text {
     display: none !important;
 }
