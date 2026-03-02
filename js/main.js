@@ -8885,8 +8885,12 @@ document.addEventListener('touchstart', handleInteraction);
 document.addEventListener('keydown', handleInteraction);
 
 
+/**
+ * ゲームパッドの入力を処理する関数
+ * iOS Safari対応のため毎フレーム呼び出されます
+ */
 function handleGamepadInput() {
-    // iOS Safari対応: 毎フレーム取得
+    // 1. 接続されているゲームパッドを取得
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
     let activeGp = null;
 
@@ -8894,145 +8898,168 @@ function handleGamepadInput() {
         const gp = gamepads[i];
         if (gp && gp.connected) {
             activeGp = gp;
-            break;
+            break; // 最初に認識した1台目を使用
         }
     }
 
     if (!activeGp) return;
 
-    // iOS対応: 接続が確認できたらタッチUIを消す
+    // 2. ゲームパッド接続時はタッチUIを隠す
     if (gameState === 'PLAYING' && ui.controls.style.display !== 'none') {
         ui.controls.style.display = 'none';
         ui.pauseBtn.style.display = 'none';
     }
 
-    // --- ボタン・スティックの状態取得 ---
-    const aBtn = activeGp.buttons[0]?.pressed; // Aボタン
-    const startBtn = activeGp.buttons[9]?.pressed; // START
-    const moveX = activeGp.axes[0];
-    const moveY = activeGp.axes[1];
+    // 3. 入力状態の取得
+    // ボタンマッピングは一般的なXbox/PSコントローラー準拠
+    const aBtn = activeGp.buttons[0]?.pressed;      // A / ×
+    const bBtn = activeGp.buttons[1]?.pressed;      // B / ○
+    const xBtn = activeGp.buttons[2]?.pressed;      // X / □
+    const yBtn = activeGp.buttons[3]?.pressed;      // Y / △
+    const lbBtn = activeGp.buttons[4]?.pressed;     // LB / L1
+    const rbBtn = activeGp.buttons[5]?.pressed;     // RB / R1
+    const ltBtn = activeGp.buttons[6]?.pressed;     // LT / L2
+    const rtBtn = activeGp.buttons[7]?.pressed;     // RT / R2
+    const startBtn = activeGp.buttons[9]?.pressed;  // START / OPTION
 
-    // STARTボタン処理
+    // スティック軸 (-1.0 ~ 1.0)
+    const moveX = activeGp.axes[0]; // 左スティック左右
+    const moveY = activeGp.axes[1]; // 左スティック上下
+    const aimX = activeGp.axes[2];  // 右スティック左右
+    const aimY = activeGp.axes[3];  // 右スティック上下
+
+    // 十字キー (D-Pad)
+    // 一部のブラウザ/OSでは軸として扱われる場合もあるが、ここではボタン12-15として判定
+    const dpadUp = activeGp.buttons[12]?.pressed;
+    const dpadDown = activeGp.buttons[13]?.pressed;
+    const dpadLeft = activeGp.buttons[14]?.pressed;
+    const dpadRight = activeGp.buttons[15]?.pressed;
+
+    // -----------------------------------------------------
+    // STARTボタン処理 (ポーズ / ゲーム開始 / リトライ)
+    // -----------------------------------------------------
     if (startBtn && !input.padStartPressed) {
         if (gameState === 'PLAYING') {
             setPaused(true);
-        }
-        else if (gameState === 'PAUSED') {
+        } else if (gameState === 'PAUSED') {
             resumeAction();
-        }
-        // ★追加：タイトル画面で押されたらゲーム開始
-        else if (gameState === 'TITLE') {
-            // Aボタンの時と同じく、フォーカス対策をしてから起動
+        } else if (gameState === 'TITLE') {
+            // タイトル画面からのスタート処理
+            // ★重要：フォーカス移動・フルスクリーン・オーディオ初期化を確実に実行
             window.focus();
             if (document.activeElement) document.activeElement.blur();
 
+            requestFullScreen();
+
             if (typeof AudioSys !== 'undefined') {
-                if (!AudioSys.ctx) AudioSys.init();
-                AudioSys.resume();
+                // iOS対策：resumeではなくresetで作り直す
+                AudioSys.reset();
             }
             startGame();
-        }
-        // ★追加：ゲームオーバー画面で押されたらリトライ
-        else if (gameState === 'GAMEOVER_UI') {
+
+        } else if (gameState === 'GAMEOVER_UI') {
             resetGame();
-        }
-        // ★追加：トレーニング画面から戻る
-        else if (isTrainingMode) {
+        } else if (isTrainingMode) {
             returnToTitleFromTraining();
+        } else if (gameState === 'HOWTO') {
+            hideHowTo();
+        } else if (gameState === 'STORY' || gameState === 'RANKING' || gameState === 'OST') {
+            // 各画面の「戻る」ボタンを押したのと同じ挙動にする
+            returnToTitle();
         }
     }
     input.padStartPressed = startBtn;
 
-    // --- メニュー操作 ---
+    // -----------------------------------------------------
+    // メニュー画面での操作 (PLAYING以外)
+    // -----------------------------------------------------
     if (gameState !== 'PLAYING') {
-        // スクロール処理 (STORY, RANKING, OST)
-        if (gameState === 'STORY' || gameState === 'RANKING' || gameState === 'OST') {
+
+        // スクロール処理 (右スティックまたは左スティックでスクロール)
+        if (['STORY', 'RANKING', 'OST'].includes(gameState)) {
             let scrollTargetId = null;
             if (gameState === 'STORY') scrollTargetId = 'story-scroll-container';
             else if (gameState === 'RANKING') scrollTargetId = 'ranking-scroll-container';
             else if (gameState === 'OST') scrollTargetId = 'ost-scroll-container';
 
             const container = document.getElementById(scrollTargetId);
-            if (container) {
-                const scrollSpeed = 15;
-                if (Math.abs(moveY) > 0.2) container.scrollTop += moveY * scrollSpeed;
+            if (container && Math.abs(moveY) > 0.2) {
+                container.scrollTop += moveY * 15; // スクロール速度
             }
         }
 
-        // 十字キー判定
-        const dpadUp = activeGp.buttons[12]?.pressed || moveY < -0.5;
-        const dpadDown = activeGp.buttons[13]?.pressed || moveY > 0.5;
-        const dpadLeft = activeGp.buttons[14]?.pressed || moveX < -0.5;
-        const dpadRight = activeGp.buttons[15]?.pressed || moveX > 0.5;
+        // カーソル移動 (十字キー or 左スティック)
+        const isUp = dpadUp || moveY < -0.5;
+        const isDown = dpadDown || moveY > 0.5;
+        const isLeft = dpadLeft || moveX < -0.5;
+        const isRight = dpadRight || moveX > 0.5;
 
-        if (gameState !== 'STORY') {
-            if ((dpadUp || dpadDown || dpadLeft || dpadRight) && !input.padDirPressed) {
-                if (dpadUp || dpadLeft) selectedMenuIndex--;
-                if (dpadDown || dpadRight) selectedMenuIndex++;
+        // STORY画面などボタン選択がない画面は除外
+        const hasMenuButtons = (currentMenuButtons.length > 0);
+
+        if (hasMenuButtons && (isUp || isDown || isLeft || isRight)) {
+            if (!input.padDirPressed) {
+                if (isUp || isLeft) selectedMenuIndex--;
+                if (isDown || isRight) selectedMenuIndex++;
                 window.updateMenuSelectionUI();
             }
+            input.padDirPressed = true;
+        } else {
+            input.padDirPressed = false;
         }
-        input.padDirPressed = (dpadUp || dpadDown || dpadLeft || dpadRight);
 
-        // Aボタン決定
+        // Aボタン決定 (Enter)
         if (aBtn) {
             if (!input.padAPressed) {
+                // 現在選択されているボタンをクリックする
                 const targetBtn = currentMenuButtons[selectedMenuIndex];
-
                 if (targetBtn) {
-                    // ★修正：スタートボタンの場合は .click() を使わず、直接起動する
-                    // これによりボタンへのフォーカス移動（＝迷子）を防ぎます
+                    // STARTボタンの場合は特別処理（フォーカス迷子防止）
                     if (targetBtn.id === 'btn-start') {
-
-                        // 1. フォーカスをウィンドウ自体に固定（最重要）
-                        window.focus();
-                        if (document.activeElement) {
-                            document.activeElement.blur();
-                        }
-
-                        // 2. オーディオ再開を試みる
-                        // (注意: iOSではここを通っても、一度も画面タッチしていないと音が出ない場合があります)
-                        if (typeof AudioSys !== 'undefined') {
-                            if (!AudioSys.ctx) AudioSys.init();
-                            AudioSys.resume();
-                        }
-
-                        // 3. ゲーム開始
-                        startGame();
-
+                        // タイトル画面のSTART処理と同じロジックを呼ぶ
+                        // (ただしclickイベントリスナーが登録されているのでclick発火でOKだが念のため)
+                        targetBtn.click();
                     } else {
-                        // その他のボタン（ランキングを閉じる、OST再生など）は .click() でOK
                         targetBtn.click();
                     }
                 }
 
+                // 連打防止のため少し待つ
                 input.padAPressed = true;
                 setTimeout(() => {
+                    // メニュー構成が変わったかもしれないので再取得
                     if (window.refreshMenuButtons) window.refreshMenuButtons(false);
                 }, 250);
             }
         } else {
             input.padAPressed = false;
         }
-        return;
+        return; // メニュー操作中はここで終了
     }
 
-    // --- プレイ中の操作 ---
-    input.padAPressed = aBtn; // ショット連射用
+    // -----------------------------------------------------
+    // ゲームプレイ中の操作 (PLAYING)
+    // -----------------------------------------------------
 
+    // ショット (Aボタン押しっぱなしで連射)
+    input.padAPressed = aBtn;
+
+    // 移動 (左スティック)
     const moveDeadzone = 0.2;
     if (Math.abs(moveX) > moveDeadzone || Math.abs(moveY) > moveDeadzone) {
         input.move.active = true;
         input.move.x = moveX;
         input.move.y = moveY;
     } else {
+        // キーボード入力がない場合のみ停止させる
         if (input.move.active && !input.keys['KeyA'] && !input.keys['KeyD'] && !input.keys['KeyW'] && !input.keys['KeyS']) {
-            input.move.x = 0; input.move.y = 0; input.move.active = false;
+            input.move.x = 0;
+            input.move.y = 0;
+            input.move.active = false;
         }
     }
 
-    const aimX = activeGp.axes[2];
-    const aimY = activeGp.axes[3];
+    // 照準 (右スティック)
     const aimDeadzone = 0.2;
     if (Math.abs(aimX) > aimDeadzone || Math.abs(aimY) > aimDeadzone) {
         input.aim.active = true;
@@ -9042,7 +9069,9 @@ function handleGamepadInput() {
         input.aim.active = false;
     }
 
-    const bombBtn = activeGp.buttons[2]?.pressed || activeGp.buttons[5]?.pressed || activeGp.buttons[7]?.pressed;
+    // ボム発射 (X, B, RB, RT いずれか)
+    const bombBtn = xBtn || bBtn || rbBtn || rtBtn;
+
     if (bombBtn && !input.padBombPressed) {
         launchSatellites();
     }
