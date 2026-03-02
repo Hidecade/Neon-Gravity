@@ -1,0 +1,1282 @@
+/* =========================================================
+1. グローバル基本設定
+========================================================= */
+body {
+    margin: 0;
+    background: #050505;
+    overflow: hidden;
+    font-family: 'Orbitron', monospace;
+    color: #fff;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+canvas {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+/* =========================================================
+2. メインUIコンテナ & HUD
+========================================================= */
+#ui {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.hud-row {
+    display: none; /* 初期状態では非表示 */
+    justify-content: space-between;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+#score-display {
+    font-size: 24px;
+    color: #0ff;
+    text-shadow: 0 0 10px #0ff;
+    letter-spacing: 0px;
+    margin-bottom: 0px;
+}
+
+.sub-text {
+    font-size: 12px;
+    color: #aaa;
+    font-weight: bold;
+}
+
+.hud-label {
+    font-size: 12px;
+    color: #aaa;
+    display: block;
+    margin-bottom: -2px;
+}
+
+#stage-num {
+    font-size: 24px;
+    color: #fff;
+    font-weight: bold;
+    line-height: 1.0;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* =========================================================
+3. ゲージ・バーコンポーネント
+========================================================= */
+#gauge-box, #info-box > div {
+    pointer-events: none;
+}
+
+#gauge-box {
+    width: 120px;
+    text-align: right;
+}
+
+.bar-label {
+    font-size: 12px;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+    display: block;
+    color: #0ff;
+}
+
+    .bar-label.enemy, #boss-name-label {
+        color: #f44;
+    }
+
+.bar-frame, .laser-bar-frame {
+    width: 100%;
+    height: 8px;
+    border: 1.5px solid rgba(0, 255, 255, 0.5);
+    background: rgba(0, 20, 40, 0.8);
+    margin-bottom: 6px;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.laser-bar-frame {
+    margin-bottom: 0;
+}
+
+.bar-frame.enemy, .bar-frame.boss {
+    border-color: rgba(255, 68, 68, 0.5);
+}
+
+.bar-frame.boss {
+    border-color: #f00;
+}
+
+#shield-bar {
+    width: 100%;
+    height: 100%;
+    background: #0ff;
+    transition: width 0.1s;
+    box-shadow: 0 0 10px #0ff;
+}
+
+.shield-critical {
+    animation: blink 0.2s infinite;
+    background: #f00 !important;
+}
+
+#enemy-bar {
+    width: 100%;
+    height: 100%;
+    background: #f44;
+    transition: width 0.5s;
+}
+
+#boss-hp-bar-inline {
+    width: 100%;
+    height: 100%;
+    background: #f00;
+    box-shadow: 0 0 10px #f00;
+    transition: width 0.2s, background-color 0.3s;
+}
+
+.laser-bar-fill {
+    height: 100%;
+    background: #0ff;
+    box-shadow: 0 0 8px #0ff;
+}
+
+#weapon-display {
+    width: 120px;
+    height: 8px;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+}
+
+.w-block {
+    flex: 1;
+    height: 100%;
+    margin-right: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid #444;
+    box-sizing: border-box;
+}
+
+    .w-block:last-child {
+        margin-right: 0;
+    }
+
+    .w-block.active {
+        background: #0f0;
+        border-color: #0f0;
+        box-shadow: 0 0 5px #0f0;
+    }
+
+#boss-ui-container {
+    display: none;
+    margin-top: 10px;
+}
+
+/* =========================================================
+4. ゲーム中メッセージ
+========================================================= */
+#warning-msg {
+    display: none;
+    position: absolute;
+    top: 20%;
+    width: 100%;
+    text-align: center;
+    color: #f00;
+    font-size: calc(24px * var(--ui-scale, 1));
+    animation: blink 0.2s infinite;
+}
+
+#stage-msg {
+    display: none;
+    position: absolute;
+    top: 35%;
+    width: 100%;
+    text-align: center;
+    color: #fff;
+    font-size: calc(28px * var(--ui-scale, 1));
+    font-weight: 900;
+    text-shadow: 0 0 15px #0ff, 0 0 30px #0ff, 0 0 60px #0ff;
+    letter-spacing: 8px;
+    margin-right: -8px;
+    z-index: 100;
+    pointer-events: none;
+    animation: clear-glow 2.5s ease-in-out infinite;
+    white-space: pre-wrap;
+    transition: opacity 0.2s;
+    line-height: 1.4;
+}
+
+/* =========================================================
+5. ミニマップ
+========================================================= */
+#minimap-container {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    margin-top: 5px;
+    width: 100px;
+    height: 100px;
+    border: 1px solid rgba(0, 255, 255, 0.5);
+    background: rgba(0, 10, 20, 0.6);
+    backdrop-filter: blur(2px);
+    z-index: 30;
+    pointer-events: none;
+}
+
+#minimap-canvas {
+    width: 100px;
+    height: 100px;
+    display: block;
+}
+
+/* =========================================================
+6. 操作コントローラー
+========================================================= */
+#controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 50;
+    display: none;
+    touch-action: none;
+    pointer-events: auto;
+}
+
+.joystick-area {
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    background: radial-gradient(circle, rgba(0, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.2) 70%);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+    .joystick-area::before, .joystick-area::after {
+        content: '';
+        position: absolute;
+        background: rgba(0, 255, 255, 0.2);
+    }
+
+    .joystick-area::before {
+        width: 100%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+    }
+
+    .joystick-area::after {
+        width: 1px;
+        height: 100%;
+        background: linear-gradient(180deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+    }
+
+.knob {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(0, 255, 255, 0.15);
+    border: 2px solid #0ff;
+    position: absolute;
+    transform: translate(0,0);
+    transition: transform 0.05s;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+    z-index: 2;
+}
+
+    .knob::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 12px;
+        height: 12px;
+        background: #fff;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 10px #fff;
+    }
+
+#launch-btn {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255, 255, 0, 0.1);
+    border: 2px solid #ff0;
+    color: #ff0;
+    font-family: 'Orbitron';
+    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 11px;
+    letter-spacing: 1px;
+    box-shadow: 0 0 15px rgba(255, 255, 0, 0.3), inset 0 0 10px rgba(255, 255, 0, 0.2);
+    pointer-events: auto;
+    text-shadow: 0 0 5px #ff0;
+    z-index: 100;
+}
+
+    #launch-btn::before {
+        content: '';
+        position: absolute;
+        width: 70px;
+        height: 70px;
+        border: 1px dashed rgba(255, 255, 0, 0.4);
+        border-radius: 50%;
+        animation: rotate 4s linear infinite;
+    }
+
+    #launch-btn.active {
+        background: #ff0;
+        color: #000;
+        transform: scale(0.85);
+        box-shadow: 0 0 30px #ff0;
+        text-shadow: none;
+    }
+
+/* 横画面時のデフォルト配置 */
+#stick-left {
+    left: 10px;
+    bottom: 10px;
+}
+
+#stick-right {
+    right: 10px;
+    bottom: 10px;
+}
+
+#launch-btn {
+    right: 15px;
+    bottom: 150px;
+}
+
+/* =========================================================
+7. 共通ボタン類 (サイズを可変に対応)
+========================================================= */
+.menu-btn {
+    background: rgba(0, 255, 255, 0.1);
+    border: 1px solid #0ff;
+    color: #0ff;
+    padding: calc(8px * var(--ui-scale)) calc(20px * var(--ui-scale));
+    margin: calc(8px * var(--ui-scale));
+    font-size: calc(18px * var(--ui-scale));
+    min-width: calc(200px * var(--ui-scale));
+    cursor: pointer;
+    text-align: center;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+    transition: transform 0.2s, background 0.2s;
+}
+
+.btn-small {
+    min-width: calc(120px * var(--ui-scale));
+}
+
+.menu-btn:active {
+    background: #0ff;
+    color: #000;
+    transform: scale(0.95);
+}
+
+.menu-btn.selected, .track-item.selected {
+    color: #fff !important;
+    transform: scale(1.05);
+    border-color: #fff !important;
+}
+
+/* ポーズボタンやフッターもスケール対応 */
+#pause-btn {
+    /* 位置やサイズもスケールさせる */
+    right: calc(30px * var(--ui-scale));
+    bottom: calc(240px * var(--ui-scale));
+    width: calc(40px * var(--ui-scale));
+    height: calc(40px * var(--ui-scale));
+    font-size: calc(18px * var(--ui-scale));
+    /* 以下デザインはそのまま */
+    position: absolute;
+    background: rgba(0, 20, 40, 0.8);
+    border: 2px solid rgba(0, 255, 255, 0.5);
+    color: #0ff;
+    font-weight: bold;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 100;
+    pointer-events: auto;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+}
+
+#menu-footer {
+    font-size: calc(12px * var(--ui-scale)) !important;
+    margin-top: calc(20px * var(--ui-scale)) !important;
+}
+
+/* =========================================================
+8. 各種オーバーレイ画面
+========================================================= */
+
+/* --- 8.1 タイトル画面 --- */
+#overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000000 !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    pointer-events: auto;
+    transition: opacity 0.5s ease;
+    opacity: 1;
+}
+
+/* --- 8.1 タイトル画面 --- */
+#menu-title {
+    color: #0ff;
+    text-shadow: 0 0 20px #0ff;
+    text-align: center;
+    /* ★修正：タイトルサイズを可変に */
+    margin-bottom: calc(20px * var(--ui-scale));
+    font-size: calc(36px * var(--ui-scale));
+    line-height: 1.2;
+}
+
+    #menu-title span {
+        color: #fff;
+        font-size: calc(20px * var(--ui-scale));
+    }
+
+/* --- 8.2 ポーズ画面 --- */
+#pause-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 105;
+    pointer-events: auto;
+}
+
+    #pause-overlay h1 {
+        color: #fff;
+        text-shadow: 0 0 10px #fff;
+        /* ★修正 */
+        font-size: calc(40px * var(--ui-scale)) !important;
+        margin-bottom: calc(30px * var(--ui-scale)) !important;
+    }
+
+/* --- 8.3 エンディング画面 --- */
+#ending-msg {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 200;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+    text-align: center;
+}
+
+#final-score-val {
+    background: rgba(0, 255, 255, 0.1);
+    padding: 10px 30px;
+    border-top: 1px solid rgba(0, 255, 255, 0.3);
+    border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+    margin-bottom: 30px;
+}
+
+/* --- 8.4 名前入力画面 --- */
+#name-input-area {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    position: absolute;
+    top: 55%;
+    width: 100%;
+    background: #000 !important;
+    z-index: 200;
+}
+
+#player-name-input {
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #0ff;
+    color: #fff;
+    font-family: 'Orbitron';
+    font-size: 24px;
+    padding: 10px;
+    text-align: center;
+    width: 250px;
+    outline: none;
+    margin-bottom: 10px;
+    box-shadow: 0 0 10px #0ff;
+}
+
+    #player-name-input::placeholder {
+        color: #055;
+    }
+
+/* --- 8.5 ランキング画面 --- */
+#ranking-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 1000;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+    #ranking-overlay h1 {
+        color: #0ff;
+        text-shadow: 0 0 20px #0ff;
+        /* ★修正 */
+        font-size: calc(32px * var(--ui-scale)) !important;
+        margin-bottom: calc(10px * var(--ui-scale)) !important;
+    }
+
+#ranking-scroll-container {
+    width: 95%;
+    max-width: 600px;
+    max-height: 60vh;
+    overflow-y: auto;
+    margin: 10px 0;
+    -webkit-overflow-scrolling: touch;
+}
+
+#ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: calc(14px * var(--ui-scale));
+}
+
+    #ranking-table th {
+        border-bottom: 1px solid #0ff;
+        color: #0ff;
+        padding: 10px;
+    }
+
+    #ranking-table td {
+        border-bottom: 1px solid #333;
+        padding: 8px 10px;
+    }
+
+.rank-1 {
+    color: #ffd700;
+    text-shadow: 0 0 10px #ffd700;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.rank-2 {
+    color: #c0c0c0;
+    text-shadow: 0 0 10px #c0c0c0;
+    font-weight: bold;
+}
+
+.rank-3 {
+    color: #cd7f32;
+    text-shadow: 0 0 10px #cd7f32;
+    font-weight: bold;
+}
+
+/* --- 8.6 OST画面 --- */
+#ost-ui {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    z-index: 110;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    box-sizing: border-box;
+    pointer-events: auto;
+    transition: opacity 0.3s ease;
+    opacity: 1;
+}
+
+    #ost-ui h2 {
+        color: #0ff;
+        text-shadow: 0 0 20px #0ff;
+        font-size: calc(28px * var(--ui-scale)) !important;
+        margin-bottom: calc(10px * var(--ui-scale)) !important;
+    }
+
+
+#ost-scroll-container {
+    width: 90%;
+    max-width: 500px;
+    max-height: 60vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin: 10px 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
+}
+
+    #ost-scroll-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #ost-scroll-container::-webkit-scrollbar-track {
+        background: rgba(0, 255, 255, 0.05);
+        border-radius: 3px;
+    }
+
+    #ost-scroll-container::-webkit-scrollbar-thumb {
+        background: rgba(0, 255, 255, 0.5);
+        border-radius: 3px;
+    }
+
+        #ost-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: #0ff;
+        }
+
+.track-item {
+    padding: calc(15px * var(--ui-scale)) calc(20px * var(--ui-scale));
+    border-bottom: 1px solid #333;
+    color: #888;
+    text-align: center;
+    /* ★修正 */
+    font-size: calc(16px * var(--ui-scale));
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+    .track-item.playing {
+        color: #0ff;
+        border-color: #0ff;
+        text-shadow: 0 0 10px #0ff;
+        background: rgba(0, 255, 255, 0.05);
+    }
+
+/* --- 8.7 HOW TO PLAY 画面 --- */
+#howto-overlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000000 !important;
+    z-index: 150;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+/* --- 8.7 HOW TO PLAY 画面 --- */
+#howto-main-title {
+    color: #0ff;
+    text-shadow: 0 0 20px #0ff;
+    /* サイズ調整 */
+    font-size: calc(28px * var(--ui-scale)) !important;
+    margin: 0 0 calc(10px * var(--ui-scale)) 0;
+    letter-spacing: 4px;
+    /* ★追加：これで確実に中央寄せになります */
+    width: 100%;
+    text-align: center;
+    display: block;
+}
+
+/* --- HOW TO コンテナの調整 --- */
+.howto-container {
+    display: flex;
+    gap: 20px;
+    width: 95%;
+    /* 最大幅を 700px から 900px に拡大してゆとりを持たせる */
+    max-width: 900px;
+    margin-top: 20px;
+    align-items: stretch; /* 左右のパネルの高さを揃える */
+}
+
+
+
+.howto-panel {
+    flex: 1;
+    background: rgba(0, 20, 40, 0.6);
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    padding: 10px;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.1) inset;
+    backdrop-filter: blur(5px);
+    text-align: left;
+}
+
+    /* 左右のパネルの比率を調整（左側：操作説明を少し広くする） */
+    .howto-panel:first-child {
+        flex: 1.2; /* 操作説明側を少し広く */
+    }
+
+    .howto-panel:last-child {
+        flex: 1; /* アイテム説明側 */
+    }
+
+/* --- HOW TO アイコン・レイアウト用 --- */
+.control-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: calc(15px * var(--ui-scale));
+    border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+    padding-bottom: calc(8px * var(--ui-scale));
+}
+
+    .control-group:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+
+.icon-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* 幅を 70px から 80px に微調整 */
+    width: calc(80px * var(--ui-scale));
+    min-width: calc(80px * var(--ui-scale));
+    margin-right: calc(10px * var(--ui-scale));
+    color: #0ff;
+}
+
+.control-icon {
+    width: calc(64px * var(--ui-scale));
+    height: calc(30px * var(--ui-scale));
+    margin-bottom: 4px;
+    filter: drop-shadow(0 0 5px rgba(0,255,255,0.5));
+}
+
+.device-label {
+    font-size: calc(9px * var(--ui-scale));
+    color: #0aa;
+    letter-spacing: 1px;
+}
+
+.control-desc {
+    font-size: calc(11px * var(--ui-scale));
+    color: #ccc;
+    line-height: 1.6;
+}
+
+.lbl {
+    display: inline-block;
+    width: calc(40px * var(--ui-scale));
+    color: #0ff;
+    font-weight: bold;
+}
+
+.lbl-y {
+    display: inline-block;
+    width: calc(40px * var(--ui-scale));
+    color: #ff0;
+    font-weight: bold;
+}
+
+.keyboard-icon {
+    color: #00ffff; /* 基本色をシアンに */
+    filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.8));
+}
+
+/* キーの共通スタイル（半透明の塗りと線） */
+.key-group rect, .key-space {
+    fill: rgba(0, 255, 255, 0.15);
+    stroke: currentColor;
+    stroke-width: 1px;
+}
+
+/* WASDキー（移動）を少し強調 */
+.wasd-keys rect {
+    fill: rgba(0, 255, 255, 0.3);
+}
+
+/* 矢印キー（攻撃）をピンク色にして区別 */
+.arrow-keys rect {
+    color: #ff00ff; /* ピンク */
+    fill: rgba(255, 0, 255, 0.3);
+    filter: drop-shadow(0 0 3px rgba(255, 0, 255, 0.8));
+}
+
+/* スペースキー */
+.key-space {
+    fill: rgba(255, 255, 0, 0.2); /* 黄色っぽく */
+    stroke: #ffff00;
+}
+
+.key {
+    display: inline-block;
+    padding: 1px 4px 0px 4px;
+    margin: 0 1px; /* 左右のマージンを1pxに短縮 */
+    border: 1px solid #0ff;
+    border-radius: 4px;
+    background: rgba(0, 255, 255, 0.15);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em; /* フォントサイズを少し小さく (0.85em -> 0.75em) */
+    font-weight: bold;
+    color: #fff;
+    box-shadow: 0 0 5px rgba(0, 255, 255, 0.4), inset 0 0 5px rgba(0, 255, 255, 0.2);
+    text-shadow: 0 0 3px rgba(255,255,255,0.5);
+    vertical-align: middle; /* テキストとの縦位置を合わせる */
+}
+
+/* ボムのキーは黄色で強調 */
+.lbl-y + .key,
+.lbl-y ~ span + .key { /* SPACE と X の両方に適用 */
+    border-color: #ff0;
+    background: rgba(255, 255, 0, 0.15);
+    box-shadow: 0 0 5px rgba(255, 255, 0, 0.4), inset 0 0 5px rgba(255, 255, 0, 0.2);
+}
+
+.howto-title {
+    color: #fff;
+    border-bottom: 1px solid #0ff;
+    padding-bottom: 5px;
+    margin-top: 0;
+    margin-bottom: calc(15px * var(--ui-scale));
+    font-size: calc(16px * var(--ui-scale));
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+.howto-text {
+    color: #aaa;
+    font-size: calc(12px * var(--ui-scale));
+    line-height: 2.0;
+}
+
+.howto-highlight {
+    color: #0ff;
+    text-shadow: 0 0 5px #0ff;
+}
+
+.howto-highlight-y {
+    color: #ff0;
+    text-shadow: 0 0 5px #ff0;
+}
+
+.item-desc {
+    display: flex;
+    align-items: center;
+    margin-bottom: calc(12px * var(--ui-scale));
+}
+
+.item-icon {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 17.6px;
+    height: 17.6px;
+    border: 2px solid;
+    font-weight: bold;
+    font-size: 11.2px;
+    margin-right: 15px;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.crystal-icon {
+    display: inline-block;
+    width: 11.2px;
+    height: 11.2px;
+    background: #008000;
+    border: 1px solid #0f0;
+    transform: rotate(45deg);
+    margin: 4px 19px 4px 4px;
+    box-shadow: 0 0 8px #0f0;
+}
+
+.howto-footer-text {
+    color: #555;
+    margin-top: calc(30px * var(--ui-scale));
+    font-size: calc(12px * var(--ui-scale));
+    letter-spacing: 2px;
+    animation: blink 1.5s infinite;
+}
+
+/* --- 8.8 STORY 画面 --- */
+#story-overlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000000 !important;
+    z-index: 120;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+    pointer-events: auto;
+}
+
+#story-scroll-container {
+    width: 95%;
+    max-width: 800px;
+    flex: 1;
+    overflow-y: auto;
+    margin: 20px 0;
+    padding-right: 15px;
+    color: #ccc;
+    font-size: 13px;
+    line-height: 1.8;
+    text-align: left;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
+}
+
+    #story-scroll-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #story-scroll-container::-webkit-scrollbar-track {
+        background: rgba(0, 255, 255, 0.05);
+        border-radius: 3px;
+    }
+
+    #story-scroll-container::-webkit-scrollbar-thumb {
+        background: rgba(0, 255, 255, 0.5);
+        border-radius: 3px;
+    }
+
+        #story-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: #0ff;
+        }
+
+    #story-scroll-container h1, #story-scroll-container h2 {
+        color: #0ff;
+        text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        margin-top: 2em;
+        margin-bottom: 0.8em;
+        font-weight: bold;
+    }
+
+    #story-scroll-container h1 {
+        font-size: 22px;
+        text-align: center;
+        margin-top: 0;
+        border-bottom: 2px solid #0ff;
+        padding-bottom: 10px;
+    }
+
+    #story-scroll-container h2 {
+        font-size: 16px;
+        border-bottom: 1px dashed #0ff;
+        padding-bottom: 5px;
+    }
+
+.en-text {
+    color: #ccc;
+    font-size: 13px;
+    margin-bottom: 0.5em;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.ja-text {
+    color: #ccc;
+    font-size: 13px;
+    font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Meiryo', sans-serif;
+    margin-top: 0;
+    margin-bottom: 2.5em;
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+}
+
+#story-scroll-container strong {
+    color: #ffffff;
+    font-weight: bold;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.9); /* 軽く白く光らせる */
+}
+
+/* =========================================================
+9. レスポンシブ設定 (縦画面: Portrait)
+========================================================= */
+@media (orientation: portrait) {
+    /* タイトル画面 */
+    #menu-title {
+        font-size: 36px;
+    }
+
+        #menu-title span {
+            font-size: 20px;
+        }
+
+    /* コントローラー配置 */
+    #stick-left {
+        left: 10px;
+        bottom: 50px;
+    }
+
+    #stick-right {
+        right: 10px;
+        bottom: 50px;
+    }
+
+    #launch-btn {
+        right: 5px;
+        bottom: 220px;
+    }
+
+    /* ミニマップ */
+    #minimap-container {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-top: 0;
+    }
+
+    /* ポーズボタン */
+    #pause-btn {
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 15px;
+    }
+
+        #pause-btn:active {
+            transform: translateX(-50%) scale(0.9);
+        }
+
+    /* HOW TO 画面 */
+    .howto-container {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    #howto-main-title {
+        letter-spacing: 2px;
+        margin-right: -2px;
+    }
+
+    .howto-title {
+        font-size: 18px;
+    }
+
+    .howto-text {
+        font-size: 13px;
+    }
+
+    .item-icon {
+        width: 22px;
+        height: 22px;
+        font-size: 14px;
+    }
+
+    .crystal-icon {
+        width: 14px;
+        height: 14px;
+    }
+
+    .howto-footer-text {
+        font-size: 14px;
+    }
+}
+
+/* =========================================================
+10. アニメーション定義
+========================================================= */
+@keyframes blink {
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes clear-glow {
+    0%, 100% {
+        /* opacity は削除 */
+        filter: brightness(1);
+    }
+
+    50% {
+        /* opacity は削除 */
+        filter: brightness(1.8) scale(1.02);
+    }
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* iOS インストールプロンプトのスタイル ▼▼▼ */
+#ios-install-prompt {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 350px;
+    background: rgba(0, 10, 20, 0.95);
+    border: 1px solid #0ff;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+    padding: 15px;
+    border-radius: 10px;
+    z-index: 9999;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    font-family: 'Orbitron', sans-serif;
+    animation: slideUp 0.5s ease-out;
+}
+
+.install-text {
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.share-icon {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1px solid #fff;
+    border-top: none;
+    position: relative;
+    margin: 0 2px;
+}
+
+    .share-icon::before {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 1px;
+        height: 8px;
+        background: #fff;
+    }
+
+    .share-icon::after {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: 50%;
+        transform: translateX(-50%) rotate(45deg);
+        width: 4px;
+        height: 4px;
+        border-top: 1px solid #fff;
+        border-left: 1px solid #fff;
+    }
+
+.arrow-down {
+    color: #0ff;
+    font-size: 16px;
+    animation: bounce 1.5s infinite;
+}
+
+.close-btn {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    color: #555;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+@keyframes slideUp {
+    from {
+        bottom: -100px;
+        opacity: 0;
+    }
+
+    to {
+        bottom: 20px;
+        opacity: 1;
+    }
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(5px);
+    }
+}
+
+
+@media (orientation: landscape) {
+    /* トレーニングモード全体のコンテナ調整 */
+    #training-guide {
+        padding-top: 25vh !important; /* 横画面ではタイトルを少し上に上げる（ボタンとの被り防止） */
+    }
+
+    /* トレーニングモードのEXITボタンを画面下に固定 */
+    #btn-training-exit {
+        position: absolute !important;
+        bottom: 20px !important;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-top: 0 !important;
+        background: rgba(0, 0, 0, 0.9) !important;
+    }
+}
+
+/* ▼▼▼ 追加：ストーリー画面の言語切り替え用スタイル ▼▼▼ */
+/* 親要素に .lang-ja がある場合、英語テキストを隠す */
+.lang-ja .en-text {
+    display: none !important;
+}
+
+/* 親要素に .lang-en がある場合、日本語テキストを隠す */
+.lang-en .ja-text {
+    display: none !important;
+}
