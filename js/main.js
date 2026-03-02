@@ -5196,41 +5196,45 @@ function updatePowerups() {
 function updateScorePopups() { scorePopups.forEach(s => { s.y += s.vy; s.life--; s.alpha = s.life / 30; }); scorePopups = scorePopups.filter(s => s.life > 0); }
 
 function updateParticlesAndRings() {
-    particles.forEach(p => {
+    // 後ろからループすることで、削除してもインデックスがズレない
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
         p.x += p.vx * gameSpeed;
         p.y += p.vy * gameSpeed;
         p.vx *= Math.pow(0.92, gameSpeed);
         p.vy *= Math.pow(0.92, gameSpeed);
 
-        // --- ★追加：泡か通常の火花かで物理挙動を変える ---
         if (p.isBubble) {
-            // 泡の特殊挙動：上方向にゆっくり浮上し、左右にゆらゆら揺れる
             p.vy -= 0.01 * gameSpeed;
             p.x += Math.sin(frame * 0.05 + p.wobbleOffset) * 0.5 * gameSpeed;
-            p.life -= 0.015 * gameSpeed; // 火花よりゆっくり消える
+            p.life -= 0.015 * gameSpeed;
         } else {
-            // 通常の火花の挙動
             p.vy += 0.005 * gameSpeed;
             p.life -= 0.02 * gameSpeed;
         }
 
-        // 破片の回転を更新
         if (p.rotV) p.angle += p.rotV * gameSpeed;
-    });
-    particles = particles.filter(p => p.life > 0);
 
-    rings.forEach(r => {
+        // 寿命切れなら削除
+        if (p.life <= 0) {
+            particles.splice(i, 1);
+        }
+    }
+
+    for (let i = rings.length - 1; i >= 0; i--) {
+        const r = rings[i];
         if (r.isBomb) {
-            // ★ボムの波紋：目標半径に向かって減速しながら広がる
             r.r += (r.targetR - r.r) * 0.15 * gameSpeed;
-            r.life -= 0.02 * gameSpeed; // 約50フレームかけて消える
+            r.life -= 0.02 * gameSpeed;
         } else {
-            // 通常のリング
             r.r += 8 * SPEED_SCALE * gameSpeed;
             r.life -= 0.08 * SPEED_SCALE * gameSpeed;
         }
-    });
-    rings = rings.filter(r => r.life > 0);
+
+        if (r.life <= 0) {
+            rings.splice(i, 1);
+        }
+    }
 }
 
 function updateGrid() {
@@ -5815,221 +5819,212 @@ function drawItems() {
 
 function drawVisualEffects() {
 
-    // 特殊ミサイル（プレイヤー側など）
+    // 1. 特殊ミサイル（プレイヤー側など）
     ctx.fillStyle = '#fd0';
-    missiles.forEach(m => { ctx.beginPath(); ctx.arc(m.x, m.y, 4 * G_SCALE, 0, Math.PI * 2); ctx.fill(); });
+    missiles.forEach(m => {
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, 4 * G_SCALE, 0, Math.PI * 2);
+        ctx.fill();
+    });
 
-    // パーティクル
+    // --- パーティクルの描画（最適化） ---
+
+    // 2. 複雑なパーティクル（破片・泡）
+    // 回転やスケール変更が必要なため、個別に save/restore を行います
     particles.forEach(p => {
         if (!isOnScreen(p, 50)) return;
-        ctx.save();
-        ctx.globalAlpha = Math.min(1, p.life);
 
-        if (p.isShard) {
-            ctx.translate(p.x, p.y);
-            ctx.rotate(p.angle || 0);
+        // 通常の火花以外（ShardやBubble）のみここで描画
+        if (p.isShard || p.isBubble) {
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, p.life);
 
-            // フェードアウトとズームアウトの計算
-            const opacity = Math.min(1.0, p.life);
-            const smoothAlpha = Math.pow(opacity, 0.7);
-            const s = (p.size || 1.0) * G_SCALE * (0.6 + opacity * 0.4);
-            ctx.scale(s, s);
+            if (p.isShard) {
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.angle || 0);
 
-            ctx.strokeStyle = p.color;
-            ctx.lineWidth = 1.5;
-            ctx.globalCompositeOperation = 'lighter';
-
-            if (p.shardType === 'eclipseBit') {
-                // --- Eclipseの三角錐ビットの描画 ---
-                const pts = [{ x: 14, y: 0, z: 0 }, { x: -7, y: 7, z: 4 }, { x: -7, y: -7, z: 4 }, { x: -7, y: 0, z: -8 }];
-                const lines = [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]];
-
-                // 簡易3D投影（Eclipse本体のロジックを流用）
-                const project = (pt) => {
-                    const tilt = 0.4;
-                    const finalY = pt.y * Math.cos(tilt) - pt.z * Math.sin(tilt);
-                    return { x: pt.x, y: finalY };
-                };
-
-                const pProj = pts.map(pt => project(pt));
-
-                ctx.beginPath();
-                lines.forEach(l => {
-                    ctx.moveTo(pProj[l[0]].x, pProj[l[0]].y);
-                    ctx.lineTo(pProj[l[1]].x, pProj[l[1]].y);
-                });
-
-                ctx.globalAlpha = smoothAlpha;
-                ctx.stroke();
-
-                // 内部の薄い塗り
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = smoothAlpha * 0.2;
-                ctx.fill();
-
-                // 中央に白いハイライト（芯）
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 0.5;
-                ctx.globalAlpha = smoothAlpha * 0.5;
-                ctx.stroke();
-
-            } else if (p.shardType === 'dragonSeg') {
-                const i = p.segIndex || 0;
-                const sizeMod = Math.max(0.6, 1 - (i * 0.08));
-                const w = 12 * sizeMod;
-                const h = 18 * sizeMod;
-
-                // --- 粘り強いフェードアウトの計算 ---
-                // p.life が 1.0 以上の間は不透明度 1.0 を維持し、1.0 を切ってからゆっくり消える
+                // フェードアウトとズームアウトの計算
                 const opacity = Math.min(1.0, p.life);
-                // さらに消え方を滑らかにする（放物線的な減衰）
                 const smoothAlpha = Math.pow(opacity, 0.7);
-
-                // --- 回転とスケールの適用 ---
-                ctx.save();
-                // すでに親のループで translate と rotate(p.angle) は実行されている前提ですが、
-                // もし回転が足りない場合はここでさらに p.angle を使って回します。
-
-                // スケールも life に合わせてゆっくり小さくする（ズームアウト感）
-                const s = (p.size || 1.0) * G_SCALE * (0.5 + opacity * 0.5);
+                const s = (p.size || 1.0) * G_SCALE * (0.6 + opacity * 0.4);
                 ctx.scale(s, s);
 
-                // 本体の描画
-                ctx.beginPath();
-                ctx.moveTo(w, -h / 2);
-                ctx.lineTo(w, h / 2);
-                ctx.lineTo(-w * 0.9, h * 0.35);
-                ctx.lineTo(-w * 0.9, -h * 0.35);
-                ctx.closePath();
-
-                // 内部の塗り（少し発光感を残す）
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = smoothAlpha * 0.3;
-                ctx.fill();
-
-                // 輪郭線
                 ctx.strokeStyle = p.color;
                 ctx.lineWidth = 1.5;
-                ctx.globalAlpha = smoothAlpha;
-                ctx.stroke();
+                ctx.globalCompositeOperation = 'lighter';
 
-                // 中央の芯（ハイライト）
-                ctx.strokeStyle = "#fff";
-                ctx.lineWidth = 0.5;
-                ctx.globalAlpha = smoothAlpha * 0.5;
-                ctx.beginPath();
-                ctx.moveTo(-w * 0.5, 0); ctx.lineTo(w, 0);
-                ctx.stroke();
+                if (p.shardType === 'eclipseBit') {
+                    // --- Eclipseの三角錐ビット ---
+                    const pts = [{ x: 14, y: 0, z: 0 }, { x: -7, y: 7, z: 4 }, { x: -7, y: -7, z: 4 }, { x: -7, y: 0, z: -8 }];
+                    const lines = [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]];
+                    const project = (pt) => {
+                        const tilt = 0.4;
+                        const finalY = pt.y * Math.cos(tilt) - pt.z * Math.sin(tilt);
+                        return { x: pt.x, y: finalY };
+                    };
+                    const pProj = pts.map(pt => project(pt));
 
-                ctx.restore();
-            }
-            else if (p.shardType === 'tri') {
-                ctx.lineWidth = 1.0 / s;
+                    ctx.beginPath();
+                    lines.forEach(l => {
+                        ctx.moveTo(pProj[l[0]].x, pProj[l[0]].y);
+                        ctx.lineTo(pProj[l[1]].x, pProj[l[1]].y);
+                    });
+                    ctx.globalAlpha = smoothAlpha;
+                    ctx.stroke();
 
-                // --- ランダムに生成された三角形ワイヤーフレーム ---
-                ctx.beginPath();
-                if (p.vertices && p.vertices.length === 3) {
-                    ctx.moveTo(p.vertices[0].x, p.vertices[0].y);
-                    ctx.lineTo(p.vertices[1].x, p.vertices[1].y);
-                    ctx.lineTo(p.vertices[2].x, p.vertices[2].y);
+                    // 内部の薄い塗り
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = smoothAlpha * 0.2;
+                    ctx.fill();
+
+                    // 中央に白いハイライト（芯）
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 0.5;
+                    ctx.globalAlpha = smoothAlpha * 0.5;
+                    ctx.stroke();
+
+                } else if (p.shardType === 'dragonSeg') {
+                    const i = p.segIndex || 0;
+                    const sizeMod = Math.max(0.6, 1 - (i * 0.08));
+                    const w = 12 * sizeMod;
+                    const h = 18 * sizeMod;
+                    const opacity = Math.min(1.0, p.life);
+                    const smoothAlpha = Math.pow(opacity, 0.7);
+                    const s = (p.size || 1.0) * G_SCALE * (0.5 + opacity * 0.5);
+                    // 上書きされたスケールを再適用
+                    ctx.scale(s / ((p.size || 1.0) * G_SCALE * (0.6 + opacity * 0.4)), s / ((p.size || 1.0) * G_SCALE * (0.6 + opacity * 0.4)));
+
+                    ctx.beginPath();
+                    ctx.moveTo(w, -h / 2);
+                    ctx.lineTo(w, h / 2);
+                    ctx.lineTo(-w * 0.9, h * 0.35);
+                    ctx.lineTo(-w * 0.9, -h * 0.35);
+                    ctx.closePath();
+
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = smoothAlpha * 0.3;
+                    ctx.fill();
+
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = 1.5;
+                    ctx.globalAlpha = smoothAlpha;
+                    ctx.stroke();
+
+                    ctx.strokeStyle = "#fff";
+                    ctx.lineWidth = 0.5;
+                    ctx.globalAlpha = smoothAlpha * 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(-w * 0.5, 0); ctx.lineTo(w, 0);
+                    ctx.stroke();
+
+                } else if (p.shardType === 'tri') {
+                    ctx.lineWidth = 1.0 / s;
+                    ctx.beginPath();
+                    if (p.vertices && p.vertices.length === 3) {
+                        ctx.moveTo(p.vertices[0].x, p.vertices[0].y);
+                        ctx.lineTo(p.vertices[1].x, p.vertices[1].y);
+                        ctx.lineTo(p.vertices[2].x, p.vertices[2].y);
+                    } else {
+                        ctx.moveTo(0, -10); ctx.lineTo(8, 8); ctx.lineTo(-8, 8);
+                    }
+                    ctx.closePath();
+                    ctx.stroke();
+
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = Math.min(1, p.life) * 0.3;
+                    ctx.fill();
+
                 } else {
-                    // データがない場合のフォールバック（保険）
-                    ctx.moveTo(0, -10); ctx.lineTo(8, 8); ctx.lineTo(-8, 8);
+                    // Phantomなどの立体的な破片
+                    ctx.beginPath();
+                    ctx.moveTo(10, 0);
+                    ctx.lineTo(-5, 5);
+                    ctx.lineTo(-5, -5);
+                    ctx.closePath();
+                    ctx.stroke();
+
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = Math.min(1, p.life) * 0.4;
+                    ctx.fill();
                 }
-                ctx.closePath();
-                ctx.stroke();
+            }
+            else if (p.isBubble) {
+                // --- 泡（バブル） ---
+                ctx.translate(p.x, p.y);
+                const baseOpacity = 0.6;
+                const fade = Math.min(1.0, p.life) * baseOpacity;
+                ctx.globalAlpha = fade;
+                const r = p.size * G_SCALE;
 
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = Math.min(1, p.life) * 0.3;
-                ctx.fill();
-            } else {
-                // --- Phantomなどの立体的な破片 ---
                 ctx.beginPath();
-                ctx.moveTo(10, 0);
-                ctx.lineTo(-5, 5);
-                ctx.lineTo(-5, -5);
-                ctx.closePath();
+                ctx.arc(0, 0, r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, 0.2)`;
+                ctx.fill();
+
+                ctx.strokeStyle = p.color;
+                ctx.lineWidth = 1.5;
                 ctx.stroke();
 
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = Math.min(1, p.life) * 0.4;
+                ctx.fillStyle = `rgba(255, 255, 255, 0.9)`;
+                ctx.beginPath();
+                ctx.arc(-r * 0.4, -r * 0.4, r * 0.25, 0, Math.PI * 2);
                 ctx.fill();
             }
+
+            ctx.restore();
         }
-        else if (p.isBubble) {
-            // --- ★変更：泡（バブル）パーティクルの描画（最初から薄め） ---
-            ctx.translate(p.x, p.y);
-
-            // ベースの透明度を 0.4（40%）まで下げて、最初から薄くする
-            const baseOpacity = 0.6;
-            const fade = Math.min(1.0, p.life) * baseOpacity;
-
-            ctx.globalAlpha = fade;
-            const r = p.size * G_SCALE;
-
-            // 泡の輪郭と内部
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-
-            // 内部をさらに薄く塗りつぶす
-            ctx.fillStyle = `rgba(255, 255, 255, 0.2)`;
-            ctx.fill();
-
-            // 外枠（クラゲのメインカラー）
-            ctx.strokeStyle = p.color;
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
-            // 泡のハイライト（少し明るくして立体感を出す）
-            ctx.fillStyle = `rgba(255, 255, 255, 0.9)`;
-            ctx.beginPath();
-            ctx.arc(-r * 0.4, -r * 0.4, r * 0.25, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        // 通常の火花（線）
-        else {
-            ctx.beginPath();
-            const length = 4.0;
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
-            ctx.lineWidth = p.size || 2;
-            ctx.strokeStyle = p.color;
-            ctx.lineCap = 'round';
-            ctx.stroke();
-        }
-
-        ctx.restore();
     });
+
+    // 3. 単純なパーティクル（通常の火花）
+    // ★高速化: save/restore をループの外に出して一括処理
+    ctx.save();
+    ctx.lineCap = 'round';
+
+    particles.forEach(p => {
+        if (!isOnScreen(p, 50)) return;
+
+        // 特殊パーティクルは既に描画済みなのでスキップ
+        if (p.isShard || p.isBubble) return;
+
+        // 共通設定を再利用しつつ描画
+        ctx.beginPath();
+        const length = 4.0;
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
+
+        ctx.lineWidth = p.size || 2;
+        ctx.strokeStyle = p.color;
+        ctx.globalAlpha = Math.min(1, p.life);
+
+        ctx.stroke();
+    });
+    ctx.restore();
+
+
+    // 4. リングエフェクト
     ctx.globalAlpha = 1.0;
 
-    // リングエフェクト
     rings.forEach(r => {
-        // スケールを考慮して画面外判定
         if (!isOnScreen({ x: r.x, y: r.y }, r.r * G_SCALE + 50)) return;
 
         ctx.save();
-        ctx.globalCompositeOperation = 'lighter'; // 加算合成で発光
+        ctx.globalCompositeOperation = 'lighter';
 
         if (r.isBomb) {
-            // ==========================================
-            // ★ BOMB専用の描画：中塗り＋極太の衝撃波
-            // ==========================================
-            // 1. ボム専用の塗りつぶし（内側が淡く光る）
+            // BOMB専用
             ctx.fillStyle = r.color;
             ctx.globalAlpha = Math.max(0, r.life * 0.25);
             ctx.beginPath();
             ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
             ctx.fill();
 
-            // 2. 極太の衝撃波の縁
             ctx.strokeStyle = r.color;
-            ctx.lineWidth = 20 * r.life * G_SCALE; // 消えるにつれて細くなる
+            ctx.lineWidth = 20 * r.life * G_SCALE;
             ctx.globalAlpha = Math.max(0, r.life * 0.8);
             ctx.beginPath();
             ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
             ctx.stroke();
 
-            // 3. 真っ白な芯
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 4 * G_SCALE;
             ctx.globalAlpha = Math.max(0, r.life);
@@ -6038,12 +6033,8 @@ function drawVisualEffects() {
             ctx.stroke();
 
         } else {
-            // ==========================================
-            // 通常のリング描画（既存の処理）
-            // ==========================================
+            // 通常リング
             ctx.globalAlpha = r.life;
-
-            // 外側の太い光
             ctx.strokeStyle = r.color;
             ctx.lineWidth = 4 * G_SCALE;
             ctx.globalAlpha = r.life * 0.3;
@@ -6051,7 +6042,6 @@ function drawVisualEffects() {
             ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
             ctx.stroke();
 
-            // 内側の鋭い光（白い芯）
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 1 * G_SCALE;
             ctx.globalAlpha = r.life;
@@ -6063,7 +6053,6 @@ function drawVisualEffects() {
         ctx.restore();
     });
 }
-
 
 // player
 function drawPlayer(ctx, p) {
