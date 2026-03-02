@@ -8783,10 +8783,11 @@ if (newBtn) {
         // ユーザーのクリック直後にフルスクリーン化を要求する
         requestFullScreen();
 
-        // 2. オーディオの「先食い」（同期処理）
+        // 2. オーディオの「完全再初期化」（同期処理的呼び出し）
+        // ★★★ ここを変更 ★★★
         if (typeof AudioSys !== 'undefined') {
-            if (!AudioSys.ctx) AudioSys.init();
-            AudioSys.resume();
+            // resume() ではなく reset() を呼んで作り直す
+            AudioSys.reset();
         }
 
         // 3. フォーカスの完全移動
