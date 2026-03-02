@@ -396,6 +396,9 @@ const AudioSys = {
     bgmFadeInterval: null,
 
     async reset() {
+        // 何はともあれ、進行中のフェードアウトがあれば即座に止める
+        this.stopBgmInterval();
+
         // 既存のコンテキストがあれば閉じて破棄する
         if (this.ctx) {
             try {
@@ -570,6 +573,9 @@ const AudioSys = {
     },
 
     playBGM(key, idx = 0) {
+        // 再生する前にフェードアウト処理を強制キャンセル
+        this.stopBgmInterval();
+
         if (!this.bgmEl) return;
 
         // --- パス決定ロジックの修正 ---
