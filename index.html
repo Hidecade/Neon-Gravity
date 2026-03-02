@@ -467,27 +467,48 @@
 
 
     <script type="module" src="js/firebase_manager.js"></script>
-    <script src="js/audio.js" defer></script>
+
+    <script src="js/audio_manager.js" defer></script>
+
     <script src="js/config.js" defer></script>
+
     <script src="js/main.js" defer></script>
+
     <script>
-        // Service Workerの登録
+        // Service Workerの登録と更新ロジック
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // ★ここが重要：sw.js のURLにもバージョンをつけるか、ブラウザ設定に従う
-                navigator.serviceWorker.register('./sw.js')
+                // バージョン付きで登録
+                navigator.serviceWorker.register('./sw.js?v=1.0.1')
                     .then(reg => {
+                        console.log('SW registered:', reg);
+
+                        // ■ 追加機能：アクティブになったら更新チェック ■
+                        document.addEventListener('visibilitychange', () => {
+                            if (document.visibilityState === 'visible') {
+                                console.log('App active: checking for updates...');
+                                reg.update(); // サーバーに更新を確認
+                            }
+                        });
+
                         // 更新が見つかったら強制的に更新処理を走らせる
                         reg.onupdatefound = () => {
                             const installingWorker = reg.installing;
+                            if (installingWorker == null) return;
+
                             installingWorker.onstatechange = () => {
                                 if (installingWorker.state === 'installed') {
                                     if (navigator.serviceWorker.controller) {
                                         // 新しいバージョンが見つかった！
-                                        console.log('New content is available; please refresh.');
-                                        // ユーザーに通知してリロードさせるか、自動でリロードする
-                                        // ここでは自動リロードさせる例：
-                                        window.location.reload();
+                                        console.log('New content is available.');
+
+                                        // ダイアログを出して、ユーザーがOKした時だけリロード
+                                        // (プレイ中の勝手なリロードを防ぐため)
+                                        if (confirm("新しいバージョンがあります。\n更新して再起動しますか？")) {
+                                            window.location.reload();
+                                        }
+                                    } else {
+                                        console.log('Content is cached for offline use.');
                                     }
                                 }
                             };
@@ -497,6 +518,8 @@
             });
         }
     </script>
+</body>
+</html>
 
 </body>
 
