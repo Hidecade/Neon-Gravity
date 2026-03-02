@@ -395,6 +395,26 @@ const AudioSys = {
     activeNodes: [],
     bgmFadeInterval: null,
 
+    async reset() {
+        // 既存のコンテキストがあれば閉じて破棄する
+        if (this.ctx) {
+            try {
+                await this.ctx.close();
+            } catch (e) {
+                console.log("AudioContext close error:", e);
+            }
+            this.ctx = null;
+        }
+
+        // 再初期化
+        this.init();
+
+        // iOS用の無音再生（アンロック）を実行
+        this._unlockAudio();
+
+        console.log("AudioSystem Force Reset Completed.");
+    },
+
     init() {
         if (!this.ctx) {
             try {
