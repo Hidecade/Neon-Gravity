@@ -204,7 +204,7 @@ canvas {
 #stage-msg {
     display: none;
     position: absolute;
-    top: 35%;
+    top: 30%;
     width: 100%;
     text-align: center;
     color: #fff;
