@@ -398,60 +398,67 @@ const AudioSys = {
     init() {
         if (!this.ctx) {
             try {
+                // AudioContextを作成
                 const AC = window.AudioContext || window.webkitAudioContext;
-                if (AC) { this.ctx = new AC(); this.createNoise(); }
+                if (AC) {
+                    this.ctx = new AC();
+                    this.createNoise();
+
+                    // ★追加：iOS対策（無音のバッファを一瞬再生して、オーディオエンジンを強制的に起こす）
+                    this._unlockAudio();
+                }
             } catch (e) { console.error("AudioContext init error:", e); }
         }
+
         if (!this.bgmEl) {
             this.bgmEl = new Audio();
             this.bgmEl.loop = true;
             this.bgmEl.volume = 0.4;
-            // ★追加：曲が終わった時の自動再生イベント
+            // ★重要：曲が終わった時の処理
             this.bgmEl.addEventListener('ended', () => {
-                // gameState や playNextOST は main.js 側のグローバル変数/関数なので
-                // window オブジェクト経由で参照可能（ファイル分割後）
+                // main.js で定義する "gameState" と "playNextOST" を参照
                 if (window.gameState === 'OST' && typeof window.playNextOST === 'function') {
-                    window.playNextOST(); // OSTなら次の曲へ
+                    window.playNextOST(); // OSTモードなら次の曲へ
                 } else if (this.bgmEl.loop) {
-                    // ゲーム中は何らかの理由で止まってもループさせる
+                    // ゲーム中などはループ再生
                     this.bgmEl.currentTime = 0;
-                    this.bgmEl.play();
+                    this.bgmEl.play().catch(e => { });
                 }
             });
         }
     },
 
 
+    // ★追加：サイレント状態でオシレーターを一瞬走らせる関数
+    _unlockAudio() {
+        if (!this.ctx) return;
+        const buffer = this.ctx.createBuffer(1, 1, 22050);
+        const source = this.ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(this.ctx.destination);
+        source.start(0);
+
+        if (this.ctx.state !== 'running') {
+            this.ctx.resume().catch(e => { });
+        }
+    },
+
     async resume() {
-        // コンテキストがまだ無い場合は初期化する
         if (!this.ctx) {
             this.init();
             return;
         }
 
-        // すでに正常に動いている場合は何もしない
+        // すでに動いていれば何もしない
         if (this.ctx.state === 'running') return;
 
+        // 再開を試みる
         try {
-            // 一度 resume を試みる
             await this.ctx.resume();
 
-            // ★重要：resumeしても動かない場合は強制的に再生成する
+            // ★追加：それでも動かない場合は無音再生で刺激を与える
             if (this.ctx.state !== 'running') {
-                console.warn("AudioContext remains suspended. Forcing Re-Init...");
-
-                // 古いコンテキストを破棄
-                try { await this.ctx.close(); } catch (e) { }
-
-                // 新しい AudioContext を作り直す
-                const AC = window.AudioContext || window.webkitAudioContext;
-                this.ctx = new AC();
-
-                // ノイズバッファも新しいコンテキストで再生成
-                this.createNoise();
-
-                // ユーザーアクション直後なので、即座に起動させる
-                await this.ctx.resume();
+                this._unlockAudio();
             }
         } catch (e) {
             console.log("AudioContext resume failed:", e);
@@ -572,8 +579,10 @@ const AudioSys = {
             return;
         }
 
-        // ★追加：OST画面ならループを解除（endedイベントを発火させるため）
-        this.bgmEl.loop = (window.gameState !== 'OST');
+        // ★修正：OSTモードの時はループしない（false）、それ以外はループする（true）
+        // window.gameState が undefined の可能性も考慮
+        const isOST = (typeof window.gameState !== 'undefined' && window.gameState === 'OST');
+        this.bgmEl.loop = !isOST;
 
         // 別の曲を再生する場合
         this.bgmEl.pause();
