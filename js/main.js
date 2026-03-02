@@ -15,7 +15,7 @@ let width, height;              // 画面サイズ（resize関数で設定）
 let worldSize = 1500;           // ワールドサイズ（resize関数で設定）
 
 // ゲームステート管理
-let gameState = 'TITLE';        // 'TITLE', 'PLAYING', 'PAUSED', 'DYING', 'GAMEOVER_UI', 'ENDING', 'OST'
+var gameState = 'TITLE';        // 'TITLE', 'PLAYING', 'PAUSED', 'DYING', 'GAMEOVER_UI', 'ENDING', 'OST'
 let previousGameState = '';     // ポーズ前の状態保存用
 
 // モード・演出フラグ
@@ -243,74 +243,97 @@ let ostTracks = [];
 let currentOstIndex = -1;
 let ostUpdateInterval = null;
 
+// OST画面を開く関数（曲リストの生成）
 function openOST() {
-    AudioSys.resume();
+    if (typeof AudioSys !== 'undefined') AudioSys.resume();
     ui.overlay.style.display = 'none';
 
-    gameState = 'OST';
+    gameState = 'OST'; // ★ここで状態をOSTにする
     ui.ost.style.display = 'flex';
+
     const list = document.getElementById('track-list');
     list.innerHTML = '';
 
-    // 曲のリストを作成
+    // 曲リストの定義
     ostTracks = [
         { n: 'Title Theme', k: 'title' }
     ];
-    BGM_FILES.stages.forEach((path, index) => {
-        ostTracks.push({ n: `Stage ${index + 1} BGM`, k: 'stage', i: index });
-    });
+    // ステージ曲
+    // config.js の STAGE_TITLES や BGM_FILES.stages を使ってリスト化
+    // (ここでは簡易的にBGM_FILESを参照している想定)
+    if (typeof BGM_FILES !== 'undefined' && BGM_FILES.stages) {
+        BGM_FILES.stages.forEach((path, index) => {
+            ostTracks.push({ n: `Stage ${index + 1} BGM`, k: 'stage', i: index });
+        });
+    }
+    // その他の曲
     ostTracks.push(
         { n: 'Boss Encounter', k: 'boss' },
         { n: 'The Final Ark', k: 'last' },
         { n: 'Mission Complete', k: 'clear' },
-        { n: 'All Mission Complete', k: 'all_clear' }, // ★Stage 10クリアを追加
+        { n: 'All Mission Complete', k: 'all_clear' },
         { n: 'Name Entry', k: 'name' }
     );
 
-    // リストの描画
+    // リスト描画
     ostTracks.forEach((t, idx) => {
         const d = document.createElement('div');
         d.className = 'track-item';
         d.innerText = t.n;
-        d.onclick = () => playOSTTrack(idx); // ★専用関数を呼ぶ
+        d.onclick = () => playOSTTrack(idx);
         list.appendChild(d);
     });
 
-    // UIリセットとプログレスバーの更新開始
-    document.getElementById('ost-controls').style.display = 'flex';
-    document.getElementById('ost-now-playing').innerText = "SELECT A TRACK";
-    document.getElementById('ost-progress-fill').style.width = "0%";
-    document.getElementById('ost-time-current').innerText = "0:00";
-    document.getElementById('ost-time-total').innerText = "0:00";
+    // UI初期化
+    const ostControls = document.getElementById('ost-controls');
+    if (ostControls) ostControls.style.display = 'flex';
 
-    startOstProgressUpdate();
-    window.refreshMenuButtons();
+    // プログレスバーの更新開始（定義されていれば）
+    if (typeof startOstProgressUpdate === 'function') startOstProgressUpdate();
+    if (window.refreshMenuButtons) window.refreshMenuButtons();
 }
 
-// 指定したインデックスのOSTを再生する
+// 指定したインデックスのOSTを再生する関数
 function playOSTTrack(idx) {
     if (idx < 0 || idx >= ostTracks.length) return;
-    currentOstIndex = idx;
+
+    currentOstIndex = idx; // 現在の曲番号を更新
     const t = ostTracks[idx];
 
-    AudioSys.playBGM(t.k, t.i);
+    // BGM再生（audio_manager.js の playBGM が呼ばれ、loopがfalseになる）
+    if (typeof AudioSys !== 'undefined') {
+        AudioSys.playBGM(t.k, t.i);
+    }
 
-    // リストの見た目を更新
+    // リストの見た目を更新（再生中の曲を光らせる）
     const items = document.querySelectorAll('#track-list .track-item');
     items.forEach((e, i) => {
-        if (i === idx) e.classList.add('playing');
-        else e.classList.remove('playing');
+        if (i === idx) {
+            e.classList.add('playing');
+            // リスト内でスクロールして表示
+            e.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } else {
+            e.classList.remove('playing');
+        }
     });
 
-    document.getElementById('ost-now-playing').innerText = "NOW PLAYING: " + t.n;
+    const nowPlayingText = document.getElementById('ost-now-playing');
+    if (nowPlayingText) {
+        nowPlayingText.innerText = "NOW PLAYING: " + t.n;
+    }
 }
 
 // 次の曲へ進む（AudioSysのendedイベントから呼ばれる）
 window.playNextOST = function () {
-    if (currentOstIndex >= 0 && currentOstIndex < ostTracks.length - 1) {
-        playOSTTrack(currentOstIndex + 1);
-    } else {
-        playOSTTrack(0); // 最後まで行ったら最初に戻る
+    if (currentOstIndex >= 0 && ostTracks.length > 0) {
+        let nextIndex = currentOstIndex + 1;
+
+        // 最後の曲まで行ったら最初に戻る
+        if (nextIndex >= ostTracks.length) {
+            nextIndex = 0;
+        }
+
+        playOSTTrack(nextIndex);
     }
 };
 
@@ -8815,17 +8838,22 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => input.keys[e.code] = false);
 window.addEventListener('resize', resize);
 
-
-// 修正後: 1回きりではなく、常に「タップされたらContextが死んでいないかチェック」する
+// 修正後: あらゆる操作のタイミングで、執拗にAudioContextの状態を確認して叩き起こす
 const handleInteraction = () => {
-    if (AudioSys && AudioSys.ctx && AudioSys.ctx.state !== 'running') {
-        AudioSys.resume();
+    if (typeof AudioSys !== 'undefined' && AudioSys.ctx) {
+        // iOSでは 'suspended' または 'interrupted' になることが多い
+        if (AudioSys.ctx.state === 'suspended' || AudioSys.ctx.state === 'interrupted') {
+            AudioSys.ctx.resume().then(() => {
+                console.log("AudioContext Force Resumed!");
+            }).catch(e => console.error(e));
+        }
     }
 };
 
 // 一度きりではなく、常にリスニングしておく（iOSではこれが有効）
-document.addEventListener('click', handleInteraction, { passive: true });
+// 'touchstart' が最も反応が良いです
 document.addEventListener('touchstart', handleInteraction, { passive: true });
+document.addEventListener('click', handleInteraction, { passive: true });
 document.addEventListener('keydown', handleInteraction, { passive: true });
 
 // 追加：画面が戻ってきたときにも強力に復帰を試みる
@@ -8834,10 +8862,18 @@ document.addEventListener('visibilitychange', () => {
         setPaused(true);
         if (AudioSys && AudioSys.bgmEl) AudioSys.bgmEl.pause();
     } else {
+        // 戻ってきたとき
         setPaused(false);
+
+        // BGM再開
         if (gameState !== 'PAUSED' && AudioSys) {
             AudioSys.resumeBGM();
-            AudioSys.resume(); // ここでも呼ぶ
+
+            // 重要：戻ってきた直後はまだAudioContextが死んでいる可能性が高いので、
+            // 少し待ってからresumeを試みる（ただし、最終的にはタッチが必要になることが多い）
+            setTimeout(() => {
+                AudioSys.resume();
+            }, 100);
         }
     }
 });
