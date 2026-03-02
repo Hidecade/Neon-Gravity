@@ -8757,6 +8757,9 @@ if (newBtn) {
         // 1. デフォルト動作の抑止
         e.stopPropagation();
 
+        // ユーザーのクリック直後にフルスクリーン化を要求する
+        requestFullScreen();
+
         // 2. オーディオの「先食い」（同期処理）
         if (typeof AudioSys !== 'undefined') {
             if (!AudioSys.ctx) AudioSys.init();
