@@ -2,6 +2,8 @@
 // Game Configuration & Constants
 // =========================================================
 
+const GAME_VERSION = "1.0.2";
+
 // --- システム設定 ---
 const G_SCALE = 0.7;          // 全体の描画スケール（標準の70%）
 const SPEED_SCALE = 0.25;     // ゲーム全体の速度倍率（全ての移動に適用）
