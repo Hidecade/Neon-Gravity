@@ -508,7 +508,17 @@ window.updateMenuSelectionUI = function () {
     }
 };
 
-function init() { resize(); AudioSys.init(); }
+function init() {
+    resize();
+    AudioSys.init();
+
+    // ★追加：バージョン表示の更新
+    const verEl = document.getElementById('version-num');
+    if (verEl) {
+        // config.jsで定義した定数を使う
+        verEl.innerText = "Version " + GAME_VERSION;
+    }
+}
 
 function resize() {
     width = canvas.width = window.innerWidth;
