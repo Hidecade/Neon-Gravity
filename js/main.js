@@ -600,7 +600,7 @@ function initNebulae() {
     for (let i = 0; i < 6; i++) { // 数は少し減らしても十分綺麗です
         const radius = 150 + Math.random() * 200;
         const color = colors[Math.floor(Math.random() * colors.length)];
-        const alpha = 0.05 + Math.random() * 0.10;
+        const alpha = 0.05 + Math.random() * 0.7;
 
         // --- ★高速化ポイント: オフスクリーンCanvasを作る ---
         const cacheCanvas = document.createElement('canvas');
