@@ -590,26 +590,42 @@ function initStars() {
 
 function initNebulae() {
     nebulae = [];
-    // ネオンカラーの星雲色
     const colors = [
-        { r: 0, g: 100, b: 255 }, // シアン・ブルー系
-        { r: 100, g: 0, b: 255 }, // パープル系
-        { r: 255, g: 0, b: 150 }, // マゼンタ・ピンク系
-        { r: 0, g: 255, b: 150 }  // エメラルド系
+        { r: 0, g: 100, b: 255 }, // 青
+        { r: 100, g: 0, b: 255 }, // 紫
+        { r: 255, g: 0, b: 150 }, // ピンク
+        { r: 0, g: 255, b: 150 }  // エメラルド
     ];
 
-    // 星雲の数を生成
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 6; i++) { // 数は少し減らしても十分綺麗です
+        const radius = 150 + Math.random() * 200;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const alpha = 0.05 + Math.random() * 0.10;
+
+        // --- ★高速化ポイント: オフスクリーンCanvasを作る ---
+        const cacheCanvas = document.createElement('canvas');
+        // 画像サイズは直径分（半径x2）あればOK
+        const size = Math.ceil(radius * 2);
+        cacheCanvas.width = size;
+        cacheCanvas.height = size;
+        const cacheCtx = cacheCanvas.getContext('2d');
+
+        // ここで一度だけグラデーションを描画してしまう
+        const grad = cacheCtx.createRadialGradient(radius, radius, 0, radius, radius, radius);
+        grad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`);
+        grad.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.4})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+        cacheCtx.fillStyle = grad;
+        cacheCtx.fillRect(0, 0, size, size);
+        // ---------------------------------------------------
+
         nebulae.push({
-            // 画面サイズ（width/height）ではなく worldSize 全体に散らす
             x: Math.random() * worldSize,
             y: Math.random() * worldSize,
-            // 半径をかなり大きくする
-            radius: 100 + Math.random() * 200,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            // 非常に薄くして重ねる
-            alpha: 0.05 + Math.random() * 0.10,
-            // 星よりさらに遅く動かす（遠景感）
+            radius: radius,
+            // 描画済みキャンバスを保持する
+            image: cacheCanvas,
             parallax: 0.05 + Math.random() * 0.05
         });
     }
@@ -5563,60 +5579,36 @@ function drawBackground() {
     ctx.fillStyle = '#050505';
     ctx.fillRect(0, 0, width, height);
 
-    // --- 2. 【修正】星雲の描画 ---
+    // --- 2. 【修正・高速化版】星雲の描画 ---
     if (typeof nebulae !== 'undefined') {
         nebulae.forEach(n => {
-            // ★修正ポイント1: worldSize ではなく width, height (画面サイズ) で剰余を取る
-            // これにより、必ず画面内のどこかに座標が収まります
-
-            // 大きな数を足してマイナスになるのを防ぐ
+            // 座標計算（前回修正した、画面サイズ基準のものを使用）
             const bgOffset = worldSize * 100;
-
             let nx = (n.x - camera.x * n.parallax + bgOffset) % width;
             let ny = (n.y - camera.y * n.parallax + bgOffset) % height;
 
-            // JSの % 演算子は負の値を返すことがあるため、念のため正の値にする
             if (nx < 0) nx += width;
             if (ny < 0) ny += height;
 
             ctx.save();
-            ctx.globalCompositeOperation = 'lighter'; // 重なった部分を明るく
+            ctx.globalCompositeOperation = 'lighter';
 
-            // グラデーションの作成
-            const grad = ctx.createRadialGradient(nx, ny, 0, nx, ny, n.radius);
+            // ★ここを変更：毎回グラデーションを作らず、作っておいた画像(n.image)を描画する
+            // 画像の中心を nx, ny に合わせるため、半径分引く
+            ctx.drawImage(n.image, nx - n.radius, ny - n.radius);
 
-            // 色と透明度の設定
-            grad.addColorStop(0, `rgba(${n.color.r}, ${n.color.g}, ${n.color.b}, ${n.alpha})`);
-            grad.addColorStop(0.5, `rgba(${n.color.r}, ${n.color.g}, ${n.color.b}, ${n.alpha * 0.4})`);
-            grad.addColorStop(1, 'rgba(0,0,0,0)'); // 外側は透明
-
-            ctx.fillStyle = grad;
-
-            // 描画実行
-            ctx.fillRect(nx - n.radius, ny - n.radius, n.radius * 2, n.radius * 2);
-
-            // ★(オプション) 画面端での切れ目を防ぐための「折り返し描画」
-            // 星雲が巨大なので、画面端で見切れるのを防ぐために反対側にも描画しておくと自然になります
-            // 右端にはみ出ているなら左端にも描く、など
+            // 折り返し描画（画面端対策）
             if (nx < n.radius) {
-                ctx.translate(width, 0);
-                ctx.fillRect(nx - n.radius, ny - n.radius, n.radius * 2, n.radius * 2);
-                ctx.translate(-width, 0);
+                ctx.drawImage(n.image, nx - n.radius + width, ny - n.radius);
             }
             if (nx > width - n.radius) {
-                ctx.translate(-width, 0);
-                ctx.fillRect(nx - n.radius, ny - n.radius, n.radius * 2, n.radius * 2);
-                ctx.translate(width, 0);
+                ctx.drawImage(n.image, nx - n.radius - width, ny - n.radius);
             }
             if (ny < n.radius) {
-                ctx.translate(0, height);
-                ctx.fillRect(nx - n.radius, ny - n.radius, n.radius * 2, n.radius * 2);
-                ctx.translate(0, -height);
+                ctx.drawImage(n.image, nx - n.radius, ny - n.radius + height);
             }
             if (ny > height - n.radius) {
-                ctx.translate(0, -height);
-                ctx.fillRect(nx - n.radius, ny - n.radius, n.radius * 2, n.radius * 2);
-                ctx.translate(0, height);
+                ctx.drawImage(n.image, nx - n.radius, ny - n.radius - height);
             }
 
             ctx.restore();
