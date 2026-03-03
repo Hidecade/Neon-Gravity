@@ -8,9 +8,9 @@ const WARNING_SOUND_INTERVAL = 48;
 // ストップさせる必要がなく、鳴らしっぱなしで良いSEのリスト
 // これらは重い配列管理を行わず、軽量に処理します
 const ONE_SHOT_SE = [
-    'shoot', 'laser', 'enemy_hit', 
-    'explode_small', 'explode_medium', 'explode_large', 
-    'target_ping', 'launch', 'powerup', 'damage', 
+    'shoot', 'laser', 'enemy_hit',
+    'explode_small', 'explode_medium', 'explode_large',
+    'target_ping', 'launch', 'powerup', 'damage',
     'invincible', 'boss_hit'
 ];
 
@@ -292,18 +292,32 @@ const AudioSys = {
     noiseBuffer: null,
     activeNodes: [],
     bgmFadeInterval: null,
-    lastPlayed: {}, // 連打防止用
-    isUnlocking: false, // アンロック重複防止フラグ
+    lastPlayed: {},
+    isUnlocking: false,
 
-    async reset() {
+    // ★重要修正：コンテキストを破棄せず、状態だけリセットする
+    reset() {
+        // フェードアウト処理を停止
         this.stopBgmInterval();
-        if (this.ctx) {
-            try { await this.ctx.close(); } catch (e) { console.log("Ctx close err:", e); }
-            this.ctx = null;
+
+        // コンテキストが存在しないなら作る
+        if (!this.ctx) {
+            this.init();
+        } else {
+            // 存在する場合は、破棄せずに再開（Resume）だけ行う
+            // これにより「タップ権限」を維持したまま継続できる
+            this.resume();
         }
-        this.init();
-        this._unlockAudio();
-        console.log("Audio Reset.");
+
+        // BGMを停止・リセット
+        if (this.bgmEl) {
+            this.bgmEl.pause();
+            this.bgmEl.currentTime = 0;
+            this.bgmEl.src = ""; // ソースも一旦空にする
+            this.currentSrc = null;
+        }
+
+        console.log("Audio System Soft Reset.");
     },
 
     init() {
@@ -312,7 +326,9 @@ const AudioSys = {
                 const AC = window.AudioContext || window.webkitAudioContext;
                 if (AC) {
                     this.ctx = new AC();
-                    this.createNoise();
+                    this.createNoise(); // ノイズバッファ作成
+
+                    // iOS対策：作成直後に無音再生でアンロックを試みる
                     this._unlockAudio();
                 }
             } catch (e) { console.error("Audio init error:", e); }
@@ -322,6 +338,9 @@ const AudioSys = {
             this.bgmEl = new Audio();
             this.bgmEl.loop = true;
             this.bgmEl.volume = 0.4;
+            // iOSのBGM対策：playsinline属性をつけるおまじない
+            this.bgmEl.setAttribute("playsinline", "");
+
             this.bgmEl.addEventListener('ended', () => {
                 if (window.gameState === 'OST' && typeof window.playNextOST === 'function') {
                     window.playNextOST();
@@ -333,13 +352,14 @@ const AudioSys = {
         }
     },
 
-    // iOS対策：サイレントアンロック（連打防止付き）
+    // iOS対策：サイレントアンロック
     _unlockAudio() {
         if (!this.ctx || this.isUnlocking) return;
         if (this.ctx.state === 'running') return;
 
         this.isUnlocking = true;
 
+        // 空のバッファを一瞬再生して、ブラウザに「音を出す意思」を伝える
         const buffer = this.ctx.createBuffer(1, 1, 22050);
         const source = this.ctx.createBufferSource();
         source.buffer = buffer;
@@ -355,13 +375,20 @@ const AudioSys = {
 
     async resume() {
         if (!this.ctx) { this.init(); return; }
+
+        // 既に動いているなら何もしない（ここが高速化の鍵）
         if (this.ctx.state === 'running') return;
+
         try {
             await this.ctx.resume();
+            // resumeしてもrunningにならない場合のみアンロックを試す
             if (this.ctx.state !== 'running') this._unlockAudio();
-        } catch (e) { console.log("Resume failed:", e); }
+        } catch (e) {
+            // エラーログを出さずに静かに失敗させる（連打時のログ汚れ防止）
+        }
     },
 
+    // ... (以下の createNoise, registerNode, playSE などは前回のコードのままでOK) ...
     createNoise() {
         if (!this.ctx) return;
         const bSize = this.ctx.sampleRate * 2;
@@ -371,18 +398,14 @@ const AudioSys = {
         this.noiseBuffer = buf;
     },
 
-    // ★重要修正：管理ノード登録処理（軽量化）
+    // ワンショットSE用の軽量登録
     registerNode(type, node, durationMs) {
-        // 撃ちっぱなしSE（ショット、爆発など）は配列管理せず、
-        // 単純なタイマーで切断するだけにする（これが負荷対策の要）
         if (ONE_SHOT_SE.includes(type)) {
             setTimeout(() => {
                 try { node.disconnect(); } catch (e) { }
             }, durationMs);
             return;
         }
-
-        // 警告音など、途中で止める必要がある音だけ配列で管理する
         const nodeRef = { type, node };
         this.activeNodes.push(nodeRef);
         setTimeout(() => {
@@ -395,20 +418,19 @@ const AudioSys = {
     },
 
     playSE(type) {
+        // initがまだなら初期化を試みる
+        if (!this.ctx) this.init();
         if (!this.ctx || !SE_LIBRARY[type]) return;
 
-        // --- 重複防止（間引き） ---
+        // 間引き処理
         const now = this.ctx.currentTime;
         if (this.lastPlayed[type] && now - this.lastPlayed[type] < 0.05) return;
         this.lastPlayed[type] = now;
 
-        // ★停止中なら再開を試みる（待たない）
-        if (this.ctx.state !== 'running') {
-            this.ctx.resume().catch(() => { });
-        }
+        // 停止中なら非同期で再開をかけるが、待たない
+        if (this.ctx.state !== 'running') this.resume();
 
-        // 時間が取得できない（停止中）場合は現在時刻0として扱う安全策
-        const t = this.ctx.currentTime; 
+        const t = this.ctx.currentTime;
         const g = this.ctx.createGain();
         g.connect(this.ctx.destination);
 
@@ -419,20 +441,15 @@ const AudioSys = {
                 effect.osc.start(t);
                 effect.osc.stop(t + effect.duration);
             }
-            // クリーンアップ時間を計算して登録
             const cleanupTime = Math.max(2000, effect.duration * 1000 + 500);
             this.registerNode(type, g, cleanupTime);
-        } catch (e) {
-            // エラー時は何もしない
-        }
+        } catch (e) { }
     },
 
-    // 特定の種類の音を強制停止（警告音停止用）
+    // ... (stopSE, fadeAndDisconnect, getNormalizedUrl など変更なし) ...
     stopSE(targetType = null) {
         if (!this.ctx) return;
         const t = this.ctx.currentTime;
-        
-        // 配列管理されているノードだけを対象にする
         this.activeNodes = this.activeNodes.filter(item => {
             if (!targetType || item.type === targetType) {
                 this.fadeAndDisconnect(item.node, t);
