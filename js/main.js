@@ -608,7 +608,7 @@ function initNebulae() {
             radius: 100 + Math.random() * 200,
             color: colors[Math.floor(Math.random() * colors.length)],
             // 非常に薄くして重ねる
-            alpha: 0.05 + Math.random() * 0.05,
+            alpha: 0.05 + Math.random() * 0.10,
             // 星よりさらに遅く動かす（遠景感）
             parallax: 0.05 + Math.random() * 0.05
         });
