@@ -1,9 +1,18 @@
 // =========================================================
-// Audio System Manager (Optimized)
+// Audio System Manager (Final Optimized)
 // =========================================================
 
 // 警告音の間隔設定
 const WARNING_SOUND_INTERVAL = 48;
+
+// ストップさせる必要がなく、鳴らしっぱなしで良いSEのリスト
+// これらは重い配列管理を行わず、軽量に処理します
+const ONE_SHOT_SE = [
+    'shoot', 'laser', 'enemy_hit', 
+    'explode_small', 'explode_medium', 'explode_large', 
+    'target_ping', 'launch', 'powerup', 'damage', 
+    'invincible', 'boss_hit'
+];
 
 const BGM_FILES = {
     title: 'audio/Neon_Gravity_Title.mp3',
@@ -36,7 +45,6 @@ const SE_LIBRARY = {
         g.gain.linearRampToValueAtTime(0, t + 0.1);
         return { osc: o, duration: 0.1 };
     },
-
     // レーザー発射音
     laser: (ctx, t, g) => {
         const o = ctx.createOscillator();
@@ -53,8 +61,7 @@ const SE_LIBRARY = {
         g.gain.linearRampToValueAtTime(0, t + 0.15);
         return { osc: o, duration: 0.15 };
     },
-
-    // 警告音（ボス出現時）
+    // 警告音
     warning: (ctx, t, g) => {
         const repeatCount = 6;
         const interval = (typeof WARNING_SOUND_INTERVAL !== 'undefined' ? WARNING_SOUND_INTERVAL : 60) / 60;
@@ -77,7 +84,6 @@ const SE_LIBRARY = {
         }
         return { osc: null, duration: (repeatCount * interval) + duration };
     },
-
     // 爆発音（小）
     explode_small: (ctx, t, g, noise) => {
         if (!noise) return { osc: null, duration: 0 };
@@ -93,7 +99,6 @@ const SE_LIBRARY = {
         n.start(t); n.stop(t + 0.4);
         return { osc: null, duration: 0.4 };
     },
-
     // 爆発音（中）
     explode_medium: (ctx, t, g, noise) => {
         if (!noise) return { osc: null, duration: 0 };
@@ -110,7 +115,6 @@ const SE_LIBRARY = {
         n.start(t); n.stop(t + dur);
         return { osc: null, duration: dur };
     },
-
     // 爆発音（大）
     explode_large: (ctx, t, g, noise) => {
         if (!noise) return { osc: null, duration: 0 };
@@ -150,7 +154,6 @@ const SE_LIBRARY = {
         o.start(finalBurstTime); o.stop(finalBurstTime + 3.5);
         return { osc: null, duration: totalDur };
     },
-
     // ターゲット捕捉
     target_ping: (ctx, t, g) => {
         const o = ctx.createOscillator();
@@ -160,7 +163,6 @@ const SE_LIBRARY = {
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
         return { osc: o, duration: 0.05 };
     },
-
     // LAUNCH音
     launch: (ctx, t, g, noise) => {
         const dur = 1.5;
@@ -197,7 +199,6 @@ const SE_LIBRARY = {
         g.gain.exponentialRampToValueAtTime(0.005, t + dur);
         return { osc: null, duration: dur };
     },
-
     // パワーアップ
     powerup: (ctx, t, g) => {
         const o = ctx.createOscillator();
@@ -208,7 +209,6 @@ const SE_LIBRARY = {
         g.gain.linearRampToValueAtTime(0, t + 0.2);
         return { osc: o, duration: 0.2 };
     },
-
     // ダメージ
     damage: (ctx, t, g) => {
         const o = ctx.createOscillator();
@@ -219,7 +219,6 @@ const SE_LIBRARY = {
         g.gain.linearRampToValueAtTime(0, t + 0.2);
         return { osc: o, duration: 0.2 };
     },
-
     // 無敵
     invincible: (ctx, t, g) => {
         const o = ctx.createOscillator();
@@ -230,7 +229,6 @@ const SE_LIBRARY = {
         g.gain.linearRampToValueAtTime(0, t + 0.5);
         return { osc: o, duration: 0.5 };
     },
-
     // ボス被弾
     boss_hit: (ctx, t, g) => {
         const dur = 0.18;
@@ -266,7 +264,6 @@ const SE_LIBRARY = {
         subOsc.start(t); subOsc.stop(t + dur);
         return { osc: null, duration: dur };
     },
-
     // 敵被弾
     enemy_hit: (ctx, t, g, noise) => {
         if (!noise) return { osc: null, duration: 0 };
@@ -296,6 +293,7 @@ const AudioSys = {
     activeNodes: [],
     bgmFadeInterval: null,
     lastPlayed: {}, // 連打防止用
+    isUnlocking: false, // アンロック重複防止フラグ
 
     async reset() {
         this.stopBgmInterval();
@@ -335,17 +333,24 @@ const AudioSys = {
         }
     },
 
-    // ★負荷対策：すでに動いていれば何もしない
+    // iOS対策：サイレントアンロック（連打防止付き）
     _unlockAudio() {
-        if (!this.ctx) return;
-        if (this.ctx.state === 'running') return; // 重複実行防止
+        if (!this.ctx || this.isUnlocking) return;
+        if (this.ctx.state === 'running') return;
+
+        this.isUnlocking = true;
 
         const buffer = this.ctx.createBuffer(1, 1, 22050);
         const source = this.ctx.createBufferSource();
         source.buffer = buffer;
         source.connect(this.ctx.destination);
         source.start(0);
-        this.ctx.resume().catch(e => { });
+
+        this.ctx.resume().then(() => {
+            this.isUnlocking = false;
+        }).catch(() => {
+            this.isUnlocking = false;
+        });
     },
 
     async resume() {
@@ -366,7 +371,18 @@ const AudioSys = {
         this.noiseBuffer = buf;
     },
 
+    // ★重要修正：管理ノード登録処理（軽量化）
     registerNode(type, node, durationMs) {
+        // 撃ちっぱなしSE（ショット、爆発など）は配列管理せず、
+        // 単純なタイマーで切断するだけにする（これが負荷対策の要）
+        if (ONE_SHOT_SE.includes(type)) {
+            setTimeout(() => {
+                try { node.disconnect(); } catch (e) { }
+            }, durationMs);
+            return;
+        }
+
+        // 警告音など、途中で止める必要がある音だけ配列で管理する
         const nodeRef = { type, node };
         this.activeNodes.push(nodeRef);
         setTimeout(() => {
@@ -378,7 +394,6 @@ const AudioSys = {
         }, durationMs);
     },
 
-    // ★重要修正：async/await を削除して即時実行させる（SE遅延・不発防止）
     playSE(type) {
         if (!this.ctx || !SE_LIBRARY[type]) return;
 
@@ -387,12 +402,13 @@ const AudioSys = {
         if (this.lastPlayed[type] && now - this.lastPlayed[type] < 0.05) return;
         this.lastPlayed[type] = now;
 
-        // ★停止中なら再開を試みるが、待たずに処理を進める
+        // ★停止中なら再開を試みる（待たない）
         if (this.ctx.state !== 'running') {
-            this.ctx.resume().catch(()=>{});
+            this.ctx.resume().catch(() => { });
         }
 
-        const t = this.ctx.currentTime;
+        // 時間が取得できない（停止中）場合は現在時刻0として扱う安全策
+        const t = this.ctx.currentTime; 
         const g = this.ctx.createGain();
         g.connect(this.ctx.destination);
 
@@ -403,16 +419,20 @@ const AudioSys = {
                 effect.osc.start(t);
                 effect.osc.stop(t + effect.duration);
             }
+            // クリーンアップ時間を計算して登録
             const cleanupTime = Math.max(2000, effect.duration * 1000 + 500);
             this.registerNode(type, g, cleanupTime);
         } catch (e) {
-            // エラーは握りつぶしてゲームを止めない
+            // エラー時は何もしない
         }
     },
 
+    // 特定の種類の音を強制停止（警告音停止用）
     stopSE(targetType = null) {
         if (!this.ctx) return;
         const t = this.ctx.currentTime;
+        
+        // 配列管理されているノードだけを対象にする
         this.activeNodes = this.activeNodes.filter(item => {
             if (!targetType || item.type === targetType) {
                 this.fadeAndDisconnect(item.node, t);
