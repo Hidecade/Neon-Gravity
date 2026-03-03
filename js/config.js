@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-const GAME_VERSION = "1.0.8";
+const GAME_VERSION = "1.0.9";
 
 // --- システム設定 ---
 const G_SCALE = 0.7;          // 全体の描画スケール（標準の70%）
