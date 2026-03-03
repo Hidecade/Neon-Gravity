@@ -9170,7 +9170,7 @@ function returnToTitleFromTraining() {
 }
 
 
-// ▼▼▼ 修正版：テスト用リセット有効化 & マイルド表現 & 5秒消去 ▼▼▼
+// テスト用リセット有効化 & マイルド表現 & 5秒消去 ▼▼▼
 function checkIOSInstallPrompt() {
     // ★テスト用：表示確認したい場合はこの行のコメントアウト(//)を外してください
     // localStorage.removeItem('neonGravity_install_closed');
@@ -9290,27 +9290,9 @@ window.closeInstallPrompt = function () {
 
 // 起動時にチェックを実行
 checkIOSInstallPrompt();
-// ▲▲▲ ここまで ▲▲▲
+
 
 // （既存のコード）
 init();
 window.refreshMenuButtons();
 loop();
-
-
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('SW registered!', reg))
-            .catch(err => console.log('SW failed', err));
-    });
-}
-
-
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('SW registered!', reg))
-            .catch(err => console.log('SW failed', err));
-    });
-}
