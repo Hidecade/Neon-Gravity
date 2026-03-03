@@ -92,6 +92,7 @@ let scorePopups = [];   // スコア上昇ポップアップ
 let rings = [];         // 衝撃波リングエフェクト
 let gridPoints = [];    // 背景グリッド点
 let stars = [];         // 背景の星
+let nebulae = []; // 星雲の配列
 
 // ---------------------------------------------------------
 // 5. ボス（BOSS）管理変数
@@ -567,6 +568,7 @@ function resize() {
 
     initGrid();
     initStars();
+    initNebulae();
 }
 
 function initGrid() {
@@ -583,6 +585,33 @@ function initStars() {
     stars = [];
     for (let i = 0; i < 200; i++) {
         stars.push({ x: Math.random() * worldSize, y: Math.random() * worldSize, size: Math.random() * 2, brightness: Math.random(), parallax: 0.2 + Math.random() * 0.3 });
+    }
+}
+
+function initNebulae() {
+    nebulae = [];
+    // ネオンカラーの星雲色
+    const colors = [
+        { r: 0, g: 100, b: 255 }, // シアン・ブルー系
+        { r: 100, g: 0, b: 255 }, // パープル系
+        { r: 255, g: 0, b: 150 }, // マゼンタ・ピンク系
+        { r: 0, g: 255, b: 150 }  // エメラルド系
+    ];
+
+    // 星雲の数を生成
+    for (let i = 0; i < 8; i++) {
+        nebulae.push({
+            // 画面サイズ（width/height）ではなく worldSize 全体に散らす
+            x: Math.random() * worldSize,
+            y: Math.random() * worldSize,
+            // 半径をかなり大きくする
+            radius: 100 + Math.random() * 200,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            // 非常に薄くして重ねる
+            alpha: 0.10 + Math.random() * 0.10,
+            // 星よりさらに遅く動かす（遠景感）
+            parallax: 0.05 + Math.random() * 0.05
+        });
     }
 }
 
@@ -2456,7 +2485,56 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             state: 'orbit' // orbit: 周回, scan: 照準, fire: 発射
         });
         spawnedCount++;
+    } else if (type === 'island') {
+        const islandId = Date.now() + Math.random(); // 親子関係紐付け用ID
+        const islandScale = 2.0 + Math.random() * 1.0;
+
+        // 1. 大陸本体（動かない障害物）
+        enemies.push({
+            x: x,
+            y: y,
+            vx: 0,
+            vy: 0,
+            hp: 50 + (hpMag * 5),
+            speed: 0,
+            color: '#444', // 岩のようなダークグレー
+            type: 'island',
+            islandId: islandId,
+            scale: islandScale,
+            angle: Math.random() * Math.PI * 2, // 固定角度
+            drop: 'crystal',
+            rotSpeed: 0 // 回転しない
+        });
+        spawnedCount++;
+
+        // 2. その上の砲台（3〜5個程度ランダムに配置）
+        const turretCount = 3 + Math.floor(Math.random() * 3);
+        // 大陸の半径（概算）
+        const islandRadius = 40 * islandScale;
+
+        for (let i = 0; i < turretCount; i++) {
+            // 大陸の上にランダム配置（中心から少し離す）
+            const offsetAng = (Math.PI * 2 / turretCount) * i + (Math.random() * 0.5);
+            const dist = islandRadius * (0.4 + Math.random() * 0.4);
+
+            enemies.push({
+                x: x + Math.cos(offsetAng) * dist,
+                y: y + Math.sin(offsetAng) * dist,
+                vx: 0,
+                vy: 0,
+                hp: 5 + hpMag,
+                speed: 0,
+                color: '#f00',
+                type: 'turret',
+                parentIslandId: islandId, // 親の大陸が消えたら自分も消える用
+                angle: 0, // 砲身の向き
+                fireTimer: Math.random() * 120,
+                scale: 0.8,
+                drop: 'none'
+            });
+        }
     }
+    // --- (追加ここまで) ---
 }
 
 
@@ -2618,12 +2696,17 @@ function updateEnemies() {
                 case 'eclipse': updateEclipseAI(e); break;
                 case 'jellyfish': updateJellyfishAI(e); break;
                 case 'sentinel': updateSentinelAI(e); break;
+
+                case 'island': break;
+                case 'turret': updateTurretAI(e); break;
+
                 case 'fighter': updateFighterJetAI(e); break;
                 case 'boss':
                     if (stage === 9) updateBossSpecialAI(e);
                     else updateBossAI(e);
                     break;
                 case 'battleship': updateBattleshipAI(e); break;
+
             }
 
             // 画面外の敵が弾を撃った場合、無効化する
@@ -2862,6 +2945,10 @@ function checkPlayerCollision(e) {
         radius = ENEMY_HITBOX.DRAGON * G_SCALE;
     } else if (e.type === 'hunter') {
         radius = ENEMY_HITBOX.HUNTER * G_SCALE;
+    } else if (e.type === 'island') {
+        radius = ENEMY_HITBOX.ISLAND * e.scale * G_SCALE;   // 大陸はスケールが大きいので scale を掛ける
+    } else if (e.type === 'turret') {
+        radius = ENEMY_HITBOX.TURRET * G_SCALE;
     } else if (e.type === 'boss') {
         radius = 45 * G_SCALE; // 通常ボス
     } else if (e.type === 'battleship') {
@@ -4021,6 +4108,57 @@ function updateSentinelAI(e) {
     e.y += e.vy * gameSpeed;
 }
 
+function updateTurretAI(e) {
+    // 1. 親大陸が生きているかチェック
+    const parent = enemies.find(other => other.islandId === e.parentIslandId && other.hp > 0);
+
+    // 親がいなくなったら（破壊されたら）、砲台も連鎖爆発して消滅
+    if (!parent) {
+        e.hp = 0;
+        e.isDead = true; // 即死フラグ
+        // 誘爆エフェクト（スコアなしで消す場合はここでエフェクトだけ出す）
+        if (typeof createExplosion === 'function') {
+            createExplosion(e.x, e.y, '#f00', 5);
+        }
+        return;
+    }
+
+    // 2. 自機を狙う（旋回）
+    const dx = player.x - e.x;
+    const dy = player.y - e.y;
+    // 距離チェック（画面外なら何もしない）
+    const dist = Math.hypot(dx, dy);
+    if (dist > 800) return;
+
+    const targetAngle = Math.atan2(dy, dx);
+
+    // ゆっくり砲身を向ける
+    let diff = targetAngle - e.angle;
+    while (diff <= -Math.PI) diff += Math.PI * 2;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    e.angle += diff * 0.1 * gameSpeed;
+
+    // 3. 射撃
+    e.fireTimer += gameSpeed;
+    // 画面内にいるときだけ撃つ
+    if (e.fireTimer > 120 && dist < 500) {
+        e.fireTimer = 0;
+        // 弾速
+        const bSpd = 6 * SPEED_SCALE;
+
+        // 敵弾発射
+        enemyBullets.push({
+            x: e.x,
+            y: e.y,
+            vx: Math.cos(e.angle) * bSpd,
+            vy: Math.sin(e.angle) * bSpd,
+            life: 180,
+            color: '#f80' // オレンジ色の弾
+        });
+
+        if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
+    }
+}
 
 // ==========================================
 // BOSS
@@ -5417,6 +5555,7 @@ function isOnScreen(obj, margin = 50) {
     );
 }
 
+
 function drawBackground() {
     // --- 1. 背景のベース色 ---
     ctx.save();
@@ -5424,19 +5563,74 @@ function drawBackground() {
     ctx.fillStyle = '#050505';
     ctx.fillRect(0, 0, width, height);
 
-    // --- 2. 遠景：巨大な背景グリッド ---
+    // --- 2. 【修正】星雲の描画 ---
+    if (typeof nebulae !== 'undefined') {
+        nebulae.forEach(n => {
+            // ★修正ポイント1: worldSize ではなく width, height (画面サイズ) で剰余を取る
+            // これにより、必ず画面内のどこかに座標が収まります
+
+            // 大きな数を足してマイナスになるのを防ぐ
+            const bgOffset = worldSize * 100;
+
+            let nx = (n.x - camera.x * n.parallax + bgOffset) % width;
+            let ny = (n.y - camera.y * n.parallax + bgOffset) % height;
+
+            // JSの % 演算子は負の値を返すことがあるため、念のため正の値にする
+            if (nx < 0) nx += width;
+            if (ny < 0) ny += height;
+
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter'; // 重なった部分を明るく
+
+            // グラデーションの作成
+            const grad = ctx.createRadialGradient(nx, ny, 0, nx, ny, n.radius);
+
+            // 色と透明度の設定
+            grad.addColorStop(0, `rgba(${n.color.r}, ${n.color.g}, ${n.color.b}, ${n.alpha})`);
+            grad.addColorStop(0.5, `rgba(${n.color.r}, ${n.color.g}, ${n.color.b}, ${n.alpha * 0.4})`);
+            grad.addColorStop(1, 'rgba(0,0,0,0)'); // 外側は透明
+
+            ctx.fillStyle = grad;
+
+            // 描画実行
+            ctx.fillRect(nx - n.radius, ny - n.radius, n.radius * 2, n.radius * 2);
+
+            // ★(オプション) 画面端での切れ目を防ぐための「折り返し描画」
+            // 星雲が巨大なので、画面端で見切れるのを防ぐために反対側にも描画しておくと自然になります
+            // 右端にはみ出ているなら左端にも描く、など
+            if (nx < n.radius) {
+                ctx.translate(width, 0);
+                ctx.fillRect(nx - n.radius, ny - n.radius, n.radius * 2, n.radius * 2);
+                ctx.translate(-width, 0);
+            }
+            if (nx > width - n.radius) {
+                ctx.translate(-width, 0);
+                ctx.fillRect(nx - n.radius, ny - n.radius, n.radius * 2, n.radius * 2);
+                ctx.translate(width, 0);
+            }
+            if (ny < n.radius) {
+                ctx.translate(0, height);
+                ctx.fillRect(nx - n.radius, ny - n.radius, n.radius * 2, n.radius * 2);
+                ctx.translate(0, -height);
+            }
+            if (ny > height - n.radius) {
+                ctx.translate(0, -height);
+                ctx.fillRect(nx - n.radius, ny - n.radius, n.radius * 2, n.radius * 2);
+                ctx.translate(0, height);
+            }
+
+            ctx.restore();
+        });
+    }
+
+    // --- 3. 遠景：巨大な背景グリッド ---
     ctx.strokeStyle = 'rgba(0, 255, 255, 0.03)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-
     const bigGridSize = 200;
-    // ★変更：巨大グリッドの動きも少し速くしてスピード感アップ
-    // 0.1 -> 0.2 に変更
-    const parallax = 0.2;
-
-    const offX = (camera.x * parallax) % bigGridSize;
-    const offY = (camera.y * parallax) % bigGridSize;
-
+    const parallaxGrid = 0.2;
+    const offX = (camera.x * parallaxGrid) % bigGridSize;
+    const offY = (camera.y * parallaxGrid) % bigGridSize;
     for (let x = -offX; x < width; x += bigGridSize) {
         ctx.moveTo(x, 0); ctx.lineTo(x, height);
     }
@@ -5445,25 +5639,18 @@ function drawBackground() {
     }
     ctx.stroke();
 
-    // --- 3. 遠景：星空（無限スクロール＆強い視差） ---
+    // --- 4. 遠景：星空（無限スクロール＆強い視差） ---
     stars.forEach(s => {
-        // ★重要変更点★
-        // s.parallax（星の奥行き値: 0.3〜1.0）を利用して移動速度に差をつける。
-        // 手前の星(1.0)ほど速く動き、奥の星(0.3)ほどゆっくり動く。
-        // 以前の係数 0.2 を 0.7 に変更し、全体の動きを大きく強調。
         const moveFactor = s.parallax * 0.4;
-
         const starX = (s.x - camera.x * moveFactor + worldSize * 10) % width;
         const starY = (s.y - camera.y * moveFactor + worldSize * 10) % height;
 
-        // 画面外に出た星が反対側からスムーズに出てくるように調整
         const finalX = (starX < 0) ? starX + width : starX;
         const finalY = (starY < 0) ? starY + height : starY;
 
         ctx.fillStyle = '#fff';
         ctx.globalAlpha = s.brightness * 0.8;
         ctx.beginPath();
-        // 手前の速い星は少し大きく描画して迫力を出す
         const sizeBoost = s.parallax > 0.8 ? 1.2 : 1.0;
         ctx.arc(finalX, finalY, s.size * 0.8 * sizeBoost, 0, Math.PI * 2);
         ctx.fill();
@@ -5472,11 +5659,10 @@ function drawBackground() {
     ctx.restore();
 
     // ==========================================
-    // ここから下は「エリア内」の描画（変更なし）
+    // ここから下は「エリア内」の描画（メイングリッド）
     // ==========================================
-    ctx.globalAlpha = 1.0;
-
     ctx.save();
+    // ワールド境界でクリップ（境界の外には描画しない）
     ctx.beginPath();
     ctx.rect(WALL_MARGIN, WALL_MARGIN, worldSize - WALL_MARGIN * 2, worldSize - WALL_MARGIN * 2);
     ctx.clip();
@@ -5500,8 +5686,14 @@ function drawBackground() {
         for (let j = startY; j <= endY; j++) {
             const p = gridPoints[i][j];
             if (!p) continue;
-            if (i > startX && gridPoints[i - 1][j]) { ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y); ctx.lineTo(p.x, p.y); }
-            if (j > startY && gridPoints[i][j - 1]) { ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y); ctx.lineTo(p.x, p.y); }
+            if (i > startX && gridPoints[i - 1][j]) {
+                ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y);
+                ctx.lineTo(p.x, p.y);
+            }
+            if (j > startY && gridPoints[i][j - 1]) {
+                ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y);
+                ctx.lineTo(p.x, p.y);
+            }
         }
     }
     ctx.stroke();
@@ -5574,6 +5766,10 @@ function drawEnemies() {
         else if (e.type === 'eclipse') drawEclipseEnemy(ctx, e);
         else if (e.type === 'jellyfish') drawJellyfishEnemy(ctx, e);
         else if (e.type === 'sentinel') drawSentinelEnemy(ctx, e);
+
+        else if (e.type === 'island') drawIslandEnemy(ctx, e);
+        else if (e.type === 'turret') drawTurretEnemy(ctx, e);
+
         else if (e.type === 'fighter') drawFighterJet(ctx, e);
 
         else if (e.type === 'boss') drawBossEnemy(ctx, e);
@@ -7493,6 +7689,99 @@ function drawSentinelEnemy(ctx, e) {
     ctx.beginPath();
     ctx.arc(5, 0, 3, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.restore();
+}
+
+function drawIslandEnemy(ctx, e) {
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.rotate(e.angle);
+    const s = e.scale * G_SCALE;
+    ctx.scale(s, s);
+
+    // 1. 岩の本体
+    ctx.fillStyle = e.color || '#444';
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    // 8角形の岩のような形
+    for (let i = 0; i < 8; i++) {
+        // 少し凸凹させる
+        const r = 40 + Math.sin(i * 132.5) * 5;
+        const ang = (Math.PI * 2 / 8) * i;
+        const px = Math.cos(ang) * r;
+        const py = Math.sin(ang) * r;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 2. 縞模様（スターフォース風ストライプ）
+    ctx.globalCompositeOperation = 'source-atop'; // 岩の中にだけ描画
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)'; // 暗い縞
+    ctx.lineWidth = 3;
+
+    const size = 45;
+    for (let i = -size; i < size; i += 10) {
+        ctx.beginPath();
+        // 斜めのストライプ
+        ctx.moveTo(-size, i);
+        ctx.lineTo(size, i);
+        ctx.stroke();
+    }
+
+    // ダメージ時の点滅
+    if (e.flashTimer > 0) {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fill();
+        e.flashTimer--;
+    }
+
+    ctx.restore();
+}
+
+function drawTurretEnemy(ctx, e) {
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.rotate(e.angle); // 砲身の向き
+    const s = e.scale * G_SCALE;
+    ctx.scale(s, s);
+
+    // 台座（回転しない四角）... を描くには逆回転が必要だが
+    // ここではシンプルに砲台全体が回るデザインにする
+
+    // 1. 砲身
+    ctx.fillStyle = '#800'; // 暗い赤
+    ctx.fillRect(0, -4, 15, 8); // 長方形の砲身
+
+    // 2. 本体ドーム
+    ctx.fillStyle = '#f00'; // 明るい赤
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. コア（光る点）
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 枠線
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // ダメージ点滅
+    if (e.flashTimer > 0) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.fill();
+        e.flashTimer--;
+    }
 
     ctx.restore();
 }
