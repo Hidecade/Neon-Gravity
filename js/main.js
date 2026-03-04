@@ -595,7 +595,7 @@ function initNebulae() {
     const spaceDeep = { r: 20, g: 0, b: 60 };
 
     for (let i = 0; i < 6; i++) {
-        const radius = 120 + Math.random() * 250;
+        const radius = 120 + Math.random() * 200;
         const alpha = 0.03 + Math.random() * 0.06;
 
         // --- 色の決定（既存ロジック維持） ---
