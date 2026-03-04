@@ -5640,37 +5640,28 @@ function drawBackground() {
     ctx.fillStyle = '#050505';
     ctx.fillRect(0, 0, width, height);
 
-    // --- 2. 【修正・高速化版】星雲の描画 ---
+    // --- 2. 星雲の描画（drawBackground内） ---
     if (typeof nebulae !== 'undefined') {
         nebulae.forEach(n => {
-            // 座標計算（前回修正した、画面サイズ基準のものを使用）
-            const bgOffset = worldSize * 100;
-            let nx = (n.x - camera.x * n.parallax + bgOffset) % width;
-            let ny = (n.y - camera.y * n.parallax + bgOffset) % height;
+            // ★ポイント：camera.x に parallax（移動倍率）を掛け、
+            // その値をマイナスすることで自機の移動と「逆」に流れるようにします。
+            // 画面サイズ(width)でループさせることで無限背景にします。
 
-            if (nx < 0) nx += width;
-            if (ny < 0) ny += height;
+            const offset = 10000; // マイナス値防止用の大きな下地
+            let nx = (n.x - camera.x * n.parallax + offset) % width;
+            let ny = (n.y - camera.y * n.parallax + offset) % height;
 
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
 
-            // ★ここを変更：毎回グラデーションを作らず、作っておいた画像(n.image)を描画する
-            // 画像の中心を nx, ny に合わせるため、半径分引く
+            // 星雲を描画
             ctx.drawImage(n.image, nx - n.radius, ny - n.radius);
 
-            // 折り返し描画（画面端対策）
-            if (nx < n.radius) {
-                ctx.drawImage(n.image, nx - n.radius + width, ny - n.radius);
-            }
-            if (nx > width - n.radius) {
-                ctx.drawImage(n.image, nx - n.radius - width, ny - n.radius);
-            }
-            if (ny < n.radius) {
-                ctx.drawImage(n.image, nx - n.radius, ny - n.radius + height);
-            }
-            if (ny > height - n.radius) {
-                ctx.drawImage(n.image, nx - n.radius, ny - n.radius - height);
-            }
+            // 画面端の継ぎ目対策（上下左右に折り返し描画）
+            if (nx < n.radius) ctx.drawImage(n.image, nx - n.radius + width, ny - n.radius);
+            if (nx > width - n.radius) ctx.drawImage(n.image, nx - n.radius - width, ny - n.radius);
+            if (ny < n.radius) ctx.drawImage(n.image, nx - n.radius, ny - n.radius + height);
+            if (ny > height - n.radius) ctx.drawImage(n.image, nx - n.radius, ny - n.radius - height);
 
             ctx.restore();
         });
