@@ -5706,7 +5706,7 @@ function drawBackground() {
             // ★透明度の動的な決定
             // 平常時は 0.05（うっすら）、ひずみが大きいほど 0.8（くっきり）に近づく
             // 閾値（300）は歪みの感度に合わせて調整してください
-            const gridAlpha = 0.05 + Math.min(0.1, distSq / 400);
+            const gridAlpha = 0.05 + Math.min(0.1, distSq / 300);
 
             ctx.globalAlpha = gridAlpha;
 
