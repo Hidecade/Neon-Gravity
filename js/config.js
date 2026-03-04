@@ -600,7 +600,7 @@ function initNebulae() {
         let r, g, b;
         const variant = Math.random();
 
-        if (variant < 0.7) {
+        if (variant < 0.5) {
             // 【パターンA：70%】メインカラー（同系色のバリエーション）
             // 明るさを±40の範囲で揺らす
             const v = (Math.random() - 0.5) * 80;
@@ -608,7 +608,7 @@ function initNebulae() {
             g = base.g + v;
             b = base.b + v;
         }
-        else if (variant < 0.9) {
+        else if (variant < 0.8) {
             // 【パターンB：20%】色相シフト（少し違う色を混ぜる）
             // RGBのうち、一番弱い色を少し強調して、色相を複雑にする
             r = base.r + (base.r < 128 ? 60 : -40);
