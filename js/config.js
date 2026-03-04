@@ -109,7 +109,7 @@ const DEFAULT_ENEMY_SCORE = ENEMY_SCORES.default;
 
 // --- 出現パターン設定 ---
 const STAGE_ENEMIES = {
-    1: ['island', 'triangle', 'triangle', 'dragon'],
+    1: ['triangle', 'triangle', 'triangle', 'dragon'],
     2: ['triangle', 'tadpole', 'tadpole', 'dragon'],
     3: ['bubble', 'bubble', 'bubble', 'jellyfish', 'spark_jelly'],
     4: ['phantom', 'triangle', 'tadpole', 'asteroid'],
