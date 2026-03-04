@@ -592,63 +592,47 @@ function initNebulae() {
     nebulae = [];
     const themeHex = STAGE_THEMES[stage] || '#00bbff';
     const base = hexToRgb(themeHex);
+    const spaceDeep = { r: 20, g: 0, b: 60 };
 
     for (let i = 0; i < 6; i++) {
-        const radius = 150 + Math.random() * 300;
-        const alpha = 0.05 + Math.random() * 0.06;
+        const radius = 120 + Math.random() * 300;
+        const alpha = 0.05 + Math.random() * 0.07;
 
+        // --- 色の決定（既存ロジック維持） ---
         let r, g, b;
         const variant = Math.random();
-
-        if (variant < 0.5) {
-            // 【パターンA：70%】メインカラー（同系色のバリエーション）
-            // 明るさを±40の範囲で揺らす
-            const v = (Math.random() - 0.5) * 80;
-            r = base.r + v;
-            g = base.g + v;
-            b = base.b + v;
+        if (variant < 0.6) {
+            const variance = (Math.random() - 0.5) * 60;
+            r = base.r + variance; g = base.g + variance; b = base.b + variance;
+        } else if (variant < 0.8) {
+            r = (base.r + spaceDeep.r) / 2; g = (base.g + spaceDeep.g) / 2; b = (base.b + spaceDeep.b) / 2;
+        } else {
+            r = Math.min(255, base.r + 100); g = Math.min(255, base.g + 100); b = Math.min(255, base.b + 100);
         }
-        else if (variant < 0.8) {
-            // 【パターンB：20%】色相シフト（少し違う色を混ぜる）
-            // RGBのうち、一番弱い色を少し強調して、色相を複雑にする
-            r = base.r + (base.r < 128 ? 60 : -40);
-            g = base.g + (base.g < 128 ? 60 : -40);
-            b = base.b + (base.b < 128 ? 60 : -40);
-        }
-        else {
-            // 【パターンC：10%】ハイライトアクセント（青白い光や対照的な色）
-            // どのステージでも共通の「星の輝き」成分として、青白い光を混ぜる
-            r = 180 + Math.random() * 75;
-            g = 220 + Math.random() * 35;
-            b = 255;
-        }
-
         const color = {
             r: Math.floor(Math.max(0, Math.min(255, r))),
             g: Math.floor(Math.max(0, Math.min(255, g))),
             b: Math.floor(Math.max(0, Math.min(255, b)))
         };
 
-        // --- キャッシュ用のCanvas作成処理（前回と同様） ---
         const cacheCanvas = document.createElement('canvas');
         const size = Math.ceil(radius * 2);
         cacheCanvas.width = size; cacheCanvas.height = size;
         const cacheCtx = cacheCanvas.getContext('2d');
         const grad = cacheCtx.createRadialGradient(radius, radius, 0, radius, radius, radius);
-
         grad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`);
-        grad.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.3})`);
+        grad.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.4})`);
         grad.addColorStop(1, 'rgba(0,0,0,0)');
-
         cacheCtx.fillStyle = grad;
         cacheCtx.fillRect(0, 0, size, size);
 
         nebulae.push({
-            x: Math.random() * width,
+            x: Math.random() * width, // 画面内を基準に初期配置
             y: Math.random() * height,
             radius: radius,
             image: cacheCanvas,
-            // 自機の動きに合わせた視差設定 (0.3 ~ 0.6)
+            // ★ここを変更：0.05〜0.1 だったのを 0.3〜0.6 程度に引き上げ
+            // 数値が大きいほど自機の動きに対して大きく逆方向に動きます
             parallax: 0.3 + Math.random() * 0.3
         });
     }
@@ -8511,8 +8495,8 @@ function drawFighterJet(ctx, e) {
 function drawNormalBullet(ctx, eb) {
     ctx.rotate(frame * 0.15);
 
-    const bulletColor = (Math.floor(frame / 5) % 2 === 0) ? '#ff0000' : '#ff8800';
-    const size = 7 * G_SCALE;
+    const bulletColor = '#ff8800';
+    const size = 8 * G_SCALE;
 
 
     ctx.fillStyle = bulletColor;
@@ -8526,9 +8510,9 @@ function drawNormalBullet(ctx, eb) {
     ctx.fill();
 
     // 中心を白くして発光感を出す
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = (Math.floor(frame / 10) % 2 === 0) ? '#ff0000' : '#ff8800';
     ctx.beginPath();
-    ctx.arc(0, 0, size * 0.4, 0, Math.PI * 2);
+    ctx.arc(0, 0, size * 0.5, 0, Math.PI * 2);
     ctx.fill();
 }
 
