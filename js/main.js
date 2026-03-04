@@ -6671,8 +6671,8 @@ function drawDragonEnemy(ctx, e) {
         const w = 12 * sizeMod;
         const h = 18 * sizeMod;
 
-        // 装甲の塗り
-        ctx.fillStyle = 'rgba(20, 0, 0, 0.9)';
+        // ★変更：装甲の塗り（0.9 → 0.4 に透明度を下げ、背景が見えるように）
+        ctx.fillStyle = 'rgba(20, 0, 0, 0.4)';
         ctx.beginPath();
         ctx.moveTo(w, -h / 2);
         ctx.lineTo(w, h / 2);
@@ -6685,7 +6685,7 @@ function drawDragonEnemy(ctx, e) {
         ctx.strokeStyle = coreColor;
         ctx.stroke();
 
-        // フィン（線を一本のパスにまとめて描画命令を削減）
+        // フィン
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(-w * 0.5, -h / 3); ctx.lineTo(w, -h / 3);
@@ -6701,8 +6701,8 @@ function drawDragonEnemy(ctx, e) {
     ctx.rotate(e.angle);
     ctx.scale(dragonScale, dragonScale);
 
-    // メインヘッド
-    ctx.fillStyle = '#300';
+    // ★変更：メインヘッドの塗り（#300 固定色から、透明度のある rgba に変更）
+    ctx.fillStyle = 'rgba(48, 0, 0, 0.5)';
     ctx.beginPath();
     ctx.moveTo(25, 0);
     ctx.lineTo(-10, -12);
@@ -6715,16 +6715,13 @@ function drawDragonEnemy(ctx, e) {
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // --- 3. 変更：センサーアイ（他の敵と統一した円形グローコア） ---
+    // --- 3. センサーアイ（グローコア） ---
     ctx.save();
-    // 目の位置へ移動
     ctx.translate(10, 0);
     ctx.globalCompositeOperation = 'lighter';
 
-    // 脈動計算
     const pulse = 0.8 + Math.sin(frame * 0.15) * 0.2;
 
-    // レイヤー1：外側の強い輝き（オレンジ）
     ctx.fillStyle = '#ff4400';
     ctx.shadowBlur = 15;
     ctx.shadowColor = '#ff4400';
@@ -6732,14 +6729,12 @@ function drawDragonEnemy(ctx, e) {
     ctx.arc(0, 0, 5 * pulse, 0, Math.PI * 2);
     ctx.fill();
 
-    // レイヤー2：中間の輝き（黄色）
-    ctx.shadowBlur = 0; // 重くなるので内側はぼかしなし
+    ctx.shadowBlur = 0;
     ctx.fillStyle = '#ffaa00';
     ctx.beginPath();
     ctx.arc(0, 0, 3 * pulse, 0, Math.PI * 2);
     ctx.fill();
 
-    // レイヤー3：中心核（白）
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(0, 0, 1.5, 0, Math.PI * 2);
