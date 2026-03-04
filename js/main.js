@@ -664,7 +664,7 @@ function initNebulae() {
             y: Math.random() * worldSize,
             radius: radius,
             image: cacheCanvas,
-            parallax: 0.05 + Math.random() * 0.05
+            parallax: 0.3 + Math.random() * 0.3
         });
     }
 }
@@ -790,6 +790,9 @@ function startGame() {
     ui.pauseBtn.style.display = 'flex';
 
     gameState = 'PLAYING';
+
+    initNebulae();
+
     startStage();
 }
 
