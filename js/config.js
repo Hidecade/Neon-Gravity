@@ -228,7 +228,7 @@ const STAGE_TITLES = {
 // ステージごとのテーマカラー定義
 const STAGE_THEMES = {
     1: '#00bbff', // Cyan (Default)
-    2: '#ffffff', // White
+    2: '#f8f8ff', // White
     3: '#3355ff', // Deep Blue
     4: '#aa00ff', // Purple
     5: '#ffaa00', // Gold
