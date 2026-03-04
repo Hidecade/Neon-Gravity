@@ -595,16 +595,16 @@ function initNebulae() {
     const spaceDeep = { r: 20, g: 0, b: 60 };
 
     for (let i = 0; i < 6; i++) {
-        const radius = 120 + Math.random() * 300;
-        const alpha = 0.04 + Math.random() * 0.06;
+        const radius = 120 + Math.random() * 250;
+        const alpha = 0.03 + Math.random() * 0.06;
 
         // --- 色の決定（既存ロジック維持） ---
         let r, g, b;
         const variant = Math.random();
-        if (variant < 0.6) {
+        if (variant < 0.5) {
             const variance = (Math.random() - 0.5) * 60;
             r = base.r + variance; g = base.g + variance; b = base.b + variance;
-        } else if (variant < 0.8) {
+        } else if (variant < 0.75) {
             r = (base.r + spaceDeep.r) / 2; g = (base.g + spaceDeep.g) / 2; b = (base.b + spaceDeep.b) / 2;
         } else {
             r = Math.min(255, base.r + 100); g = Math.min(255, base.g + 100); b = Math.min(255, base.b + 100);
