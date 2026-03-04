@@ -593,22 +593,50 @@ function initNebulae() {
 
     // 現在のステージのテーマカラーを取得（なければデフォルトのシアン）
     const themeHex = STAGE_THEMES[stage] || '#00bbff';
-    const baseRgb = hexToRgb(themeHex);
+    const base = hexToRgb(themeHex);
+
+    // バリエーション用：宇宙っぽいベース色（深い青紫）
+    // これを少し混ぜることで、どんなステージ色でも「宇宙感」を残す
+    const spaceDeep = { r: 20, g: 0, b: 60 };
 
     for (let i = 0; i < 6; i++) {
-        // 気に入っていただいたサイズ設定を維持
+        // --- サイズ設定（気に入っていただいたサイズ感） ---
         const radius = 150 + Math.random() * 300;
+        const alpha = 0.08 + Math.random() * 0.7;
 
-        // 透明度（少しランダムに）
-        const alpha = 0.08 + Math.random() * 0.1;
+        // --- 色の決定ロジック ---
+        let r, g, b;
 
-        // ★色を少しバラつかせる処理
-        // ベースの色に対して、少しだけランダムな値を足し引きして自然なムラを作ります
-        // (例: ベースが青なら、少し紫寄りや水色寄りの青を混ぜる)
+        const variant = Math.random();
+
+        if (variant < 0.6) {
+            // 【パターンA：60%】メインカラー (少しランダムに明るさを変える)
+            // ステージの色そのものをベースに、-30〜+30 の範囲で揺らぎを与える
+            const variance = (Math.random() - 0.5) * 60;
+            r = base.r + variance;
+            g = base.g + variance;
+            b = base.b + variance;
+        }
+        else if (variant < 0.8) {
+            // 【パターンB：20%】メインカラー + 宇宙ベース色のブレンド
+            // ステージ色が強すぎると目が疲れるので、少し落ち着いた色を混ぜる
+            r = (base.r + spaceDeep.r) / 2;
+            g = (base.g + spaceDeep.g) / 2;
+            b = (base.b + spaceDeep.b) / 2;
+        }
+        else {
+            // 【パターンC：20%】アクセントカラー（白っぽく発光、または補色）
+            // 明るい色を混ぜてハイライトにする
+            r = Math.min(255, base.r + 100);
+            g = Math.min(255, base.g + 100);
+            b = Math.min(255, base.b + 100);
+        }
+
+        // 数値が 0-255 の範囲に収まるように制限（クランプ）
         const color = {
-            r: Math.max(0, Math.min(255, baseRgb.r + (Math.random() - 0.5) * 50)),
-            g: Math.max(0, Math.min(255, baseRgb.g + (Math.random() - 0.5) * 50)),
-            b: Math.max(0, Math.min(255, baseRgb.b + (Math.random() - 0.5) * 50))
+            r: Math.floor(Math.max(0, Math.min(255, r))),
+            g: Math.floor(Math.max(0, Math.min(255, g))),
+            b: Math.floor(Math.max(0, Math.min(255, b)))
         };
 
         // --- オフスクリーンCanvasを作る (高速化) ---
@@ -619,15 +647,18 @@ function initNebulae() {
         const cacheCtx = cacheCanvas.getContext('2d');
 
         const grad = cacheCtx.createRadialGradient(radius, radius, 0, radius, radius, radius);
-        // 計算したRGBを使用
+
+        // 中心色
         grad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`);
+        // 中間色（少し変化をつける）
         grad.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.4})`);
+        // 外側（透明）
         grad.addColorStop(1, 'rgba(0,0,0,0)');
 
         cacheCtx.fillStyle = grad;
         cacheCtx.fillRect(0, 0, size, size);
-        // ------------------------------------------
 
+        // 配列に追加
         nebulae.push({
             x: Math.random() * worldSize,
             y: Math.random() * worldSize,
@@ -640,21 +671,21 @@ function initNebulae() {
 
 // 16進数カラー(#rrggbb)をRGBオブジェクト({r,g,b})に変換する関数
 function hexToRgb(hex) {
-    // #を取り除く
-    hex = hex.replace(/^#/, '');
+    // カラーコードが未定義の場合のガード
+    if (!hex) return { r: 0, g: 255, b: 255 };
 
-    // 短縮形 (#rgb) の場合
+    hex = hex.replace(/^#/, '');
     if (hex.length === 3) {
         hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
     }
-
     const bigint = parseInt(hex, 16);
-    const r = (bigint >> 16) & 255;
-    const g = (bigint >> 8) & 255;
-    const b = bigint & 255;
-
-    return { r, g, b };
+    return {
+        r: (bigint >> 16) & 255,
+        g: (bigint >> 8) & 255,
+        b: bigint & 255
+    };
 }
+
 function setPaused(paused) {
     if (paused) {
         if (gameState === 'PLAYING') {
