@@ -590,85 +590,69 @@ function initStars() {
 
 function initNebulae() {
     nebulae = [];
-
-    // 現在のステージのテーマカラーを取得（なければデフォルトのシアン）
     const themeHex = STAGE_THEMES[stage] || '#00bbff';
     const base = hexToRgb(themeHex);
 
-    // バリエーション用：宇宙っぽいベース色（深い青紫）
-    // これを少し混ぜることで、どんなステージ色でも「宇宙感」を残す
-    const spaceDeep = { r: 20, g: 0, b: 60 };
-
     for (let i = 0; i < 6; i++) {
-        // --- サイズ設定（気に入っていただいたサイズ感） ---
         const radius = 150 + Math.random() * 300;
-        const alpha = 0.04 + Math.random() * 0.06;
+        const alpha = 0.08 + Math.random() * 0.1;
 
-        // --- 色の決定ロジック ---
         let r, g, b;
-
         const variant = Math.random();
 
-        if (variant < 0.6) {
-            // 【パターンA：60%】メインカラー (少しランダムに明るさを変える)
-            // ステージの色そのものをベースに、-30〜+30 の範囲で揺らぎを与える
-            const variance = (Math.random() - 0.5) * 60;
-            r = base.r + variance;
-            g = base.g + variance;
-            b = base.b + variance;
+        if (variant < 0.7) {
+            // 【パターンA：70%】メインカラー（同系色のバリエーション）
+            // 明るさを±40の範囲で揺らす
+            const v = (Math.random() - 0.5) * 80;
+            r = base.r + v;
+            g = base.g + v;
+            b = base.b + v;
         }
-        else if (variant < 0.8) {
-            // 【パターンB：20%】メインカラー + 宇宙ベース色のブレンド
-            // ステージ色が強すぎると目が疲れるので、少し落ち着いた色を混ぜる
-            r = (base.r + spaceDeep.r) / 2;
-            g = (base.g + spaceDeep.g) / 2;
-            b = (base.b + spaceDeep.b) / 2;
+        else if (variant < 0.9) {
+            // 【パターンB：20%】色相シフト（少し違う色を混ぜる）
+            // RGBのうち、一番弱い色を少し強調して、色相を複雑にする
+            r = base.r + (base.r < 128 ? 60 : -40);
+            g = base.g + (base.g < 128 ? 60 : -40);
+            b = base.b + (base.b < 128 ? 60 : -40);
         }
         else {
-            // 【パターンC：20%】アクセントカラー（白っぽく発光、または補色）
-            // 明るい色を混ぜてハイライトにする
-            r = Math.min(255, base.r + 100);
-            g = Math.min(255, base.g + 100);
-            b = Math.min(255, base.b + 100);
+            // 【パターンC：10%】ハイライトアクセント（青白い光や対照的な色）
+            // どのステージでも共通の「星の輝き」成分として、青白い光を混ぜる
+            r = 180 + Math.random() * 75;
+            g = 220 + Math.random() * 35;
+            b = 255;
         }
 
-        // 数値が 0-255 の範囲に収まるように制限（クランプ）
         const color = {
             r: Math.floor(Math.max(0, Math.min(255, r))),
             g: Math.floor(Math.max(0, Math.min(255, g))),
             b: Math.floor(Math.max(0, Math.min(255, b)))
         };
 
-        // --- オフスクリーンCanvasを作る (高速化) ---
+        // --- キャッシュ用のCanvas作成処理（前回と同様） ---
         const cacheCanvas = document.createElement('canvas');
         const size = Math.ceil(radius * 2);
-        cacheCanvas.width = size;
-        cacheCanvas.height = size;
+        cacheCanvas.width = size; cacheCanvas.height = size;
         const cacheCtx = cacheCanvas.getContext('2d');
-
         const grad = cacheCtx.createRadialGradient(radius, radius, 0, radius, radius, radius);
 
-        // 中心色
         grad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`);
-        // 中間色（少し変化をつける）
-        grad.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.4})`);
-        // 外側（透明）
+        grad.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.3})`);
         grad.addColorStop(1, 'rgba(0,0,0,0)');
 
         cacheCtx.fillStyle = grad;
         cacheCtx.fillRect(0, 0, size, size);
 
-        // 配列に追加
         nebulae.push({
-            x: Math.random() * worldSize,
-            y: Math.random() * worldSize,
+            x: Math.random() * width,
+            y: Math.random() * height,
             radius: radius,
             image: cacheCanvas,
+            // 自機の動きに合わせた視差設定 (0.3 ~ 0.6)
             parallax: 0.3 + Math.random() * 0.3
         });
     }
 }
-
 // 16進数カラー(#rrggbb)をRGBオブジェクト({r,g,b})に変換する関数
 function hexToRgb(hex) {
     // カラーコードが未定義の場合のガード
