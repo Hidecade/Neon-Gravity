@@ -5710,17 +5710,33 @@ function drawBackground() {
     const startY = Math.max(0, Math.floor(camera.y / GRID_SPACING) - buffer);
     const endY = Math.min(gridPoints[0].length - 1, Math.ceil((camera.y + viewH) / GRID_SPACING) + buffer);
 
+    // --- グリッドを描画 ---
     for (let i = startX; i <= endX; i++) {
         for (let j = startY; j <= endY; j++) {
             const p = gridPoints[i][j];
             if (!p) continue;
+
+            // ★追加：ひずみ（元の位置 ox, oy からの距離）を計算
+            const distSq = (p.x - p.ox) ** 2 + (p.y - p.oy) ** 2;
+
+            // ★透明度の動的な決定
+            // 平常時は 0.05（うっすら）、ひずみが大きいほど 0.8（くっきり）に近づく
+            // 閾値（300）は歪みの感度に合わせて調整してください
+            const gridAlpha = 0.05 + Math.min(0.1, distSq / 400);
+
+            ctx.globalAlpha = gridAlpha;
+
             if (i > startX && gridPoints[i - 1][j]) {
+                ctx.beginPath();
                 ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y);
                 ctx.lineTo(p.x, p.y);
+                ctx.stroke();
             }
             if (j > startY && gridPoints[i][j - 1]) {
+                ctx.beginPath();
                 ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y);
                 ctx.lineTo(p.x, p.y);
+                ctx.stroke();
             }
         }
     }
