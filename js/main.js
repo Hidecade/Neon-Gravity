@@ -602,7 +602,7 @@ function initNebulae() {
     for (let i = 0; i < 6; i++) {
         // --- サイズ設定（気に入っていただいたサイズ感） ---
         const radius = 150 + Math.random() * 300;
-        const alpha = 0.08 + Math.random() * 0.7;
+        const alpha = 0.08 + Math.random() * 0.07;
 
         // --- 色の決定ロジック ---
         let r, g, b;
