@@ -590,47 +590,71 @@ function initStars() {
 
 function initNebulae() {
     nebulae = [];
-    const colors = [
-        { r: 0, g: 100, b: 255 }, // 青
-        { r: 100, g: 0, b: 255 }, // 紫
-        { r: 255, g: 0, b: 150 }, // ピンク
-        { r: 0, g: 255, b: 150 }  // エメラルド
-    ];
 
-    for (let i = 0; i < 6; i++) { // 数は少し減らしても十分綺麗です
-        const radius = 150 + Math.random() * 200;
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        const alpha = 0.05 + Math.random() * 0.07;
+    // 現在のステージのテーマカラーを取得（なければデフォルトのシアン）
+    const themeHex = STAGE_THEMES[stage] || '#00bbff';
+    const baseRgb = hexToRgb(themeHex);
 
-        // --- ★高速化ポイント: オフスクリーンCanvasを作る ---
+    for (let i = 0; i < 6; i++) {
+        // 気に入っていただいたサイズ設定を維持
+        const radius = 150 + Math.random() * 300;
+
+        // 透明度（少しランダムに）
+        const alpha = 0.08 + Math.random() * 0.1;
+
+        // ★色を少しバラつかせる処理
+        // ベースの色に対して、少しだけランダムな値を足し引きして自然なムラを作ります
+        // (例: ベースが青なら、少し紫寄りや水色寄りの青を混ぜる)
+        const color = {
+            r: Math.max(0, Math.min(255, baseRgb.r + (Math.random() - 0.5) * 50)),
+            g: Math.max(0, Math.min(255, baseRgb.g + (Math.random() - 0.5) * 50)),
+            b: Math.max(0, Math.min(255, baseRgb.b + (Math.random() - 0.5) * 50))
+        };
+
+        // --- オフスクリーンCanvasを作る (高速化) ---
         const cacheCanvas = document.createElement('canvas');
-        // 画像サイズは直径分（半径x2）あればOK
         const size = Math.ceil(radius * 2);
         cacheCanvas.width = size;
         cacheCanvas.height = size;
         const cacheCtx = cacheCanvas.getContext('2d');
 
-        // ここで一度だけグラデーションを描画してしまう
         const grad = cacheCtx.createRadialGradient(radius, radius, 0, radius, radius, radius);
+        // 計算したRGBを使用
         grad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`);
         grad.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.4})`);
         grad.addColorStop(1, 'rgba(0,0,0,0)');
 
         cacheCtx.fillStyle = grad;
         cacheCtx.fillRect(0, 0, size, size);
-        // ---------------------------------------------------
+        // ------------------------------------------
 
         nebulae.push({
             x: Math.random() * worldSize,
             y: Math.random() * worldSize,
             radius: radius,
-            // 描画済みキャンバスを保持する
             image: cacheCanvas,
             parallax: 0.05 + Math.random() * 0.05
         });
     }
 }
 
+// 16進数カラー(#rrggbb)をRGBオブジェクト({r,g,b})に変換する関数
+function hexToRgb(hex) {
+    // #を取り除く
+    hex = hex.replace(/^#/, '');
+
+    // 短縮形 (#rgb) の場合
+    if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+
+    const bigint = parseInt(hex, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+
+    return { r, g, b };
+}
 function setPaused(paused) {
     if (paused) {
         if (gameState === 'PLAYING') {
@@ -1030,6 +1054,9 @@ function checkStageClear() {
                 stage++;
                 ui.stage.innerText = stage;
                 startStage();
+
+                initNebulae();
+
             }, 4000);
         }
     }
