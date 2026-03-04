@@ -595,16 +595,16 @@ function initNebulae() {
     const spaceDeep = { r: 20, g: 0, b: 60 };
 
     for (let i = 0; i < 6; i++) {
-        const radius = 120 + Math.random() * 200;
-        const alpha = 0.03 + Math.random() * 0.06;
+        const radius = 120 + Math.random() * 300;
+        const alpha = 0.05 + Math.random() * 0.08;
 
         // --- 色の決定（既存ロジック維持） ---
         let r, g, b;
         const variant = Math.random();
-        if (variant < 0.5) {
+        if (variant < 0.6) {
             const variance = (Math.random() - 0.5) * 60;
             r = base.r + variance; g = base.g + variance; b = base.b + variance;
-        } else if (variant < 0.75) {
+        } else if (variant < 0.8) {
             r = (base.r + spaceDeep.r) / 2; g = (base.g + spaceDeep.g) / 2; b = (base.b + spaceDeep.b) / 2;
         } else {
             r = Math.min(255, base.r + 100); g = Math.min(255, base.g + 100); b = Math.min(255, base.b + 100);
@@ -5695,35 +5695,46 @@ function drawBackground() {
     const endY = Math.min(gridPoints[0].length - 1, Math.ceil((camera.y + viewH) / GRID_SPACING) + buffer);
 
     // --- グリッドを描画 ---
+    ctx.save();
+    ctx.lineWidth = 1.5;
+
     for (let i = startX; i <= endX; i++) {
         for (let j = startY; j <= endY; j++) {
             const p = gridPoints[i][j];
             if (!p) continue;
 
-            // ★追加：ひずみ（元の位置 ox, oy からの距離）を計算
-            const distSq = (p.x - p.ox) ** 2 + (p.y - p.oy) ** 2;
+            // 1. この点が受けている「衝撃エネルギー」を算出
+            // 現在の速度（vx, vy）は、衝撃源から直接与えられたエネルギーの指標になります。
+            // 速度が速い ＝ 衝撃源の近く、または強い衝撃を受けた直後。
+            const energy = Math.hypot(p.vx, p.vy);
 
-            // ★透明度の動的な決定
-            // 平常時は 0.05（うっすら）、ひずみが大きいほど 0.8（くっきり）に近づく
-            // 閾値（300）は歪みの感度に合わせて調整してください
-            const gridAlpha = 0.05 + Math.min(0.1, distSq / 300);
+            // 2. 透明度の決定
+            // 0.02 = 平常時のうっすら見えるライン
+            // energy * 0.1 = 衝撃に近いほど濃くなる（係数は感度に合わせて調整）
+            // 指数(1.2)をかけることで、中心部の「濃さ」にメリハリをつけます
+            const gridAlpha = 0.04 + Math.pow(Math.min(1.0, energy * 0.15), 1.2);
 
             ctx.globalAlpha = gridAlpha;
 
+            // 線の描画（ここからは既存と同じ）
             if (i > startX && gridPoints[i - 1][j]) {
+                const pPrev = gridPoints[i - 1][j];
+                // 隣り合う点との平均エネルギーで線を引く（より滑らかになります）
                 ctx.beginPath();
-                ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y);
+                ctx.moveTo(pPrev.x, pPrev.y);
                 ctx.lineTo(p.x, p.y);
                 ctx.stroke();
             }
             if (j > startY && gridPoints[i][j - 1]) {
+                const pPrev = gridPoints[i][j - 1];
                 ctx.beginPath();
-                ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y);
+                ctx.moveTo(pPrev.x, pPrev.y);
                 ctx.lineTo(p.x, p.y);
                 ctx.stroke();
             }
         }
     }
+    ctx.restore();
     ctx.stroke();
     ctx.restore();
 }
