@@ -5709,10 +5709,10 @@ function drawBackground() {
             const energy = Math.hypot(p.vx, p.vy);
 
             // 2. 透明度の決定
-            // 0.02 = 平常時のうっすら見えるライン
+            // 0.04 = 平常時のうっすら見えるライン
             // energy * 0.1 = 衝撃に近いほど濃くなる（係数は感度に合わせて調整）
             // 指数(1.2)をかけることで、中心部の「濃さ」にメリハリをつけます
-            const gridAlpha = 0.04 + Math.pow(Math.min(1.0, energy * 0.15), 1.2);
+            const gridAlpha = 0.08 + Math.pow(Math.min(1.0, energy * 0.10), 1.2);
 
             ctx.globalAlpha = gridAlpha;
 
