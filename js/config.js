@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-const GAME_VERSION = "1.0.1a";
+const GAME_VERSION = "1.1.0";
 
 // --- システム設定 ---
 const G_SCALE = 0.7;          // 全体の描画スケール（標準の70%）
@@ -21,6 +21,7 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 const START_STAGE = 1;        // 開始ステージ
 const MAX_STAGE = 10;         // 最大ステージ
 
+
 // ステージごとの敵総出現数
 const STAGE_ENEMY_COUNTS = [
     60,  // Stage 1
@@ -32,6 +33,7 @@ const STAGE_ENEMY_COUNTS = [
     250, // Stage 7
     360  // Stage 8 (Final)
 ];
+
 
 // 画面内に同時に存在できる敵の最大数
 const STAGE_MAX_ON_SCREEN = [
