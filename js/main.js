@@ -104,6 +104,7 @@ let warningTimer = 0;           // 警告演出用タイマー
 let stageMessageTimer = 0;      // ステージ開始メッセージ用タイマー
 let nextBossSpawnX = 0;         // ボス出現予定座標X
 let nextBossSpawnY = 0;         // ボス出現予定座標Y
+let bossAngerMinionSpeedMag = 1.0; // 敵の速度補正係数（1.0 = 通常)
 
 // ---------------------------------------------------------
 // 6. その他
@@ -1594,14 +1595,26 @@ function update() {
 
     frame++;
 
-    // --- 追加: Stage 10 ボス出現管理 ---
-    if (stage === 10 && !isBossSpawned) {
-        // stage10Timer は startStage でリセットされ、毎フレーム加算されています
-        // 4秒経過 (240フレーム) したら出現させる
-        if (stage10Timer === 240) {
-            spawnEnemy(worldSize / 2, worldSize / 2, 'battleship');
-            isBossSpawned = true;
+    // ==========================================
+    // ★追加：ボスの滞在時間による難易度上昇（Anger Mode）
+    // ==========================================
+    bossAngerMinionSpeedMag = 1.0; // 毎フレームリセット
+    const currentBoss = enemies.find(e => e.type === 'boss' || e.type === 'battleship');
+
+    if (currentBoss && currentBoss.aliveTimer > 1800) {
+        // 30秒(1800F)経過後から加速開始。60秒(3600F)で約1.9倍、最大3.0倍。
+        bossAngerMinionSpeedMag = 1.0 + (currentBoss.aliveTimer - 1800) * 0.0005;
+        bossAngerMinionSpeedMag = Math.min(3.0, bossAngerMinionSpeedMag);
+
+        // 視覚的警告（既存の警告UIを流用）
+        if (frame % 60 < 30) {
+            ui.warn.innerText = "CRITICAL: ENEMY ACCELERATING";
+            ui.warn.style.display = 'block';
+            ui.warn.style.color = '#f00';
         }
+    } else {
+        // ボスがいない、または30秒未満なら警告を消す
+        if (!isBossWarning) ui.warn.style.display = 'none';
     }
 
 
@@ -2205,7 +2218,9 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     }
 
     const spd = SPEED_SCALE;
-    const stageMag = 1.0 + (stage - 1) * DIFFICULTY_CONFIG.SPEED_INC;
+    const stageMag = (1.0 + (stage - 1) * DIFFICULTY_CONFIG.SPEED_INC) * bossAngerMinionSpeedMag; // ★ここを修正
+    //const stageMag = 1.0 + (stage - 1) * DIFFICULTY_CONFIG.SPEED_INC;
+
     const hpMag = (stage - 1) * DIFFICULTY_CONFIG.HP_INC;
 
     const angle = Math.random() * Math.PI * 2;
@@ -2341,7 +2356,10 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
         // --- 2. 取り巻き（フォロワー）の生成 ---
         // リーダーを中心に左右2台ずつ、計4台を配置
         for (let i = 0; i < 4; i++) {
-            if (spawnedCount >= enemiesToSpawn) break;
+            // ★修正：ボス戦中、またはStage 9(ボスラッシュ)、Stage 10ならノルマ上限を無視して出し切る
+            // 通常ステージでボスがいない時だけ、ノルマチェックを行う
+            const ignoreLimit = isBossSpawned || stage === 9 || stage === 10;
+            if (!ignoreLimit && spawnedCount >= enemiesToSpawn) break;
 
             let offX = 0, offY = 0;
             const side = (i % 2 === 0) ? 1 : -1; // 左右交互 (1 or -1)
@@ -3563,18 +3581,25 @@ function updateTadpoleAI(e) {
 }
 
 function updateDragonAI(e) {
-    // NaN防止のための初期ガード
     const dx = player.x - e.x, dy = player.y - e.y;
     const d = Math.hypot(dx, dy) || 0.001;
     const spd = SPEED_SCALE;
 
+    // ★追加：現在の怒り倍率を取得（未定義なら1.0）
+    const angerMult = (typeof bossAngerMinionSpeedMag !== 'undefined') ? bossAngerMinionSpeedMag : 1.0;
+
     // 1. 頭部の移動
-    e.vx += (dx / d) * DRAGON_ACCELERATION * spd;
-    e.vy += (dy / d) * DRAGON_ACCELERATION * spd;
+    // 加速度にも怒り倍率を適用して、キビキビ動くようにする
+    e.vx += (dx / d) * DRAGON_ACCELERATION * spd * angerMult;
+    e.vy += (dy / d) * DRAGON_ACCELERATION * spd * angerMult;
+
     e.vx *= 0.98; e.vy *= 0.98;
 
     const stageMag = 1.0 + (stage - 1) * DIFFICULTY_CONFIG.SPEED_INC;
-    const lim = ENEMY_SPEEDS.DRAGON * spd * stageMag;
+
+    // ★修正：最高速度制限（lim）に angerMult を掛け合わせる
+    // これにより、途中からでも最高速度の上限が解放される
+    const lim = ENEMY_SPEEDS.DRAGON * spd * stageMag * angerMult;
 
     const currentV = Math.hypot(e.vx, e.vy) || 0.001;
     if (currentV > lim) {
@@ -3586,7 +3611,7 @@ function updateDragonAI(e) {
     e.y += e.vy * gameSpeed;
     e.angle = Math.atan2(e.vy, e.vx);
 
-    // 2. ★体節の滑らかな連結追従ロジック（NaNガード強化版）
+    // 2. 体節の追従 (変更なし)
     let leaderX = e.x;
     let leaderY = e.y;
     const spacing = 18;
@@ -3594,44 +3619,34 @@ function updateDragonAI(e) {
     e.segments.forEach((s, i) => {
         const sDx = leaderX - s.x;
         const sDy = leaderY - s.y;
-        const distance = Math.hypot(sDx, sDy) || 0.001; // 0除算防止
+        const distance = Math.hypot(sDx, sDy) || 0.001;
         const targetAngle = Math.atan2(sDy, sDx);
 
         s.angle = targetAngle;
 
         if (distance > spacing) {
             const moveDist = distance - spacing;
-            // 算出した座標が正常な数値(Finite)である場合のみ更新
             const tx = s.x + Math.cos(targetAngle) * moveDist;
             const ty = s.y + Math.sin(targetAngle) * moveDist;
-
             if (Number.isFinite(tx) && Number.isFinite(ty)) {
-                s.x = tx;
-                s.y = ty;
+                s.x = tx; s.y = ty;
             }
         }
-
-        leaderX = s.x;
-        leaderY = s.y;
+        leaderX = s.x; leaderY = s.y;
     });
 
-    // 3. 弾速の変更（エラー修正：変数 a を e.angle に修正）
+    // 3. 弾の発射 (変更なし)
     e.fireTimer++;
     if (e.fireTimer > 100) {
         e.fireTimer = 0;
-
+        // 弾速も怒りで速くしたければここに angerMult を掛けても良いです
         const currentEnemyBulletSpd = BULLET_CONFIG.ENEMY_NORMAL.SPEED * SPEED_SCALE * (1 + (stage - 1) * DIFFICULTY_CONFIG.BULLET_SPEED_INC);
-
-        // ★修正箇所: Math.cos(a) の 'a' が未定義だったので 'e.angle' に変更
         const shootAngle = e.angle;
-
         enemyBullets.push({
-            x: e.x,
-            y: e.y,
+            x: e.x, y: e.y,
             vx: Math.cos(shootAngle) * currentEnemyBulletSpd,
             vy: Math.sin(shootAngle) * currentEnemyBulletSpd,
-            life: BULLET_CONFIG.ENEMY_NORMAL.LIFE,
-            color: '#c00' // ドラゴンの弾色を指定
+            life: BULLET_CONFIG.ENEMY_NORMAL.LIFE, color: '#c00'
         });
         AudioSys.playSE('shoot');
     }
@@ -4361,25 +4376,98 @@ function updateFighterJetAI(eb) {
 }
 
 function updateBossAI(e) {
-    // ==========================================
-    // 1. 出現演出 (変更なし)
-    // ==========================================
+    // =========================================================
+    // 1. 出現演出 (Spawn Sequence)
+    // =========================================================
     if (e.isSpawning) {
         e.spawnTimer++;
+        // 出現位置へ強制固定
         e.x = e.spawnX;
         e.y = e.spawnY;
         e.vx = 0; e.vy = 0;
+
+        // 出現完了時の初期化処理
         if (e.spawnTimer >= e.spawnMax) {
             e.isSpawning = false;
-            // 初回の攻撃パターンを決定
-            e.attackPattern = 0;
+            e.attackPattern = 0;  // 最初の攻撃パターン
+            e.aliveTimer = 0;     // ★生存タイマーを0リセット
         }
+        return; // 出現中はこれ以上の処理をしない
+    }
+
+    // ★生存タイマーを加算 (1フレーム = 1/60秒)
+    // これを使って「怒りモード」や「自爆」を判定します
+    e.aliveTimer = (e.aliveTimer || 0) + 1;
+
+    // =========================================================
+    // ★追加仕様：メルトダウン（暴走自爆）シーケンス
+    // =========================================================
+    // 出現から2分 (60fps * 120秒 = 7200フレーム) を経過した場合
+    if (e.aliveTimer > 7200) {
+
+        // --- 1. 見た目の変化 ---
+        e.color = '#ff0000'; // 全身を赤く変色（危険信号）
+        e.angle += 0.5 * gameSpeed; // 制御不能な超高速回転
+
+        // --- 2. 挙動の変化 ---
+        // プレイヤーを追わず、その場で激しく振動（暴走状態）
+        e.vx *= 0.8;
+        e.vy *= 0.8; // 減速して停止
+        e.x += (Math.random() - 0.5) * 15 * gameSpeed; // ガタガタ震える
+        e.y += (Math.random() - 0.5) * 15 * gameSpeed;
+
+        // --- 3. 攻撃：全方位発狂弾幕 ---
+        // 4フレームごとの超高速連射
+        if (frame % 4 === 0) {
+            const sides = 16; // 16方向へ同時発射
+            const spd = 12 * SPEED_SCALE;
+
+            for (let i = 0; i < sides; i++) {
+                // 回転に合わせて発射角度をずらす（スパイラル状に広がる）
+                const a = e.angle + (Math.PI * 2 / sides) * i;
+
+                enemyBullets.push({
+                    x: e.x, y: e.y,
+                    vx: Math.cos(a) * spd,
+                    vy: Math.sin(a) * spd,
+                    life: 150,
+                    color: '#f00',       // 弾の色も赤
+                    isLaserMissile: true // 当たり判定の大きい弾を使用
+                });
+            }
+            AudioSys.playSE('shoot');    // 発射音
+            distortGrid(e.x, e.y, 80, 150); // 空間を歪ませる演出
+        }
+
+        // --- 4. 結末：自爆 ---
+        // 暴走開始から5秒後 (7200 + 300 = 7500フレーム)
+        if (e.aliveTimer > 7500) {
+            e.hp = 0; // HPを0にする（updateEnemies側で爆発演出と撃破処理が行われる）
+
+            // 自爆時の特大エフェクト（断末魔）
+            distortGrid(e.x, e.y, 500, 800);
+            createExplosion(e.x, e.y, '#f00', 50);
+        }
+
+        // ★重要：ここでreturnし、通常の移動・攻撃ロジックを実行させない
         return;
     }
 
-    // ==========================================
-    // 2. 移動ロジック (距離連動型・シンプル追尾)
-    // ==========================================
+
+    // =========================================================
+    // 以下、通常時のAIロジック（怒りモード含む）
+    // =========================================================
+
+    // --- A. 怒りモード係数 (Anger Factor) の計算 ---
+    // 30秒(1800F)経過後から、ボスの性能が徐々に上がり始める
+    let angerFactor = 1.0;
+    if (e.aliveTimer > 1800) {
+        // 時間経過で 1.0 -> 2.5 まで上昇
+        angerFactor = 1.0 + Math.min(1.5, (e.aliveTimer - 1800) * 0.001);
+    }
+
+    // --- B. 移動ロジック ---
+    // 座標がNaNにならないよう安全策
     if (!Number.isFinite(e.x)) e.x = e.spawnX || worldSize / 2;
     if (!Number.isFinite(e.y)) e.y = e.spawnY || worldSize / 2;
 
@@ -4387,32 +4475,28 @@ function updateBossAI(e) {
     const dy = player.y - e.y;
     const dist = Math.hypot(dx, dy) || 1.0;
 
-    // --- 距離に応じた速度倍率の計算 ---
+    // 距離に応じた速度倍率を決定
     let distanceMultiplier = 1.0;
-
     if (dist > 600) {
-        distanceMultiplier = 3.5; // かなり遠い：2.5倍速で追いつく
+        distanceMultiplier = 3.5 * angerFactor; // 遠距離：怒ると超高速で詰める
     } else if (dist > 350) {
-        distanceMultiplier = 1.5; // 少し遠い：1.5倍速
+        distanceMultiplier = 1.5 * angerFactor; // 中距離
+    } else {
+        distanceMultiplier = 1.0 * angerFactor; // 近距離：怒ると減速せず突っ込む
     }
-    // 350px以内なら 1.0倍 (基本のゆっくり移動)
 
-    // --- 移動計算 ---
-    // 基本の加速度 (0.02) に倍率を掛ける
+    // 加速度の適用
     const accel = 0.02 * SPEED_SCALE * gameSpeed * distanceMultiplier;
-
     e.vx += (dx / dist) * accel;
     e.vy += (dy / dist) * accel;
 
-    // 摩擦（慣性を残しつつ、ヌルっと動かす）
+    // 摩擦（慣性を残す）
     e.vx *= 0.96;
     e.vy *= 0.96;
 
-    // --- 最高速度制限 ---
-    // 遠いときは最高速度のリミッターも解除してあげる
+    // 最高速度の制限（怒り時は上限も解放される）
     const currentSpeed = Math.hypot(e.vx, e.vy);
     const maxSpeed = e.speed * distanceMultiplier;
-
     if (currentSpeed > maxSpeed) {
         e.vx = (e.vx / currentSpeed) * maxSpeed;
         e.vy = (e.vy / currentSpeed) * maxSpeed;
@@ -4422,33 +4506,28 @@ function updateBossAI(e) {
     e.x += e.vx * gameSpeed;
     e.y += e.vy * gameSpeed;
 
-    // 画面端の制限
+    // 画面端から出ないように制限
     const margin = 100;
     e.x = Math.max(margin, Math.min(worldSize - margin, e.x));
     e.y = Math.max(margin, Math.min(worldSize - margin, e.y));
 
-
-    // ==========================================
-    // 3. 攻撃サイクル (拡張版)
-    // ==========================================
+    // --- C. 攻撃サイクル ---
     e.fireTimer++;
 
-    // サイクルの定義
+    // サイクルの定義（フレーム数）
     const maxCycle = 280;
-    const brakeStart = 160;  // 攻撃をやめて溜めに入る時間
-    const fireTime = 220;    // 必殺技の発射時間
-    const restartTime = 250; // 次のサイクルへの準備
+    const brakeStart = 160;  // 攻撃停止・溜め開始
+    const fireTime = 220;    // 必殺技発射
+    const restartTime = 250; // 次サイクル準備
 
     // ----------------------------------------------------
     // [フェーズ1] メイン攻撃 (0 ~ 159F)
     // ----------------------------------------------------
     if (e.fireTimer < brakeStart) {
 
-        // --- パターンA: 従来型「回転拡散レーザー」 (Stage 1以降) ---
+        // パターン0: 回転拡散レーザー
         if (e.attackPattern === 0) {
-            // 回転速度
-            e.angle += 0.12 * gameSpeed;
-
+            e.angle += 0.12 * gameSpeed * angerFactor; // 怒ると回転が速くなる
             if (e.fireTimer % 20 === 0) {
                 const sides = e.variant.sides;
                 const bulletSpd = 9 * SPEED_SCALE;
@@ -4463,36 +4542,34 @@ function updateBossAI(e) {
                 if (isOnScreen(e)) AudioSys.playSE('shoot');
             }
         }
-        // --- パターンB: 自機狙い「収束3WAY」 (Stage 3以降) ---
+        // パターン1: 自機狙い3WAY
         else if (e.attackPattern === 1) {
-            // 自機の方を向く
             const targetAngle = Math.atan2(dy, dx);
             let diff = targetAngle - e.angle;
+            // 最短回転方向の計算
             while (diff <= -Math.PI) diff += Math.PI * 2;
             while (diff > Math.PI) diff -= Math.PI * 2;
-            e.angle += diff * 0.1 * gameSpeed; // 滑らかに向く
+            e.angle += diff * 0.1 * gameSpeed * angerFactor; // 怒ると照準合わせが速くなる
 
-            if (e.fireTimer % 15 === 0) { // 連射速度速め
+            if (e.fireTimer % 15 === 0) {
                 const bulletSpd = 15 * SPEED_SCALE;
                 for (let i = -1; i <= 1; i++) {
-                    const a = e.angle + i * 0.15; // 狭い角度で3発
+                    const a = e.angle + i * 0.15;
                     enemyBullets.push({
                         x: e.x + Math.cos(a) * 50, y: e.y + Math.sin(a) * 50,
                         vx: Math.cos(a) * bulletSpd, vy: Math.sin(a) * bulletSpd,
-                        life: 300, color: '#ffaa00' // 色を変える
+                        life: 300, color: '#ffaa00'
                     });
                 }
                 if (isOnScreen(e)) AudioSys.playSE('shoot');
             }
         }
-        // --- パターンC: 十字回転「クロスファイア」 (Stage 6以降) ---
+        // パターン2: 十字回転クロスファイア
         else if (e.attackPattern === 2) {
-            e.angle -= 0.08 * gameSpeed; // 逆回転
-
-            if (e.fireTimer % 8 === 0) { // 高速連射
+            e.angle -= 0.08 * gameSpeed * angerFactor; // 怒ると逆回転も速くなる
+            if (e.fireTimer % 8 === 0) {
                 const bulletSpd = 10 * SPEED_SCALE;
                 for (let i = 0; i < 4; i++) {
-                    // 90度ごとの十字
                     const a = e.angle + (Math.PI / 2) * i;
                     enemyBullets.push({
                         x: e.x + Math.cos(a) * 40, y: e.y + Math.sin(a) * 40,
@@ -4505,33 +4582,31 @@ function updateBossAI(e) {
         }
     }
     // ----------------------------------------------------
-    // [フェーズ2] 減速・溜め (160 ~ 219F)
+    // [フェーズ2] 減速・溜め演出 (160 ~ 219F)
     // ----------------------------------------------------
     else if (e.fireTimer >= brakeStart && e.fireTimer < fireTime) {
-        // 回転を徐々に止める演出
+        // 回転を徐々に止める
         const ratio = 1.0 - (e.fireTimer - brakeStart) / (fireTime - brakeStart);
-        e.angle += Math.pow(ratio, 1.5) * 0.1; // 慣性で少し回る
+        e.angle += Math.pow(ratio, 1.5) * 0.1;
 
         // エネルギー吸引パーティクル
         if (frame % 3 === 0) {
             const ang = Math.random() * Math.PI * 2;
-            const dist = 80 + Math.random() * 20;
+            const distP = 80 + Math.random() * 20;
             particles.push({
-                x: e.x + Math.cos(ang) * dist, y: e.y + Math.sin(ang) * dist,
+                x: e.x + Math.cos(ang) * distP, y: e.y + Math.sin(ang) * distP,
                 vx: -Math.cos(ang) * 4, vy: -Math.sin(ang) * 4,
                 color: '#fff', life: 0.2, size: 1.5
             });
         }
     }
     // ----------------------------------------------------
-    // [フェーズ3] 必殺技発射 (220F ~ )
+    // [フェーズ3] 必殺技発射 (220F)
     // ----------------------------------------------------
     else if (e.fireTimer >= fireTime && e.fireTimer < restartTime) {
-
-        // 発射の瞬間 (220F)
         if (e.fireTimer === fireTime) {
 
-            // --- 必殺A: ホーミングミサイル斉射 (基本) ---
+            // 必殺A: ホーミングミサイル (Pattern 0 または 低ステージ)
             if (e.attackPattern === 0 || stage < 4) {
                 const sides = e.variant.sides;
                 for (let i = 0; i < sides; i++) {
@@ -4545,26 +4620,20 @@ function updateBossAI(e) {
                     });
                 }
             }
-            // --- 必殺B: 全方位・高速リング弾 (Stage 4以降で確率発動) ---
+            // 必殺B: 衝撃波リング (高ステージ)
             else {
-                // ★修正1：数を 36 -> 12 に減らして隙間を作る
                 const ringCount = 12;
-
                 for (let i = 0; i < ringCount; i++) {
                     const a = (Math.PI * 2 / ringCount) * i;
                     const spd = 12 * SPEED_SCALE;
-
                     enemyBullets.push({
                         x: e.x, y: e.y,
                         vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
-                        life: 250,
-                        // ★修正2：色を固定の白からボスの色(e.color)に変更
-                        color: e.color,
-                        isShockwave: true, baseScale: 0.8, scaleSpeed: 0.02 
+                        life: 250, color: e.color,
+                        isShockwave: true, baseScale: 0.8, scaleSpeed: 0.02
                     });
                 }
             }
-
             if (isOnScreen(e)) AudioSys.playSE('launch');
             rings.push({ x: e.x, y: e.y, r: 20, color: '#fff', life: 1.0 });
             rings.push({ x: e.x, y: e.y, r: 100, color: e.color, life: 0.8 });
@@ -4572,25 +4641,23 @@ function updateBossAI(e) {
         }
     }
     // ----------------------------------------------------
-    // [フェーズ4] クールダウン & 次のパターン抽選
+    // [フェーズ4] クールダウン
     // ----------------------------------------------------
     else if (e.fireTimer >= restartTime) {
-        // 次のサイクルへの回転加速
+        // 次の動き出しに向けて少し回転
         const ratio = (e.fireTimer - restartTime) / (maxCycle - restartTime);
         e.angle += Math.pow(ratio, 2) * 0.1;
     }
 
-    // サイクル完了・リセット
+    // --- サイクル完了・次パターンの抽選 ---
     if (e.fireTimer >= maxCycle) {
         e.fireTimer = 0;
-
-        // ★次の攻撃パターンをステージ数に応じて抽選
+        // ステージ進行度に応じて攻撃パターンの種類を増やす
         if (stage <= 2) {
-            e.attackPattern = 0; // Stage 1-2: 回転のみ
+            e.attackPattern = 0;
         } else if (stage <= 5) {
-            e.attackPattern = Math.random() < 0.5 ? 0 : 1; // Stage 3-5: 回転 or 狙い撃ち
+            e.attackPattern = Math.random() < 0.5 ? 0 : 1;
         } else {
-            // Stage 6+: 回転 or 狙い撃ち or 十字 (ランダム)
             const r = Math.random();
             if (r < 0.33) e.attackPattern = 0;
             else if (r < 0.66) e.attackPattern = 1;
@@ -4608,11 +4675,20 @@ function updateBossSpecialAI(e) {
         e.x = e.spawnX; e.y = e.spawnY; e.vx = 0; e.vy = 0;
         if (e.spawnTimer >= e.spawnMax) {
             e.isSpawning = false;
-            // 現在のラッシュのインデックスを保持
             e.originIdx = rushBossIndex;
             e.attackPattern = 0;
+            e.aliveTimer = 0; // ★生存タイマー初期化
         }
         return;
+    }
+
+    // ★生存タイマーを加算
+    e.aliveTimer = (e.aliveTimer || 0) + 1;
+
+    // --- 怒りによる移動ブースト計算 (Boss Anger Mode) ---
+    let angerFactor = 1.0;
+    if (e.aliveTimer > 1800) { // 30秒後から強化
+        angerFactor = 1.0 + Math.min(2.0, (e.aliveTimer - 1800) * 0.001);
     }
 
     // ==========================================
@@ -4624,16 +4700,27 @@ function updateBossSpecialAI(e) {
 
     // 前半(Index 0-1)はゆったり、後半は鋭く追尾
     const isSlowMover = e.originIdx <= 1;
+
     let distMult = 1.0;
-    if (dist > 500) distMult = isSlowMover ? 1.8 : 3.5;
-    else if (dist > 350) distMult = isSlowMover ? 1.2 : 1.8;
+    if (dist > 500) {
+        // 遠距離：怒り時は超高速接近
+        distMult = (isSlowMover ? 1.8 : 3.5) * angerFactor;
+    } else if (dist > 300) {
+        distMult = (isSlowMover ? 1.2 : 1.8) * angerFactor;
+    } else {
+        // 近距離：怒り時は速度を落とさず張り付く
+        distMult = 1.0 * angerFactor;
+    }
 
     const baseAccel = isSlowMover ? 0.02 : 0.035;
+    // 加速度に倍率を適用
     const accel = baseAccel * SPEED_SCALE * gameSpeed * distMult;
+
     e.vx += (dx / dist) * accel;
     e.vy += (dy / dist) * accel;
     e.vx *= 0.96; e.vy *= 0.96;
 
+    // 最高速度リミットも倍率に応じて引き上げ
     const maxSpd = e.speed * distMult * 1.2;
     const curSpd = Math.hypot(e.vx, e.vy);
     if (curSpd > maxSpd) {
@@ -4650,7 +4737,9 @@ function updateBossSpecialAI(e) {
     // --- カウンター攻撃 (15%の確率) ---
     if (e.prevHp && e.hp < e.prevHp && Math.random() < 0.15) {
         const a = Math.atan2(dy, dx);
-        enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * 12 * SPEED_SCALE, vy: Math.sin(a) * 12 * SPEED_SCALE, life: 180, color: '#fff' });
+        // カウンター弾も怒り時は速くする
+        const counterSpd = 12 * SPEED_SCALE * Math.min(1.5, angerFactor);
+        enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * counterSpd, vy: Math.sin(a) * counterSpd, life: 180, color: '#fff' });
         AudioSys.playSE('shoot');
     }
     e.prevHp = e.hp;
@@ -4666,9 +4755,9 @@ function updateBossSpecialAI(e) {
     // --- フェーズ1: メイン攻撃 ---
     if (e.fireTimer < brakeStart) {
 
-        // 【Pattern A】Index 0-1: 強化回転レーザー (軌道を読みやすく、密度は高め)
+        // 【Pattern A】Index 0-1: 強化回転レーザー
         if (e.originIdx <= 1 || e.attackPattern === 0) {
-            e.angle += 0.15 * gameSpeed;
+            e.angle += 0.15 * gameSpeed * angerFactor; // ★怒りで回転加速
             if (e.fireTimer % 12 === 0) {
                 const sides = e.variant.sides;
                 for (let i = 0; i < sides; i++) {
@@ -4682,13 +4771,13 @@ function updateBossSpecialAI(e) {
                 if (isOnScreen(e)) AudioSys.playSE('shoot');
             }
         }
-        // 【Pattern B】Index 2-4: 強化自機狙い3WAY (回転停止・高速連射)
+        // 【Pattern B】Index 2-4: 強化自機狙い3WAY
         else if (e.originIdx <= 4 || e.attackPattern === 1) {
             const targetA = Math.atan2(dy, dx);
             let diff = targetA - e.angle;
             while (diff <= -Math.PI) diff += Math.PI * 2;
             while (diff > Math.PI) diff -= Math.PI * 2;
-            e.angle += diff * 0.18 * gameSpeed; // 強力な旋回
+            e.angle += diff * 0.18 * gameSpeed * angerFactor; // ★怒りで旋回加速
 
             if (e.fireTimer % 10 === 0) {
                 const bulletSpd = 15 * SPEED_SCALE;
@@ -4699,9 +4788,9 @@ function updateBossSpecialAI(e) {
                 if (isOnScreen(e)) AudioSys.playSE('shoot');
             }
         }
-        // 【Pattern C】Index 5-7: 高速回転クロス弾幕 (逆回転・密度MAX)
+        // 【Pattern C】Index 5-7: 高速回転クロス弾幕
         else {
-            e.angle -= 0.15 * gameSpeed;
+            e.angle -= 0.15 * gameSpeed * angerFactor; // ★怒りで逆回転加速
             if (e.fireTimer % 6 === 0) {
                 for (let i = 0; i < 4; i++) {
                     const a = e.angle + (Math.PI / 2) * i;
@@ -4727,7 +4816,7 @@ function updateBossSpecialAI(e) {
     // --- フェーズ3: 必殺技 (Indexに準拠) ---
     else if (e.fireTimer === fireTime) {
 
-        // Index 5-7: 衝撃波リング (潜り抜けるテクニックが必要)
+        // Index 5-7: 衝撃波リング
         if (e.originIdx >= 5) {
             const ringCount = 12;
             for (let i = 0; i < ringCount; i++) {
@@ -4741,7 +4830,7 @@ function updateBossSpecialAI(e) {
             }
             distortGrid(e.x, e.y, 250, 400);
         }
-        // Index 2-4: 全方位拡散弾 (隙間を探す必要あり)
+        // Index 2-4: 全方位拡散弾
         else if (e.originIdx >= 2) {
             const count = 24;
             for (let i = 0; i < count; i++) {
@@ -4749,7 +4838,7 @@ function updateBossSpecialAI(e) {
                 enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * 10 * SPEED_SCALE, vy: Math.sin(a) * 10 * SPEED_SCALE, life: 300, color: '#fff' });
             }
         }
-        // Index 0-1: ホーミングミサイル斉射 (恐怖感)
+        // Index 0-1: ホーミングミサイル斉射
         else {
             const sides = e.variant.sides;
             for (let i = 0; i < sides; i++) {
@@ -4772,6 +4861,7 @@ function updateBossSpecialAI(e) {
         e.attackPattern = Math.floor(Math.random() * range);
     }
 }
+
 function updateBattleshipAI(e) {
     // 1. 出現演出
     if (e.isSpawning) {
