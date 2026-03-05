@@ -92,7 +92,8 @@ let scorePopups = [];   // スコア上昇ポップアップ
 let rings = [];         // 衝撃波リングエフェクト
 let gridPoints = [];    // 背景グリッド点
 let stars = [];         // 背景の星
-let nebulae = []; // 星雲の配列
+let nebulae = [];       // 星雲の配列
+let starClusters = [];  // 星団の中心点リスト
 
 // ---------------------------------------------------------
 // 5. ボス（BOSS）管理変数
@@ -583,8 +584,40 @@ function initGrid() {
 
 function initStars() {
     stars = [];
-    for (let i = 0; i < 200; i++) {
-        stars.push({ x: Math.random() * worldSize, y: Math.random() * worldSize, size: Math.random() * 2, brightness: Math.random(), parallax: 0.2 + Math.random() * 0.3 });
+    starClusters = [];
+
+    // ★修正1：マージンを 1000 -> 400 に減らす（密度アップ）
+    const LOOP_MARGIN = 400;
+    const rangeW = width + LOOP_MARGIN;
+    const rangeH = height + LOOP_MARGIN;
+
+    // クラスター生成
+    const clusterCount = 8;
+    for (let i = 0; i < clusterCount; i++) {
+        starClusters.push({
+            x: Math.random() * rangeW - LOOP_MARGIN / 2,
+            y: Math.random() * rangeH - LOOP_MARGIN / 2
+        });
+    }
+
+    // 2. 星の生成（数は300で十分見えます）
+    for (let i = 0; i < 300; i++) {
+        let sx, sy;
+        if (Math.random() < 0.6) {
+            const cluster = starClusters[Math.floor(Math.random() * clusterCount)];
+            const spread = 500;
+            sx = cluster.x + (Math.random() - 0.5) * spread;
+            sy = cluster.y + (Math.random() - 0.5) * spread;
+        } else {
+            sx = Math.random() * rangeW - LOOP_MARGIN / 2;
+            sy = Math.random() * rangeH - LOOP_MARGIN / 2;
+        }
+        stars.push({
+            x: sx, y: sy,
+            size: 0.5 + Math.random() * 2,
+            brightness: Math.random(),
+            parallax: 0.2 + Math.random() * 0.3
+        });
     }
 }
 
@@ -594,11 +627,16 @@ function initNebulae() {
     const base = hexToRgb(themeHex);
     const spaceDeep = { r: 20, g: 0, b: 60 };
 
-    for (let i = 0; i < 6; i++) {
-        const radius = 120 + Math.random() * 300;
-        const alpha = 0.04 + Math.random() * 0.07;
+    const clusters = (starClusters.length > 0) ? starClusters : [{ x: width / 2, y: height / 2 }];
 
-        // --- 色の決定（既存ロジック維持） ---
+    // ★修正2：数を 12 -> 20 に増やす
+    const count = 12;
+
+    for (let i = 0; i < count; i++) {
+        const radius = 200 + Math.random() * 300; // サイズ感は維持
+        // 透明度を少し上げて見やすくする (0.04 -> 0.06)
+        const alpha = 0.04 + Math.random() * 0.06;
+
         let r, g, b;
         const variant = Math.random();
         if (variant < 0.6) {
@@ -621,22 +659,24 @@ function initNebulae() {
         const cacheCtx = cacheCanvas.getContext('2d');
         const grad = cacheCtx.createRadialGradient(radius, radius, 0, radius, radius, radius);
         grad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`);
-        grad.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.4})`);
+        grad.addColorStop(0.6, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.3})`); // グラデーションを少し広げる
         grad.addColorStop(1, 'rgba(0,0,0,0)');
         cacheCtx.fillStyle = grad;
         cacheCtx.fillRect(0, 0, size, size);
 
+        // 配置：クラスター周辺に散らす
+        const targetCluster = clusters[Math.floor(Math.random() * clusters.length)];
+
         nebulae.push({
-            x: Math.random() * width, // 画面内を基準に初期配置
-            y: Math.random() * height,
+            x: targetCluster.x + (Math.random() - 0.5) * 500,
+            y: targetCluster.y + (Math.random() - 0.5) * 500,
             radius: radius,
             image: cacheCanvas,
-            // ★ここを変更：0.05〜0.1 だったのを 0.3〜0.6 程度に引き上げ
-            // 数値が大きいほど自機の動きに対して大きく逆方向に動きます
-            parallax: 0.3 + Math.random() * 0.3
+            parallax: 0.2 + Math.random() * 0.2
         });
     }
 }
+
 // 16進数カラー(#rrggbb)をRGBオブジェクト({r,g,b})に変換する関数
 function hexToRgb(hex) {
     // カラーコードが未定義の場合のガード
@@ -5608,28 +5648,45 @@ function drawBackground() {
     ctx.fillStyle = '#050505';
     ctx.fillRect(0, 0, width, height);
 
-    // --- 2. 星雲の描画（drawBackground内） ---
+    // ★重要：星と星雲で共通のループ範囲を定義する
+    // 星雲がはみ出ても消えないよう、画面サイズより十分に大きく取る
+    const LOOP_MARGIN_X = 400;
+    const LOOP_MARGIN_Y = 400;
+    const loopW = width + LOOP_MARGIN_X;
+    const loopH = height + LOOP_MARGIN_Y;
+
+    // ----------------------------------------------------
+    // 2. 星雲の描画
+    // ----------------------------------------------------
     if (typeof nebulae !== 'undefined') {
         nebulae.forEach(n => {
-            // ★ポイント：camera.x に parallax（移動倍率）を掛け、
-            // その値をマイナスすることで自機の移動と「逆」に流れるようにします。
-            // 画面サイズ(width)でループさせることで無限背景にします。
+            // カメラ移動によるオフセット計算
+            let nx = (n.x - camera.x * n.parallax) % loopW;
+            let ny = (n.y - camera.y * n.parallax) % loopH;
 
-            const offset = 10000; // マイナス値防止用の大きな下地
-            let nx = (n.x - camera.x * n.parallax + offset) % width;
-            let ny = (n.y - camera.y * n.parallax + offset) % height;
+            // 負の値を補正
+            if (nx < 0) nx += loopW;
+            if (ny < 0) ny += loopH;
+
+            // 画面座標系へ変換（ループの中心を画面に合わせるためのオフセット調整）
+            // これにより、論理座標(0,0)付近が画面左上に来るようになります
+            nx -= LOOP_MARGIN_X / 2;
+            ny -= LOOP_MARGIN_Y / 2;
 
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
 
-            // 星雲を描画
+            // メイン描画
             ctx.drawImage(n.image, nx - n.radius, ny - n.radius);
 
-            // 画面端の継ぎ目対策（上下左右に折り返し描画）
-            if (nx < n.radius) ctx.drawImage(n.image, nx - n.radius + width, ny - n.radius);
-            if (nx > width - n.radius) ctx.drawImage(n.image, nx - n.radius - width, ny - n.radius);
-            if (ny < n.radius) ctx.drawImage(n.image, nx - n.radius, ny - n.radius + height);
-            if (ny > height - n.radius) ctx.drawImage(n.image, nx - n.radius, ny - n.radius - height);
+            // ループ境界の折り返し描画（画面端で途切れないように）
+            // 左右
+            if (nx < -n.radius) ctx.drawImage(n.image, nx - n.radius + loopW, ny - n.radius);
+            else if (nx > width + n.radius) ctx.drawImage(n.image, nx - n.radius - loopW, ny - n.radius);
+
+            // 上下
+            if (ny < -n.radius) ctx.drawImage(n.image, nx - n.radius, ny - n.radius + loopH);
+            else if (ny > height + n.radius) ctx.drawImage(n.image, nx - n.radius, ny - n.radius - loopH);
 
             ctx.restore();
         });
@@ -5651,21 +5708,30 @@ function drawBackground() {
     }
     ctx.stroke();
 
-    // --- 4. 遠景：星空（無限スクロール＆強い視差） ---
+    // ----------------------------------------------------
+    // 4. 星の描画
+    // ----------------------------------------------------
     stars.forEach(s => {
-        const moveFactor = s.parallax * 0.4;
-        const starX = (s.x - camera.x * moveFactor + worldSize * 10) % width;
-        const starY = (s.y - camera.y * moveFactor + worldSize * 10) % height;
+        // ★星雲と全く同じループ計算式を使う
+        let sx = (s.x - camera.x * s.parallax) % loopW;
+        let sy = (s.y - camera.y * s.parallax) % loopH;
 
-        const finalX = (starX < 0) ? starX + width : starX;
-        const finalY = (starY < 0) ? starY + height : starY;
+        if (sx < 0) sx += loopW;
+        if (sy < 0) sy += loopH;
 
-        ctx.fillStyle = '#fff';
-        ctx.globalAlpha = s.brightness * 0.8;
-        ctx.beginPath();
-        const sizeBoost = s.parallax > 0.8 ? 1.2 : 1.0;
-        ctx.arc(finalX, finalY, s.size * 0.8 * sizeBoost, 0, Math.PI * 2);
-        ctx.fill();
+        // オフセット調整も統一
+        sx -= LOOP_MARGIN_X / 2;
+        sy -= LOOP_MARGIN_Y / 2;
+
+        // 画面内に見えている場合だけ描画（負荷軽減）
+        if (sx > -50 && sx < width + 50 && sy > -50 && sy < height + 50) {
+            ctx.fillStyle = '#fff';
+            ctx.globalAlpha = s.brightness * 0.8;
+            ctx.beginPath();
+            const sizeBoost = s.parallax > 0.8 ? 1.2 : 1.0;
+            ctx.arc(sx, sy, s.size * 0.8 * sizeBoost, 0, Math.PI * 2);
+            ctx.fill();
+        }
     });
 
     ctx.restore();
@@ -5681,11 +5747,10 @@ function drawBackground() {
 
     ctx.globalCompositeOperation = 'lighter';
     const baseColor = STAGE_THEMES[stage] || '#00f0ff';
-    ctx.strokeStyle = baseColor;
-    ctx.lineWidth = 1.5;
-    ctx.globalAlpha = 0.3;
+    const baseRgb = hexToRgb(baseColor); // ハイライト用にRGB取得
 
-    ctx.beginPath();
+    ctx.lineWidth = 1.5;
+
     const viewW = width / cameraScale;
     const viewH = height / cameraScale;
     const buffer = 3;
@@ -5694,51 +5759,78 @@ function drawBackground() {
     const startY = Math.max(0, Math.floor(camera.y / GRID_SPACING) - buffer);
     const endY = Math.min(gridPoints[0].length - 1, Math.ceil((camera.y + viewH) / GRID_SPACING) + buffer);
 
-    // --- グリッドを描画 ---
-    ctx.save();
-    ctx.lineWidth = 1.5;
+    // --- グリッドを描画（高速化＆強調ハイブリッド版） ---
+
+    // 1. まず「静止している（歪んでいない）」薄いグリッドを一括描画
+    ctx.beginPath();
+    ctx.strokeStyle = baseColor;
+    ctx.globalAlpha = 0.08; // ベースの薄さ
+
+    for (let i = startX; i <= endX; i++) {
+        for (let j = startY; j <= endY; j++) {
+            const p = gridPoints[i][j];
+            if (!p) continue;
+            if (i > startX && gridPoints[i - 1][j]) {
+                ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y);
+                ctx.lineTo(p.x, p.y);
+            }
+            if (j > startY && gridPoints[i][j - 1]) {
+                ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y);
+                ctx.lineTo(p.x, p.y);
+            }
+        }
+    }
+    ctx.stroke();
+
+    // 2. 次に「歪みエネルギーが高い」場所だけを重ねて描画
+    // ループは2回回りますが、if文で弾くため描画コストは抑えられます
 
     for (let i = startX; i <= endX; i++) {
         for (let j = startY; j <= endY; j++) {
             const p = gridPoints[i][j];
             if (!p) continue;
 
-            // 1. この点が受けている「衝撃エネルギー」を算出
-            // 現在の速度（vx, vy）は、衝撃源から直接与えられたエネルギーの指標になります。
-            // 速度が速い ＝ 衝撃源の近く、または強い衝撃を受けた直後。
+            // 速度(vx, vy)をエネルギーとして計算
             const energy = Math.hypot(p.vx, p.vy);
 
-            // 2. 透明度の決定
-            // 0.04 = 平常時のうっすら見えるライン
-            // energy * 0.1 = 衝撃に近いほど濃くなる（係数は感度に合わせて調整）
-            // 指数(1.2)をかけることで、中心部の「濃さ」にメリハリをつけます
-            const gridAlpha = 0.08 + Math.pow(Math.min(1.0, energy * 0.10), 1.2);
+            // 一定以上のエネルギーがある場合のみ強調描画
+            if (energy > 0.5) {
+                // エネルギーに応じて濃くする
+                const highlightAlpha = Math.min(0.8, energy * 0.12);
 
-            ctx.globalAlpha = gridAlpha;
+                // さらに強く歪んでいるなら白く光らせる
+                let drawColor = baseColor;
+                /*
+                if (energy > 2.0) {
+                    drawColor = '#ffffff';
+                    ctx.lineWidth = 2.5; // 太くする
+                } else {
+                    ctx.lineWidth = 1.5;
+                }
+                */
 
-            // 線の描画（ここからは既存と同じ）
-            if (i > startX && gridPoints[i - 1][j]) {
-                const pPrev = gridPoints[i - 1][j];
-                // 隣り合う点との平均エネルギーで線を引く（より滑らかになります）
-                ctx.beginPath();
-                ctx.moveTo(pPrev.x, pPrev.y);
-                ctx.lineTo(p.x, p.y);
-                ctx.stroke();
-            }
-            if (j > startY && gridPoints[i][j - 1]) {
-                const pPrev = gridPoints[i][j - 1];
-                ctx.beginPath();
-                ctx.moveTo(pPrev.x, pPrev.y);
-                ctx.lineTo(p.x, p.y);
-                ctx.stroke();
+                ctx.globalAlpha = highlightAlpha;
+                ctx.strokeStyle = drawColor;
+
+                // 個別にパスを描く（ここだけコストがかかるが、数は少ないはず）
+                if (i > startX && gridPoints[i - 1][j]) {
+                    ctx.beginPath();
+                    ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y);
+                    ctx.lineTo(p.x, p.y);
+                    ctx.stroke();
+                }
+                if (j > startY && gridPoints[i][j - 1]) {
+                    ctx.beginPath();
+                    ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y);
+                    ctx.lineTo(p.x, p.y);
+                    ctx.stroke();
+                }
             }
         }
     }
-    ctx.restore();
-    ctx.stroke();
+
     ctx.restore();
 }
-
 function drawWorldBounds() {
     // 現在のステージの色を取得（定義がなければデフォルトのシアン）
     const color = STAGE_THEMES[stage] || '#00f0ff';
