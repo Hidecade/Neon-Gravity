@@ -3545,38 +3545,46 @@ function updateTadpoleAI(e) {
     const dy = player.y - e.y;
     const d = Math.hypot(dx, dy) || 0.001;
 
-    // --- 1. 超高速・高慣性移動ロジック ---
-    // 加速度をさらに強化。これで自機に向かって「突き刺さる」ような動きになります。
-    const accel = 0.6 * SPEED_SCALE * gameSpeed;
+    // 1. 現在の怒り倍率を取得（最大3.0）
+    const angerMult = (typeof bossAngerMinionSpeedMag !== 'undefined') ? bossAngerMinionSpeedMag : 1.0;
+
+    // --- 加速度ロジック ---
+    // 加速度にも倍率を適用し、怒り時はより鋭く自機へ突っ込むようにします
+    const accel = 0.6 * SPEED_SCALE * gameSpeed * angerMult;
     e.vx += (dx / d) * accel;
     e.vy += (dy / d) * accel;
 
-    // 摩擦をほぼ撤廃 (0.999)。
-    // これにより、避けたあとに「勢い余って遠くへ滑っていく」慣性が強く出ます。
+    // 慣性を維持（摩擦を極限まで減らす）
     e.vx *= 0.998;
     e.vy *= 0.998;
 
     const currentV = Math.hypot(e.vx, e.vy);
-    // 最高速度制限を少し高めに設定（逃げ切るのが難しい速さ）
-    const maxSpd = e.speed * 1.2;
 
-    if (currentV > maxSpd) {
-        e.vx = (e.vx / currentV) * maxSpd;
-        e.vy = (e.vy / currentV) * maxSpd;
+    // --- 2. 最高速度制限の計算 ---
+    // e.speed(14ベース) × 1.2倍 ＝ 約16.8 が通常時の上限
+    // これに angerMult(最大3) を掛けると 50.4 になるが、30 でキャップをかける
+    let targetMaxSpd = e.speed * 1.2 * angerMult;
+
+    // ★ TADPOLEの絶対的な速度上限を設定（30を限界にする）
+    const TADPOLE_ABSOLUTE_LIMIT = 30.0;
+    if (targetMaxSpd > TADPOLE_ABSOLUTE_LIMIT) {
+        targetMaxSpd = TADPOLE_ABSOLUTE_LIMIT;
     }
 
-    // 座標更新
+    if (currentV > targetMaxSpd) {
+        e.vx = (e.vx / currentV) * targetMaxSpd;
+        e.vy = (e.vy / currentV) * targetMaxSpd;
+    }
+
+    // 3. 座標更新
     e.x += e.vx * gameSpeed;
     e.y += e.vy * gameSpeed;
 
-    // 進行方向を向く（慣性で滑っている間も「向いている方向」と「進む方向」を一致させます）
+    // 進行方向を向く
     e.angle = Math.atan2(e.vy, e.vx);
 
-    // --- 2. 攻撃ロジックは削除（ご要望通り中止） ---
-
-    // --- 3. 軌跡の更新 ---
+    // --- 4. 軌跡の更新 ---
     e.history.unshift({ x: e.x, y: e.y });
-    // 軌跡（しっぽ）を長めにすると、高速移動の残像がより美しく見えます
     if (e.history.length > 80) e.history.pop();
 }
 
