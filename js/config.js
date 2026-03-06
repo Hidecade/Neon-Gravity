@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-const GAME_VERSION = "1.1.1";
+const GAME_VERSION = "1.1.2";
 
 // --- システム設定 ---
 const G_SCALE = 0.7;          // 全体の描画スケール（標準の70%）
@@ -14,11 +14,12 @@ const REFERENCE_SIZE = 850;   // 画面スケーリングの基準サイズ
 
 const HOWTO_WAIT_TIME = 600;  // HOWTO画面の放置でタイトルに戻る時間
 
+
 // --- iOS判定 ---
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // --- ステージ・難易度設定 ---
-const START_STAGE = 1;        // 開始ステージ
+const START_STAGE =1;        // 開始ステージ
 const MAX_STAGE = 10;         // 最大ステージ
 
 
@@ -72,6 +73,10 @@ const ENEMY_SPEEDS = {
     BOSS_MISSILE: 10.0 // ボスミサイル用
 };
 
+const ENEMY_LIMITS = {
+    TADPOLE_MAX: 30.0, // これ以上は速くならない絶対上限
+};
+
 const DRAGON_ACCELERATION = 0.2; // ドラゴンの追尾加速力
 
 // 当たり判定（半径）
@@ -90,6 +95,7 @@ const ENEMY_HITBOX = {
     ISLAND: 40, // 基準サイズ。描画時はこれに e.scale が掛かります
     TURRET: 15,
 };
+
 
 // 撃破スコア
 const ENEMY_SCORES = {
@@ -230,7 +236,7 @@ const STAGE_TITLES = {
 // ステージごとのテーマカラー定義
 const STAGE_THEMES = {
     1: '#00bbff', // Cyan (Default)
-    2: '#f8f8ff', // White
+    2: '#808080', // White
     3: '#3355ff', // Deep Blue
     4: '#aa00ff', // Purple
     5: '#ffaa00', // Gold
