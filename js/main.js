@@ -994,6 +994,9 @@ function resetGame() {
     particles = []; crystals = []; missiles = []; powerups = [];
     wormholes = []; scorePopups = []; rings = [];
 
+    initStars();   // 星団の位置が変わる
+    initNebulae(); // 新しい星団に合わせて星雲を作り直す
+
     player.x = worldSize / 2; player.y = worldSize / 2;
     player.vx = 0; player.vy = 0;
     player.shield = PLAYER_BASE_SHIELD;
