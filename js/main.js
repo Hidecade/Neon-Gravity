@@ -43,6 +43,7 @@ let rushBossIndex = 0;          // ボスラッシュ: 現在のボス番号 (0~
 let rushIntervalTimer = 0;      // ボスラッシュ: インターバルタイマー
 let stage10Timer = 0;           // Stage 10: 経過時間
 let stage10BeatCount = 0;       // Stage 10: ビート演出カウント
+let stage10SpawnTimer = 0; // ★追加：Stage 10 ラスボス出現専用タイマー
 
 // ---------------------------------------------------------
 // 3. プレイヤー（自機）データ
@@ -583,16 +584,25 @@ function initGrid() {
     }
 }
 
+/**
+ * 星（Stars）を初期化する関数
+ * 背景の星空を生成します。一様に散らすのではなく、
+ * 「星団（Cluster）」を作って星を集めることで、リアルな宇宙空間を表現します。
+ */
 function initStars() {
     stars = [];
     starClusters = [];
 
-    // ★修正1：マージンを 1000 -> 400 に減らす（密度アップ）
+    // ★修正1：画面外の予備スペース設定
+    // スクロールした際に星が急に消えたり現れたりしないよう、
+    // 画面サイズ（width, height）より広い範囲（マージン）に星を生成します。
+    // マージンを 1000 -> 400 に減らすことで、計算範囲を狭め密度感を上げています。
     const LOOP_MARGIN = 400;
     const rangeW = width + LOOP_MARGIN;
     const rangeH = height + LOOP_MARGIN;
 
-    // クラスター生成
+    // --- A. 星団（星が集まる中心点）の生成 ---
+    // 画面内に 8箇所の「星が集まるポイント」をランダムに決めます。
     const clusterCount = 8;
     for (let i = 0; i < clusterCount; i++) {
         starClusters.push({
@@ -601,78 +611,148 @@ function initStars() {
         });
     }
 
-    // 2. 星の生成（数は300で十分見えます）
+    // --- B. 星の生成ループ ---
+    // 300個の星を作成します
     for (let i = 0; i < 300; i++) {
         let sx, sy;
+
+        // 60%の確率で「星団の近く」に配置し、40%は「ランダム」に配置します
+        // これにより、疎密（濃い部分と薄い部分）のある自然な星空になります
         if (Math.random() < 0.6) {
+            // 星団モード: ランダムに選んだ星団の中心から、±250pxの範囲に配置
             const cluster = starClusters[Math.floor(Math.random() * clusterCount)];
-            const spread = 500;
+            const spread = 500; // 散らばり具合
             sx = cluster.x + (Math.random() - 0.5) * spread;
             sy = cluster.y + (Math.random() - 0.5) * spread;
         } else {
+            // ランダムモード: 全体にまんべんなく配置
             sx = Math.random() * rangeW - LOOP_MARGIN / 2;
             sy = Math.random() * rangeH - LOOP_MARGIN / 2;
         }
+
+        // 色をランダムに決定（青白～白～黄色～赤）
+        const starColors = ['#ffffff', '#cceeff', '#ffddaa', '#ffcccc'];
+        const randomColor = starColors[Math.floor(Math.random() * starColors.length)];
+
         stars.push({
             x: sx, y: sy,
             size: 0.5 + Math.random() * 2,
             brightness: Math.random(),
-            parallax: 0.2 + Math.random() * 0.3
+            parallax: 0.2 + Math.random() * 0.3,
+            color: randomColor // ★ここに色情報を保存する
         });
     }
 }
 
+/**
+ * 星雲（Nebulae）を初期化する関数
+ * 背景に表示される色とりどりのガス状のオブジェクトを生成します。
+ */
+/**
+ * 星雲（Nebulae）を初期化する関数
+ * 背景に表示される色とりどりのガス状のオブジェクトを生成します。
+ */
 function initNebulae() {
+    // 星雲オブジェクトを格納する配列をリセット
     nebulae = [];
+
+    // --- 1. テーマカラーの取得と基本色の設定 ---
+    // 現在のステージに対応するテーマカラー（16進数）を取得。未定義の場合はデフォルトのシアン(#00bbff)を使用。
     const themeHex = STAGE_THEMES[stage] || '#00bbff';
+    // 16進数カラーをRGBオブジェクト {r, g, b} に変換
     const base = hexToRgb(themeHex);
+    // 宇宙の深淵を表現するための暗い青紫色を定義（影や深み用）
     const spaceDeep = { r: 20, g: 0, b: 60 };
 
+    // --- 2. 配置基準となる星団（クラスター）の決定 ---
+    // 星団（starClusters）が生成されていればそれを利用し、なければ画面中央を基準とする
+    // これにより、星が集まっている場所に星雲も発生しやすくなり、自然な見た目になる
     const clusters = (starClusters.length > 0) ? starClusters : [{ x: width / 2, y: height / 2 }];
 
-    // ★修正2：数を 12 -> 20 に増やす
-    const count = 12;
+    // --- 3. 星雲生成ループ ---
+    // ★修正2：生成する星雲の数を 12 から 20 に増やして密度を上げる
+    const count = 20;
 
     for (let i = 0; i < count; i++) {
-        const radius = 200 + Math.random() * 300; // サイズ感は維持
-        // 透明度を少し上げて見やすくする (0.04 -> 0.06)
+        // --- A. 星雲の個体差（サイズ・透明度）の設定 ---
+        // 半径を 200px 〜 500px の範囲でランダムに決定
+        const radius = 200 + Math.random() * 150;
+
+        // 透明度（アルファ値）を 0.04 〜 0.10 の範囲でランダムに決定
+        // 背景が見えるように薄く設定し、重ね合わせで濃淡を表現する
+        // 以前より少し値を上げて見やすく調整済み
         const alpha = 0.04 + Math.random() * 0.06;
 
+        // --- B. 色の決定ロジック ---
         let r, g, b;
-        const variant = Math.random();
+        const variant = Math.random(); // 0.0 〜 1.0 の乱数で色の傾向を決める
+
         if (variant < 0.6) {
+            // パターン1 (60%): ベーステーマ色に近い色
+            // ベース色に -30 〜 +30 のランダムな変動（variance）を加えて微妙なニュアンスを出す
             const variance = (Math.random() - 0.5) * 60;
-            r = base.r + variance; g = base.g + variance; b = base.b + variance;
+            r = base.r + variance;
+            g = base.g + variance;
+            b = base.b + variance;
         } else if (variant < 0.8) {
-            r = (base.r + spaceDeep.r) / 2; g = (base.g + spaceDeep.g) / 2; b = (base.b + spaceDeep.b) / 2;
+            // パターン2 (20%): 深い宇宙の色（影）
+            // ベース色と深淵色(spaceDeep)の中間色を作り、暗めの星雲にする
+            r = (base.r + spaceDeep.r) / 2;
+            g = (base.g + spaceDeep.g) / 2;
+            b = (base.b + spaceDeep.b) / 2;
         } else {
-            r = Math.min(255, base.r + 100); g = Math.min(255, base.g + 100); b = Math.min(255, base.b + 100);
+            // パターン3 (20%): ハイライト（明るい色）
+            // ベース色を明るくして（+100）、輝いている部分を作る
+            // Math.min(255, ...) でRGB値が255を超えないように制限
+            r = Math.min(255, base.r + 100);
+            g = Math.min(255, base.g + 100);
+            b = Math.min(255, base.b + 100);
         }
+
+        // 決定したRGB値を整数化し、0〜255の範囲に収める（クランプ処理）
         const color = {
             r: Math.floor(Math.max(0, Math.min(255, r))),
             g: Math.floor(Math.max(0, Math.min(255, g))),
             b: Math.floor(Math.max(0, Math.min(255, b)))
         };
 
+        // --- C. キャッシュ用キャンバスへの描画 ---
+        // 毎回計算して描画すると重いため、星雲1つ分の画像をオフスクリーンキャンバスに作成しておく
         const cacheCanvas = document.createElement('canvas');
-        const size = Math.ceil(radius * 2);
-        cacheCanvas.width = size; cacheCanvas.height = size;
+        const size = Math.ceil(radius * 2); // キャンバスサイズは直径分
+        cacheCanvas.width = size;
+        cacheCanvas.height = size;
         const cacheCtx = cacheCanvas.getContext('2d');
+
+        // 円形グラデーションの作成（中心から外側へ）
         const grad = cacheCtx.createRadialGradient(radius, radius, 0, radius, radius, radius);
+
+        // グラデーションの色定義
+        // 中心 (0%): 指定した色と透明度
         grad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`);
-        grad.addColorStop(0.6, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.3})`); // グラデーションを少し広げる
+
+        // 中間 (60%): 透明度を下げてふわっとさせる
+        grad.addColorStop(0.6, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.3})`);
+
+        // 外側 (100%): 完全透明にして境界を消す
         grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+        // キャンバス全体をグラデーションで塗りつぶす
         cacheCtx.fillStyle = grad;
         cacheCtx.fillRect(0, 0, size, size);
 
-        // 配置：クラスター周辺に散らす
+        // --- D. 配列への登録 ---
+        // ランダムに選んだ星団（クラスター）の周辺に配置する
         const targetCluster = clusters[Math.floor(Math.random() * clusters.length)];
 
         nebulae.push({
+            // クラスター中心から ±250px の範囲にランダム配置
             x: targetCluster.x + (Math.random() - 0.5) * 500,
             y: targetCluster.y + (Math.random() - 0.5) * 500,
-            radius: radius,
-            image: cacheCanvas,
+            radius: radius, // 半径
+            image: cacheCanvas, // 生成した画像データ
+            // 視差効果（パララックス）の係数
+            // 0.2 〜 0.4 の値。小さいほど遠くに見え、カメラ移動時の動きが遅くなる
             parallax: 0.2 + Math.random() * 0.2
         });
     }
@@ -838,6 +918,7 @@ function startStage() {
             // --- Stage 10 (Final) ---
             stage10Timer = 0;
             stage10BeatCount = 0;
+            stage10SpawnTimer = 0; // ★ここを追加：出現タイマーリセット
             msgContent = `<span style="font-size: 1.2em; letter-spacing: 8px; margin-right: -8px;">WARNING</span><br><span style="display: inline-block; margin-top: 15px; font-size: 0.7em; letter-spacing: 4px; margin-right: -4px;">GENESIS-ARK APPROACHING</span>`;
             msgColor = "red";
             displayTime = 240; // 4秒
@@ -1602,8 +1683,11 @@ function update() {
     const currentBoss = enemies.find(e => e.type === 'boss' || e.type === 'battleship');
 
     if (currentBoss && currentBoss.aliveTimer > 1800) {
-        // 30秒(1800F)経過後から加速開始。60秒(3600F)で約1.9倍、最大3.0倍。
+        // 30秒(1800F)経過後から加速開始。
+        // 計算式: 1.0 + (経過時間 - 30秒) * 0.0005
         bossAngerMinionSpeedMag = 1.0 + (currentBoss.aliveTimer - 1800) * 0.0005;
+
+        // ★修正：上限を「3.0倍」に制限 (Math.minでクランプ)
         bossAngerMinionSpeedMag = Math.min(3.0, bossAngerMinionSpeedMag);
 
         // 視覚的警告（既存の警告UIを流用）
@@ -1771,6 +1855,19 @@ function update() {
     } else if (stage === 10) {
         // ★追加: Stage 10 はランダムスポーンを一切行わない
         // (ボスはstartStageで生成済み、雑魚召喚はupdateEternityCoreAIで行う)
+
+        // 修正: Stage 10 ラスボス出現管理
+        // (startStageでstage10SpawnTimerをリセットしている前提)
+        if (!isBossSpawned) {
+            // 以下の stage10SpawnTimer++ は update() の冒頭で定義済みか、ここに追加する
+            if (typeof stage10SpawnTimer !== 'undefined') {
+                stage10SpawnTimer++;
+                if (stage10SpawnTimer === 240) {
+                    spawnEnemy(worldSize / 2, worldSize / 2, 'battleship');
+                    isBossSpawned = true;
+                }
+            }
+        }
 
     } else {
         // --- 通常ステージ (1-8) のスポーンロジック ---
@@ -3032,9 +3129,13 @@ function applyWorldBoundary(e) {
 function checkPlayerCollision(e) {
     if (gameState === 'DYING' || gameState === 'GAMEOVER') return;
 
-    const dist = Math.hypot(player.x - e.x, player.y - e.y);
+    // ★修正1: Math.hypot を廃止し、距離の2乗 (dx*dx + dy*dy) を計算
+    // 平方根(sqrt)を使わないため非常に高速です
+    const dx = player.x - e.x;
+    const dy = player.y - e.y;
+    const distSq = dx * dx + dy * dy;
 
-    // --- 当たり判定半径の決定 ---
+    // --- 当たり判定半径の決定 (ここは変更なし) ---
     let radius = 15 * G_SCALE;
     if (e.type === 'asteroid') {
         radius = 20 * e.scale * G_SCALE;
@@ -3049,59 +3150,53 @@ function checkPlayerCollision(e) {
     } else if (e.type === 'hunter') {
         radius = ENEMY_HITBOX.HUNTER * G_SCALE;
     } else if (e.type === 'island') {
-        radius = ENEMY_HITBOX.ISLAND * e.scale * G_SCALE;   // 大陸はスケールが大きいので scale を掛ける
+        radius = ENEMY_HITBOX.ISLAND * e.scale * G_SCALE;
     } else if (e.type === 'turret') {
         radius = ENEMY_HITBOX.TURRET * G_SCALE;
     } else if (e.type === 'boss') {
-        radius = 45 * G_SCALE; // 通常ボス
+        radius = 45 * G_SCALE;
     } else if (e.type === 'battleship') {
-        // ★追加: 巨大戦艦は判定を大きくする
         radius = 80 * G_SCALE;
     }
 
     // 衝突境界距離の計算
     const collisionDist = radius * (e.type === 'asteroid' ? 1 : (e.scale / 0.7)) + (player.invuln > 0 ? 20 : 0);
 
-    if (dist < collisionDist) {
-        // ★修正: 通常ボスまたは戦艦が出現中の場合は接触判定なし
+    // ★修正2: 判定距離の方を2乗する (比較対象を合わせる)
+    const collisionDistSq = collisionDist * collisionDist;
+
+    // ★修正3: 2乗同士で比較判定を行う (結果は同じになる)
+    if (distSq < collisionDistSq) {
+
+        // --- 以下、衝突時の処理 (変更なし) ---
         if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) return;
 
-        // checkPlayerCollision(e) 内の無敵処理部分
         if (player.invuln > 0) {
             if (e.type === 'boss' || e.type === 'battleship' || e.type === 'dragon' || e.type === 'asteroid') {
-
-                // ★修正1：ダメージを大幅に下げる (0.8 -> 0.15)
                 e.hp -= 0.15;
 
-                // ★修正2：ボス級に張り付いている間は無敵時間を早く消費する (特攻ペナルティ)
                 if (e.type === 'boss' || e.type === 'battleship') {
-                    player.invuln -= 1; // 通常の1F減少に加え、さらに減る（実質2倍の速さで切れる）
-
-                    // ★修正3：めり込みすぎないよう、プレイヤーをボスの外側へ少し反発させる
+                    player.invuln -= 1;
                     const pushAngle = Math.atan2(player.y - e.y, player.x - e.x);
                     player.x += Math.cos(pushAngle) * 3;
                     player.y += Math.sin(pushAngle) * 3;
                 }
 
-                // ヒットバック演出
                 if (e.type === 'boss' || e.type === 'battleship') e.flashTimer = 5;
 
-                // 火花演出は少し間引いて描画負荷を下げる
                 if (frame % 4 === 0) {
                     createExplosion(e.x, e.y, '#ff0', 2);
                     if (typeof AudioSys !== 'undefined') AudioSys.playSE('boss_hit');
                 }
             } else {
-                // 雑魚は即死
                 e.hp = 0;
                 score += 100;
                 createExplosion(e.x, e.y, e.color, 15);
                 if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_small');
             }
-            return; // プレイヤーのダメージ処理をスキップ
+            return;
         }
 
-        // --- 通常時のダメージ処理 ---
         player.shield -= 0.5;
         if (player.invuln <= 0) {
             player.shield -= 10;
@@ -3118,26 +3213,31 @@ function checkSatelliteCollision(e) {
     // 出現中のボスは当たり判定なし（すり抜ける）
     if (e.type === 'boss' && e.isSpawning) return;
 
+    // ★修正1: 判定半径(25)の2乗を定数として定義 (25 * 25 = 625)
+    const HIT_RADIUS_SQ = 625;
+
     for (let i = player.satellites.length - 1; i >= 0; i--) {
         const s = player.satellites[i];
 
-        // 当たり判定距離
-        if (Math.hypot(s.x - e.x, s.y - e.y) < 25) {
+        // ★修正2: Math.hypot を廃止し、距離の2乗を計算
+        const dx = s.x - e.x;
+        const dy = s.y - e.y;
+        const distSq = dx * dx + dy * dy;
 
-            // ★修正箇所：ボスや中ボス(Dragon)の場合は即死させず、ダメージを与える処理に変更
+        // ★修正3: 2乗同士で比較
+        if (distSq < HIT_RADIUS_SQ) {
+
+            // --- 以下、衝突時の処理 (変更なし) ---
             if (e.type === 'boss' || e.type === 'dragon') {
-                // 衛星特攻ダメージ（値はバランスに合わせて調整してください）
                 e.hp -= 20;
 
-                if (e.type === 'boss') e.flashTimer = 5; // 点滅演出
-                if (typeof AudioSys !== 'undefined') AudioSys.playSE('boss_hit'); // ヒット音
+                if (e.type === 'boss') e.flashTimer = 5;
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('boss_hit');
 
-                // ヒットエフェクト
                 if (typeof createExplosion === 'function') {
                     createExplosion(s.x, s.y, '#0f0', 5);
                 }
             } else {
-                // 通常の雑魚敵は即死させる（既存の処理）
                 e.hp = 0;
                 e.noDrop = true;
 
@@ -3545,28 +3645,31 @@ function updateTadpoleAI(e) {
     const dy = player.y - e.y;
     const d = Math.hypot(dx, dy) || 0.001;
 
-    // 1. 現在の怒り倍率を取得（最大3.0）
-    const angerMult = (typeof bossAngerMinionSpeedMag !== 'undefined') ? bossAngerMinionSpeedMag : 1.0;
+    // 1. 怒り倍率を取得（最大3.0）
+    const rawAnger = (typeof bossAngerMinionSpeedMag !== 'undefined') ? bossAngerMinionSpeedMag : 1.0;
+
+    // ★調整1: 怒りの影響をマイルドにする（3倍速だと速すぎるため、平方根をとって最大約1.7倍程度に抑える）
+    const effectiveAnger = Math.sqrt(rawAnger);
 
     // --- 加速度ロジック ---
-    // 加速度にも倍率を適用し、怒り時はより鋭く自機へ突っ込むようにします
-    const accel = 0.6 * SPEED_SCALE * gameSpeed * angerMult;
+    // ★調整2: 加速度を 0.6 -> 0.20 に大幅ダウン。
+    // これにより、すぐに最高速にならず、プレイヤーを通り過ぎた後に大きく膨らんで戻ってくる動きになります。
+    const accel = 0.20 * SPEED_SCALE * gameSpeed * effectiveAnger;
     e.vx += (dx / d) * accel;
     e.vy += (dy / d) * accel;
 
-    // 慣性を維持（摩擦を極限まで減らす）
-    e.vx *= 0.998;
-    e.vy *= 0.998;
+    // 慣性を維持
+    e.vx *= 0.99; // 少し摩擦を強めて(0.998 -> 0.99)制御しやすく
+    e.vy *= 0.99;
 
     const currentV = Math.hypot(e.vx, e.vy);
 
     // --- 2. 最高速度制限の計算 ---
-    // e.speed(14ベース) × 1.2倍 ＝ 約16.8 が通常時の上限
-    // これに angerMult(最大3) を掛けると 50.4 になるが、30 でキャップをかける
-    let targetMaxSpd = e.speed * 1.2 * angerMult;
+    let targetMaxSpd = e.speed * effectiveAnger;
 
-    // ★ TADPOLEの絶対的な速度上限を設定（30を限界にする）
-    const TADPOLE_ABSOLUTE_LIMIT = 30.0;
+    // ★調整3: 絶対的な速度上限を 24.0 -> 14.0 に低下
+    // これ以上速いと目で追えません。
+    const TADPOLE_ABSOLUTE_LIMIT = 14.0;
     if (targetMaxSpd > TADPOLE_ABSOLUTE_LIMIT) {
         targetMaxSpd = TADPOLE_ABSOLUTE_LIMIT;
     }
@@ -4234,9 +4337,12 @@ function updateTurretAI(e) {
     // 2. 自機を狙う（旋回）
     const dx = player.x - e.x;
     const dy = player.y - e.y;
-    // 距離チェック（画面外なら何もしない）
-    const dist = Math.hypot(dx, dy);
-    if (dist > 800) return;
+
+    // ★修正: Math.hypotを使わず、距離の二乗で判定して高速化
+    // 判定したい距離 800 の二乗 (800 * 800 = 640000) と比較する
+    const distSq = dx * dx + dy * dy;
+
+    if (distSq > 640000) return; // 画面外(800px以上)なら処理打ち切り
 
     const targetAngle = Math.atan2(dy, dx);
 
@@ -5119,7 +5225,6 @@ function updateBattleshipAI(e) {
 
 }
 
-
 // =========================================================
 // 9. エンティティ更新 (Entity Updates)
 // =========================================================
@@ -5183,8 +5288,13 @@ function updatePlayerBullets() {
             else if (e.type === 'hunter') hitRadius = ENEMY_HITBOX.HUNTER;
             else if (e.type === 'boss') hitRadius = ENEMY_HITBOX.BOSS;
 
-            // 距離チェック
-            if (Math.hypot(b.x - e.x, b.y - e.y) < hitRadius) {
+            // 距離チェック（2乗で比較）
+            const dx = b.x - e.x;
+            const dy = b.y - e.y;
+            const distSq = dx * dx + dy * dy; // 距離の2乗
+            const hitRadiusSq = hitRadius * hitRadius; // 半径の2乗
+
+            if (distSq < hitRadiusSq) {
 
                 b.life = 0; // 弾を消す
                 e.hp--;     // ダメージを与える
@@ -5230,16 +5340,19 @@ function updatePlayerBullets() {
 
 function updateLasers() {
     // ★追加：現在のカメラの表示範囲に基づいて、レーザーの最大長を計算
-    // （画面の幅・高さの大きい方 + 余白100px くらいで自然に見切れるようにする）
     const viewW = width / cameraScale;
     const viewH = height / cameraScale;
     const dynamicMaxLen = Math.max(viewW, viewH) + 100;
 
+    // ★修正1: 最大長の2乗を事前に計算（比較用）
+    const dynamicMaxLenSq = dynamicMaxLen * dynamicMaxLen;
+
     lasers.forEach(l => {
         l.life--;
 
-        // ★修正1：長さを固定の2000ではなく、画面サイズに合わせる
         let currentLen = dynamicMaxLen;
+        // ★修正2: 現在の長さの2乗も管理（比較用）
+        let currentLenSq = dynamicMaxLenSq;
 
         const cos = Math.cos(l.angle);
         const sin = Math.sin(l.angle);
@@ -5258,10 +5371,12 @@ function updateLasers() {
             distY = (sin > 0 ? max - l.y : min - l.y) / sin;
         }
 
+        // 壁までの距離は平方根計算なしで求められるのでそのまま使用
         const distToWall = Math.min(distX, distY);
 
         if (distToWall < currentLen) {
             currentLen = distToWall;
+            currentLenSq = currentLen * currentLen; // 2乗も更新
 
             // 壁に当たった地点でエフェクト発生
             const hitX = l.x + cos * currentLen;
@@ -5274,29 +5389,29 @@ function updateLasers() {
 
         // --- 敵との衝突判定 ---
         enemies.forEach(e => {
-            // ★修正2：敵が死んでいる、または【画面外の場合はスキップ（オフスクリーンキル防止）】
             if (e.hp <= 0 || !e.inActiveRange) return;
-
-            // ★修正3：出現中のボス・戦艦には当たらないようにする
             if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) return;
 
             const dx = e.x - p1x;
             const dy = e.y - p1y;
-            const distToEnemy = Math.hypot(dx, dy);
+            // ★修正3: 距離の2乗を計算 (Math.hypot廃止)
+            const distToEnemySq = dx * dx + dy * dy;
 
             // 敵の方向とレーザーの方向が一致しているか
             const angleToEnemy = Math.atan2(dy, dx);
             let diff = Math.abs(l.angle - angleToEnemy);
             if (diff > Math.PI) diff = Math.PI * 2 - diff;
 
-            // 角度が近く、かつ現在の長さ（壁までの距離含む）より近い場合
-            if (diff < 0.35 && distToEnemy < currentLen) {
-                // ★修正4：巨大戦艦(battleship)の判定も追加
+            // ★修正4: 距離比較を2乗で行う (distToEnemy < currentLen -> distToEnemySq < currentLenSq)
+            if (diff < 0.35 && distToEnemySq < currentLenSq) {
                 const hitRadius = (e.type === 'boss' || e.type === 'battleship' ? 45 : 15) * e.scale;
 
                 // ボスや戦艦の場合はレーザーを貫通させず、そこで止める
                 if (e.type === 'boss' || e.type === 'battleship') {
+                    // ★ここだけは実際の距離が必要になるので平方根を計算 (頻度は低い)
+                    const distToEnemy = Math.sqrt(distToEnemySq);
                     currentLen = Math.min(currentLen, distToEnemy);
+                    currentLenSq = currentLen * currentLen; // 2乗も更新
                     e.flashTimer = 5;
                 }
 
@@ -5305,6 +5420,10 @@ function updateLasers() {
                 if (frame % 2 === 0) {
                     createExplosion(e.x, e.y, e.color, 2);
                     // ヒット地点のエフェクト
+                    // 正確なヒット位置計算には本来 sqrt が必要だが、
+                    // エフェクト用なので distToEnemySq の平方根を取らずに簡易計算するか、
+                    // ここだけ sqrt を使う（頻度低めならOK）
+                    const distToEnemy = Math.sqrt(distToEnemySq); // エフェクト位置用
                     const hitX = p1x + Math.cos(l.angle) * distToEnemy;
                     const hitY = p1y + Math.sin(l.angle) * distToEnemy;
                     particles.push({
@@ -5321,16 +5440,35 @@ function updateLasers() {
         l.renderLen = currentLen;
 
         // --- 敵弾の消去判定 ---
+        // 事前に計算できる定数を準備
+        // 直線の方程式 Ax + By + C = 0 の係数計算用
+        // (p1x, p1y) と (p2x, p2y) を通る直線
+        // A = p1y - p2y, B = p2x - p1x, C = p1x*p2y - p2x*p1y
+        // ここでは p2 = p1 + vec(cos, sin) * currentLen なので
+        // A = -sin * currentLen
+        // B = cos * currentLen
+        // C = p1x * (p1y + sin*L) - (p1x + cos*L) * p1y = p1x*sin*L - p1y*cos*L
+        // 全体を currentLen で割ると正規化できる:
+        // A' = -sin, B' = cos, C' = p1x*sin - p1y*cos
+        // 点と直線の距離 d = |A'x + B'y + C'| / sqrt(A'^2 + B'^2)
+        // A'^2 + B'^2 = sin^2 + cos^2 = 1 なので、分母は1になる！
+
+        const A_norm = -sin;
+        const B_norm = cos;
+        const C_norm = p1x * sin - p1y * cos;
+        const hitWidth = (l.width / 2 + 15) * G_SCALE;
+
         enemyBullets.forEach(eb => {
             if (eb.life <= 0) return;
 
-            const A = p1x - (p1x + cos * currentLen);
-            const B = p1y - (p1y + sin * currentLen);
-            const C = (p1x + cos * currentLen) * p1y - p1x * (p1y + sin * currentLen);
-            const dist = Math.abs(A * eb.y - B * eb.x + C) / (Math.hypot(A, B) || 1);
+            // ★修正5: 点と直線の距離公式を最適化 (平方根なし)
+            // d = | -sin*x + cos*y + (p1x*sin - p1y*cos) |
+            const dist = Math.abs(A_norm * eb.x + B_norm * eb.y + C_norm);
+
+            // ★修正6: 内積計算 (射影) で線分上にあるか判定
             const dot = (eb.x - p1x) * cos + (eb.y - p1y) * sin;
 
-            if (dist < ((l.width / 2 + 15) * G_SCALE) && dot > 0 && dot < currentLen) {
+            if (dist < hitWidth && dot > 0 && dot < currentLen) {
                 eb.life = 0;
                 score += 10;
             }
@@ -5738,7 +5876,6 @@ function updateGrid() {
     const startY = Math.max(0, Math.floor(camera.y / GRID_SPACING) - buffer);
     const endY = Math.min(gridPoints[0].length - 1, Math.ceil((camera.y + viewH) / GRID_SPACING) + buffer);
 
-    // 右端と下端のインデックス最大値を取得
     const lastColIndex = gridPoints.length - 1;
     const lastRowIndex = gridPoints[0].length - 1;
 
@@ -5747,38 +5884,38 @@ function updateGrid() {
             const p = gridPoints[i][j];
             if (!p) continue;
 
-            // ==========================================
-            // ★修正：外枠のアンカー留め（端の点は絶対に動かさない）
-            // ==========================================
-            // 上下左右のいずれかの端にある点かチェック
+            // 外枠のアンカー留め
             const isEdge = (i === 0 || i === lastColIndex || j === 0 || j === lastRowIndex);
-
             if (isEdge) {
-                // 強制的に初期位置に戻し、速度もゼロにする
-                p.x = p.ox;
-                p.y = p.oy;
-                p.vx = 0;
-                p.vy = 0;
-                continue; // 物理演算をスキップ
+                p.x = p.ox; p.y = p.oy; p.vx = 0; p.vy = 0;
+                continue;
             }
 
-            // --- 以下、通常の物理演算 ---
-            const dx = p.x - p.ox, dy = p.y - p.oy;
-            const dist = Math.hypot(dx, dy);
+            // --- 物理演算の高速化（三角関数排除） ---
+            const dx = p.x - p.ox;
+            const dy = p.y - p.oy;
 
-            if (dist > 0.1) {
-                const f = -0.12 * dist;
-                const ang = Math.atan2(dy, dx);
-                p.vx += Math.cos(ang) * f * gameSpeed;
-                p.vy += Math.sin(ang) * f * gameSpeed;
+            // 距離の二乗
+            const distSq = dx * dx + dy * dy;
+
+            // 0.1の二乗 = 0.01
+            if (distSq > 0.01) {
+                // ここで初めてルート計算（動いている点だけ）
+                // フックの法則: F = -k * x
+                // 本来は Fx = cos(θ) * F = (dx/dist) * (-k * dist) = -k * dx
+                // つまり、距離(dist)を計算せずに直接 dx, dy に係数を掛ければよい
+
+                const springFactor = -0.12 * gameSpeed;
+                p.vx += dx * springFactor;
+                p.vy += dy * springFactor;
             }
 
             p.vx *= 0.85;
             p.vy *= 0.85;
 
-            if (Math.abs(p.vx) < 0.01 && Math.abs(p.vy) < 0.01 && dist < 0.1) {
-                p.x = p.ox; p.y = p.oy;
-                p.vx = 0; p.vy = 0;
+            // 静止判定
+            if (Math.abs(p.vx) < 0.01 && Math.abs(p.vy) < 0.01 && distSq < 0.01) {
+                p.x = p.ox; p.y = p.oy; p.vx = 0; p.vy = 0;
             } else {
                 p.x += p.vx * gameSpeed;
                 p.y += p.vy * gameSpeed;
@@ -5792,32 +5929,37 @@ function distortGrid(x, y, force, radius) {
     const cy = Math.floor(y / GRID_SPACING);
     const r = Math.ceil(radius / GRID_SPACING);
 
+    // 半径の二乗
+    const radSq = radius * radius;
+
     for (let i = Math.max(0, cx - r); i < Math.min(gridPoints.length, cx + r); i++) {
         for (let j = Math.max(0, cy - r); j < Math.min(gridPoints[0].length, cy + r); j++) {
             const p = gridPoints[i][j];
-            const d = Math.hypot(p.x - x, p.y - y);
 
-            if (d < radius) {
+            const dx = p.x - x;
+            const dy = p.y - y;
+            const distSq = dx * dx + dy * dy;
+
+            // 範囲内かつ、中心点(0除算)でない場合
+            if (distSq < radSq && distSq > 0.001) {
+                const d = Math.sqrt(distSq);
+
+                // 三角関数を使わずベクトルで力を加える
+                // cos(a) = dx / d, sin(a) = dy / d
+                // 力 f = force * (1 - d / radius)
                 const f = force * (1 - d / radius);
-                const a = Math.atan2(p.y - y, p.x - x);
 
-                // 力を加える
-                p.vx += Math.cos(a) * f;
-                p.vy += Math.sin(a) * f;
+                p.vx += (dx / d) * f;
+                p.vy += (dy / d) * f;
 
-                // ==========================================
-                // ★修正：反転（交差）防止のリミッター（改良版）
-                // ==========================================
-                // 吸い込み（force < 0）の時だけ発動
+                // 吸い込み時の反転防止リミッター
                 if (force < 0) {
-                    // 現在の速度
-                    const speed = Math.hypot(p.vx, p.vy);
+                    const speedSq = p.vx * p.vx + p.vy * p.vy;
+                    const limitDist = d * 0.5;
 
-                    // 「今の距離(d)の半分」より速度が速い場合、
-                    // そのままだと中心を突き抜けてしまう可能性が高いので、速度を強制的に落とす
-                    // （ゼノのパラドックスのように、近づくほど遅くなり、決して中心には到達しない）
-                    if (speed > d * 0.5) {
-                        const brake = (d * 0.5) / speed;
+                    if (speedSq > limitDist * limitDist) {
+                        const speed = Math.sqrt(speedSq);
+                        const brake = limitDist / speed;
                         p.vx *= brake;
                         p.vy *= brake;
                     }
@@ -5916,50 +6058,37 @@ function drawBackground() {
     ctx.fillRect(0, 0, width, height);
 
     // ★重要：星と星雲で共通のループ範囲を定義する
-    // 星雲がはみ出ても消えないよう、画面サイズより十分に大きく取る
     const LOOP_MARGIN_X = 400;
     const LOOP_MARGIN_Y = 400;
     const loopW = width + LOOP_MARGIN_X;
     const loopH = height + LOOP_MARGIN_Y;
 
     // ----------------------------------------------------
-    // 2. 星雲の描画
+    // 2. 星雲の描画 (変更なし)
     // ----------------------------------------------------
     if (typeof nebulae !== 'undefined') {
         nebulae.forEach(n => {
-            // カメラ移動によるオフセット計算
             let nx = (n.x - camera.x * n.parallax) % loopW;
             let ny = (n.y - camera.y * n.parallax) % loopH;
-
-            // 負の値を補正
             if (nx < 0) nx += loopW;
             if (ny < 0) ny += loopH;
-
-            // 画面座標系へ変換（ループの中心を画面に合わせるためのオフセット調整）
-            // これにより、論理座標(0,0)付近が画面左上に来るようになります
             nx -= LOOP_MARGIN_X / 2;
             ny -= LOOP_MARGIN_Y / 2;
 
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
-
-            // メイン描画
             ctx.drawImage(n.image, nx - n.radius, ny - n.radius);
 
-            // ループ境界の折り返し描画（画面端で途切れないように）
-            // 左右
+            // ループ境界の折り返し描画
             if (nx < -n.radius) ctx.drawImage(n.image, nx - n.radius + loopW, ny - n.radius);
             else if (nx > width + n.radius) ctx.drawImage(n.image, nx - n.radius - loopW, ny - n.radius);
-
-            // 上下
             if (ny < -n.radius) ctx.drawImage(n.image, nx - n.radius, ny - n.radius + loopH);
             else if (ny > height + n.radius) ctx.drawImage(n.image, nx - n.radius, ny - n.radius - loopH);
-
             ctx.restore();
         });
     }
 
-    // --- 3. 遠景：巨大な背景グリッド ---
+    // --- 3. 遠景：巨大な背景グリッド (変更なし) ---
     ctx.strokeStyle = 'rgba(0, 255, 255, 0.03)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -5976,23 +6105,18 @@ function drawBackground() {
     ctx.stroke();
 
     // ----------------------------------------------------
-    // 4. 星の描画
+    // 4. 星の描画 (変更なし)
     // ----------------------------------------------------
     stars.forEach(s => {
-        // ★星雲と全く同じループ計算式を使う
         let sx = (s.x - camera.x * s.parallax) % loopW;
         let sy = (s.y - camera.y * s.parallax) % loopH;
-
         if (sx < 0) sx += loopW;
         if (sy < 0) sy += loopH;
-
-        // オフセット調整も統一
         sx -= LOOP_MARGIN_X / 2;
         sy -= LOOP_MARGIN_Y / 2;
 
-        // 画面内に見えている場合だけ描画（負荷軽減）
         if (sx > -50 && sx < width + 50 && sy > -50 && sy < height + 50) {
-            ctx.fillStyle = '#fff';
+            ctx.fillStyle = s.color || '#fff'; // 保存した色を使う
             ctx.globalAlpha = s.brightness * 0.8;
             ctx.beginPath();
             const sizeBoost = s.parallax > 0.8 ? 1.2 : 1.0;
@@ -6005,19 +6129,20 @@ function drawBackground() {
 
     // ==========================================
     // ここから下は「エリア内」の描画（メイングリッド）
+    // ★★★ ここを大幅に最適化 ★★★
     // ==========================================
     ctx.save();
-    // ワールド境界でクリップ（境界の外には描画しない）
+
+    // クリップ領域の設定（そのまま）
     ctx.beginPath();
     ctx.rect(WALL_MARGIN, WALL_MARGIN, worldSize - WALL_MARGIN * 2, worldSize - WALL_MARGIN * 2);
     ctx.clip();
 
     ctx.globalCompositeOperation = 'lighter';
     const baseColor = STAGE_THEMES[stage] || '#00f0ff';
-    const baseRgb = hexToRgb(baseColor); // ハイライト用にRGB取得
-
     ctx.lineWidth = 1.5;
 
+    // 表示範囲の計算
     const viewW = width / cameraScale;
     const viewH = height / cameraScale;
     const buffer = 3;
@@ -6026,9 +6151,9 @@ function drawBackground() {
     const startY = Math.max(0, Math.floor(camera.y / GRID_SPACING) - buffer);
     const endY = Math.min(gridPoints[0].length - 1, Math.ceil((camera.y + viewH) / GRID_SPACING) + buffer);
 
-    // --- グリッドを描画（高速化＆強調ハイブリッド版） ---
-
-    // 1. まず「静止している（歪んでいない）」薄いグリッドを一括描画
+    // --- A. 静的グリッドの一括描画 ---
+    // まず、薄いベースラインをまとめて1回のstrokeで描画します。
+    // これにより、数千回のstroke呼び出しを1回に削減できます。
     ctx.beginPath();
     ctx.strokeStyle = baseColor;
     ctx.globalAlpha = 0.08; // ベースの薄さ
@@ -6037,10 +6162,13 @@ function drawBackground() {
         for (let j = startY; j <= endY; j++) {
             const p = gridPoints[i][j];
             if (!p) continue;
+
+            // 左の点と繋ぐ
             if (i > startX && gridPoints[i - 1][j]) {
                 ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y);
                 ctx.lineTo(p.x, p.y);
             }
+            // 上の点と繋ぐ
             if (j > startY && gridPoints[i][j - 1]) {
                 ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y);
                 ctx.lineTo(p.x, p.y);
@@ -6049,49 +6177,37 @@ function drawBackground() {
     }
     ctx.stroke();
 
-    // 2. 次に「歪みエネルギーが高い」場所だけを重ねて描画
-    // ループは2回回りますが、if文で弾くため描画コストは抑えられます
-
+    // --- B. 動的グリッド（歪み）の個別描画 ---
+    // 歪んでいる（エネルギーが高い）部分だけを、強調色で重ね書きします。
+    // 静止している部分はAで描画済みなのでスキップします。
     for (let i = startX; i <= endX; i++) {
         for (let j = startY; j <= endY; j++) {
             const p = gridPoints[i][j];
             if (!p) continue;
 
-            // 速度(vx, vy)をエネルギーとして計算
-            const energy = Math.hypot(p.vx, p.vy);
+            // エネルギー計算（hypotではなく絶対値の和で高速近似）
+            const energy = Math.abs(p.vx) + Math.abs(p.vy);
 
-            // 一定以上のエネルギーがある場合のみ強調描画
+            // 一定以上のエネルギーがある場合のみ描画
             if (energy > 0.5) {
-                // エネルギーに応じて濃くする
+                // エネルギーに応じて透明度を変える
                 const highlightAlpha = Math.min(0.8, energy * 0.12);
 
-                // さらに強く歪んでいるなら白く光らせる
-                let drawColor = baseColor;
-                /*
-                if (energy > 2.0) {
-                    drawColor = '#ffffff';
-                    ctx.lineWidth = 2.5; // 太くする
-                } else {
-                    ctx.lineWidth = 1.5;
-                }
-                */
-
+                // ここでは個別にstrokeする必要がある（色が透明度で変わるため）
+                // ただし、歪んでいる箇所の数は少ないので負荷は低い
+                ctx.beginPath();
+                ctx.strokeStyle = baseColor;
                 ctx.globalAlpha = highlightAlpha;
-                ctx.strokeStyle = drawColor;
 
-                // 個別にパスを描く（ここだけコストがかかるが、数は少ないはず）
                 if (i > startX && gridPoints[i - 1][j]) {
-                    ctx.beginPath();
                     ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y);
                     ctx.lineTo(p.x, p.y);
-                    ctx.stroke();
                 }
                 if (j > startY && gridPoints[i][j - 1]) {
-                    ctx.beginPath();
                     ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y);
                     ctx.lineTo(p.x, p.y);
-                    ctx.stroke();
                 }
+                ctx.stroke();
             }
         }
     }
@@ -6100,16 +6216,15 @@ function drawBackground() {
 }
 
 function drawWorldBounds() {
-    // 現在のステージの色を取得（定義がなければデフォルトのシアン）
     const color = STAGE_THEMES[stage] || '#00f0ff';
-
     ctx.save();
 
-    // ネオンのように光らせる設定
     ctx.strokeStyle = color;
     ctx.lineWidth = 3;
-    ctx.shadowBlur = 20;       // 強く光らせる
-    ctx.shadowColor = color;   // 光の色も合わせる
+
+
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = color;
 
     // 枠線を描画
     ctx.strokeRect(WALL_MARGIN, WALL_MARGIN, worldSize - WALL_MARGIN * 2, worldSize - WALL_MARGIN * 2);
@@ -6570,26 +6685,45 @@ function drawVisualEffects() {
         }
     });
 
-    // 3. 単純なパーティクル（通常の火花）
-    // ★高速化: save/restore をループの外に出して一括処理
+    // --- 3. 単純なパーティクル（通常の火花） ---
+    // ★修正: 一括描画による高速化
+
+    // A. 通常の線をまとめて描画
     ctx.save();
     ctx.lineCap = 'round';
+    ctx.beginPath(); // パス開始
+
+    // スタイルはパーティクルの色ごとに分けるのが理想ですが、
+    // 高速化のため「加算合成(lighter)」で一括処理できるものはまとめます。
+    // ここでは、個別に色指定が必要なため、globalAlphaだけ共通化して
+    // ループ内で stroke する従来の方式よりも、
+    // 「beginPath -> moveTo/lineTo -> stroke」の回数を減らす工夫をします。
+
+    // ただし、色（strokeStyle）がバラバラだと一括描画できません。
+    // そこで、最も重い「save/restore」をループ外に出した現在の形は既に良い最適化です。
+    // さらに軽くするなら、「色ごとにバッチ処理」する必要がありますが、コードが複雑になります。
+
+    // 現状のままでも save/restore が外れているので十分高速ですが、
+    // Math.pow などの計算を軽量化します。
 
     particles.forEach(p => {
         if (!isOnScreen(p, 50)) return;
-
-        // 特殊パーティクルは既に描画済みなのでスキップ
         if (p.isShard || p.isBubble) return;
 
-        // 共通設定を再利用しつつ描画
+        // 個別のパス描画
         ctx.beginPath();
         const length = 4.0;
+        // 事前に計算済みの vx, vy を使う
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
 
         ctx.lineWidth = p.size || 2;
         ctx.strokeStyle = p.color;
-        ctx.globalAlpha = Math.min(1, p.life);
+
+        // ★ここが重いポイント: 色が変わるたびにコンテキストが変わる
+        // しかし、save/restoreがないので許容範囲です。
+        // Math.min は軽いのでOK
+        ctx.globalAlpha = (p.life > 1) ? 1 : p.life;
 
         ctx.stroke();
     });
