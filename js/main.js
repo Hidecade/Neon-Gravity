@@ -17,6 +17,7 @@ let worldSize = 1500;           // ワールドサイズ（resize関数で設定
 // ゲームステート管理
 var gameState = 'TITLE';        // 'TITLE', 'PLAYING', 'PAUSED', 'DYING', 'GAMEOVER_UI', 'ENDING', 'OST'
 let previousGameState = '';     // ポーズ前の状態保存用
+let stageClearTimer = 0;
 
 // モード・演出フラグ
 let isTrainingMode = false;     // トレーニングモードかどうか
@@ -24,6 +25,17 @@ let titleIdleTimer = 0;         // タイトル放置タイマー
 let isFadingOut = false;        // 画面フェードアウト中フラグ
 let fadeAlpha = 0.0;            // フェードアウトの透明度
 let msgHideTimeout = null;      // メッセージ消去用のタイマーID
+
+// タイピングのインターバルID管理用
+let typingTimer = null;
+
+// イントロ演出用変数
+let introPhase = 0;
+let introTimer = 0;
+let introAlpha = 0.0;
+let introBgScroll = 0; // ★累計スクロール距離（常に増え続ける）
+let introBgSpeed = 0;  // ★現在のスクロール速度
+let isWarpingOut = false; // ★追加：クリア後の脱出ワープ中かどうかのフラグ
 
 // ---------------------------------------------------------
 // 2. ステージ・進行管理変数
@@ -37,6 +49,7 @@ let enemiesToSpawn = 0;         // 現在のステージの総出現ノルマ
 let enemiesKilled = 0;          // 現在のステージで倒した敵数
 let isStageClear = false;       // ステージクリアフラグ
 let dyingTimer = 0;             // プレイヤー死亡演出用タイマー
+let spawnWaitTimer = 0; // ★追加：敵出現までの待機タイマー
 
 // ボスラッシュ(Stage 9)・ラスボス(Stage 10)用
 let rushBossIndex = 0;          // ボスラッシュ: 現在のボス番号 (0~7)
@@ -59,10 +72,10 @@ const player = {
     weaponLevel: 1,             // 武器レベル
     invuln: 0,                  // 無敵時間タイマー
     laserTimer: 0,              // 特殊レーザー残り時間
-    history: []                 // 軌跡（トレイル）用履歴
+    history: [],                 // 軌跡（トレイル）用履歴
+    visualScale: 1.0
 };
 
-// 入力状態管理
 const input = {
     move: { x: 0, y: 0, active: false }, // 左スティック
     aim: { x: 0, y: 0, active: false },  // 右スティック
@@ -73,7 +86,6 @@ const input = {
     padStartPressed: false               // ゲームパッド STARTボタン
 };
 
-// カメラ座標
 let camera = { x: 0, y: 0 };
 
 // ---------------------------------------------------------
@@ -235,8 +247,6 @@ function showMessage(textHTML, colorType = 'default') {
         ui.msg.style.opacity = "1";
     }, 50);
 }
-
-
 
 
 // =========================================================
@@ -584,11 +594,6 @@ function initGrid() {
     }
 }
 
-/**
- * 星（Stars）を初期化する関数
- * 背景の星空を生成します。一様に散らすのではなく、
- * 「星団（Cluster）」を作って星を集めることで、リアルな宇宙空間を表現します。
- */
 function initStars() {
     stars = [];
     starClusters = [];
@@ -644,14 +649,6 @@ function initStars() {
     }
 }
 
-/**
- * 星雲（Nebulae）を初期化する関数
- * 背景に表示される色とりどりのガス状のオブジェクトを生成します。
- */
-/**
- * 星雲（Nebulae）を初期化する関数
- * 背景に表示される色とりどりのガス状のオブジェクトを生成します。
- */
 function initNebulae() {
     // 星雲オブジェクトを格納する配列をリセット
     nebulae = [];
@@ -758,51 +755,33 @@ function initNebulae() {
     }
 }
 
-// 16進数カラー(#rrggbb)をRGBオブジェクト({r,g,b})に変換する関数
-function hexToRgb(hex) {
-    // カラーコードが未定義の場合のガード
-    if (!hex) return { r: 0, g: 255, b: 255 };
-
-    hex = hex.replace(/^#/, '');
-    if (hex.length === 3) {
-        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-    }
-    const bigint = parseInt(hex, 16);
-    return {
-        r: (bigint >> 16) & 255,
-        g: (bigint >> 8) & 255,
-        b: bigint & 255
-    };
-}
 
 function setPaused(paused) {
     if (paused) {
-        if (gameState === 'PLAYING') {
+        // ★ 修正：クリア後のワープ演出中 (isWarpingOut) でもポーズできるようにする
+        if (gameState === 'PLAYING' || gameState === 'STAGE_INTRO' || gameState === 'DYING' || isWarpingOut) {
 
-            // ★追加：ポーズ時に入力状態をリセット（バックグラウンド移行時の押しっぱなし防止）
             clearInputState();
 
-            if (isTrainingMode) {
-                returnToTitleFromTraining();
-                return;
-            }
-
+            // 現在の状態を保存（isWarpingOut 中なら PLAYING が保存されます）
             previousGameState = gameState;
             gameState = 'PAUSED';
             ui.pauseOverlay.style.display = 'flex';
             window.refreshMenuButtons();
+
+            AudioSys.pauseBGM();
         }
-        AudioSys.pauseBGM();
     } else {
-        if (gameState === 'PAUSED') {
-            // ここはそのまま
-        } else {
-            AudioSys.resumeBGM();
-        }
+        // 解除時は gameState = previousGameState に戻る処理が
+        // resumeAction() 側にあることを確認してください
+        AudioSys.resumeBGM();
     }
 }
 
 function requestFullScreen() {
+
+    return;
+
     const el = document.documentElement;
     if (el.requestFullscreen) {
         el.requestFullscreen().catch(e => console.log("Fullscreen blocked", e));
@@ -880,101 +859,210 @@ function startGame() {
 
     gameState = 'PLAYING';
 
-    initNebulae();
 
     startStage();
 }
 
 function startStage() {
+
+    // UIの初期化（非表示）
     const hud = document.querySelector('.hud-row');
-    if (hud) hud.style.display = 'flex';
-
-    spawnedCount = 0;
-    enemiesKilled = 0;
-    isStageClear = false;
-    isBossSpawned = false;
-    isBossWarning = false;
-    warningTimer = 0;
-    levelItemsDroppedInStage = 0;
-
-    // ★リセット: 新しいステージ開始時はタイマーをリセット
-    stageMessageTimer = 0;
+    if (hud) {
+        hud.style.display = 'none';
+        hud.style.opacity = '0';
+    }
 
     ui.msg.style.display = 'none';
     ui.warn.style.display = 'none';
     if (ui.bossContainer) ui.bossContainer.style.display = 'none';
 
+    // ゲーム内変数のリセット
+    spawnedCount = 0;
+    enemiesKilled = 0;
+    isStageClear = false;
+    isBossSpawned = false;
+    isBossWarning = false;
+
+    if (stage === 9) {
+        rushBossIndex = 0;      // 0からスタート
+        rushIntervalTimer = 0;  // タイマーもリセット
+    }
+
+    warningTimer = 0;
+    levelItemsDroppedInStage = 0;
+
+    // ★追加：スキップ関連フラグのリセット（連打対策）
+    isSkippingStory = false;
+    isSkipComplete = false;
+
+    player.visualScale = 0;
+
+    const viewW = width / cameraScale;
+    const viewH = height / cameraScale;
+    camera.x = player.x - viewW / 2;
+    camera.y = player.y - viewH * CAMERA_Y_OFFSET;
+
     bullets = []; lasers = []; enemies = []; enemyBullets = [];
     missiles = []; wormholes = [];
     scorePopups = []; rings = [];
 
-    // ▼▼▼ メッセージ表示ロジックの共通化 ▼▼▼
+    // コントローラー表示制御
+    const isConnected = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).some(gp => gp !== null);
+    ui.controls.style.display = 'none';
+    ui.pauseBtn.style.display = 'none';
+
+    // ▼▼▼ 演出分岐 ▼▼▼
     if (!isTrainingMode) {
-        let msgContent = "";
-        let msgColor = "default";
-        let displayTime = 180; // デフォルト3.5秒 (60fps * 3.5)
+        // ==========================================
+        // ストーリーモード進行：イントロ演出の初期化開始
+        // ==========================================
 
-        if (stage === 10) {
-            // --- Stage 10 (Final) ---
-            stage10Timer = 0;
-            stage10BeatCount = 0;
-            stage10SpawnTimer = 0; // ★ここを追加：出現タイマーリセット
-            msgContent = `<span style="font-size: 1.2em; letter-spacing: 8px; margin-right: -8px;">WARNING</span><br><span style="display: inline-block; margin-top: 15px; font-size: 0.7em; letter-spacing: 4px; margin-right: -4px;">GENESIS-ARK APPROACHING</span>`;
-            msgColor = "red";
-            displayTime = 240; // 4秒
-            AudioSys.playBGM('last');
+        // 1. ゲームの状態（ステート）を「イントロ画面」に切り替え
+        gameState = 'STAGE_INTRO';
+        introPhase = 1;       // ステージ名表示フェーズ
+        introTimer = 0;       // 演出用タイマーのリセット
+        introAlpha = 0;       // フェードイン用の透明度
+        introBgScroll = 0;    // 背景スクロール位置を初期化
 
-            // 雑魚無限湧き設定
-            enemiesToSpawn = 9999;
-            gameSpeed = 1.0;
-
-        } else if (stage === 9) {
-            // --- Stage 9 (Boss Rush) ---
-            rushBossIndex = 0;
-            rushIntervalTimer = 0;
-            msgContent = "FINAL MISSION\nBOSS RUSH";
-            msgColor = "red";
-            displayTime = 240; // 4秒
-            AudioSys.playBGM('boss');
-            enemiesToSpawn = 9999;
-            gameSpeed = 1.0;
-
-        } else {
-            // --- 通常ステージ (1-8) ---
-            const data = STAGE_TITLES[stage] || { en: "UNKNOWN SECTOR", ja: "未知の宙域" };
-            const lang = (window.navigator.languages && window.navigator.languages[0]) || window.navigator.language;
-            const isJa = lang && lang.startsWith('ja');
-
-            msgContent = `<span style="font-size: 0.7em; letter-spacing: 4px; opacity: 0.8; display:block; margin-bottom:10px;">- STAGE ${stage} -</span>`;
-            msgContent += `<span style="display:block;">${data.en}</span>`;
-            if (isJa) {
-                msgContent += `<span style="font-size: 0.6em; font-family: sans-serif; letter-spacing: 2px; color: rgba(255,255,255,0.6); display:block; margin-top:10px;">${data.ja}</span>`;
-            }
-
-            // BGM再生
-            const bgmIndex = (stage - 1) % BGM_FILES.stages.length;
-            AudioSys.playBGM('stage', bgmIndex);
-
-            // 敵出現設定
-            if (stage <= STAGE_ENEMY_COUNTS.length) enemiesToSpawn = STAGE_ENEMY_COUNTS[stage - 1];
-            else enemiesToSpawn = STAGE_ENEMY_COUNTS[STAGE_ENEMY_COUNTS.length - 1] + 50;
-
-            const whCount = Math.max(1, Math.floor((stage + 1) / 2));
-            for (let i = 0; i < whCount; i++) spawnWormhole();
-            gameSpeed = 1.0;
+        // 2. SKIPボタンの準備
+        const skipContainer = document.getElementById('story-typing-container');
+        if (skipContainer) {
+            skipContainer.style.display = 'none';
+            skipContainer.style.opacity = '0';
+            skipContainer.style.transition = 'opacity 0.5s'; // フェードインの準備
         }
 
-        // メッセージ表示実行（共通）
-        showMessage(msgContent, msgColor);
-        stageMessageTimer = displayTime;
+        // 3. ステージタイトルのテキスト構築（多言語対応）
+        // config.js 等の STAGE_TITLES からデータを取得。未定義ならデフォルトを表示
+        const data = STAGE_TITLES[stage] || { en: "UNKNOWN SECTOR", ja: "未知の宙域" };
+        // ユーザーのブラウザ言語設定を確認
+        const lang = (window.navigator.languages && window.navigator.languages[0]) || window.navigator.language;
+        const isJa = lang && lang.startsWith('ja');
+
+        // HTML形式でメッセージ内容を組み立て
+        let msgContent = `<span style="font-size: 0.7em; letter-spacing: 4px; opacity: 0.8; display:block; margin-bottom:10px;">- STAGE ${stage} -</span>`;
+        msgContent += `<span style="display:block;">${data.en}</span>`;
+
+        // 日本語環境であれば、英語タイトルの下に日本語のサブタイトルを追加
+        if (isJa) {
+            msgContent += `<span style="font-size: 0.6em; font-family: sans-serif; letter-spacing: 2px; color: rgba(255,255,255,0.6); display:block; margin-top:10px;">${data.ja}</span>`;
+        }
+
+        // 4. オーディオ（BGM）の再生制御
+        // 最終ステージや特殊ステージ、あるいは通常ステージに応じて曲を切り替える
+        if (stage === 10) {
+            AudioSys.playBGM('last'); // 最終決戦用
+        } else if (stage === 9) {
+            AudioSys.playBGM('boss'); // ボスラッシュ用
+        } else {
+            // 通常ステージ：登録されている曲を順番にループ再生
+            const bgmIndex = (stage - 1) % BGM_FILES.stages.length;
+            AudioSys.playBGM('stage', bgmIndex);
+        }
+
+        // 5. メッセージ表示領域の初期化
+        ui.msg.innerHTML = msgContent;
+
+        // ==========================================
+        // ★ 修正：ステージテーマカラーの適用
+        // ==========================================
+        // 現在のステージの色を取得（なければデフォルト青）
+        const themeHex = STAGE_THEMES[stage] || '#00bbff';
+
+        // 文字本体の色：テーマカラーを 70% 明るく（ほぼ白に近い色味）にする
+        const textBodyColor = lightenHex(themeHex, 70);
+
+        // ネオンの光（影）：テーマカラーそのものを使う
+        const glowColor = themeHex;
+
+        ui.msg.style.color = textBodyColor;
+
+        // 光彩の設定（色のついた光が広がる演出）
+        ui.msg.style.textShadow = `
+            0 0 10px ${glowColor}, 
+            0 0 20px ${glowColor}, 
+            0 0 40px ${glowColor},
+            0 0 80px ${glowColor}
+        `;
+
+        // 表示の基本プロパティを設定（透明から開始）
+        ui.msg.style.display = 'block';
+        ui.msg.style.transition = 'none';
+        ui.msg.style.opacity = '0';
+        ui.msg.style.transform = `scale(${globalUiScale})`;
+
+        // 6. タイトルメッセージのフェードイン開始
+        // ブラウザが display: block を処理した直後にアニメーションを開始させるためのわずかな遅延
+        setTimeout(() => {
+            ui.msg.style.transition = "opacity 0.5s ease-out";
+            ui.msg.style.opacity = "1";
+        }, 100);
+
+        // 7. ステージの敵出現（スポーン）設定
+        // ステージ数に応じたノルマ（enemiesToSpawn）の決定と、初期ワームホールの配置
+        if (stage === 9 || stage === 10) {
+            // 特殊ステージはノルマ管理ではなくイベント管理のため、大きな値をセット
+            enemiesToSpawn = 9999;
+        } else {
+            // 通常ステージ：設定ファイルから出現数を取得、または難易度に応じて加算
+            if (stage <= STAGE_ENEMY_COUNTS.length) {
+                enemiesToSpawn = STAGE_ENEMY_COUNTS[stage - 1];
+            } else {
+                enemiesToSpawn = STAGE_ENEMY_COUNTS[STAGE_ENEMY_COUNTS.length - 1] + 50;
+            }
+
+            // 初期配置としてワームホールを生成（ステージが進むほど数が増える）
+            const whCount = Math.max(1, Math.floor((stage + 1) / 2));
+            for (let i = 0; i < whCount; i++) {
+                spawnWormhole();
+            }
+        }
+
+    } else {
+        // トレーニングモード / 演出スキップ：即座にプレイ状態へ移行
+        gameState = 'PLAYING';
+
+        // 1. 各種UI要素の参照とゲームパッド接続確認
+        const hud = document.querySelector('.hud-row');
+        const miniMapContainer = document.getElementById('minimap-container');
+        const isConnected = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).some(gp => gp !== null);
+
+        // 2. HUD（スコア・シールドゲージ等）を即座に表示
+        if (hud) {
+            hud.style.display = 'flex';
+            hud.style.opacity = '1'; // 透明度をリセット
+        }
+
+        // 3. ミニマップを即座に表示
+        if (miniMapContainer) {
+            miniMapContainer.style.display = 'block';
+            miniMapContainer.style.opacity = '1';
+        }
+
+        // 4. タッチコントローラーの表示制御
+        if (ui.controls) {
+            ui.controls.style.display = isConnected ? 'none' : 'block';
+            ui.controls.style.opacity = isConnected ? '0' : '1';
+        }
+
+        // 5. ボムボタン (launchBtn) の表示制御
+        if (ui.launchBtn) {
+            ui.launchBtn.style.display = isConnected ? 'none' : 'flex';
+            ui.launchBtn.style.opacity = isConnected ? '0' : '1';
+        }
+
+        // 6. 一時停止ボタン
+        ui.pauseBtn.style.display = isConnected ? 'none' : 'flex';
+        ui.pauseBtn.style.opacity = isConnected ? '0' : '1';
+
+        // 7. 自機を出現状態にセット
+        player.visualScale = 1.0;
+        player.visualYOffset = 0;
     }
-    // ▲▲▲ ここまで ▲▲▲
 
-    distortGrid(worldSize / 2, worldSize / 2, -200, worldSize);
 
-    const isConnected = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).some(gp => gp !== null);
-    ui.controls.style.display = isConnected ? 'none' : 'block';
-    ui.pauseBtn.style.display = isConnected ? 'none' : 'flex';
+    initStars();
+    initNebulae();
 }
 
 function resetGame() {
@@ -993,9 +1081,6 @@ function resetGame() {
     bullets = []; lasers = []; enemies = []; enemyBullets = [];
     particles = []; crystals = []; missiles = []; powerups = [];
     wormholes = []; scorePopups = []; rings = [];
-
-    initStars();   // 星団の位置が変わる
-    initNebulae(); // 新しい星団に合わせて星雲を作り直す
 
     player.x = worldSize / 2; player.y = worldSize / 2;
     player.vx = 0; player.vy = 0;
@@ -1045,9 +1130,11 @@ function resetGame() {
     ui.pauseBtn.style.display = isConnected ? 'none' : 'flex';
 }
 
+// --- 3秒待つためのタイマー変数は update() 内で制御するため、ここではリセットのみ ---
 function checkStageClear() {
     let isClearCondition = false;
 
+    // --- 1. クリア条件の判定 ---
     if (stage === 9) {
         if (rushBossIndex >= 8) isClearCondition = true;
     } else if (stage === 10) {
@@ -1058,11 +1145,17 @@ function checkStageClear() {
         if (noEnemies && noWormholes && isBossSpawned) isClearCondition = true;
     }
 
+    // --- 2. クリア時の初回処理 ---
     if (!isStageClear && isClearCondition) {
         isStageClear = true;
 
+        // ★修正：setTimeout を削除し、update関数での監視用タイマーをリセットする
+        stageClearTimer = 0;
+
         if (stage === MAX_STAGE) {
-            // --- 全クリア時の演出（変更なし） ---
+            // ==========================================
+            // A. 全ステージクリア (END GAME) 演出
+            // ==========================================
             gameSpeed = 0.25;
             distortGrid(worldSize / 2, worldSize / 2, 1000, worldSize);
             player.invuln = 1200;
@@ -1073,25 +1166,23 @@ function checkStageClear() {
             const clearText = `ALL MISSION CLEAR<br><span id="clear-score-text" style="opacity: 0; display: inline-block; margin-top: 20px; font-size: 0.6em; color: #fff; text-shadow: 0 0 10px #fff, 0 0 20px #0ff; letter-spacing: 4px; margin-right: -4px;">TOTAL SCORE: ${score.toLocaleString()}</span>`;
             showMessage(clearText, 'gold');
 
+            // メッセージの初期位置（下からふわっと出る準備）
             ui.msg.style.transition = "none";
             ui.msg.style.opacity = "0";
             ui.msg.style.transform = `translateY(100px) scale(${globalUiScale})`;
-
-            // ...（以下、花火演出などの長いコードはそのまま）...
-            // ※ここはそのままでOKなので省略しませんが、修正が必要なのは下のelseブロックです
 
             let fireworksActive = true;
             const startTime = Date.now();
             const duration = 18000;
 
+            // 花火演出ロジック (内部関数：ここはアニメーションフレーム内で完結するのでsetTimeoutのままでOK)
+            // ただし厳密にはここもポーズの影響を受けないため、update内で管理するのがベストですが、
+            // 今回の「勝手に次へ進むバグ」には影響しないため維持します。
             function triggerRandomFirework() {
                 if (gameState !== 'PLAYING' || !fireworksActive) return;
-                // ... (花火の処理は長いので省略、元のコードのまま動作します) ...
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(1.0, elapsed / duration);
-                const baseDelay = 50 + progress * 750;
-                const randomDelay = 150 + progress * 1500;
-                const nextDelay = baseDelay + Math.random() * randomDelay;
+                const nextDelay = (50 + progress * 750) + Math.random() * (150 + progress * 1500);
                 const viewW = width / cameraScale;
                 const viewH = height / cameraScale;
                 const pad = 100;
@@ -1118,17 +1209,13 @@ function checkStageClear() {
                     const c = colors[Math.floor(Math.random() * colors.length)];
                     createExplosion(fx, fy, c, 15);
                     distortGrid(fx, fy, 40, 100);
-                    if (typeof AudioSys !== 'undefined' && Math.random() > progress) {
-                        AudioSys.playSE('explode_small');
-                    }
+                    if (typeof AudioSys !== 'undefined' && Math.random() > progress) AudioSys.playSE('explode_small');
                 }
-
-                if (elapsed < duration) {
-                    setTimeout(triggerRandomFirework, nextDelay);
-                }
+                if (elapsed < duration) setTimeout(triggerRandomFirework, nextDelay);
             }
             triggerRandomFirework();
 
+            // メッセージのアニメーション開始
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     ui.msg.style.transition = "opacity 6s ease-out, transform 6s ease-out";
@@ -1137,6 +1224,7 @@ function checkStageClear() {
                 });
             });
 
+            // 8秒後：スコアを表示
             setTimeout(() => {
                 const scoreSpan = document.getElementById("clear-score-text");
                 if (scoreSpan) {
@@ -1145,49 +1233,37 @@ function checkStageClear() {
                 }
             }, 8000);
 
+            // 16秒後：メッセージのフェードアウトを開始
             setTimeout(() => {
                 ui.msg.style.transition = "opacity 2s ease-in";
                 ui.msg.style.opacity = "0";
             }, 16000);
 
+            // 18秒後：★ランキング画面へ遷移
             setTimeout(() => {
                 fireworksActive = false;
                 ui.msg.style.display = 'none';
                 showGameOver();
             }, 18000);
 
-            return;
-
         } else {
             // ==========================================
-            // ★ここを修正：通常ステージクリア時のフェードアウト
+            // B. 通常ステージクリア
             // ==========================================
             gameSpeed = 0.25;
             distortGrid(worldSize / 2, worldSize / 2, 1000, worldSize);
             AudioSys.playBGM('clear');
 
-            // 1. フェードインして表示
+            // 1. ステージクリア表示（即座に表示）
             showMessage("STAGE " + stage + " CLEAR", 'default');
 
-            // 2. ★追加：3.5秒後にフェードアウトを開始
-            setTimeout(() => {
-                ui.msg.style.transition = "opacity 0.5s ease-in";
-                ui.msg.style.opacity = "0";
-            }, 3500);
-
-            // 3. 4.0秒後に完全に消して次へ
-            setTimeout(() => {
-                ui.msg.style.display = 'none';
-                stage++;
-                ui.stage.innerText = stage;
-                startStage();
-
-                initNebulae();
-
-            }, 4000);
+            // ★重要：以前ここにあった setTimeout ブロック（2.ワープ準備と 3.遷移）は全て削除しました。
+            // それらは update() 関数内の stageClearTimer と isWarpingOut フラグによって
+            // フレームベースで管理・実行されます。
         }
     }
 }
+
 
 async function waitForFirebase() {
     return new Promise((resolve) => {
@@ -1200,6 +1276,7 @@ async function waitForFirebase() {
         }, 100);
     });
 }
+
 
 async function showGameOver() {
     // すでにゲームオーバー処理中なら何もしない
@@ -1391,41 +1468,57 @@ function proceedToNextMenu() {
 }
 
 function returnToTitle() {
-
     gameState = 'TITLE';
 
-    AudioSys.fadeOutBGM().then(() => {
-        AudioSys.currentSrc = null;
-    });
+    // BGMフェードアウト
+    if (typeof AudioSys !== 'undefined') {
+        AudioSys.fadeOutBGM().then(() => {
+            AudioSys.currentSrc = null;
+        });
+    }
 
+    // ★追加：イントロ演出用の変数をリセット
+    // これをしないと、タイトルに戻ってから再スタートした時に演出がおかしくなります
+    introPhase = 0;
+    introTimer = 0;
+    introAlpha = 0;
+    introBgScroll = 0;
+
+    // UI表示の整理
     ui.ost.style.display = 'none';
     ui.overlay.style.display = 'flex';
     ui.controls.style.display = 'none';
-    ui.msg.style.display = 'none';
+    ui.msg.style.display = 'none'; // ゲーム中のメッセージを消す
 
-    document.getElementById('training-guide').style.display = 'none';
+    // トレーニングガイドを隠す
+    const guide = document.getElementById('training-guide');
+    if (guide) guide.style.display = 'none';
 
-    // ==========================================
-    // ★追加：タイトル画面ではスコアやポーズボタンを完全に隠す
-    // ==========================================
-    ui.pauseBtn.style.display = 'none';
+    // HUD（スコア等）を隠す
     const hud = document.querySelector('.hud-row');
     if (hud) hud.style.display = 'none';
 
+    ui.pauseBtn.style.display = 'none';
+
+    // ==========================================
+    // ★修正ポイント：タイトルロゴとボタンの色を強制リセット
+    // ==========================================
+
+    // 1. タイトルテキストをデフォルト（シアン）に戻す
     ui.titleText.innerHTML = `NEON GRAVITY<br><span style="font-size:20px;color:#fff;">ORBITAL</span>`;
     ui.titleText.style.color = '#0ff';
     ui.titleText.style.textShadow = '0 0 20px #0ff';
 
+    // 2. スタートボタンをデフォルト（シアン）に戻す
+    // ゲームオーバー時はここが「RETRY」＆「赤色」になっているため
     ui.btnStart.innerText = 'START GAME';
     ui.btnStart.style.display = 'block';
     ui.btnStart.style.borderColor = '#0ff';
     ui.btnStart.style.color = '#0ff';
 
-    // ★削除：ここの onclick 行を削除しました
-    // ui.btnStart.onclick = startGame;
-
-    ui.btnOst.style.display = 'block';
-    ui.btnTitle.style.display = 'none';
+    // その他のボタン表示制御
+    if (ui.btnOst) ui.btnOst.style.display = 'block';
+    if (ui.btnTitle) ui.btnTitle.style.display = 'none'; // タイトル画面にいるので「TITLEへ戻る」ボタンは隠す
 
     const btnHowto = document.getElementById('btn-howto');
     if (btnHowto) {
@@ -1448,45 +1541,9 @@ function returnToTitle() {
         btnRanking.style.color = '#0ff';
         btnRanking.onclick = () => window.showRanking(null);
     }
-    window.refreshMenuButtons();
-}
 
-function showEnding() {
-    gameState = 'ENDING';
-    //AudioSys.stopBGM();
-    //AudioSys.playBGM('clear');
-
-    bullets = []; enemyBullets = []; enemies = [];
-    createExplosion(player.x, player.y, '#fff', 200);
-
-    ui.controls.style.display = 'none';
-
-    // ★追加：ここでもHUDを隠す
-    const hud = document.querySelector('.hud-row');
-    if (hud) hud.style.display = 'none';
-
-    ui.pauseBtn.style.display = 'none';
-
-    // エンディング画面を表示
-    ui.endingHud.style.display = 'flex';
-
-    // HTMLの id="final-score-val" に合わせる
-    const finalScoreElement = document.getElementById('final-score-val');
-    if (finalScoreElement) {
-        finalScoreElement.innerText = "TOTAL SCORE: " + score.toLocaleString();
-    }
-
-    // NEXTボタンのクリックイベント
-    if (ui.btnNextResult) {
-        ui.btnNextResult.onclick = () => {
-            // ★ポイント1: 先に名前入力を「準備」してからエンディング画面を消す
-            // これにより、画面が切り替わる瞬間にゲーム画面が露出するのを防ぎます
-            showGameOver();
-            ui.endingHud.style.display = 'none';
-        };
-    }
-
-    window.refreshMenuButtons();
+    // メニューボタンの選択状態を更新
+    if (window.refreshMenuButtons) window.refreshMenuButtons();
 }
 
 function triggerBossEncounter() {
@@ -1516,32 +1573,305 @@ function triggerBossEncounter() {
     warningTimer = 180;
 }
 
+function updateIntro() {
+
+    introTimer++;
+
+    // --- 背景スクロールの動的制御 ---
+    if (introPhase < 3) {
+        const minDrift = 2.0;
+        if (introBgSpeed > minDrift) introBgSpeed *= 0.96;
+        else introBgSpeed = minDrift;
+    } else {
+        introBgSpeed *= 0.92;
+    }
+    introBgScroll += introBgSpeed * gameSpeed;
+
+    // スキップ処理
+    if (isSkippingStory && introPhase < 3) {
+        skipToPlaying();
+        return;
+    }
+
+    // --- Phase 1: タイトル表示 ---
+    if (introPhase === 1) {
+        if (introTimer === 60) {
+            const skipContainer = document.getElementById('story-typing-container');
+            if (skipContainer) {
+                skipContainer.style.display = 'flex';
+                requestAnimationFrame(() => { skipContainer.style.opacity = '1'; });
+            }
+        }
+
+        if (introTimer > 180) {
+            introPhase = 2; introTimer = 0;
+            ui.msg.style.transition = "opacity 1.0s ease-in"; ui.msg.style.opacity = "0";
+            const storyText = STAGE_STORY_TEXTS[stage];
+            if (storyText) setTimeout(() => { playStoryTyping(storyText); }, 500);
+            else isSkippingStory = true;
+        }
+    }
+    // --- Phase 2: ストーリー表示 ---
+    else if (introPhase === 2) {
+        const el = document.getElementById('story-typing-msg');
+        if (el.style.display === 'none' && introTimer > 60) {
+            introPhase = 3; introTimer = 0;
+
+            player.visualYOffset = 700;
+            player.visualScale = 0;
+
+            const hud = document.querySelector('.hud-row');
+            if (hud) { hud.style.display = 'flex'; hud.style.opacity = '0'; }
+            const miniMapContainer = document.getElementById('minimap-container');
+            if (miniMapContainer) { miniMapContainer.style.display = 'block'; miniMapContainer.style.opacity = '0'; }
+        }
+    }
+    // --- Phase 3: 自機出現 (スライド・拡大・カメラ同期) ---
+    else if (introPhase === 3) {
+        const APPEAR_START_TIME = 1;
+        const ARRIVE_TIME = 90;
+        const WARP_DURATION = 140;
+
+        player.angle = -Math.PI / 2;
+
+        // -----------------------------------------------------
+        // 1. 位置とスケールの計算
+        // -----------------------------------------------------
+        if (introTimer <= ARRIVE_TIME) {
+            const t = (introTimer - APPEAR_START_TIME) / (ARRIVE_TIME - APPEAR_START_TIME);
+            const ease = 1 - Math.pow(1 - t, 4); // 4乗イージング
+
+            // 自機位置の計算
+            player.visualYOffset = 700 * (1 - ease) - (Math.sin(t * Math.PI) * 20);
+            player.visualScale = 0.5 + (ease * 0.7);
+
+            // ==========================================
+            // ★修正：背景を逆方向（下）へ猛スピードで流す
+            // ==========================================
+            // (1-t)の3乗を使うことで、出だしが一番速く、到着に合わせて0になるように同期させる
+            // 25 はスピード係数です。数字を大きくするとより速く流れます。
+            introBgSpeed = 25 * Math.pow(1 - t, 3);
+
+        } else {
+            // 到着後はゆっくり減速して止める
+            player.visualYOffset *= 0.92;
+            player.visualScale += (1.0 - player.visualScale) * 0.15;
+            introBgSpeed *= 0.9; // 余韻を残して減速
+        }
+
+        const currentVisualY = player.y + player.visualYOffset;
+
+        // -----------------------------------------------------
+        // 2. カメラ制御（★修正：目的地で固定して待ち構える）
+        // -----------------------------------------------------
+        const viewW = width / cameraScale;
+        const viewH = height / cameraScale;
+
+        // ★ currentVisualY ではなく player.y を使うことで、カメラを固定
+        // これにより「自機が画面下から上がってくる」見た目になります
+        camera.x = player.x - viewW / 2;
+        camera.y = player.y - viewH * CAMERA_Y_OFFSET;
+
+        // -----------------------------------------------------
+        // 3. UIのフェードイン制御
+        // -----------------------------------------------------
+        introAlpha = Math.min(1.0, introTimer / 40);
+        const updateUI = (id, display) => {
+            const el = document.getElementById(id) || document.querySelector(id);
+            if (el) { el.style.display = display; el.style.opacity = introAlpha; }
+        };
+        updateUI('.hud-row', 'flex');
+        updateUI('minimap-container', 'block');
+
+        const isPad = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).some(gp => gp !== null);
+        if (!isPad) {
+            updateUI('joystick-container', 'block');
+            updateUI('launch-btn', 'flex');
+        }
+        updateUI('pause-btn', isPad ? 'none' : 'flex');
+
+
+
+        // -----------------------------------------------------
+        // 4. エフェクト発生
+        // -----------------------------------------------------
+
+        // A. 彗星の尾 (出現中のみ)
+        const safeVY = (player.visualYOffset !== undefined) ? player.visualYOffset : 700;
+
+        // 中央付近(ズレ幅10以下)に来たら止める
+        if (introTimer > 5 && introTimer <= ARRIVE_TIME && player.visualScale > 0.1) {
+
+            if (safeVY > 10) {
+                for (let i = 0; i < 5; i++) {
+
+                    // ★修正1：発生位置の調整
+                    // visualScale が 0.5 -> 1.0 と大きくなるにつれ、
+                    // 発生位置も 15 -> 40 と下（後ろ）へずらします。
+                    // これで機体が大きくなってもエンジンノズル位置をキープできます。
+                    const tailOffset = 40 * player.visualScale;
+
+                    // ★修正2：横幅の調整
+                    const spreadX = 12 * player.visualScale;
+
+                    particles.push({
+                        x: player.x + (Math.random() - 0.5) * spreadX,
+                        y: currentVisualY + tailOffset, // ★ここを可変オフセットに変更
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: 8 + Math.random() * 5,
+                        color: (Math.random() > 0.3) ? '#0f8' : '#fff',
+                        life: 0.5,
+                        size: 2 + Math.random() * 2
+                    });
+                }
+            }
+        }
+
+        // B. 多段爆発エフェクト
+        if (introTimer === 30 || introTimer === 38 || introTimer === 46) {
+            // (ここは変更なしでOKですが、タイプミス `aaaaaaaddddddd` を削除してください)
+            if (introTimer === 30) {
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('warp_in');
+                distortGrid(player.x, currentVisualY, -100, 200);
+                particles.push({
+                    x: player.x, y: currentVisualY, vx: 0, vy: 0,
+                    color: '#fff', life: 0.2, size: 150, isBubble: true
+                });
+            }
+
+            const spread = (introTimer === 30) ? 60 : (introTimer === 38) ? 40 : 20;
+            for (let i = 0; i < 20; i++) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = 5 + Math.random() * 10;
+                // ★ここにあった `aaaaaaaddddddd` を削除しました
+                particles.push({
+                    x: player.x + (Math.random() - 0.5) * spread,
+                    y: currentVisualY + (Math.random() - 0.5) * spread,
+                    vx: Math.cos(ang) * spd,
+                    vy: Math.sin(ang) * spd - 3,
+                    color: Math.random() > 0.5 ? '#fff' : '#0ff',
+                    life: 0.6 + Math.random() * 0.4, size: 2 + Math.random() * 2
+                });
+            }
+        }
+
+        // 5. プレイ開始への遷移
+        if (introTimer > WARP_DURATION) {
+            gameState = 'PLAYING';
+            introPhase = 0;
+            player.visualScale = 1.0;
+            player.visualYOffset = 0;
+            introBgSpeed = 0;
+            spawnWaitTimer = 60;
+        }
+    }
+}
+
+function skipToPlaying() {
+    // 1. テキストメッセージ類を隠す（ここは即座に消してOK）
+    ui.msg.style.display = 'none';
+    ui.msg.style.opacity = '0';
+    const storyTypingContainer = document.getElementById('story-typing-container');
+    if (storyTypingContainer) storyTypingContainer.style.display = 'none';
+
+    // 3. フェイズとタイマーをリセットして Phase 3（出現演出）を開始
+    introPhase = 3;
+    introTimer = 0;
+    introAlpha = 0; // 明示的にアルファをリセット
+    isSkippingStory = false;
+
+    // 自機も初期位置（下）にセット
+    player.visualYOffset = 700;
+    player.visualScale = 0;
+}
+
+function drawIntro() {
+    ctx.save();
+    ctx.scale(cameraScale, cameraScale);
+    ctx.translate(-camera.x, -camera.y);
+
+    // 1. 背景
+    drawBackground();
+
+    // 2. エフェクト（★ここで描画。背景の上、かつ敵やプレイヤーの下か上に）
+    // 通常は一番手前に表示させたいので、関数の最後の方でもOKです
+    drawVisualEffects();
+
+    if (introPhase === 3) {
+        // 背景要素（敵など）
+        ctx.save();
+        ctx.globalAlpha = introAlpha;
+        drawWorldBounds();
+        drawEnemies();
+        ctx.restore();
+
+        // プレイヤー周り
+        ctx.save();
+        ctx.globalAlpha = 1.0;
+        drawWormholes();
+
+        // ★追加：弾とレーザーをここで描画
+        drawLasers();
+        drawPlayerBullets();
+        drawItems();
+
+        drawPlayerSystems(); // 機体とスラスター
+        ctx.restore();
+
+        if (frame % 3 === 0) drawMiniMap();
+    }
+
+    ctx.restore();
+}
 
 // =========================================================
 // 5. メインループ (Main Loop)
 // =========================================================
+
+
 function loop() {
-
     requestAnimationFrame(loop);
-
     handleGamepadInput();
 
     if (gameState === 'PAUSED') return;
-    ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, width, height);
+
+    // 背景クリア
+    ctx.fillStyle = '#050505';
+    ctx.fillRect(0, 0, width, height);
 
     if (gameState === 'PLAYING') {
-        update();
-    } else if (gameState === 'DYING') {
-        updateDying();
-
-    } else if (gameState === 'GAMEOVER_UI' || gameState === 'ENDING') {
-        updateParticlesAndRings(); // 爆発やリング
-        updateGrid();              // グリッドのゆらぎ
-        updateCrystals();           // スコアククリスタルの動き
-        updateScorePopups();       // "+100" などの数字
+        update(); // 通常の更新
+        draw();   // 通常の描画
     }
+    else if (gameState === 'STAGE_INTRO') {
+        updateIntro();
 
-    draw();
+        // ★追加：Phase 3 以前でもエフェクト（パーティクル等）だけは動かし続ける
+        if (introPhase < 3) {
+            // update() 全体を呼ぶと敵が動いてしまうので、エフェクトの更新のみ個別に呼ぶ
+            updateParticlesAndRings();
+            updateGrid(); // グリッドの揺れも更新
+        } else {
+            // Phase 3 になったらゲーム世界全体を動かす
+            update();
+        }
+
+        drawIntro();
+    }
+    else if (gameState === 'DYING') {
+        updateDying();
+        draw();
+    }
+    else if (gameState === 'GAMEOVER_UI' || gameState === 'ENDING') {
+        updateParticlesAndRings();
+        updateGrid();
+        updateCrystals();
+        updateScorePopups();
+        draw();
+    }
+    else {
+        draw();
+    }
 }
 
 function showHowTo() {
@@ -1597,204 +1927,378 @@ document.addEventListener('touchstart', resetTitleIdle, { passive: true });
 // HOWTO画面内の「ANY BUTTON TO RETURN」を実現するために、オーバーレイ自体をクリックしても閉じるように設定
 document.getElementById('howto-overlay').onclick = hideHowTo;
 
+
+
+// --- 1. メイン update 関数 (司令塔) ---
 function update() {
+    // -----------------------------------------------------
+    // 1. ポーズ中は一切の更新を停止
+    // -----------------------------------------------------
+    if (gameState === 'PAUSED') return;
 
-
-    // トレーニングモード用の制限と補充ロジック ▼▼▼
-    if (isTrainingMode) {
-        spawnedCount = 9999;
-        enemiesToSpawn = 0;
-        isBossWarning = false;
-        warningTimer = 0;
-        wormholes = [];
-
-        // BOMB（サテライト）が減っていたら自動補充する
-        if (player.satellites.length < 12) {
-            player.satellites.push({
-                x: player.x,
-                y: player.y,
-                angle: Math.random() * Math.PI * 2
-            });
-        }
+    // -----------------------------------------------------
+    // 2. 敵出現待機タイマーの更新
+    // -----------------------------------------------------
+    if (spawnWaitTimer > 0) {
+        spawnWaitTimer--;
     }
 
-    // メッセージ フェードアウト処理 ▼▼▼
-    if (stageMessageTimer > 0) {
-        stageMessageTimer--;
+    // -----------------------------------------------------
+    // 3. ステージクリア後の待機シーケンス (3秒間の自由移動)
+    // -----------------------------------------------------
+    if (isStageClear && stage !== MAX_STAGE && !isWarpingOut) {
+        stageClearTimer++;
 
-        // タイマーが0になったらフェードアウト開始
-        if (stageMessageTimer === 0) {
-            if (!isBossWarning) {
-                // フェードアウト用のトランジションを設定
-                ui.msg.style.transition = "opacity 0.3s ease-in";
+        // 3秒経過 (180フレーム) したらワープ開始
+        if (stageClearTimer === 180) {
+            // メッセージを消す
+            ui.msg.style.transition = "opacity 0.5s ease-in";
+            ui.msg.style.opacity = "0";
 
-                // 次のフレームで透明度を0にする（確実にアニメーションさせるため）
-                requestAnimationFrame(() => {
-                    ui.msg.style.opacity = "0";
-                });
+            isWarpingOut = true;
+            player.warpSoundPlayed = false;
+            // 念のためタイマーをリセット（次はワープ時間の計測に使うため）
+            player.warpTimer = 0;
+        }
+        // ※この間はまだ return せず、下の操作処理へ進ませる
+    }
 
-                if (msgHideTimeout) clearTimeout(msgHideTimeout);
+    // -----------------------------------------------------
+    // 4. 脱出ワープ演出中 (排他制御)
+    // -----------------------------------------------------
+    // このモード中は他の全処理をスキップして専用演出のみ実行
+    if (isWarpingOut) {
+        updateWarpProcess();
+        return; // ★ここで完全に中断し、下のゲームロジックを動かさない
+    }
 
-                msgHideTimeout = setTimeout(() => {
-                    // まだ次のメッセージが出ていない（タイマーが0のまま）なら隠す
-                    if (stageMessageTimer === 0 && !isBossWarning) {
-                        ui.msg.style.display = 'none';
+    // =====================================================
+    // 以下、通常のゲームループ
+    // =====================================================
+
+    // 5. トレーニングモード専用処理
+    if (isTrainingMode) {
+        updateTraining();
+    }
+
+    // 6. UIメッセージとボス出現警告の管理
+    updateMessageAndBossWarning();
+
+    // 7. ゲーム全体の共通状態更新
+    handleGlobalStateUpdates();
+
+    // 8. プレイヤーの移動と入力処理
+    updatePlayerMovement();
+
+    // 9. 敵の出現（スポーン）ロジック
+    updateSpawnLogic();
+
+    // 10. ワームホールの更新
+    updateWormholes();
+
+    // 11. エンティティおよび個別システムの更新
+    updateEntities();      // 弾・敵・アイテムの更新
+    updateGrid();          // グリッド物理演算
+    updateScorePopups();   // スコア表示更新
+    checkStageClear();     // ステージクリア判定
+    updateCamera();        // カメラ追従計算
+    updateUI();            // ゲージ・ラベル更新
+}
+
+// --- 2. 脱出ワープ演出とアイテム自動回収 ---
+function updateWarpProcess() {
+    bullets = []; lasers = []; missiles = []; player.history = [];
+
+    // タイマー管理の堅牢化
+    if (player.warpTimer === undefined) player.warpTimer = 0;
+    player.warpTimer++;
+
+    player.angle = -Math.PI / 2; // 上向き固定
+
+    // 加速ロジック
+    if (player.vy === 0 || player.vy > -0.5) player.vy = -0.5;
+    player.vy *= 1.08; // 指数加速
+
+    // 背景速度の更新
+    introBgSpeed = Math.abs(player.vy) * 0.5;
+    introBgScroll += introBgSpeed * gameSpeed;
+
+    // 効果音演出
+    if (player.warpTimer < 60 && player.warpTimer % 15 === 0) {
+        if (typeof AudioSys !== 'undefined') AudioSys.playSE('select');
+    }
+    if (player.vy < -5.0 && !player.warpSoundPlayed) {
+        if (typeof AudioSys !== 'undefined') AudioSys.playSE('warp');
+        player.warpSoundPlayed = true;
+    }
+
+    // 速度制限と位置更新
+    if (player.vy < -100) player.vy = -100;
+    player.y += player.vy;
+    player.vx *= 0.9;
+    player.x += player.vx;
+
+    // サテライト追従
+    player.satellites.forEach((s, i) => {
+        s.angle = (s.angle || 0) + 0.15;
+        const rad = 45 * G_SCALE;
+        const off = (Math.PI * 2 / player.satellites.length) * i;
+        s.x = player.x + Math.cos(s.angle + off) * rad;
+        s.y = player.y + Math.sin(s.angle + off) * rad;
+    });
+
+    // 彗星の尾エフェクト
+    const tailCount = Math.min(15, Math.floor(Math.abs(player.vy) / 2));
+    for (let i = 0; i < tailCount; i++) {
+        particles.push({
+            x: player.x + (Math.random() - 0.5) * 12,
+            y: player.y + 5,
+            vx: (Math.random() - 0.5) * 2,
+            vy: Math.abs(player.vy) * 0.4,
+            color: (Math.random() > 0.3) ? '#0f8' : '#fff',
+            life: 0.5, size: 1 + Math.random() * 3
+        });
+    }
+
+    // 画面外へ出た瞬間のクリーンアップ
+    if (player.y < camera.y - 50) {
+        player.visualScale *= 0.85;
+        crystals.forEach(c => c.life = 0);
+        powerups.forEach(p => p.life = 0);
+        scorePopups.forEach(s => s.life = 0);
+        enemyBullets.forEach(eb => eb.life = 0);
+    }
+
+    // ワープ中のアイテム回収
+    const checkWarpPickup = (list, isPowerup) => {
+        for (let i = list.length - 1; i >= 0; i--) {
+            const item = list[i];
+            if (item.life <= 0) continue;
+            const dx = Math.abs(item.x - player.x);
+            const dy = Math.abs(item.y - player.y);
+            const hitRangeY = Math.abs(player.vy) + 50;
+            if (dx < 80 && dy < hitRangeY) {
+                item.life = 0;
+                if (!isPowerup) {
+                    if (player.satellites.length < 12) {
+                        player.satellites.push({ x: player.x, y: player.y, angle: Math.random() * Math.PI * 2 });
                     }
-                    msgHideTimeout = null;
-                }, 300);
+                    if (typeof createExplosion === 'function') createExplosion(item.x, item.y, '#0f0', 5);
+                } else {
+                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('powerup');
+                    if (item.type === 'shield') {
+                        player.shield = Math.min(PLAYER_BASE_SHIELD, player.shield + 10);
+                        ui.shieldBar.style.width = Math.max(0, player.shield) + "%";
+                    } else if (item.type === 'level') {
+                        player.weaponLevel = Math.min(MAX_WEAPON_LEVEL, player.weaponLevel + 1);
+                    }
+                    if (typeof createExplosion === 'function') createExplosion(item.x, item.y, '#fff', 8);
+                }
             }
         }
+    };
+    checkWarpPickup(crystals, false);
+    checkWarpPickup(powerups, true);
+
+    updateCamera();
+    updateParticlesAndRings();
+    updateGrid();
+
+    updateScorePopups();
+    // =========================================================
+    // ★ここが修正・追加箇所：次のステージへの遷移ロジック
+    // =========================================================
+    // 約2.5秒 (150フレーム) 経過したら次へ
+    if (player.warpTimer > 150) {
+
+        // 遷移処理を一回だけ実行するためのガード
+        // (introPhase は PLAYING中は 0 なので、これをフラグ代わりに使う)
+        if (introPhase === 0) {
+            ui.msg.style.display = 'none';
+            isWarpingOut = false;
+            player.warpTimer = 0;
+            player.warpSoundPlayed = false;
+
+            // プレイヤー位置リセット（画面中央へ）
+            player.x = worldSize / 2;
+            player.y = worldSize / 2;
+            player.vx = 0; player.vy = 0;
+            player.visualScale = 0; // 最初は隠しておく
+
+            // ステージを進める
+            stage++;
+            ui.stage.innerText = stage;
+
+            // カメラ同期
+            const viewW = width / cameraScale;
+            const viewH = height / cameraScale;
+            camera.x = player.x - viewW / 2;
+            camera.y = player.y - viewH * CAMERA_Y_OFFSET;
+
+            // 次のステージを開始
+            startStage();
+            initNebulae();
+        }
     }
+}
 
+// --- 3. トレーニングモード専用処理 ---
+function updateTraining() {
+    spawnedCount = 9999;
+    enemiesToSpawn = 0;
+    isBossWarning = false;
+    warningTimer = 0;
+    wormholes = [];
+    if (player.satellites.length < 12) {
+        player.satellites.push({ x: player.x, y: player.y, angle: Math.random() * Math.PI * 2 });
+    }
+}
 
-    // --- 警告演出の管理 ---
+// --- 4. メッセージとボス出現警告の管理 ---
+function updateMessageAndBossWarning() {
+    if (stageMessageTimer > 0) {
+        stageMessageTimer--;
+        if (stageMessageTimer === 0 && !isBossWarning) {
+            ui.msg.style.transition = "opacity 0.3s ease-in";
+            requestAnimationFrame(() => { ui.msg.style.opacity = "0"; });
+            if (msgHideTimeout) clearTimeout(msgHideTimeout);
+            msgHideTimeout = setTimeout(() => {
+                if (stageMessageTimer === 0 && !isBossWarning) ui.msg.style.display = 'none';
+                msgHideTimeout = null;
+            }, 300);
+        }
+    }
     if (isBossWarning) {
         warningTimer--;
         if (warningTimer <= 0) {
             isBossWarning = false;
             gameSpeed = 1.0;
-
-            // 通常ステージのボス出現処理（Stage 9, 10以外）
-            // ★修正: stage !== 10 を追加
-            if (stage !== 9 && stage !== 20) {
+            if (stage !== 9 && stage !== 10) {
                 wormholes.unshift({ x: nextBossSpawnX, y: nextBossSpawnY, life: 300, maxLife: 300, active: true });
                 spawnEnemy(nextBossSpawnX, nextBossSpawnY, 'boss');
                 distortGrid(nextBossSpawnX, nextBossSpawnY, 250, 400);
             }
         }
     }
+}
 
-    // ==========================================
-    // ★追加：スローモーションからの滑らかな復帰
-    // ==========================================
+// --- 5. ゲーム全体の共通状態更新 ---
+function handleGlobalStateUpdates() {
     if (gameState === 'PLAYING' && !isBossWarning) {
-        // ラスボス(Stage 10)撃破時のみ、劇的な超スローを維持してエンディングへ
-        if (!(isStageClear && stage === MAX_STAGE)) {
-            if (gameSpeed < 1.0) {
-                gameSpeed += 0.005; // 毎フレーム少しずつ元の速度へ回復
-                if (gameSpeed > 1.0) gameSpeed = 1.0;
-            }
+        if (!(isStageClear && stage === MAX_STAGE) && gameSpeed < 1.0) {
+            gameSpeed += 0.005;
+            if (gameSpeed > 1.0) gameSpeed = 1.0;
         }
     }
-
     frame++;
 
-    // ==========================================
-    // ★追加：ボスの滞在時間による難易度上昇（Anger Mode）
-    // ==========================================
-    bossAngerMinionSpeedMag = 1.0; // 毎フレームリセット
+    bossAngerMinionSpeedMag = 1.0;
     const currentBoss = enemies.find(e => e.type === 'boss' || e.type === 'battleship');
-
     if (currentBoss && currentBoss.aliveTimer > 1800) {
-        // 30秒(1800F)経過後から加速開始。
-        // 計算式: 1.0 + (経過時間 - 30秒) * 0.0005
-        bossAngerMinionSpeedMag = 1.0 + (currentBoss.aliveTimer - 1800) * 0.0005;
-
-        // ★修正：上限を「3.0倍」に制限 (Math.minでクランプ)
-        bossAngerMinionSpeedMag = Math.min(3.0, bossAngerMinionSpeedMag);
-
-        // 視覚的警告（既存の警告UIを流用）
+        bossAngerMinionSpeedMag = Math.min(3.0, 1.0 + (currentBoss.aliveTimer - 1800) * 0.0005);
         if (frame % 60 < 30) {
             ui.warn.innerText = "CRITICAL: ENEMY ACCELERATING";
             ui.warn.style.display = 'block';
             ui.warn.style.color = '#f00';
         }
-    } else {
-        // ボスがいない、または30秒未満なら警告を消す
-        if (!isBossWarning) ui.warn.style.display = 'none';
+    } else if (!isBossWarning) {
+        ui.warn.style.display = 'none';
     }
 
-
-    // ==========================================
-    // ★変更：Stage 10 BGMのバスドラム連動グリッド歪み
-    // ==========================================
     if (stage === 10 && gameState === 'PLAYING') {
-        stage10Timer++; // ★BGM再生開始からの時間をカウント
-
-        let isBeat = false;
+        stage10Timer++;
         const PSEUDO_BEAT_INTERVAL = 110;
-
-        // ★変更：frame の代わりに stage10Timer を使い、4回未満の時だけ反応させる
         if (stage10BeatCount < 5 && stage10Timer % PSEUDO_BEAT_INTERVAL === 20) {
-            isBeat = true;
-            stage10BeatCount++; // 歪んだ回数をカウントアップ
-        }
-
-        if (isBeat) {
-            // ラスボスが存在すればボスを中心に、いなければ画面中央を中心に歪ませる
             const boss = enemies.find(e => e.type === 'battleship');
-            const targetX = boss ? boss.x : worldSize / 2;
-            const targetY = boss ? boss.y : worldSize / 2;
-
-            // ボスの鼓動のように空間を大きく歪ませる
-            distortGrid(targetX, targetY, 250, 500);
+            distortGrid(boss ? boss.x : worldSize / 2, boss ? boss.y : worldSize / 2, 250, 500);
+            stage10BeatCount++;
         }
     }
+}
 
-    // --- プレイヤー座標の安全装置 ---
+// --- 6. プレイヤーの移動と入力・射撃処理 ---
+function updatePlayerMovement() {
+
+    if (gameState === 'STAGE_INTRO' && introPhase === 3 && introTimer < 30) {
+        player.vx = 0;
+        player.vy = 0;
+
+        // 入力状態もリセット（解禁と同時の暴発防止）
+        input.move.x = 0; input.move.y = 0;
+        input.aim.x = 0; input.aim.y = 0;
+
+        return; // ここで中断
+    }
+
     if (!Number.isFinite(player.x)) { player.x = worldSize / 2; player.y = worldSize / 2; player.vx = 0; player.vy = 0; }
 
-    // --- コントロール入力と移動 ---
-    // ★ WASDキーに対応 (W=上, A=左, S=下, D=右)
     let mx = input.keys['KeyA'] ? -1 : input.keys['KeyD'] ? 1 : input.move.x;
     let my = input.keys['KeyW'] ? -1 : input.keys['KeyS'] ? 1 : input.move.y;
-
     const mag = Math.hypot(mx, my); if (mag > 1) { mx /= mag; my /= mag; }
+
     player.vx = mx * PLAYER_BASE_SPEED * SPEED_SCALE * gameSpeed;
     player.vy = my * PLAYER_BASE_SPEED * SPEED_SCALE * gameSpeed;
     player.x += player.vx;
     player.y += player.vy;
 
-    // 履歴（飛行機雲用）の更新：位置と「その時の角度」を保存
-    player.history.unshift({
-        x: player.x,
-        y: player.y,
-        angle: player.angle
-    });
-    if (player.history.length > 10) player.history.pop();
+    player.x = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, player.x));
+    player.y = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, player.y));
 
-    // 壁の衝突判定（自機）
-    if (player.x < WALL_MARGIN) player.x = WALL_MARGIN; if (player.x > worldSize - WALL_MARGIN) player.x = worldSize - WALL_MARGIN;
-    if (player.y < WALL_MARGIN) player.y = WALL_MARGIN; if (player.y > worldSize - WALL_MARGIN) player.y = worldSize - WALL_MARGIN;
-
-    // --- 向きと射撃のロジック修正 ---
-    // ★ 矢印キー（エイム）の入力取得
+    // 向きと射撃の計算
     let aimX = input.keys['ArrowLeft'] ? -1 : input.keys['ArrowRight'] ? 1 : 0;
     let aimY = input.keys['ArrowUp'] ? -1 : input.keys['ArrowDown'] ? 1 : 0;
     let isArrowAiming = (aimX !== 0 || aimY !== 0);
 
-    // 1. 右スティック（エイム）が動いている場合はそちらを優先
     if (input.aim.active) {
         player.angle = Math.atan2(input.aim.y, input.aim.x);
-    }
-    // 2. ★ 矢印キーで狙っている場合、その方向を向く
-    else if (isArrowAiming) {
+    } else if (isArrowAiming) {
         player.angle = Math.atan2(aimY, aimX);
-    }
-    // 3. 移動している場合は、移動方向を向く
-    else if (Math.hypot(mx, my) > 0.1) {
+    } else if (Math.hypot(mx, my) > 0.1) {
         player.angle = Math.atan2(my, mx);
     }
 
-    // ショット間隔（レーザー時は高速）
+    player.history.unshift({ x: player.x, y: player.y, angle: player.angle });
+    if (player.history.length > 10) player.history.pop();
+
     const fireInterval = player.laserTimer > 0 ? 4 : 6;
-
-    // ★ 矢印キー(Arrows) または 右スティック または Space/Z/Aボタン で射撃
     let isFiring = input.aim.active || isArrowAiming || input.keys['Space'] || input.keys['KeyZ'] || input.padAPressed;
+    if (isFiring && frame % fireInterval === 0) fire();
 
-    if (isFiring && frame % fireInterval === 0) {
-        fire();
+    // サテライト更新
+    player.satellites.forEach((s, i) => {
+        s.angle = (s.angle || 0) + 0.15;
+        const rad = 45 * G_SCALE;
+        const off = (Math.PI * 2 / player.satellites.length) * i;
+        s.x = player.x + Math.cos(s.angle + off) * rad;
+        s.y = player.y + Math.sin(s.angle + off) * rad;
+    });
+}
+
+function updatePlayerRotationAndFiring(mx, my) {
+    let aimX = input.keys['ArrowLeft'] ? -1 : input.keys['ArrowRight'] ? 1 : 0;
+    let aimY = input.keys['ArrowUp'] ? -1 : 0;
+    if (input.keys['ArrowDown']) aimY = 1;
+
+    let isArrowAiming = (aimX !== 0 || aimY !== 0);
+
+    if (input.aim.active) {
+        player.angle = Math.atan2(input.aim.y, input.aim.x);
+    } else if (isArrowAiming) {
+        player.angle = Math.atan2(aimY, aimX);
+    } else if (Math.hypot(mx, my) > 0.1) {
+        player.angle = Math.atan2(my, mx);
     }
 
+    const fireInterval = player.laserTimer > 0 ? 4 : 6;
+    let isFiring = input.aim.active || isArrowAiming || input.keys['Space'] || input.keys['KeyZ'] || input.padAPressed;
+    if (isFiring && frame % fireInterval === 0) fire();
+}
 
-    // =========================================================
-    // ★変更: スポーン制御ロジック
-    // =========================================================
+// --- 7. 敵の出現（スポーン）ロジック ---
+function updateSpawnLogic() {
     if (stage === 9) {
-        // --- BOSS RUSH LOGIC ---
+        // --- Stage 9: ボスラッシュ ---
         const bossExists = enemies.some(e => e.type === 'boss');
-
-        // 1. ボス出現管理
         if (!bossExists && rushBossIndex < 8) {
             rushIntervalTimer++;
             // 3秒(180F)待って次ボス出現
@@ -1825,7 +2329,6 @@ function update() {
                 AudioSys.playSE('warning');
             }
         }
-
         // 2. 援護雑魚のスポーン（定数を使用して制御）
         if (bossExists &&
             enemies.length < BOSS_RUSH_SPAWN_CONFIG.MAX_ENEMIES &&
@@ -1854,122 +2357,98 @@ function update() {
                 }
             }, BOSS_RUSH_SPAWN_CONFIG.WARP_DELAY);
         }
-
     } else if (stage === 10) {
-        // ★追加: Stage 10 はランダムスポーンを一切行わない
-        // (ボスはstartStageで生成済み、雑魚召喚はupdateEternityCoreAIで行う)
-
-        // 修正: Stage 10 ラスボス出現管理
-        // (startStageでstage10SpawnTimerをリセットしている前提)
+        // --- Stage 10: ラスボス出現 ---
         if (!isBossSpawned) {
-            // 以下の stage10SpawnTimer++ は update() の冒頭で定義済みか、ここに追加する
-            if (typeof stage10SpawnTimer !== 'undefined') {
-                stage10SpawnTimer++;
-                if (stage10SpawnTimer === 240) {
-                    spawnEnemy(worldSize / 2, worldSize / 2, 'battleship');
-                    isBossSpawned = true;
-                }
+            stage10SpawnTimer++;
+            if (stage10SpawnTimer === 240) {
+                spawnEnemy(worldSize / 2, worldSize / 2, 'battleship');
+                isBossSpawned = true;
             }
         }
-
     } else {
-        // --- 通常ステージ (1-8) のスポーンロジック ---
-        const maxWormholes = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage * 1.5;
-        const activeWormholes = wormholes.filter(w => w.active).length;
-        const currentMaxOnScreen = STAGE_MAX_ON_SCREEN[stage - 1] || 40;
-
-        // ★修正1: ボス戦闘中(ボスが存在している間)は、ノルマを無視してワームホールを生成する
+        // --- 通常ステージ ---
+        const maxW = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage * 1.5;
+        const activeWh = wormholes.filter(w => w.active).length;
+        const screenMax = STAGE_MAX_ON_SCREEN[stage - 1] || 40;
         const bossExists = enemies.some(e => e.type === 'boss' || e.type === 'battleship');
-        const canSpawnWormhole = (spawnedCount < enemiesToSpawn) || (isBossSpawned && bossExists);
 
-        let shouldSpawnWormhole = !isBossWarning && canSpawnWormhole && activeWormholes < maxWormholes && enemies.length < currentMaxOnScreen && Math.random() < SPAWN_SETTINGS.WORMHOLE_CHANCE;
-        if (enemies.length === 0 && activeWormholes === 0 && canSpawnWormhole) shouldSpawnWormhole = true;
-        if (shouldSpawnWormhole) spawnWormhole();
+        // 修正：ノルマに達していない、またはボス戦中ならスポーン可能
+        const canSpawn = (spawnedCount < enemiesToSpawn) || (isBossSpawned && bossExists);
+
+        // 1. 通常のワームホール生成判定
+        let shouldSpawn = gameState === 'PLAYING' && spawnWaitTimer <= 0 &&
+            !isBossWarning && canSpawn &&
+            activeWh < maxW && enemies.length < screenMax &&
+            Math.random() < SPAWN_SETTINGS.WORMHOLE_CHANCE;
+
+        // 2. 敵が全滅してワームホールもない場合の救済処置
+        if (gameState === 'PLAYING' && enemies.length === 0 && activeWh === 0 && canSpawn) {
+            shouldSpawn = true;
+        }
+
+        if (shouldSpawn) {
+            spawnWormhole();
+        }
+
+        // ==========================================
+        // ★ 追加：ボス出現のセーフティネット
+        // ==========================================
+        // 条件：プレイ中、ボス未出現、ワームホールなし、敵もいない、且つノルマ付近
+        const remaining = enemiesToSpawn - enemiesKilled;
+        if (gameState === 'PLAYING' && !isBossSpawned && !isBossWarning && activeWh === 0 && enemies.length === 0) {
+            // ノルマをほぼ達成している（残り20%以下）、または生成数が上限に達している場合
+            if (remaining <= enemiesToSpawn * 0.2 || spawnedCount >= enemiesToSpawn) {
+                console.log("Safety Net: Triggering Boss Encounter");
+                triggerBossEncounter();
+                isBossSpawned = true;
+            }
+        }
+        // ==========================================
     }
+}
 
-    // --- ワームホールの更新 ---
+// --- 8. ワームホールの更新（スポーン実行と重力歪み） ---
+function updateWormholes() {
     wormholes.forEach((w) => {
         w.life--;
         if (w.active) {
             if (stage !== 9 && stage !== 10 && w.life > 60 && w.life % SPAWN_SETTINGS.SPAWN_INTERVAL === 0) {
-                const remaining = enemiesToSpawn - spawnedCount;
-                const threshold = enemiesToSpawn * 0.2;
-
-                // ボス出現判定
-                if (!isBossSpawned) {
-                    if (remaining <= threshold || spawnedCount >= enemiesToSpawn) {
-                        triggerBossEncounter();
-                        isBossSpawned = true;
-                        return;
-                    }
-                }
-
-                // ボス戦闘中も雑魚を出し続ける
-                const bossExists = enemies.some(e => e.type === 'boss');
-                if (spawnedCount < enemiesToSpawn || bossExists) {
-                    if (Math.random() < 0.15) {
-                        spawnEnemy(w.x, w.y, 'cube');
-                    } else {
-                        const currentPool = STAGE_ENEMIES[stage] || STAGE_ENEMIES[7];
-                        const randomType = currentPool[Math.floor(Math.random() * currentPool.length)];
-                        spawnEnemy(w.x, w.y, randomType);
+                const remaining = enemiesToSpawn - enemiesKilled;
+                if (!isBossSpawned && (remaining <= enemiesToSpawn * 0.2 || spawnedCount >= enemiesToSpawn)) {
+                    triggerBossEncounter();
+                    isBossSpawned = true;
+                } else {
+                    const bossEx = enemies.some(e => e.type === 'boss');
+                    if (spawnedCount < enemiesToSpawn || bossEx) {
+                        const pool = STAGE_ENEMIES[stage] || STAGE_ENEMIES[7];
+                        const type = Math.random() < 0.15 ? 'cube' : pool[Math.floor(Math.random() * pool.length)];
+                        spawnEnemy(w.x, w.y, type);
                     }
                 }
             }
             if (w.life <= 0) w.active = false;
 
-            // プレイヤーの吸い込み効果
-            const dx = player.x - w.x; const dy = player.y - w.y;
+            const dx = player.x - w.x, dy = player.y - w.y;
             const d = Math.hypot(dx, dy) || 0.01;
             if (d < 180) {
                 const f = 500 / (d + 1);
                 player.x += (dx / d) * f * 0.01 * SPEED_SCALE * gameSpeed;
                 player.y += (dy / d) * f * 0.01 * SPEED_SCALE * gameSpeed;
             }
-
-            // ==========================================
-            // ★追加：ワームホールによる背景グリッドの持続的な歪み（重力場）
-            // ==========================================
-            // 毎フレームやると重い＆歪みすぎるので2フレームに1回実行
             if (frame % 2 === 0 && typeof distortGrid === 'function') {
-
-                // マイナスの力を与えることで、内側に吸い込む「引力」を作る
-                // 少しSin波を混ぜて、穴が脈動している（ウネウネしている）ように見せる
-                // 振幅が5（強め）、速度が0.1（早め）
-                //let pullForce = -15 + Math.sin(frame * 0.1) * 5;
-                let pullForce = -15 + Math.sin(frame * 0.07) * 2;
-
-                // 消滅間近（残り60フレーム以下）は徐々に引力を弱めて空間を元に戻す
-                if (w.life < 60) {
-                    pullForce *= (Math.max(0, w.life) / 60);
-                }
-
-                // 半径250pxのグリッドを中心へ引き寄せる
-                distortGrid(w.x, w.y, pullForce, 250);
+                let pull = -15 + Math.sin(frame * 0.07) * 2;
+                if (w.life < 60) pull *= (Math.max(0, w.life) / 60);
+                distortGrid(w.x, w.y, pull, 250);
             }
         }
     });
     wormholes = wormholes.filter(w => w.life > -60);
-
-    // --- サテライトの更新 ---
-    player.satellites.forEach((s, i) => {
-        s.angle = (s.angle || 0) + 0.15;
-        const rad = 45 * G_SCALE;
-        const off = (Math.PI * 2 / player.satellites.length) * i;
-        s.x = player.x + Math.cos(s.angle + off) * rad; s.y = player.y + Math.sin(s.angle + off) * rad;
-    });
-
-    // --- 各種エンティティ・システムの更新 ---
-    updateEntities();
-    updateGrid();
-    updateScorePopups();
-    checkStageClear();
-
-    // カメラ更新
-    updateCamera();
-
-    updateUI();
 }
+
+
+
+
 
 function updateCamera() {
     let targetScale = 1.0;
@@ -2136,38 +2615,48 @@ function updateEnemiesForDying() {
 // 6. プレイヤー・武器制御 (Player & Weapon Systems)
 // =========================================================
 function fire() {
+    // 演出用のオフセット（下から登場中など）を考慮した発射位置を計算
+    const vY = player.visualYOffset || 0;
+    const spawnY = player.y + vY; // ★ここがポイント
+
     if (player.laserTimer > 0) {
-        lasers.push({ x: player.x, y: player.y, angle: player.angle, life: 5, width: 40 });
-        AudioSys.playSE('laser'); distortGrid(player.x, player.y, 20, 60); return;
+        // レーザーの発射位置も spawnY に合わせる
+        lasers.push({
+            x: player.x,
+            y: spawnY,
+            angle: player.angle,
+            life: 5,
+            width: 40
+        });
+        if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
+        distortGrid(player.x, spawnY, 20, 60);
+        return;aaaaaaaaaaaaaaaaaa
     }
 
     const s = BULLET_CONFIG.PLAYER.SPEED * SPEED_SCALE;
-    // レベルごとの発射角度オフセット設定（0 = 前方、Math.PI = 後方）
     const shotPatterns = {
-        1: [0.08, -0.08], // 2way
-        2: [0.15, 0, -0.15], // 3way(前のみ)
-        3: [0.15, 0, -0.15, Math.PI], // 4way(前3 後1)
-        4: [0.15, 0, -0.15, Math.PI - 0.15, Math.PI + 0.15], // 5way(前3 後2)
-        5: [0.2, 0.07, -0.07, -0.2, Math.PI - 0.15, Math.PI + 0.15], // 6way(前4 後2)
-        6: [0.2, 0.07, -0.07, -0.2, Math.PI - 0.15, Math.PI + 0.15, Math.PI / 2, -Math.PI / 2], // 7way(前4 後2 左右1ずつ)
-        7: [0.25, 0.12, 0, -0.12, -0.25, Math.PI - 0.15, Math.PI + 0.15, Math.PI / 2, -Math.PI / 2] // 8way(前5後2 左右1ずつ)
+        1: [0.08, -0.08], 2: [0.15, 0, -0.15], 3: [0.15, 0, -0.15, Math.PI],
+        4: [0.15, 0, -0.15, Math.PI - 0.15, Math.PI + 0.15],
+        5: [0.2, 0.07, -0.07, -0.2, Math.PI - 0.15, Math.PI + 0.15],
+        6: [0.2, 0.07, -0.07, -0.2, Math.PI - 0.15, Math.PI + 0.15, Math.PI / 2, -Math.PI / 2],
+        7: [0.25, 0.12, 0, -0.12, -0.25, Math.PI - 0.15, Math.PI + 0.15, Math.PI / 2, -Math.PI / 2]
     };
 
-    // 現在のレベルのパターンを取得（最大レベルを超えないように制限）
     const currentPattern = shotPatterns[player.weaponLevel] || shotPatterns[1];
 
     currentPattern.forEach(offset => {
         const a = player.angle + offset;
         bullets.push({
             x: player.x,
-            y: player.y,
+            y: spawnY, // ★ player.y ではなく、見えている位置(spawnY)から飛ばす
             vx: Math.cos(a) * s,
             vy: Math.sin(a) * s,
             life: BULLET_CONFIG.PLAYER.LIFE
         });
     });
 
-    AudioSys.playSE('shoot'); distortGrid(player.x, player.y, 10, 40);
+    if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
+    distortGrid(player.x, spawnY, 10, 40);
 }
 
 function launchSatellites() {
@@ -2688,59 +3177,8 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             state: 'orbit' // orbit: 周回, scan: 照準, fire: 発射
         });
         spawnedCount++;
-    } else if (type === 'island') {
-        const islandId = Date.now() + Math.random(); // 親子関係紐付け用ID
-        const islandScale = 2.0 + Math.random() * 1.0;
-
-        // 1. 大陸本体（動かない障害物）
-        enemies.push({
-            x: x,
-            y: y,
-            vx: 0,
-            vy: 0,
-            hp: 50 + (hpMag * 5),
-            speed: 0,
-            color: '#444', // 岩のようなダークグレー
-            type: 'island',
-            islandId: islandId,
-            scale: islandScale,
-            angle: Math.random() * Math.PI * 2, // 固定角度
-            drop: 'crystal',
-            rotSpeed: 0 // 回転しない
-        });
-        spawnedCount++;
-
-        // 2. その上の砲台（3〜5個程度ランダムに配置）
-        const turretCount = 3 + Math.floor(Math.random() * 3);
-        // 大陸の半径（概算）
-        const islandRadius = 40 * islandScale;
-
-        for (let i = 0; i < turretCount; i++) {
-            // 大陸の上にランダム配置（中心から少し離す）
-            const offsetAng = (Math.PI * 2 / turretCount) * i + (Math.random() * 0.5);
-            const dist = islandRadius * (0.4 + Math.random() * 0.4);
-
-            enemies.push({
-                x: x + Math.cos(offsetAng) * dist,
-                y: y + Math.sin(offsetAng) * dist,
-                vx: 0,
-                vy: 0,
-                hp: 5 + hpMag,
-                speed: 0,
-                color: '#f00',
-                type: 'turret',
-                parentIslandId: islandId, // 親の大陸が消えたら自分も消える用
-                angle: 0, // 砲身の向き
-                fireTimer: Math.random() * 120,
-                scale: 0.8,
-                drop: 'none'
-            });
-        }
     }
-    // --- (追加ここまで) ---
 }
-
-
 
 function updateEnemies() {
     // 現在の表示範囲（カメラ位置＋画面サイズ）
@@ -2900,9 +3338,6 @@ function updateEnemies() {
                 case 'jellyfish': updateJellyfishAI(e); break;
                 case 'sentinel': updateSentinelAI(e); break;
 
-                case 'island': break;
-                case 'turret': updateTurretAI(e); break;
-
                 case 'fighter': updateFighterJetAI(e); break;
                 case 'boss':
                     if (stage === 9) updateBossSpecialAI(e);
@@ -3056,7 +3491,6 @@ function applyAsteroidCollisions(e) {
     });
 }
 
-// クラゲとアステロイドの衝突（ぼよーんと跳ね返る）
 function applyJellyfishAsteroidCollisions(e) {
     // クラゲ以外はこの処理を行わない
     if (e.type !== 'jellyfish') return;
@@ -3152,10 +3586,6 @@ function checkPlayerCollision(e) {
         radius = ENEMY_HITBOX.DRAGON * G_SCALE;
     } else if (e.type === 'hunter') {
         radius = ENEMY_HITBOX.HUNTER * G_SCALE;
-    } else if (e.type === 'island') {
-        radius = ENEMY_HITBOX.ISLAND * e.scale * G_SCALE;
-    } else if (e.type === 'turret') {
-        radius = ENEMY_HITBOX.TURRET * G_SCALE;
     } else if (e.type === 'boss') {
         radius = 45 * G_SCALE;
     } else if (e.type === 'battleship') {
@@ -4322,60 +4752,6 @@ function updateSentinelAI(e) {
     e.y += e.vy * gameSpeed;
 }
 
-function updateTurretAI(e) {
-    // 1. 親大陸が生きているかチェック
-    const parent = enemies.find(other => other.islandId === e.parentIslandId && other.hp > 0);
-
-    // 親がいなくなったら（破壊されたら）、砲台も連鎖爆発して消滅
-    if (!parent) {
-        e.hp = 0;
-        e.isDead = true; // 即死フラグ
-        // 誘爆エフェクト（スコアなしで消す場合はここでエフェクトだけ出す）
-        if (typeof createExplosion === 'function') {
-            createExplosion(e.x, e.y, '#f00', 5);
-        }
-        return;
-    }
-
-    // 2. 自機を狙う（旋回）
-    const dx = player.x - e.x;
-    const dy = player.y - e.y;
-
-    // ★修正: Math.hypotを使わず、距離の二乗で判定して高速化
-    // 判定したい距離 800 の二乗 (800 * 800 = 640000) と比較する
-    const distSq = dx * dx + dy * dy;
-
-    if (distSq > 640000) return; // 画面外(800px以上)なら処理打ち切り
-
-    const targetAngle = Math.atan2(dy, dx);
-
-    // ゆっくり砲身を向ける
-    let diff = targetAngle - e.angle;
-    while (diff <= -Math.PI) diff += Math.PI * 2;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    e.angle += diff * 0.1 * gameSpeed;
-
-    // 3. 射撃
-    e.fireTimer += gameSpeed;
-    // 画面内にいるときだけ撃つ
-    if (e.fireTimer > 120 && dist < 500) {
-        e.fireTimer = 0;
-        // 弾速
-        const bSpd = 6 * SPEED_SCALE;
-
-        // 敵弾発射
-        enemyBullets.push({
-            x: e.x,
-            y: e.y,
-            vx: Math.cos(e.angle) * bSpd,
-            vy: Math.sin(e.angle) * bSpd,
-            life: 180,
-            color: '#f80' // オレンジ色の弾
-        });
-
-        if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
-    }
-}
 
 // ==========================================
 // BOSS
@@ -5824,10 +6200,28 @@ function updatePowerups() {
     powerups = powerups.filter(p => p.life > 0);
 }
 
-function updateScorePopups() { scorePopups.forEach(s => { s.y += s.vy; s.life--; s.alpha = s.life / 30; }); scorePopups = scorePopups.filter(s => s.life > 0); }
+function updateScorePopups() {
+    // 画面範囲の計算
+    const viewW = width / cameraScale;
+    const viewH = height / cameraScale;
+    const margin = 100; // 画面外のマージン
+
+    scorePopups.forEach(s => {
+        s.y += s.vy;
+        s.life--;
+        s.alpha = s.life / 30;
+
+        if (s.x < camera.x - margin || s.x > camera.x + viewW + margin ||
+            s.y < camera.y - margin || s.y > camera.y + viewH + margin) {
+            s.life = 0;
+        }
+    });
+    
+    scorePopups = scorePopups.filter(s => s.life > 0);
+}
 
 function updateParticlesAndRings() {
-    // 後ろからループすることで、削除してもインデックスがズレない
+    // --- パーティクルの更新 (変更なし) ---
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.x += p.vx * gameSpeed;
@@ -5843,23 +6237,28 @@ function updateParticlesAndRings() {
             p.vy += 0.005 * gameSpeed;
             p.life -= 0.02 * gameSpeed;
         }
-
         if (p.rotV) p.angle += p.rotV * gameSpeed;
-
-        // 寿命切れなら削除
-        if (p.life <= 0) {
-            particles.splice(i, 1);
-        }
+        if (p.life <= 0) particles.splice(i, 1);
     }
 
+    // --- リングの更新 (★ここが重要：ボムの動きの分岐) ---
     for (let i = rings.length - 1; i >= 0; i--) {
         const r = rings[i];
+
+        if (r.followPlayer) {
+            const vY = player.visualYOffset || 0;
+            r.x = player.x;
+            r.y = player.y + vY;
+        }
+
         if (r.isBomb) {
             r.r += (r.targetR - r.r) * 0.15 * gameSpeed;
             r.life -= 0.02 * gameSpeed;
         } else {
-            r.r += 8 * SPEED_SCALE * gameSpeed;
-            r.life -= 0.08 * SPEED_SCALE * gameSpeed;
+            const speed = (r.vr !== undefined ? r.vr : 8) * SPEED_SCALE;
+            r.r += speed * gameSpeed;
+            const decay = (r.decay !== undefined ? r.decay : 0.08) * SPEED_SCALE;
+            r.life -= decay * gameSpeed;
         }
 
         if (r.life <= 0) {
@@ -6060,6 +6459,14 @@ function drawBackground() {
     ctx.fillStyle = '#050505';
     ctx.fillRect(0, 0, width, height);
 
+    // ----------------------------------------------------
+    // ★トリック：イントロ中だけ、星描画用のカメラ位置を「偽装」する
+    // ----------------------------------------------------
+    const originalCamY = camera.y; // 本来の位置（グリッド用）をバックアップ
+
+    camera.y -= introBgScroll; // プレイヤーが進んでいる（背景が下に流れる）のでマイナス
+
+
     // ★重要：星と星雲で共通のループ範囲を定義する
     const LOOP_MARGIN_X = 400;
     const LOOP_MARGIN_Y = 400;
@@ -6128,11 +6535,26 @@ function drawBackground() {
         }
     });
 
-    ctx.restore();
+    ctx.restore(); // ベース色のrestore
+
+  
+    camera.y = originalCamY;
+    
+
+    // ▼▼▼ イントロ時のグリッド表示制御 ▼▼▼
+    // Phase 1, 2 (テキスト中) はメイングリッドを描画しない
+    if (gameState === 'STAGE_INTRO' && introPhase < 3) return;
+
+    // Phase 3 (フェードイン中) は透明度を適用
+    if (gameState === 'STAGE_INTRO' && introPhase === 3) {
+        ctx.save();
+        ctx.globalAlpha = introAlpha;
+    }
+    // ▲▲▲ 制御ここまで ▲▲▲
+
 
     // ==========================================
     // ここから下は「エリア内」の描画（メイングリッド）
-    // ★★★ ここを大幅に最適化 ★★★
     // ==========================================
     ctx.save();
 
@@ -6154,18 +6576,26 @@ function drawBackground() {
     const startY = Math.max(0, Math.floor(camera.y / GRID_SPACING) - buffer);
     const endY = Math.min(gridPoints[0].length - 1, Math.ceil((camera.y + viewH) / GRID_SPACING) + buffer);
 
+    // ==========================================
+    // ★追加：グリッド用のフェード率計算
+    // ==========================================
+    let gridFade = 1.0;
+    if (isWarpingOut) {
+        // 枠線より少し早く消えるように調整（/50）
+        gridFade = Math.max(0, 1.0 - (player.warpTimer / 50));
+    }
+
     // --- A. 静的グリッドの一括描画 ---
-    // まず、薄いベースラインをまとめて1回のstrokeで描画します。
-    // これにより、数千回のstroke呼び出しを1回に削減できます。
     ctx.beginPath();
     ctx.strokeStyle = baseColor;
-    ctx.globalAlpha = 0.08; // ベースの薄さ
+
+    // 元の 0.08 に gridFade を掛ける
+    ctx.globalAlpha = 0.08 * gridFade;
 
     for (let i = startX; i <= endX; i++) {
         for (let j = startY; j <= endY; j++) {
             const p = gridPoints[i][j];
             if (!p) continue;
-
             // 左の点と繋ぐ
             if (i > startX && gridPoints[i - 1][j]) {
                 ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y);
@@ -6181,26 +6611,20 @@ function drawBackground() {
     ctx.stroke();
 
     // --- B. 動的グリッド（歪み）の個別描画 ---
-    // 歪んでいる（エネルギーが高い）部分だけを、強調色で重ね書きします。
-    // 静止している部分はAで描画済みなのでスキップします。
     for (let i = startX; i <= endX; i++) {
         for (let j = startY; j <= endY; j++) {
             const p = gridPoints[i][j];
             if (!p) continue;
 
-            // エネルギー計算（hypotではなく絶対値の和で高速近似）
             const energy = Math.abs(p.vx) + Math.abs(p.vy);
 
-            // 一定以上のエネルギーがある場合のみ描画
             if (energy > 0.5) {
-                // エネルギーに応じて透明度を変える
                 const highlightAlpha = Math.min(0.8, energy * 0.12);
-
-                // ここでは個別にstrokeする必要がある（色が透明度で変わるため）
-                // ただし、歪んでいる箇所の数は少ないので負荷は低い
                 ctx.beginPath();
                 ctx.strokeStyle = baseColor;
-                ctx.globalAlpha = highlightAlpha;
+
+                // ここも gridFade を掛ける
+                ctx.globalAlpha = highlightAlpha * gridFade;
 
                 if (i > startX && gridPoints[i - 1][j]) {
                     ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y);
@@ -6215,26 +6639,42 @@ function drawBackground() {
         }
     }
 
-    ctx.restore();
+    ctx.restore(); // グリッド描画終了
+
+    // イントロ用の save を元に戻す
+    if (gameState === 'STAGE_INTRO' && introPhase === 3) {
+        ctx.restore();
+    }
 }
 
 function drawWorldBounds() {
     const color = STAGE_THEMES[stage] || '#00f0ff';
     ctx.save();
 
+    // ==========================================
+    // ★追加：ワープ時は徐々に透明にする
+    // ==========================================
+    if (isWarpingOut) {
+        // 60フレーム（約1秒）かけて 1.0 -> 0.0 にする
+        const fade = Math.max(0, 1.0 - (player.warpTimer / 60));
+        ctx.globalAlpha = fade;
+    }
+    // ==========================================
+
     ctx.strokeStyle = color;
     ctx.lineWidth = 3;
 
-
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = color;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = color;
 
     // 枠線を描画
     ctx.strokeRect(WALL_MARGIN, WALL_MARGIN, worldSize - WALL_MARGIN * 2, worldSize - WALL_MARGIN * 2);
 
-    // さらに内側にもう一本、薄い線を引いて「二重結界」っぽくする（お好みで）
+    // さらに内側にもう一本、薄い線を引いて「二重結界」っぽくする
     ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.5;
+    // ワープ中でなければ0.5、ワープ中なら計算したfadeの半分
+    ctx.globalAlpha = isWarpingOut ? ctx.globalAlpha * 0.5 : 0.5;
+
     ctx.strokeRect(WALL_MARGIN + 5, WALL_MARGIN + 5, worldSize - WALL_MARGIN * 2 - 10, worldSize - WALL_MARGIN * 2 - 10);
 
     ctx.restore();
@@ -6283,9 +6723,6 @@ function drawEnemies() {
         else if (e.type === 'eclipse') drawEclipseEnemy(ctx, e);
         else if (e.type === 'jellyfish') drawJellyfishEnemy(ctx, e);
         else if (e.type === 'sentinel') drawSentinelEnemy(ctx, e);
-
-        else if (e.type === 'island') drawIslandEnemy(ctx, e);
-        else if (e.type === 'turret') drawTurretEnemy(ctx, e);
 
         else if (e.type === 'fighter') drawFighterJet(ctx, e);
 
@@ -6374,6 +6811,13 @@ function drawShockwave(ctx, eb) {
 function drawPlayerSystems() {
     if (gameState === 'DYING') return;
 
+    // --- 1. 演出用パラメータの取得 ---
+    const vY = player.visualYOffset || 0;
+    const currentScale = (player.visualScale !== undefined) ? player.visualScale : 1.0;
+
+    // 登場演出中（スケールがほぼ0）は描画をスキップしてゴーストを防ぐ
+    if (currentScale < 0.01) return;
+
     const vx = player.vx;
     const vy = player.vy;
     const currentMoveMag = Math.hypot(vx, vy);
@@ -6384,40 +6828,46 @@ function drawPlayerSystems() {
         const dirY = Math.sin(player.angle);
         const moveX = vx / currentMoveMag;
         const moveY = vy / currentMoveMag;
-
         const dot = dirX * moveX + dirY * moveY;
         thrustFactor = Math.max(0.2, dot);
     }
 
-    const speedFactor = Math.min(1.0, currentMoveMag / (PLAYER_BASE_SPEED * SPEED_SCALE * 0.8));
-    const finalThrustScale = speedFactor * thrustFactor;
+    // イントロ中の推力：スケールに連動（徐々にエンジンが点火する演出）
+    if (gameState === 'STAGE_INTRO' && introPhase === 3) {
+        thrustFactor = 0.8 * currentScale;
+    }
 
+    const speedFactor = Math.min(1.0, currentMoveMag / (PLAYER_BASE_SPEED * SPEED_SCALE * 0.8));
+    const finalThrustScale = (gameState === 'STAGE_INTRO') ? thrustFactor : speedFactor * thrustFactor;
+
+    // =========================================================
+    // ★重要：ここから先のすべての描画を vY 分だけオフセットさせる
+    // =========================================================
+    ctx.save();
+    ctx.translate(0, vY);
+
+    // --- 2. スラスター（噴射炎）の描画 ---
     if (finalThrustScale > 0.05) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         let pColor = player.invuln > 0 ? '255, 230, 0' : (player.laserTimer > 0 ? '0, 255, 255' : '0, 255, 180');
 
-        const offsetStart = 8 * G_SCALE;
-
-        // ★粒の最大数を 20 → 30 に増やして長さを確保 (1.5倍)
+        const offsetStart = 8 * G_SCALE * currentScale;
         const particleCount = Math.floor(30 * finalThrustScale);
 
         for (let i = 0; i < particleCount; i++) {
             const ratio = (1 - i / particleCount);
-
-            // ★粒の間隔係数を 4 → 6 に広げ、最大リーチを伸ばす
-            const dist = offsetStart + (i * 6 * G_SCALE * finalThrustScale);
-
+            const dist = offsetStart + (i * 6 * G_SCALE * finalThrustScale * currentScale);
             const alpha = Math.pow(ratio, 1.2) * 0.35;
-            // 後方に向けて徐々に細くなる計算
-            const finalSize = (7 - i * 0.2) * G_SCALE;
+            const finalSize = (7 - i * 0.2) * G_SCALE * currentScale;
 
-            if (finalSize < 0.5) continue;
+            if (finalSize < 0.2) continue;
 
             ctx.save();
             const offsetX = -Math.cos(player.angle) * dist;
             const offsetY = -Math.sin(player.angle) * dist;
 
+            // 親の translate(0, vY) が効いているため、ここでは player.y でOK
             ctx.translate(player.x + offsetX, player.y + offsetY);
             ctx.rotate(player.angle);
 
@@ -6426,7 +6876,6 @@ function drawPlayerSystems() {
             ctx.fillStyle = `rgba(${pColor}, ${alpha})`;
             ctx.fill();
 
-            // 芯の光（より長い噴射に合わせて、光る範囲を少し広げました）
             if (i < 12 && Math.random() > 0.3) {
                 ctx.beginPath();
                 ctx.arc(0, 0, finalSize * 0.3, 0, Math.PI * 2);
@@ -6438,21 +6887,38 @@ function drawPlayerSystems() {
         ctx.restore();
     }
 
-    // 残像
+    // --- 3. 残像（履歴）の描画 ---
+    // 残像は「過去の絶対座標」を記録しているため、
+    // ここだけは translate(0, vY) の外、あるいは打ち消す計算が必要。
+    // 今回は一番シンプルな「本体と同じスライドをさせる」方式を維持。
     player.history.forEach((pos, i) => {
         if (i === 0) return;
         ctx.save();
-        ctx.translate(pos.x, pos.y); ctx.rotate(pos.angle); ctx.scale(G_SCALE, G_SCALE);
+        // pos.y は記録時の座標。そこに現在のスライド量 vY を足す
+        ctx.translate(pos.x, pos.y);
+        ctx.rotate(pos.angle);
+        ctx.scale(G_SCALE * currentScale, G_SCALE * currentScale);
+
         ctx.globalAlpha = 0.4 * (1 - i / player.history.length);
         let trailColor = player.invuln > 0 ? '#ff0' : (player.laserTimer > 0 ? '#0ff' : '#0f8');
-        ctx.strokeStyle = trailColor; ctx.lineWidth = 1.5; ctx.shadowBlur = 5; ctx.shadowColor = trailColor;
-        ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-10, 10); ctx.lineTo(-5, 0); ctx.lineTo(-10, -10); ctx.closePath(); ctx.stroke();
+        ctx.strokeStyle = trailColor;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(20, 0); ctx.lineTo(-10, 10); ctx.lineTo(-5, 0); ctx.lineTo(-10, -10);
+        ctx.closePath();
+        ctx.stroke();
         ctx.restore();
     });
 
+    // --- 4. その他のサブシステム描画 ---
+    // translate(0, vY) の内側なので、これらはズレることなく自機に吸着します
     if (player.weaponLevel >= MAX_WEAPON_LEVEL - 1) drawEmeraldPhoenix(ctx, player);
     if (player.invuln > 0) drawInvulnBarrier(ctx, player);
+
+    // drawPlayer 内での重複 translate を防ぐため、必要なら drawPlayer の中身も確認してください
     drawPlayer(ctx, player);
+
+    ctx.restore(); // 全体のオフセット(vY)を終了
 }
 
 function drawPlayerBullets() {
@@ -6530,6 +6996,7 @@ function drawItems() {
     });
 }
 
+
 function drawVisualEffects() {
 
     // 1. 特殊ミサイル（プレイヤー側など）
@@ -6541,33 +7008,23 @@ function drawVisualEffects() {
     });
 
     // --- パーティクルの描画（最適化） ---
-
-    // 2. 複雑なパーティクル（破片・泡）
-    // 回転やスケール変更が必要なため、個別に save/restore を行います
     particles.forEach(p => {
         if (!isOnScreen(p, 50)) return;
-
-        // 通常の火花以外（ShardやBubble）のみここで描画
         if (p.isShard || p.isBubble) {
             ctx.save();
             ctx.globalAlpha = Math.min(1, p.life);
-
             if (p.isShard) {
                 ctx.translate(p.x, p.y);
                 ctx.rotate(p.angle || 0);
-
-                // フェードアウトとズームアウトの計算
                 const opacity = Math.min(1.0, p.life);
                 const smoothAlpha = Math.pow(opacity, 0.7);
                 const s = (p.size || 1.0) * G_SCALE * (0.6 + opacity * 0.4);
                 ctx.scale(s, s);
-
                 ctx.strokeStyle = p.color;
                 ctx.lineWidth = 1.5;
                 ctx.globalCompositeOperation = 'lighter';
 
                 if (p.shardType === 'eclipseBit') {
-                    // --- Eclipseの三角錐ビット ---
                     const pts = [{ x: 14, y: 0, z: 0 }, { x: -7, y: 7, z: 4 }, { x: -7, y: -7, z: 4 }, { x: -7, y: 0, z: -8 }];
                     const lines = [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]];
                     const project = (pt) => {
@@ -6576,164 +7033,62 @@ function drawVisualEffects() {
                         return { x: pt.x, y: finalY };
                     };
                     const pProj = pts.map(pt => project(pt));
-
                     ctx.beginPath();
-                    lines.forEach(l => {
-                        ctx.moveTo(pProj[l[0]].x, pProj[l[0]].y);
-                        ctx.lineTo(pProj[l[1]].x, pProj[l[1]].y);
-                    });
-                    ctx.globalAlpha = smoothAlpha;
-                    ctx.stroke();
-
-                    // 内部の薄い塗り
-                    ctx.fillStyle = p.color;
-                    ctx.globalAlpha = smoothAlpha * 0.2;
-                    ctx.fill();
-
-                    // 中央に白いハイライト（芯）
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 0.5;
-                    ctx.globalAlpha = smoothAlpha * 0.5;
-                    ctx.stroke();
-
+                    lines.forEach(l => { ctx.moveTo(pProj[l[0]].x, pProj[l[0]].y); ctx.lineTo(pProj[l[1]].x, pProj[l[1]].y); });
+                    ctx.globalAlpha = smoothAlpha; ctx.stroke();
+                    ctx.fillStyle = p.color; ctx.globalAlpha = smoothAlpha * 0.2; ctx.fill();
+                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5; ctx.globalAlpha = smoothAlpha * 0.5; ctx.stroke();
                 } else if (p.shardType === 'dragonSeg') {
-                    const i = p.segIndex || 0;
-                    const sizeMod = Math.max(0.6, 1 - (i * 0.08));
-                    const w = 12 * sizeMod;
-                    const h = 18 * sizeMod;
-                    const opacity = Math.min(1.0, p.life);
-                    const smoothAlpha = Math.pow(opacity, 0.7);
-                    const s = (p.size || 1.0) * G_SCALE * (0.5 + opacity * 0.5);
-                    // 上書きされたスケールを再適用
-                    ctx.scale(s / ((p.size || 1.0) * G_SCALE * (0.6 + opacity * 0.4)), s / ((p.size || 1.0) * G_SCALE * (0.6 + opacity * 0.4)));
-
-                    ctx.beginPath();
-                    ctx.moveTo(w, -h / 2);
-                    ctx.lineTo(w, h / 2);
-                    ctx.lineTo(-w * 0.9, h * 0.35);
-                    ctx.lineTo(-w * 0.9, -h * 0.35);
-                    ctx.closePath();
-
-                    ctx.fillStyle = p.color;
-                    ctx.globalAlpha = smoothAlpha * 0.3;
-                    ctx.fill();
-
-                    ctx.strokeStyle = p.color;
-                    ctx.lineWidth = 1.5;
-                    ctx.globalAlpha = smoothAlpha;
-                    ctx.stroke();
-
-                    ctx.strokeStyle = "#fff";
-                    ctx.lineWidth = 0.5;
-                    ctx.globalAlpha = smoothAlpha * 0.5;
-                    ctx.beginPath();
-                    ctx.moveTo(-w * 0.5, 0); ctx.lineTo(w, 0);
-                    ctx.stroke();
-
+                    const w = 12; const h = 18;
+                    ctx.beginPath(); ctx.moveTo(w, -h / 2); ctx.lineTo(w, h / 2); ctx.lineTo(-w * 0.9, h * 0.35); ctx.lineTo(-w * 0.9, -h * 0.35); ctx.closePath();
+                    ctx.fillStyle = p.color; ctx.globalAlpha = smoothAlpha * 0.3; ctx.fill();
+                    ctx.globalAlpha = smoothAlpha; ctx.stroke();
                 } else if (p.shardType === 'tri') {
                     ctx.lineWidth = 1.0 / s;
                     ctx.beginPath();
-                    if (p.vertices && p.vertices.length === 3) {
-                        ctx.moveTo(p.vertices[0].x, p.vertices[0].y);
-                        ctx.lineTo(p.vertices[1].x, p.vertices[1].y);
-                        ctx.lineTo(p.vertices[2].x, p.vertices[2].y);
-                    } else {
-                        ctx.moveTo(0, -10); ctx.lineTo(8, 8); ctx.lineTo(-8, 8);
-                    }
-                    ctx.closePath();
-                    ctx.stroke();
-
-                    ctx.fillStyle = p.color;
-                    ctx.globalAlpha = Math.min(1, p.life) * 0.3;
-                    ctx.fill();
-
+                    if (p.vertices) { ctx.moveTo(p.vertices[0].x, p.vertices[0].y); ctx.lineTo(p.vertices[1].x, p.vertices[1].y); ctx.lineTo(p.vertices[2].x, p.vertices[2].y); }
+                    else { ctx.moveTo(0, -10); ctx.lineTo(8, 8); ctx.lineTo(-8, 8); }
+                    ctx.closePath(); ctx.stroke();
+                    ctx.fillStyle = p.color; ctx.globalAlpha = Math.min(1, p.life) * 0.3; ctx.fill();
                 } else {
-                    // Phantomなどの立体的な破片
-                    ctx.beginPath();
-                    ctx.moveTo(10, 0);
-                    ctx.lineTo(-5, 5);
-                    ctx.lineTo(-5, -5);
-                    ctx.closePath();
-                    ctx.stroke();
-
-                    ctx.fillStyle = p.color;
-                    ctx.globalAlpha = Math.min(1, p.life) * 0.4;
-                    ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-5, 5); ctx.lineTo(-5, -5); ctx.closePath(); ctx.stroke();
+                    ctx.fillStyle = p.color; ctx.globalAlpha = Math.min(1, p.life) * 0.4; ctx.fill();
                 }
-            }
-            else if (p.isBubble) {
-                // --- 泡（バブル） ---
+            } else if (p.isBubble) {
                 ctx.translate(p.x, p.y);
-                const baseOpacity = 0.6;
-                const fade = Math.min(1.0, p.life) * baseOpacity;
+                const fade = Math.min(1.0, p.life) * 0.6;
                 ctx.globalAlpha = fade;
                 const r = p.size * G_SCALE;
-
-                ctx.beginPath();
-                ctx.arc(0, 0, r, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 255, 255, 0.2)`;
-                ctx.fill();
-
-                ctx.strokeStyle = p.color;
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-
-                ctx.fillStyle = `rgba(255, 255, 255, 0.9)`;
-                ctx.beginPath();
-                ctx.arc(-r * 0.4, -r * 0.4, r * 0.25, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fillStyle = `rgba(255, 255, 255, 0.2)`; ctx.fill();
+                ctx.strokeStyle = p.color; ctx.lineWidth = 1.5; ctx.stroke();
+                ctx.fillStyle = `rgba(255, 255, 255, 0.9)`; ctx.beginPath(); ctx.arc(-r * 0.4, -r * 0.4, r * 0.25, 0, Math.PI * 2); ctx.fill();
             }
-
             ctx.restore();
         }
     });
 
-    // --- 3. 単純なパーティクル（通常の火花） ---
-    // ★修正: 一括描画による高速化
-
-    // A. 通常の線をまとめて描画
+    // 3. 単純なパーティクル（通常の火花）
     ctx.save();
     ctx.lineCap = 'round';
-    ctx.beginPath(); // パス開始
-
-    // スタイルはパーティクルの色ごとに分けるのが理想ですが、
-    // 高速化のため「加算合成(lighter)」で一括処理できるものはまとめます。
-    // ここでは、個別に色指定が必要なため、globalAlphaだけ共通化して
-    // ループ内で stroke する従来の方式よりも、
-    // 「beginPath -> moveTo/lineTo -> stroke」の回数を減らす工夫をします。
-
-    // ただし、色（strokeStyle）がバラバラだと一括描画できません。
-    // そこで、最も重い「save/restore」をループ外に出した現在の形は既に良い最適化です。
-    // さらに軽くするなら、「色ごとにバッチ処理」する必要がありますが、コードが複雑になります。
-
-    // 現状のままでも save/restore が外れているので十分高速ですが、
-    // Math.pow などの計算を軽量化します。
-
+    ctx.beginPath();
     particles.forEach(p => {
         if (!isOnScreen(p, 50)) return;
         if (p.isShard || p.isBubble) return;
-
-        // 個別のパス描画
         ctx.beginPath();
         const length = 4.0;
-        // 事前に計算済みの vx, vy を使う
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
-
         ctx.lineWidth = p.size || 2;
         ctx.strokeStyle = p.color;
-
-        // ★ここが重いポイント: 色が変わるたびにコンテキストが変わる
-        // しかし、save/restoreがないので許容範囲です。
-        // Math.min は軽いのでOK
         ctx.globalAlpha = (p.life > 1) ? 1 : p.life;
-
         ctx.stroke();
     });
     ctx.restore();
 
 
-    // 4. リングエフェクト
+    // =========================================================
+    // 4. リングエフェクト (★ここが重要：ボム描画の分岐)
+    // =========================================================
     ctx.globalAlpha = 1.0;
 
     rings.forEach(r => {
@@ -6743,56 +7098,84 @@ function drawVisualEffects() {
         ctx.globalCompositeOperation = 'lighter';
 
         if (r.isBomb) {
-            // BOMB専用
-            ctx.fillStyle = r.color;
-            ctx.globalAlpha = Math.max(0, r.life * 0.25);
-            ctx.beginPath();
-            ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.strokeStyle = r.color;
-            ctx.lineWidth = 20 * r.life * G_SCALE;
-            ctx.globalAlpha = Math.max(0, r.life * 0.8);
-            ctx.beginPath();
-            ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
-            ctx.stroke();
-
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 4 * G_SCALE;
-            ctx.globalAlpha = Math.max(0, r.life);
-            ctx.beginPath();
-            ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
-            ctx.stroke();
+            // (ボムの描画はそのまま省略)
+            ctx.fillStyle = r.color; ctx.globalAlpha = Math.max(0, r.life * 0.25); ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = r.color; ctx.lineWidth = 20 * r.life * G_SCALE; ctx.globalAlpha = Math.max(0, r.life * 0.8); ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 4 * G_SCALE; ctx.globalAlpha = Math.max(0, r.life); ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2); ctx.stroke();
 
         } else {
-            // 通常リング
-            ctx.globalAlpha = r.life;
+            const lw = (r.lineWidth !== undefined ? r.lineWidth : 4) * G_SCALE;
+            const currentR = Math.max(0, r.r * G_SCALE);
+
+            // ▼▼▼ 修正：イントロ用リングは透明度計算をスキップして強制表示 ▼▼▼
+            let sizeFactor = 1.0;
+
+            // 収束リング(vr < 0) かつ イントロ用でない場合のみ、フェードイン計算をする
+            if (r.vr < 0 && !r.isIntroRing) {
+                const progress = Math.max(0, Math.min(1.0, 1.0 - (r.r / 500)));
+                sizeFactor = Math.pow(progress, 3);
+            }
+
+            // 基本透明度
+            const baseAlpha = Math.min(1.0, r.life) * sizeFactor;
+
+            // 1. 内部の塗りつぶし
+            if (r.fill) {
+                ctx.fillStyle = r.color;
+                // 塗りはさらに薄くして上品に
+                ctx.globalAlpha = baseAlpha * 0.15;
+                ctx.beginPath();
+                ctx.arc(r.x, r.y, currentR, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 2. メインの色の輪
+            ctx.globalAlpha = baseAlpha;
             ctx.strokeStyle = r.color;
-            ctx.lineWidth = 4 * G_SCALE;
-            ctx.globalAlpha = r.life * 0.3;
+            ctx.lineWidth = lw;
+
+            // 遠くでは光（ぼかし）を弱く、近くで強く
+            ctx.shadowBlur = 15 * sizeFactor;
+            ctx.shadowColor = r.color;
+
             ctx.beginPath();
-            ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
+            ctx.arc(r.x, r.y, currentR, 0, Math.PI * 2);
             ctx.stroke();
 
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1 * G_SCALE;
-            ctx.globalAlpha = r.life;
-            ctx.beginPath();
-            ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2);
-            ctx.stroke();
+            // 3. 芯の白い輪
+            if (lw > 2) {
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = lw * 0.3;
+                ctx.shadowBlur = 0;
+                // 芯も透明度に従う
+                ctx.globalAlpha = Math.min(1.0, baseAlpha * 1.5);
+
+                ctx.beginPath();
+                ctx.arc(r.x, r.y, currentR, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            // ▲▲▲ 修正ここまで ▲▲▲
         }
 
         ctx.restore();
     });
 }
 
-// player
 function drawPlayer(ctx, p) {
+    // --- 準備：共通のオフセットとスケール ---
+    const vY = p.visualYOffset || 0;
+    const currentScale = (p.visualScale !== undefined) ? p.visualScale : 1.0;
+
+    // スケールが0のときは何も描画しない
+    if (currentScale < 0.01) return;
+
     // --- 1. 自機本体の描画 ---
     ctx.save();
-    ctx.translate(p.x, p.y);
+
+    // ★ 修正：本体の表示座標にも vY を加算
+    ctx.translate(p.x, p.y + vY);
     ctx.rotate(p.angle);
-    ctx.scale(G_SCALE, G_SCALE);
+    ctx.scale(G_SCALE * currentScale, G_SCALE * currentScale);
 
     // 状態に応じた機体色の決定
     let shipColor = '#0f8';
@@ -6804,7 +7187,7 @@ function drawPlayer(ctx, p) {
     ctx.shadowBlur = 10;
     ctx.shadowColor = shipColor;
 
-    // --- ベース機体（全レベル共通） ---
+    // --- ベース機体 ---
     ctx.beginPath();
     ctx.moveTo(20, 0);
     ctx.lineTo(-10, 10);
@@ -6813,88 +7196,53 @@ function drawPlayer(ctx, p) {
     ctx.closePath();
     ctx.stroke();
 
-    // --- 装飾・進化パーツの追加 ---
-
-    // LV2以上: メインウィングの展開
-    if (p.weaponLevel >= 1) {
-        ctx.beginPath();
-        ctx.moveTo(-5, 5); ctx.lineTo(-18, 15);
-        ctx.moveTo(-5, -5); ctx.lineTo(-18, -15);
-        ctx.stroke();
+    // --- 装飾・進化パーツ（そのまま） ---
+    if (p.weaponLevel >= 1) { // LV2
+        ctx.beginPath(); ctx.moveTo(-5, 5); ctx.lineTo(-18, 15); ctx.moveTo(-5, -5); ctx.lineTo(-18, -15); ctx.stroke();
     }
-
-    // LV3以上: サイドスラスター/フィン
-    if (p.weaponLevel >= 2) {
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(5, 5); ctx.lineTo(-5, 12);
-        ctx.moveTo(5, -5); ctx.lineTo(-5, -12);
-        ctx.stroke();
+    if (p.weaponLevel >= 2) { // LV3
+        ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(-5, 12); ctx.moveTo(5, -5); ctx.lineTo(-5, -12); ctx.stroke();
     }
-
-    // LV4以上: 機首の強化（ツインカウル）
-    if (p.weaponLevel >= 3) {
-        ctx.beginPath();
-        ctx.moveTo(10, 3); ctx.lineTo(25, 2);
-        ctx.moveTo(10, -3); ctx.lineTo(25, -2);
-        ctx.stroke();
+    if (p.weaponLevel >= 3) { // LV4
+        ctx.beginPath(); ctx.moveTo(10, 3); ctx.lineTo(25, 2); ctx.moveTo(10, -3); ctx.lineTo(25, -2); ctx.stroke();
     }
-
-    // LV5以上: リアサブウィング
-    if (p.weaponLevel >= 4) {
-        ctx.beginPath();
-        ctx.moveTo(-8, 8); ctx.lineTo(-22, 5);
-        ctx.moveTo(-8, -8); ctx.lineTo(-22, -5);
-        ctx.stroke();
+    if (p.weaponLevel >= 4) { // LV5
+        ctx.beginPath(); ctx.moveTo(-8, 8); ctx.lineTo(-22, 5); ctx.moveTo(-8, -8); ctx.lineTo(-22, -5); ctx.stroke();
     }
-
-    // LV6以上: 重装甲化（エネルギーライン）
-    if (p.weaponLevel >= 5) {
-        ctx.save();
-        ctx.strokeStyle = '#fff'; // エネルギーラインは白
-        ctx.lineWidth = 1;
-        ctx.globalAlpha = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(15, 0); ctx.lineTo(-3, 0);
-        ctx.stroke();
-        ctx.restore();
+    if (p.weaponLevel >= 5) { // LV6
+        ctx.save(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.globalAlpha = 0.6;
+        ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-3, 0); ctx.stroke(); ctx.restore();
     }
-
-
 
     ctx.restore();
-    ctx.shadowBlur = 0; // シャドウをリセット
 
     // --- 2. サテライト（衛星）の描画 ---
     p.satellites.forEach(s => {
         ctx.save();
-        ctx.translate(s.x, s.y);
+        // ★ サテライトは既に player.x/y を基準に計算されているはずなので、
+        // 同様に表示用オフセット vY を加算して同期させる
+        ctx.translate(s.x, s.y + vY);
 
-        // サテライト自体もゆっくり自転させる（キラキラ感アップ）
         ctx.rotate(frame * 0.1);
-
-        // レーザーチャージ中かどうかで色を変える
         ctx.fillStyle = '#0f0';
-
-        // 少しだけ発光させる
         ctx.shadowBlur = 5;
         ctx.shadowColor = ctx.fillStyle;
 
-        // --- ひし形の描画 ---
-        const size = 4; // 大きさ
+        // ひし形の描画
+        const size = 4 * currentScale; // サテライトも本体のスケールに合わせる
         ctx.beginPath();
-        ctx.moveTo(0, -size * 1.5); // 上
-        ctx.lineTo(size, 0);        // 右
-        ctx.lineTo(0, size * 1.5);  // 下
-        ctx.lineTo(-size, 0);       // 左
+        ctx.moveTo(0, -size * 1.5);
+        ctx.lineTo(size, 0);
+        ctx.lineTo(0, size * 1.5);
+        ctx.lineTo(-size, 0);
         ctx.closePath();
         ctx.fill();
 
-        // 芯を白くして硬質感と輝きを出す
+        // 芯を白く
         ctx.fillStyle = '#fff';
         ctx.globalAlpha = 0.6;
         ctx.beginPath();
-        ctx.arc(0, 0, 1.5, 0, Math.PI * 2);
+        ctx.arc(0, 0, 1.5 * currentScale, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();
@@ -6981,35 +7329,39 @@ function drawInvulnBarrier(ctx, p) {
 }
 
 function drawEmeraldPhoenix(ctx, p) {
+    // --- 1. 表示用パラメータの抽出（ここを厳密に修正） ---
+    // undefined の時だけ 600 を使い、0（目的地）の時は正しく 0 を使う
+    const vY = (typeof p.visualYOffset === 'number') ? p.visualYOffset : 700
+    const vScale = (typeof p.visualScale === 'number') ? p.visualScale : 1.0;
+
+    // 出現前（スケールが極小）なら何も描画・計算しない
+    if (vScale < 0.01) return;
+
+    // 最新の表示位置を計算
+    const drawX = p.x;
+    const drawY = p.y + vY;
 
     ctx.save();
-    ctx.translate(p.x, p.y);
+    ctx.translate(drawX, drawY);
     ctx.rotate(p.angle);
+    ctx.scale(vScale, vScale);
 
-    // --- 状態に応じた動的なカラー設定 ---
-    let mainColor = '#0f8';    // 通常：エメラルドグリーン
-    let accentColor = '#0ff';  // 通常：シアン
-
-    if (p.invuln > 0) {
-        mainColor = '#ff0';    // 無敵：イエロー
-        accentColor = '#fff';  // 無敵：ホワイト
-    } else if (p.laserTimer > 0) {
-        mainColor = '#0ff';    // レーザー：シアン
-        accentColor = '#fff';  // レーザー：ホワイト
-    }
+    // --- 2. カラー設定 ---
+    let mainColor = '#0f8';
+    let accentColor = '#0ff';
+    if (p.invuln > 0) { mainColor = '#ff0'; accentColor = '#fff'; }
+    else if (p.laserTimer > 0) { mainColor = '#0ff'; accentColor = '#fff'; }
 
     ctx.shadowBlur = 20;
     ctx.shadowColor = mainColor;
     ctx.globalCompositeOperation = 'lighter';
 
     const scale = G_SCALE * 1.1;
-    const time = frame * 0.15;
-    const flap = Math.sin(time) * 15;
+    const flap = Math.sin(frame * 0.15) * 15;
 
-    // 1. 揺らめく翼（メインカラー）
+    // 3. 翼の描画
     ctx.lineWidth = 2;
     ctx.strokeStyle = mainColor;
-
     for (let side of [-1, 1]) {
         ctx.beginPath();
         ctx.moveTo(0, 0);
@@ -7020,7 +7372,6 @@ function drawEmeraldPhoenix(ctx, p) {
         );
         ctx.stroke();
 
-        // 翼内のアクセントハイライト
         ctx.save();
         ctx.strokeStyle = accentColor;
         ctx.lineWidth = 1;
@@ -7032,51 +7383,43 @@ function drawEmeraldPhoenix(ctx, p) {
         ctx.restore();
     }
 
-    // 2. 輝く3本の尾羽（真ん中を太く、機体色に同期）
+    // 4. 尾羽の描画
     for (let i = 0; i < 3; i++) {
         const isCenter = (i === 1);
         const tailOff = Math.sin(frame * 0.2 + i) * 10;
-
         ctx.save();
         ctx.beginPath();
         ctx.strokeStyle = mainColor;
-
-        if (isCenter) {
-            ctx.lineWidth = 3 * scale; // 真ん中を太く
-            ctx.shadowBlur = 25;       // 発光を強化
-        } else {
-            ctx.lineWidth = 1 * scale;
-            ctx.globalAlpha = 0.6;
-        }
-
+        if (isCenter) { ctx.lineWidth = 3 * scale; ctx.shadowBlur = 25; }
+        else { ctx.lineWidth = 1 * scale; ctx.globalAlpha = 0.6; }
         ctx.moveTo(-10 * scale, (i - 1) * 5 * scale);
-        ctx.quadraticCurveTo(
-            -40 * scale, tailOff * scale,
-            -70 * scale, (tailOff + (i - 1) * 15) * scale
-        );
+        ctx.quadraticCurveTo(-40 * scale, tailOff * scale, -70 * scale, (tailOff + (i - 1) * 15) * scale);
         ctx.stroke();
         ctx.restore();
     }
 
-    // --- 3. 頭部デザイン（くちばしの点を削除し、シャープなラインへ） ---
+    // 5. 頭部
     ctx.strokeStyle = mainColor;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, -4 * scale);
-    ctx.lineTo(25 * scale, 0); // 鋭い先端
+    ctx.lineTo(25 * scale, 0);
     ctx.lineTo(0, 4 * scale);
     ctx.stroke();
 
     ctx.restore();
-    ctx.globalCompositeOperation = 'source-over';
 
-    // 4. 羽毛パーティクルの生成（色を同期）
-    if (frame % 2 === 0) {
+    // --- 6. パーティクル生成の同期 ---
+    // ★ 修正：出現演出中（introPhase === 3）は、この「翼パーティクル」を止める
+    // 出現中の彗星尾は updateIntro 側で出しているため、ここで出すと座標計算の隙間で中央に漏れる
+    const isIntro = (typeof introPhase !== 'undefined' && introPhase === 3);
+
+    if (!isIntro && frame % 2 === 0 && vScale > 0.5) {
         const pAngle = p.angle + Math.PI + (Math.random() - 0.5);
         const pSpeed = 2 + Math.random() * 4;
         particles.push({
-            x: p.x,
-            y: p.y,
+            x: drawX,
+            y: drawY,
             vx: Math.cos(pAngle) * pSpeed,
             vy: Math.sin(pAngle) * pSpeed,
             color: Math.random() > 0.5 ? mainColor : accentColor,
@@ -7085,6 +7428,7 @@ function drawEmeraldPhoenix(ctx, p) {
         });
     }
 }
+
 
 function drawLasers() {
     lasers.forEach(l => {
@@ -8224,99 +8568,6 @@ function drawSentinelEnemy(ctx, e) {
     ctx.restore();
 }
 
-function drawIslandEnemy(ctx, e) {
-    ctx.save();
-    ctx.translate(e.x, e.y);
-    ctx.rotate(e.angle);
-    const s = e.scale * G_SCALE;
-    ctx.scale(s, s);
-
-    // 1. 岩の本体
-    ctx.fillStyle = e.color || '#444';
-    ctx.strokeStyle = '#888';
-    ctx.lineWidth = 2;
-
-    ctx.beginPath();
-    // 8角形の岩のような形
-    for (let i = 0; i < 8; i++) {
-        // 少し凸凹させる
-        const r = 40 + Math.sin(i * 132.5) * 5;
-        const ang = (Math.PI * 2 / 8) * i;
-        const px = Math.cos(ang) * r;
-        const py = Math.sin(ang) * r;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // 2. 縞模様（スターフォース風ストライプ）
-    ctx.globalCompositeOperation = 'source-atop'; // 岩の中にだけ描画
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)'; // 暗い縞
-    ctx.lineWidth = 3;
-
-    const size = 45;
-    for (let i = -size; i < size; i += 10) {
-        ctx.beginPath();
-        // 斜めのストライプ
-        ctx.moveTo(-size, i);
-        ctx.lineTo(size, i);
-        ctx.stroke();
-    }
-
-    // ダメージ時の点滅
-    if (e.flashTimer > 0) {
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.fill();
-        e.flashTimer--;
-    }
-
-    ctx.restore();
-}
-
-function drawTurretEnemy(ctx, e) {
-    ctx.save();
-    ctx.translate(e.x, e.y);
-    ctx.rotate(e.angle); // 砲身の向き
-    const s = e.scale * G_SCALE;
-    ctx.scale(s, s);
-
-    // 台座（回転しない四角）... を描くには逆回転が必要だが
-    // ここではシンプルに砲台全体が回るデザインにする
-
-    // 1. 砲身
-    ctx.fillStyle = '#800'; // 暗い赤
-    ctx.fillRect(0, -4, 15, 8); // 長方形の砲身
-
-    // 2. 本体ドーム
-    ctx.fillStyle = '#f00'; // 明るい赤
-    ctx.beginPath();
-    ctx.arc(0, 0, 8, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 3. コア（光る点）
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(0, 0, 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 枠線
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // ダメージ点滅
-    if (e.flashTimer > 0) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.fill();
-        e.flashTimer--;
-    }
-
-    ctx.restore();
-}
-
 function drawBossEnemy(ctx, e) {
     ctx.save();
     ctx.translate(e.x, e.y);
@@ -9444,24 +9695,6 @@ function drawBossWarningEffect() {
     }
 }
 
-// ユーティリティ
-// 補助関数：色から色相(Hue)を取り出す（コードの最後の方に追加してください）
-function getHue(color) {
-    if (color.startsWith('#')) {
-        // 簡易的な16進数→Hue変換（ボスの主要色に対応）
-        if (color === '#f0f') return 300; // マゼンタ
-        if (color === '#ffff00') return 60; // 黄
-        if (color === '#0f8') return 150; // エメラルド
-        if (color === '#0cc') return 180; // シアン
-        if (color === '#44f') return 240; // 青
-        if (color === '#f40') return 20;  // オレンジ赤
-        if (color === '#f08') return 330; // ローズ
-        if (color === '#fff') return 0;   // 白
-    }
-    return 0;
-}
-
-
 // =========================================================
 // 11. 入力・イベントリスナー (Input & Event Listeners)
 // =========================================================
@@ -9526,7 +9759,10 @@ function handleTouch(e) {
     if (e.target.id === 'launch-btn') return;
 
     e.preventDefault();
-    if (gameState !== 'PLAYING') return;
+
+    const isIntroPlayable = (gameState === 'STAGE_INTRO' && typeof introPhase !== 'undefined' && introPhase === 3);
+    if (gameState !== 'PLAYING' && !isIntroPlayable) return;
+
     input.move.active = false; input.aim.active = false;
 
     const lR = ui.stickL.getBoundingClientRect(); const rR = ui.stickR.getBoundingClientRect();
@@ -9754,6 +9990,28 @@ function handleGamepadInput() {
     const dpadLeft = activeGp.buttons[14]?.pressed;
     const dpadRight = activeGp.buttons[15]?.pressed;
 
+    // ▼▼▼ 追加：ストーリースキップ判定 (START, A, B, RB) ▼▼▼
+    if (gameState === 'STAGE_INTRO' && typeof introPhase !== 'undefined' && (introPhase === 1 || introPhase === 2)) {
+        // ボタンが押されたかチェック
+        const isSkipPressed = (startBtn || aBtn || bBtn || rbBtn);
+
+        if (isSkipPressed && !input.padSkipLatch) {
+            window.skipStory();
+            input.padSkipLatch = true; // 押しっぱなし防止のラッチ
+        }
+
+        if (!isSkipPressed) {
+            input.padSkipLatch = false;
+        }
+
+        // スキップ直後の誤動作（ポーズなど）を防ぐため、他のラッチも更新してここで処理を終える
+        input.padStartPressed = startBtn;
+        input.padAPressed = aBtn;
+        input.padBombPressed = (xBtn || bBtn || rbBtn || rtBtn);
+        return;
+    }
+    // ▲▲▲ 追加ここまで ▲▲▲
+
     // -----------------------------------------------------
     // STARTボタン処理 (ポーズ / ゲーム開始 / リトライ)
     // -----------------------------------------------------
@@ -9792,7 +10050,9 @@ function handleGamepadInput() {
     // -----------------------------------------------------
     // メニュー画面での操作 (PLAYING以外)
     // -----------------------------------------------------
-    if (gameState !== 'PLAYING') {
+    const isIntroPlayable = (gameState === 'STAGE_INTRO' && typeof introPhase !== 'undefined' && introPhase === 3);
+
+    if (gameState !== 'PLAYING' && !isIntroPlayable) {
 
         // スクロール処理 (右スティックまたは左スティックでスクロール)
         if (['STORY', 'RANKING', 'OST'].includes(gameState)) {
@@ -9950,7 +10210,6 @@ function startTraining() {
     gameState = 'PLAYING';
     isTrainingMode = true; // ★フラグをON
 
-    // ゲームリセット（初期化）
     resetGame();
 
     // ★プレイヤーを画面中央に固定配置
@@ -9960,7 +10219,6 @@ function startTraining() {
     // ★テスト用に武器レベルを少し上げておく
     player.weaponLevel = 3;
 
-    // ▼▼▼ 追加：トレーニング用にサテライト(BOMB弾)を最大数装備させる ▼▼▼
     player.satellites = [];
     for (let i = 0; i < 12; i++) {
         player.satellites.push({
@@ -9969,7 +10227,6 @@ function startTraining() {
             angle: (Math.PI * 2 / 12) * i
         });
     }
-    // ▲▲▲ ここまで ▲▲▲
 
     // UI調整（不要なものを隠す）
     ui.pauseBtn.style.display = 'none';
@@ -10108,6 +10365,157 @@ window.closeInstallPrompt = function () {
     }
 };
 
+// ==========================================
+// 12. ストーリー演出制御 (Story & Skip)
+// ==========================================
+
+// スキップ判定用フラグ
+let isSkippingStory = false;
+let isSkipComplete = false;
+
+window.skipStory = function () {
+
+    if (gameState === 'STAGE_INTRO' && introPhase === 1 && introTimer < 60) {
+        return; // 何もせず終了
+    }
+
+    if (isSkippingStory) return;
+    isSkippingStory = true;
+    isSkipComplete = false; // ★ 念のため開始時にリセット
+
+    const container = document.getElementById('story-typing-container');
+    const msgEl = ui.msg;
+    const typingMsg = document.getElementById('story-typing-msg');
+
+    // --- 1秒かけてフェードアウトさせる演出 ---
+    const fadeStyle = "opacity 1.0s ease-out";
+
+    if (container) {
+        container.style.transition = fadeStyle;
+        container.style.opacity = "0";
+    }
+    if (msgEl) {
+        msgEl.style.transition = fadeStyle;
+        msgEl.style.opacity = "0";
+    }
+    if (typingMsg) {
+        typingMsg.style.transition = fadeStyle;
+        typingMsg.style.opacity = "0";
+    }
+
+    // --- 1秒後に実際のフェーズ移行フラグを立てる ---
+    setTimeout(() => {
+        isSkipComplete = true;
+
+        if (container) container.style.display = 'none';
+        if (typingMsg) {
+            typingMsg.style.display = 'none';
+            typingMsg.innerHTML = '';
+        }
+    }, 1000);
+};
+
+// スペースキーでもスキップ可能にするイベントリスナー
+window.addEventListener('keydown', (e) => {
+    // イントロの Phase 1 または 2 でスペースが押されたらスキップ
+    if (gameState === 'STAGE_INTRO' && typeof introPhase !== 'undefined' && (introPhase === 1 || introPhase === 2)) {
+        if (e.code === 'Space') {
+
+            if (e.repeat) return;
+
+            window.skipStory();
+        }
+    }
+});;
+
+
+// タイピング演出を実行する関数（ナレーション・長文対応版）
+async function playStoryTyping(text) {
+    const container = document.getElementById('story-typing-container');
+    const el = document.getElementById('story-typing-msg');
+    if (!container || !el) return;
+
+    // --- 初期化 ---
+    isSkippingStory = false;
+
+    // 表示設定
+    container.style.display = 'flex';
+    el.style.display = 'block';
+    el.style.opacity = '1';
+    el.style.transition = 'none';
+    el.innerHTML = '';
+
+    // --- ナレーション用ビジュアル設定 ---
+    // 基本はエメラルドグリーン。文章の内容に応じて光の色を微調整
+    let typeColor = '#eee';
+    let shadowColor = '#eee';
+
+    if (text.includes('アキシオム') || text.includes('幾何学')) {
+        // 敵対勢力や冷徹な論理に触れる際は、少し青白い冷たい光に
+        shadowColor = '#0ff';
+    } else if (text.includes('フェニックス') || text.includes('生命')) {
+        // 生命の熱量に触れる際は、より鮮やかな緑に
+        shadowColor = '#0f8';
+    }
+
+    el.style.color = typeColor;
+    el.style.textShadow = `0 0 8px ${shadowColor}`;
+    // ----------------------------------
+
+    const lines = text.split('\n');
+    const cursor = document.createElement('span');
+    cursor.className = 'cursor-blink';
+    cursor.textContent = '_';
+
+    // タイピングループ
+    for (let lineText of lines) {
+        if (isSkippingStory) break;
+
+        const lineDiv = document.createElement('div');
+        lineDiv.style.minHeight = '1.6em';
+        lineDiv.style.marginBottom = '0.4em'; // 行間に少し余裕を持たせる
+        el.appendChild(lineDiv);
+        lineDiv.appendChild(cursor);
+
+        for (let char of lineText) {
+            if (isSkippingStory) break;
+
+            cursor.before(char);
+
+            // 打鍵速度の調整（ナレーションの「タメ」を作る）
+            let delay = 25; // 基本速度を少し速めて長文のストレスを軽減
+            if (char === '、' || char === ',') delay = 180;
+            if (char === '。' || char === '.') delay = 400;
+            if (char === '―' || char === '—') delay = 300; // ダッシュ記号で余韻
+
+            await new Promise(r => setTimeout(r, delay));
+        }
+        await new Promise(r => setTimeout(r, 150)); // 行間の余韻
+    }
+
+    // 読み終わり待機
+    if (!isSkippingStory) {
+        await new Promise(r => setTimeout(r, 800)); // 長文なので少しだけ長く余韻を
+    }
+
+    // 終了処理 (フェードアウト)
+    // スキップされた場合は transition を通さず即座に消す
+    if (isSkippingStory) {
+        el.style.display = 'none';
+        container.style.display = 'none';
+        el.innerHTML = '';
+    } else {
+        el.style.transition = 'opacity 0.6s ease-out';
+        el.style.opacity = '0';
+        await new Promise(r => setTimeout(r, 600));
+
+        el.style.display = 'none';
+        container.style.display = 'none';
+        el.innerHTML = '';
+    }
+}
+
+
 // 起動時にチェックを実行
 checkIOSInstallPrompt();
 
@@ -10116,3 +10524,6 @@ checkIOSInstallPrompt();
 init();
 window.refreshMenuButtons();
 loop();
+
+
+
