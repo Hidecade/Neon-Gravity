@@ -265,26 +265,36 @@ canvas {
     line-height: 1.8; /* 行間を広めに */
 
     pointer-events: none; /* テキスト自体はクリック判定なし */
+    margin-bottom: 100px;
 }
 
 /* スキップボタン */
 #skip-button {
+    /* ★絶対配置（固定）に戻す */
     position: absolute;
-    bottom: 40px;
-    right: 40px;
+    /* 画面の下から少し浮かせた位置に固定 */
+    bottom: 50px;
+    /* 左右中央揃え */
+    left: 50%;
+    transform: translateX(-50%);
+    /* 右寄せ設定をリセット */
+    right: auto;
+    margin: 0;
+    /* デザイン（そのまま維持） */
     color: rgba(0, 255, 255, 0.7);
     border: 1px solid rgba(0, 255, 255, 0.5);
-    padding: 10px 20px;
+    padding: 10px 30px; /* 横幅を少し広げて押しやすく */
     cursor: pointer;
-    font-family: 'Orbitron', monospace; /* フォント合わせ */
+    font-family: 'Orbitron', monospace;
     font-size: calc(14px * var(--ui-scale, 1));
     letter-spacing: 2px;
     transition: all 0.3s;
-    background: rgba(0, 20, 40, 0.8);
-    pointer-events: auto; /* クリック有効 */
+    background: rgba(0, 20, 40, 0.9); /* 背景を少し濃くして文字と被っても読めるように */
+    pointer-events: auto;
     z-index: 2001;
 }
 
+    /* ホバー時のスタイル（そのまま） */
     #skip-button:hover {
         background: rgba(0, 255, 255, 0.3);
         color: #fff;
@@ -323,7 +333,11 @@ canvas {
    ========================================= */
 @media (orientation: landscape) {
     #story-typing-msg {
-        font-size: 3.2vh !important;
+        font-size: 2.5vh !important;
+        margin-bottom: 60px;
+    }
+    #skip-button {
+        bottom: 20px; 
     }
 }
 
