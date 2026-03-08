@@ -780,8 +780,6 @@ function setPaused(paused) {
 
 function requestFullScreen() {
 
-    return;
-
     const el = document.documentElement;
     if (el.requestFullscreen) {
         el.requestFullscreen().catch(e => console.log("Fullscreen blocked", e));
