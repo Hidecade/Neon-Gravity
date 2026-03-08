@@ -215,10 +215,113 @@ canvas {
     margin-right: -8px;
     z-index: 100;
     pointer-events: none;
-    animation: clear-glow 2.5s ease-in-out infinite;
+    animation: clear-glow 1.0s ease-in-out infinite;
     white-space: pre-wrap;
     transition: opacity 0.2s;
     line-height: 1.4;
+}
+
+/* =========================================================
+   ストーリー表示用オーバーレイ (修正版)
+   ========================================================= */
+
+/* 背景を黒くして中央揃えにするコンテナ */
+#story-typing-container {
+    display: none; /* 初期状態は非表示 */
+    position: fixed; /* 画面全体を覆う */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.0);
+
+    z-index: 2000; /* 最前面 */
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto; /* クリックを受け付ける（スキップボタン用） */
+}
+
+
+/* ストーリーテキスト本体 */
+#story-typing-msg {
+    /* absolute配置を解除し、Flexboxの流れに任せる */
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    margin: 0;
+    width: 80%;
+    max-width: 800px; /* 横に広がりすぎないように制限 */
+
+    text-align: left; /* 長文は左揃えの方が読みやすい（お好みでcenterでも可） */
+    font-family: 'Courier New', Courier, monospace;
+    font-size: calc(16px * var(--ui-scale, 1)); /* 少し大きく */
+
+    font-weight: bold;
+    color: #0f8;
+    text-shadow: 0 0 5px #0f8;
+    white-space: pre-wrap; /* 改行を反映 */
+    line-height: 1.8; /* 行間を広めに */
+
+    pointer-events: none; /* テキスト自体はクリック判定なし */
+}
+
+/* スキップボタン */
+#skip-button {
+    position: absolute;
+    bottom: 40px;
+    right: 40px;
+    color: rgba(0, 255, 255, 0.7);
+    border: 1px solid rgba(0, 255, 255, 0.5);
+    padding: 10px 20px;
+    cursor: pointer;
+    font-family: 'Orbitron', monospace; /* フォント合わせ */
+    font-size: calc(14px * var(--ui-scale, 1));
+    letter-spacing: 2px;
+    transition: all 0.3s;
+    background: rgba(0, 20, 40, 0.8);
+    pointer-events: auto; /* クリック有効 */
+    z-index: 2001;
+}
+
+    #skip-button:hover {
+        background: rgba(0, 255, 255, 0.3);
+        color: #fff;
+        box-shadow: 0 0 15px #0ff;
+        border-color: #fff;
+    }
+
+/* カーソル点滅アニメーション */
+.cursor-blink {
+    animation: blink-anim 0.8s infinite;
+    display: inline-block;
+    vertical-align: bottom;
+    color: #fff; /* カーソルは白く目立たせる */
+}
+
+@keyframes blink-anim {
+    0%, 100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+
+/* モバイル用の調整 */
+@media (max-width: 600px) {
+    #story-typing-msg {
+        width: 90%;
+        font-size: 14px;
+    }
+
+    #skip-button {
+        bottom: 20px;
+        right: 20px;
+        padding: 8px 15px;
+    }
 }
 
 /* =========================================================
@@ -1259,3 +1362,7 @@ canvas {
 .lang-en .ja-text {
     display: none !important;
 }
+
+
+
+
