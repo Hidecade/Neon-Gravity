@@ -256,7 +256,7 @@ canvas {
 
     text-align: left; /* 長文は左揃えの方が読みやすい（お好みでcenterでも可） */
     font-family: 'Courier New', Courier, monospace;
-    font-size: calc(16px * var(--ui-scale, 1)); /* 少し大きく */
+    font-size: calc(14px * var(--ui-scale, 1)); /* 少し大きく */
 
     font-weight: bold;
     color: #0f8;
