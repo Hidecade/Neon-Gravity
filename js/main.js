@@ -1676,18 +1676,39 @@ function updateIntro() {
         introAlpha = Math.min(1.0, introTimer / 40);
         const updateUI = (id, display) => {
             const el = document.getElementById(id) || document.querySelector(id);
-            if (el) { el.style.display = display; el.style.opacity = introAlpha; }
+            if (el) {
+                // Alphaが0のときは display: none を維持
+                if (introAlpha <= 0) {
+                    el.style.display = 'none';
+                    el.style.opacity = '0';
+                } else {
+                    el.style.display = display;
+                    el.style.opacity = introAlpha;
+                }
+            }
         };
+
         updateUI('.hud-row', 'flex');
         updateUI('minimap-container', 'block');
 
+        // ゲームパッド接続判定
         const isPad = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).some(gp => gp !== null);
+
         if (!isPad) {
+            // ★修正：親コンテナである 'controls' も表示対象に加える！
+            updateUI('controls', 'block');
+
             updateUI('joystick-container', 'block');
             updateUI('launch-btn', 'flex');
+        } else {
+            // パッドがある場合は隠す
+            // (updateUI関数はdisplayを指定する形なので、ここで隠す処理が必要なら別途書くか、
+            //  もしくは updateUI('controls', 'none') を呼ぶ)
+            const ctrl = document.getElementById('controls');
+            if (ctrl) ctrl.style.display = 'none';
         }
-        updateUI('pause-btn', isPad ? 'none' : 'flex');
 
+        updateUI('pause-btn', isPad ? 'none' : 'flex');
 
 
         // -----------------------------------------------------
