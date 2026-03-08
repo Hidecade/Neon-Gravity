@@ -281,6 +281,117 @@ const SE_LIBRARY = {
         n.start(t); n.stop(t + duration);
         return { osc: null, duration: duration };
     },
+    // ブリップ音（カウントダウン・選択音）
+    select: (ctx, t, g) => {
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        // 瞬間的に高い周波数から少しだけ下げることで「ピッ」という鋭い音にする
+        o.frequency.setValueAtTime(2400, t);
+        o.frequency.exponentialRampToValueAtTime(1600, t + 0.05);
+        g.gain.setValueAtTime(0.1, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        return { osc: o, duration: 0.05 };
+    },
+
+    // ワープ音（猛加速・消失音）
+    warp: (ctx, t, g, noise) => {
+        const dur = 1.2;
+        // 1. 上昇するサイン波（キィィィィンという上昇感）
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(400, t);
+        // 指数関数的にピッチを上げて加速感を演出
+        o.frequency.exponentialRampToValueAtTime(6000, t + dur);
+
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(0.15, t + 0.1); // 出だしを少し鋭く
+        env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+        o.connect(env); env.connect(g);
+        o.start(t); o.stop(t + dur);
+
+        // 2. ホワイトノイズのシュワーという風切り音
+        if (noise) {
+            const n = ctx.createBufferSource();
+            n.buffer = noise;
+            const f = ctx.createBiquadFilter();
+            f.type = 'highpass';
+            f.frequency.setValueAtTime(500, t);
+            f.frequency.exponentialRampToValueAtTime(8000, t + dur);
+
+            const ng = ctx.createGain();
+            ng.gain.setValueAtTime(0, t);
+            ng.gain.linearRampToValueAtTime(0.6, t + 0.2);
+            ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+            n.connect(f); f.connect(ng); ng.connect(g);
+            n.start(t); n.stop(t + dur);
+        }
+
+        return { osc: null, duration: dur };
+    },
+    // ワープイン音（出現・逆再生風・和音・強ノイズ）
+    warp_in: (ctx, t, g, noise) => {
+        const dur = 2.2;
+
+        // 1. メイン：下降するサイン波（基音）
+        const o = ctx.createOscillator();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(800, t);
+        o.frequency.exponentialRampToValueAtTime(200, t + dur);
+
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(0.05, t + 0.1);
+        env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+        o.connect(env); env.connect(g);
+        o.start(t); o.stop(t + dur);
+
+        // -----------------------------------------------------
+        // ★追加：ハーモニー（完全5度上の音を重ねる）
+        // -----------------------------------------------------
+        const o2 = ctx.createOscillator();
+        o2.type = 'triangle'; // メインより少し明るい音色
+
+        // 周波数をメインの1.5倍に設定 (3000Hz -> 300Hz)
+        o2.frequency.setValueAtTime(1100, t);
+        o2.frequency.exponentialRampToValueAtTime(300, t + dur);
+
+        const env2 = ctx.createGain();
+        env2.gain.setValueAtTime(0, t);
+        env2.gain.linearRampToValueAtTime(0.04, t + 0.1); // メインより少し控えめな音量
+        env2.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+        o2.connect(env2); env2.connect(g);
+        o2.start(t); o2.stop(t + dur);
+        // -----------------------------------------------------
+
+        // 2. ノイズ成分（空間が閉じる音・強）
+        if (noise) {
+            const n = ctx.createBufferSource();
+            n.buffer = noise;
+
+            const f = ctx.createBiquadFilter();
+            f.type = 'highpass';
+            // 高い音から低い音へスイープ。
+            f.frequency.setValueAtTime(8000, t);
+            f.frequency.exponentialRampToValueAtTime(50, t + dur);
+
+            const ng = ctx.createGain();
+            ng.gain.setValueAtTime(0, t);
+
+            // 音量を 0.6 にアップ（かなり強くなります）
+            ng.gain.linearRampToValueAtTime(0.6, t + 0.15);
+            ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+            n.connect(f); f.connect(ng); ng.connect(g);
+            n.start(t); n.stop(t + dur);
+        }
+
+        return { osc: null, duration: dur };
+    },
 };
 
 
