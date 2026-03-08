@@ -9719,13 +9719,20 @@ function drawBossWarningEffect() {
 // =========================================================
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
+        // 画面が隠れたらポーズする（これはOK）
         setPaused(true);
-        // ページが隠れたら強制的にBGMも一時停止
         if (AudioSys && AudioSys.bgmEl) AudioSys.bgmEl.pause();
     } else {
-        setPaused(false);
-        // ページが戻ってきたら、ポーズ中でなければBGM再開
-        if (gameState !== 'PAUSED' && AudioSys) AudioSys.resumeBGM();
+        // ★修正：戻ってきたときは「自動で再開（setPaused(false)）」してはいけない！
+        // ここを削除またはコメントアウトします。
+
+        // setPaused(false); <--- これが諸悪の根源でした
+
+        // 代わりに、ポーズ画面が表示されたまま待機させます。
+        // ユーザーが「RESUME」ボタンを押したときに AudioSys.resume() が走るため、
+        // そこでSEが復活します。
+
+        // ※もしBGMだけは聞こえるようにしたければ、ここではなく resumeAction で再開させます
     }
 });
 
@@ -9748,17 +9755,18 @@ const resumeAction = (e) => {
         e.stopPropagation();
     }
 
-    // ★追加：シンプルにキャンバスへフォーカスを戻す
+    // キャンバスへフォーカス
     canvas.focus();
-
-    // UIが消えた直後にも念押しでフォーカスする
     setTimeout(() => canvas.focus(), 100);
 
-    if (AudioSys) AudioSys.resume();
+    // ★ここが重要：ユーザーのクリック権限を使って AudioContext を再開する
+    if (typeof AudioSys !== 'undefined') {
+        AudioSys.resume();    // SE用 (Web Audio API)
+        AudioSys.resumeBGM(); // BGM用 (HTML5 Audio)
+    }
 
     gameState = 'PLAYING';
     ui.pauseOverlay.style.display = 'none';
-    AudioSys.resumeBGM();
 };
 
 // 画面全体クリックを廃止し、個別のボタンに処理を割り当てる
