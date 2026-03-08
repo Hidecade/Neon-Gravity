@@ -78,6 +78,12 @@
         <div id="warning-msg">GRAVITY CRITICAL</div>
         <div id="stage-msg">STAGE CLEAR</div>
 
+
+        <div id="story-typing-container" style="display:none;">
+            <div id="story-typing-msg"></div>
+            <div id="skip-button" onclick="skipStory()">SKIP [SPACE]</div>
+        </div>
+
         <div id="ending-msg">
             <h1 style="color:#fff; font-size:30px; text-shadow:0 0 30px #0ff; margin-bottom:5px;">MISSION COMPLETE</h1>
             <p style="color:#0ff; font-size:14px; letter-spacing:3px; margin-bottom:15px;">ALL SECTORS LIBERATED</p>
@@ -468,6 +474,8 @@
 
     <script src="js/config.js" defer></script>
 
+    <script src="js/utils.js"></script>
+
     <script src="js/main.js" defer></script>
 
     <script>
@@ -515,8 +523,4 @@
         }
     </script>
 </body>
-</html>
-
-</body>
-
 </html>
