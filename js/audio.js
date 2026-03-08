@@ -1,12 +1,11 @@
 // =========================================================
-// Audio System Manager (Final Optimized)
+// Audio System Manager (Fixed & Optimized)
 // =========================================================
 
 // 警告音の間隔設定
 const WARNING_SOUND_INTERVAL = 48;
 
 // ストップさせる必要がなく、鳴らしっぱなしで良いSEのリスト
-// これらは重い配列管理を行わず、軽量に処理します
 const ONE_SHOT_SE = [
     'shoot', 'laser', 'enemy_hit',
     'explode_small', 'explode_medium', 'explode_large',
@@ -35,7 +34,7 @@ const BGM_FILES = {
 
 // --- SEの音響定義ライブラリ ---
 const SE_LIBRARY = {
-    // ショット音
+    // (SE定義は元のまま変更なしでOKです。長いので省略しませんが、そのまま貼り付けてください)
     shoot: (ctx, t, g) => {
         const o = ctx.createOscillator();
         o.type = 'triangle';
@@ -45,7 +44,6 @@ const SE_LIBRARY = {
         g.gain.linearRampToValueAtTime(0, t + 0.1);
         return { osc: o, duration: 0.1 };
     },
-    // レーザー発射音
     laser: (ctx, t, g) => {
         const o = ctx.createOscillator();
         o.type = 'sawtooth';
@@ -61,7 +59,6 @@ const SE_LIBRARY = {
         g.gain.linearRampToValueAtTime(0, t + 0.15);
         return { osc: o, duration: 0.15 };
     },
-    // 警告音
     warning: (ctx, t, g) => {
         const repeatCount = 6;
         const interval = (typeof WARNING_SOUND_INTERVAL !== 'undefined' ? WARNING_SOUND_INTERVAL : 60) / 60;
@@ -84,7 +81,6 @@ const SE_LIBRARY = {
         }
         return { osc: null, duration: (repeatCount * interval) + duration };
     },
-    // 爆発音（小）
     explode_small: (ctx, t, g, noise) => {
         if (!noise) return { osc: null, duration: 0 };
         const n = ctx.createBufferSource();
@@ -99,7 +95,6 @@ const SE_LIBRARY = {
         n.start(t); n.stop(t + 0.4);
         return { osc: null, duration: 0.4 };
     },
-    // 爆発音（中）
     explode_medium: (ctx, t, g, noise) => {
         if (!noise) return { osc: null, duration: 0 };
         const dur = 2.0;
@@ -115,7 +110,6 @@ const SE_LIBRARY = {
         n.start(t); n.stop(t + dur);
         return { osc: null, duration: dur };
     },
-    // 爆発音（大）
     explode_large: (ctx, t, g, noise) => {
         if (!noise) return { osc: null, duration: 0 };
         const totalDur = 5.0;
@@ -154,7 +148,6 @@ const SE_LIBRARY = {
         o.start(finalBurstTime); o.stop(finalBurstTime + 3.5);
         return { osc: null, duration: totalDur };
     },
-    // ターゲット捕捉
     target_ping: (ctx, t, g) => {
         const o = ctx.createOscillator();
         o.type = 'square';
@@ -163,7 +156,6 @@ const SE_LIBRARY = {
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
         return { osc: o, duration: 0.05 };
     },
-    // LAUNCH音
     launch: (ctx, t, g, noise) => {
         const dur = 1.5;
         const fadeInTime = 1.0;
@@ -199,7 +191,6 @@ const SE_LIBRARY = {
         g.gain.exponentialRampToValueAtTime(0.005, t + dur);
         return { osc: null, duration: dur };
     },
-    // パワーアップ
     powerup: (ctx, t, g) => {
         const o = ctx.createOscillator();
         o.type = 'sine';
@@ -209,7 +200,6 @@ const SE_LIBRARY = {
         g.gain.linearRampToValueAtTime(0, t + 0.2);
         return { osc: o, duration: 0.2 };
     },
-    // ダメージ
     damage: (ctx, t, g) => {
         const o = ctx.createOscillator();
         o.type = 'sawtooth';
@@ -219,7 +209,6 @@ const SE_LIBRARY = {
         g.gain.linearRampToValueAtTime(0, t + 0.2);
         return { osc: o, duration: 0.2 };
     },
-    // 無敵
     invincible: (ctx, t, g) => {
         const o = ctx.createOscillator();
         o.type = 'sine';
@@ -229,7 +218,6 @@ const SE_LIBRARY = {
         g.gain.linearRampToValueAtTime(0, t + 0.5);
         return { osc: o, duration: 0.5 };
     },
-    // ボス被弾
     boss_hit: (ctx, t, g) => {
         const dur = 0.18;
         const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
@@ -264,7 +252,6 @@ const SE_LIBRARY = {
         subOsc.start(t); subOsc.stop(t + dur);
         return { osc: null, duration: dur };
     },
-    // 敵被弾
     enemy_hit: (ctx, t, g, noise) => {
         if (!noise) return { osc: null, duration: 0 };
         const duration = 0.12;
@@ -281,37 +268,28 @@ const SE_LIBRARY = {
         n.start(t); n.stop(t + duration);
         return { osc: null, duration: duration };
     },
-    // ブリップ音（カウントダウン・選択音）
     select: (ctx, t, g) => {
         const o = ctx.createOscillator();
         o.type = 'sine';
-        // 瞬間的に高い周波数から少しだけ下げることで「ピッ」という鋭い音にする
         o.frequency.setValueAtTime(2400, t);
         o.frequency.exponentialRampToValueAtTime(1600, t + 0.05);
         g.gain.setValueAtTime(0.1, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
         return { osc: o, duration: 0.05 };
     },
-
-    // ワープ音（猛加速・消失音）
     warp: (ctx, t, g, noise) => {
         const dur = 1.2;
-        // 1. 上昇するサイン波（キィィィィンという上昇感）
         const o = ctx.createOscillator();
         o.type = 'sine';
         o.frequency.setValueAtTime(400, t);
-        // 指数関数的にピッチを上げて加速感を演出
         o.frequency.exponentialRampToValueAtTime(6000, t + dur);
-
         const env = ctx.createGain();
         env.gain.setValueAtTime(0, t);
-        env.gain.linearRampToValueAtTime(0.15, t + 0.1); // 出だしを少し鋭く
+        env.gain.linearRampToValueAtTime(0.15, t + 0.1);
         env.gain.exponentialRampToValueAtTime(0.001, t + dur);
-
         o.connect(env); env.connect(g);
         o.start(t); o.stop(t + dur);
 
-        // 2. ホワイトノイズのシュワーという風切り音
         if (noise) {
             const n = ctx.createBufferSource();
             n.buffer = noise;
@@ -319,77 +297,53 @@ const SE_LIBRARY = {
             f.type = 'highpass';
             f.frequency.setValueAtTime(500, t);
             f.frequency.exponentialRampToValueAtTime(8000, t + dur);
-
             const ng = ctx.createGain();
             ng.gain.setValueAtTime(0, t);
             ng.gain.linearRampToValueAtTime(0.6, t + 0.2);
             ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
-
             n.connect(f); f.connect(ng); ng.connect(g);
             n.start(t); n.stop(t + dur);
         }
-
         return { osc: null, duration: dur };
     },
-    // ワープイン音（出現・逆再生風・和音・強ノイズ）
     warp_in: (ctx, t, g, noise) => {
         const dur = 2.2;
-
-        // 1. メイン：下降するサイン波（基音）
         const o = ctx.createOscillator();
         o.type = 'triangle';
         o.frequency.setValueAtTime(800, t);
         o.frequency.exponentialRampToValueAtTime(200, t + dur);
-
         const env = ctx.createGain();
         env.gain.setValueAtTime(0, t);
         env.gain.linearRampToValueAtTime(0.05, t + 0.1);
         env.gain.exponentialRampToValueAtTime(0.001, t + dur);
-
         o.connect(env); env.connect(g);
         o.start(t); o.stop(t + dur);
 
-        // -----------------------------------------------------
-        // ★追加：ハーモニー（完全5度上の音を重ねる）
-        // -----------------------------------------------------
         const o2 = ctx.createOscillator();
-        o2.type = 'triangle'; // メインより少し明るい音色
-
-        // 周波数をメインの1.5倍に設定 (3000Hz -> 300Hz)
+        o2.type = 'triangle';
         o2.frequency.setValueAtTime(1100, t);
         o2.frequency.exponentialRampToValueAtTime(300, t + dur);
-
         const env2 = ctx.createGain();
         env2.gain.setValueAtTime(0, t);
-        env2.gain.linearRampToValueAtTime(0.04, t + 0.1); // メインより少し控えめな音量
+        env2.gain.linearRampToValueAtTime(0.04, t + 0.1);
         env2.gain.exponentialRampToValueAtTime(0.001, t + dur);
-
         o2.connect(env2); env2.connect(g);
         o2.start(t); o2.stop(t + dur);
-        // -----------------------------------------------------
 
-        // 2. ノイズ成分（空間が閉じる音・強）
         if (noise) {
             const n = ctx.createBufferSource();
             n.buffer = noise;
-
             const f = ctx.createBiquadFilter();
             f.type = 'highpass';
-            // 高い音から低い音へスイープ。
             f.frequency.setValueAtTime(8000, t);
             f.frequency.exponentialRampToValueAtTime(50, t + dur);
-
             const ng = ctx.createGain();
             ng.gain.setValueAtTime(0, t);
-
-            // 音量を 0.6 にアップ（かなり強くなります）
             ng.gain.linearRampToValueAtTime(0.6, t + 0.15);
             ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
-
             n.connect(f); f.connect(ng); ng.connect(g);
             n.start(t); n.stop(t + dur);
         }
-
         return { osc: null, duration: dur };
     },
 };
@@ -406,28 +360,19 @@ const AudioSys = {
     lastPlayed: {},
     isUnlocking: false,
 
-    // ★重要修正：コンテキストを破棄せず、状態だけリセットする
     reset() {
-        // フェードアウト処理を停止
         this.stopBgmInterval();
-
-        // コンテキストが存在しないなら作る
         if (!this.ctx) {
             this.init();
         } else {
-            // 存在する場合は、破棄せずに再開（Resume）だけ行う
-            // これにより「タップ権限」を維持したまま継続できる
             this.resume();
         }
-
-        // BGMを停止・リセット
         if (this.bgmEl) {
             this.bgmEl.pause();
             this.bgmEl.currentTime = 0;
-            this.bgmEl.src = ""; // ソースも一旦空にする
+            this.bgmEl.src = "";
             this.currentSrc = null;
         }
-
         console.log("Audio System Soft Reset.");
     },
 
@@ -437,9 +382,7 @@ const AudioSys = {
                 const AC = window.AudioContext || window.webkitAudioContext;
                 if (AC) {
                     this.ctx = new AC();
-                    this.createNoise(); // ノイズバッファ作成
-
-                    // iOS対策：作成直後に無音再生でアンロックを試みる
+                    this.createNoise();
                     this._unlockAudio();
                 }
             } catch (e) { console.error("Audio init error:", e); }
@@ -449,7 +392,6 @@ const AudioSys = {
             this.bgmEl = new Audio();
             this.bgmEl.loop = true;
             this.bgmEl.volume = 0.4;
-            // iOSのBGM対策：playsinline属性をつけるおまじない
             this.bgmEl.setAttribute("playsinline", "");
 
             this.bgmEl.addEventListener('ended', () => {
@@ -463,43 +405,27 @@ const AudioSys = {
         }
     },
 
-    // iOS対策：サイレントアンロック
     _unlockAudio() {
         if (!this.ctx || this.isUnlocking) return;
         if (this.ctx.state === 'running') return;
-
         this.isUnlocking = true;
-
-        // 空のバッファを一瞬再生して、ブラウザに「音を出す意思」を伝える
         const buffer = this.ctx.createBuffer(1, 1, 22050);
         const source = this.ctx.createBufferSource();
         source.buffer = buffer;
         source.connect(this.ctx.destination);
         source.start(0);
-
-        this.ctx.resume().then(() => {
-            this.isUnlocking = false;
-        }).catch(() => {
-            this.isUnlocking = false;
-        });
+        this.ctx.resume().then(() => { this.isUnlocking = false; }).catch(() => { this.isUnlocking = false; });
     },
 
     async resume() {
         if (!this.ctx) { this.init(); return; }
-
-        // 既に動いているなら何もしない（ここが高速化の鍵）
         if (this.ctx.state === 'running') return;
-
         try {
             await this.ctx.resume();
-            // resumeしてもrunningにならない場合のみアンロックを試す
             if (this.ctx.state !== 'running') this._unlockAudio();
-        } catch (e) {
-            // エラーログを出さずに静かに失敗させる（連打時のログ汚れ防止）
-        }
+        } catch (e) { }
     },
 
-    // ... (以下の createNoise, registerNode, playSE などは前回のコードのままでOK) ...
     createNoise() {
         if (!this.ctx) return;
         const bSize = this.ctx.sampleRate * 2;
@@ -509,7 +435,6 @@ const AudioSys = {
         this.noiseBuffer = buf;
     },
 
-    // ワンショットSE用の軽量登録
     registerNode(type, node, durationMs) {
         if (ONE_SHOT_SE.includes(type)) {
             setTimeout(() => {
@@ -529,17 +454,18 @@ const AudioSys = {
     },
 
     playSE(type) {
-        // initがまだなら初期化を試みる
         if (!this.ctx) this.init();
         if (!this.ctx || !SE_LIBRARY[type]) return;
 
-        // 間引き処理
         const now = this.ctx.currentTime;
         if (this.lastPlayed[type] && now - this.lastPlayed[type] < 0.05) return;
         this.lastPlayed[type] = now;
 
-        // 停止中なら非同期で再開をかけるが、待たない
-        if (this.ctx.state !== 'running') this.resume();
+        // もしコンテキストが停止(suspended)していたら、SEを鳴らすついでに再開を試みる
+        if (this.ctx.state !== 'running') {
+            this.ctx.resume().catch(() => { });
+        }
+
 
         const t = this.ctx.currentTime;
         const g = this.ctx.createGain();
@@ -557,7 +483,6 @@ const AudioSys = {
         } catch (e) { }
     },
 
-    // ... (stopSE, fadeAndDisconnect, getNormalizedUrl など変更なし) ...
     stopSE(targetType = null) {
         if (!this.ctx) return;
         const t = this.ctx.currentTime;
@@ -659,11 +584,28 @@ const AudioSys = {
         if (this.bgmEl) this.bgmEl.pause();
     },
 
-    pauseBGM() { if (this.bgmEl && !!this.bgmEl.paused) this.bgmEl.pause(); },
+    // ★重要修正：!!this.bgmEl.paused を !this.bgmEl.paused に修正
+    // さらに、SE用コンテキストも一時停止させる
+    pauseBGM() {
+        // BGMの一時停止
+        if (this.bgmEl && !this.bgmEl.paused) {
+            this.bgmEl.pause();
+        }
+        // ★追加：SE用コンテキストの一時停止（これでワープ音も止まる）
+        if (this.ctx && this.ctx.state === 'running') {
+            this.ctx.suspend().catch(e => { });
+        }
+    },
 
+    // ★重要修正：再開時にSE用コンテキストも再開させる
     resumeBGM() {
+        // BGMの再開
         if (this.bgmEl && this.bgmEl.paused && this.currentSrc != null && this.bgmEl.src) {
             this.bgmEl.play().catch(() => { });
+        }
+        // ★追加：SE用コンテキストの再開
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(e => { });
         }
     }
 };
