@@ -2138,6 +2138,9 @@ function updateWarpProcess() {
             player.warpTimer = 0;
             player.warpSoundPlayed = false;
 
+            // 入力状態とスティックの位置をニュートラルに戻す
+            clearInputState();
+
             // プレイヤー位置リセット（画面中央へ）
             player.x = worldSize / 2;
             player.y = worldSize / 2;
