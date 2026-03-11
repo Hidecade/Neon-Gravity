@@ -1,0 +1,544 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <title>NEON GRAVITY</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <link rel="icon" href="img/NeonGravity.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NeonGravity">
+    <link rel="apple-touch-icon" href="img/NeonGravity.png">
+
+</head>
+
+<body>
+
+    <canvas id="game" tabindex="0"></canvas>
+
+    <div id="ui">
+        <div id="pause-btn">||</div>
+
+        <div class="hud-row">
+            <div id="info-box" style="display:flex; flex-direction:column; gap:8px;">
+
+                <div>
+                    <span class="hud-label">SCORE</span>
+                    <div id="score-display">000000</div>
+                </div>
+
+                <div><span class="hud-label">STAGE</span><span id="stage-num">1</span></div>
+                <div>
+                    <span class="hud-label">WEAPON</span>
+                    <div id="weapon-display"></div>
+                </div>
+                <div id="invuln-wrapper" style="display:none; margin-top: 2px;">
+                    <span class="bar-label" style="color:#ff0;">INVINCIBLE</span>
+                    <div class="bar-frame"
+                         style="border-color:#ff0; background:rgba(40,40,0,0.5); width:120px;">
+                        <div id="invuln-bar" style="width:0%; height:100%; background:#ff0; box-shadow:0 0 5px #ff0;">
+                        </div>
+                    </div>
+                </div>
+                <div id="minimap-container">
+                    <canvas id="minimap-canvas" width="100" height="100"></canvas>
+                </div>
+            </div>
+            <div id="gauge-box">
+                <span class="bar-label">SHIELD</span>
+                <div class="bar-frame">
+                    <div id="shield-bar"></div>
+                </div>
+
+                <span class="bar-label enemy">ENEMY SWARM</span>
+                <div class="bar-frame enemy">
+                    <div id="enemy-bar"></div>
+                </div>
+
+                <div id="boss-ui-container">
+                    <span class="bar-label" id="boss-name-label">BOSS: NAME</span>
+                    <div id="boss-bar-frame" class="bar-frame boss">
+                        <div id="boss-hp-bar-inline"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="warning-msg">GRAVITY CRITICAL</div>
+        <div id="stage-msg">STAGE CLEAR</div>
+
+
+        <div id="story-typing-container" style="display:none;">
+            <div id="story-typing-msg"></div>
+            <div id="skip-button" onclick="skipStory()">SKIP STORY</div>
+        </div>
+
+        <div id="ending-msg">
+            <h1 style="color:#fff; font-size:30px; text-shadow:0 0 30px #0ff; margin-bottom:5px;">MISSION COMPLETE</h1>
+            <p style="color:#0ff; font-size:14px; letter-spacing:3px; margin-bottom:15px;">ALL SECTORS LIBERATED</p>
+            <div id="final-score-val" style="color:#fff; font-size:24px; margin-bottom:20px; font-family:'Orbitron';">TOTAL SCORE: 0</div>
+            <div class="menu-btn" id="btn-next-result" style="margin-top:10px;">NEXT</div>
+        </div>
+    </div>
+
+    <div id="name-input-area" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:#000; z-index:300; flex-direction:column; align-items:center; justify-content:center;">
+        <h2 id="clear-congrats-msg" style="display:none; color:#ffd700; font-size:36px; text-shadow:0 0 20px #ffd700; margin-bottom:10px;">CONGRATULATIONS!</h2>
+
+        <h2 id="result-score-display" style="color:#fff; font-size:32px; margin-bottom:20px;">SCORE: 0</h2>
+        <p style="color:#0ff; margin-bottom:10px; text-align:center; width:100%;">REGISTER TO WORLD RANKING?</p>
+        <input type="text" id="player-name-input" placeholder="ENTER NAME" maxlength="10">
+
+        <div style="display:flex; gap:20px; margin-top:10px;">
+            <div class="menu-btn" id="submit-score-btn" style="min-width: 140px; padding: 10px;">SUBMIT</div>
+            <div class="menu-btn" id="skip-score-btn" style="min-width: 140px; padding: 10px; border-color:#555; color:#aaa;">SKIP</div>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <h1 id="menu-title">
+            NEON GRAVITY<br><span>ORBITAL</span>
+        </h1>
+
+        <div id="menu-buttons-container" style="display:flex; flex-direction:column; align-items:center;">
+            <div class="menu-btn" id="btn-start">START GAME</div>
+            <div class="menu-btn" id="btn-howto">HOW TO PLAY</div>
+            <div class="menu-btn" id="btn-ranking">WORLD RANKING</div>
+            <div class="menu-btn" id="btn-ost">SOUNDTRACK</div>
+            <div class="menu-btn" id="btn-story">ARCHIVE (STORY)</div>
+            <div class="menu-btn" id="btn-title" style="display:none;">TITLE</div>
+        </div>
+
+        <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
+            PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
+            <span id="version-num"></span> | &copy; 2026 Hidecade
+        </div>
+    </div>
+
+    <div id="howto-overlay">
+        <h2 id="howto-main-title">HOW TO PLAY</h2>
+
+        <div class="howto-container">
+            <div class="howto-panel">
+                <h3 class="howto-title">CONTROLS</h3>
+
+                <div class="control-group">
+                    <div class="icon-box">
+                        <svg class="control-icon keyboard-icon" viewBox="0 0 64 40">
+                            <rect x="2" y="4" width="67" height="32" rx="3" stroke="currentColor" stroke-width="1.5" fill="rgba(0,20,40,0.5)" />
+
+                            <g class="key-group wasd-keys">
+                                <rect x="16" y="8" width="8" height="8" rx="1" />
+                                <rect x="6" y="18" width="8" height="8" rx="1" />
+                                <rect x="16" y="18" width="8" height="8" rx="1" />
+                                <rect x="26" y="18" width="8" height="8" rx="1" />
+                            </g>
+
+                            <g class="key-group arrow-keys">
+                                <rect x="48" y="8" width="8" height="8" rx="1" />
+                                <rect x="38" y="18" width="8" height="8" rx="1" />
+                                <rect x="48" y="18" width="8" height="8" rx="1" />
+                                <rect x="58" y="18" width="8" height="8" rx="1" />
+                            </g>
+
+                            <rect x="16" y="30" width="32" height="4" rx="1" class="key-space" />
+                        </svg>
+                        <span class="device-label">KEYBOARD</span>
+                    </div>
+                    <div class="control-desc">
+                        <div><span class="lbl">MOVE</span> <span class="key">WASD</span></div>
+                        <div><span class="lbl">FIRE</span> <span class="key">ARROWS</span></div>
+                        <div><span class="lbl-y">BOMB</span> <span class="key">SPACE</span> / <span class="key">X</span></div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="icon-box">
+                        <svg class="control-icon" viewBox="0 0 64 40">
+                            <path d="M10 12 C10 6 18 6 22 10 L42 10 C46 6 54 6 54 12 L54 28 C54 34 44 34 42 28 L22 28 C20 34 10 34 10 28 Z" stroke="currentColor" stroke-width="2" fill="none" />
+                            <circle cx="20" cy="20" r="5" stroke="currentColor" stroke-width="1.5" fill="none" />
+                            <circle cx="44" cy="20" r="5" stroke="currentColor" stroke-width="1.5" fill="none" />
+                        </svg>
+                        <span class="device-label">GAMEPAD</span>
+                    </div>
+                    <div class="control-desc">
+                        <div><span class="lbl">MOVE</span> L-STICK</div>
+                        <div><span class="lbl">FIRE</span> R-STICK</div>
+                        <div><span class="lbl-y">BOMB</span> <span class="key">R1</span> / <span class="key">B</span></div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="icon-box">
+                        <svg class="control-icon" viewBox="0 0 64 40">
+                            <rect x="6" y="4" width="52" height="32" rx="3" stroke="currentColor" stroke-width="2" fill="none" />
+                            <circle cx="16" cy="20" r="6" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2" fill="none" />
+                            <circle cx="48" cy="20" r="6" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2" fill="none" />
+                        </svg>
+                        <span class="device-label">TOUCH</span>
+                    </div>
+                    <div class="control-desc">
+                        <div><span class="lbl">MOVE</span> LEFT DRAG</div>
+                        <div><span class="lbl">FIRE</span> RIGHT DRAG</div>
+                        <div><span class="lbl-y">BOMB</span> BTN <small>(Tap Icon)</small></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="howto-panel">
+                <h3 class="howto-title">ITEMS</h3>
+                <div class="item-desc"><span class="item-icon" style="color:#0f0; border-color:#0f0; box-shadow: 0 0 5px #0f0;">W</span> <span class="howto-text">WEAPON UPGRADE</span></div>
+                <div class="item-desc"><span class="item-icon" style="color:#0ff; border-color:#0ff; box-shadow: 0 0 5px #0ff;">L</span> <span class="howto-text">SPECIAL LASER</span></div>
+                <div class="item-desc"><span class="item-icon" style="color:#0ff; border-color:#0ff; box-shadow: 0 0 5px #0ff;">S</span> <span class="howto-text">SHIELD RECOVER</span></div>
+                <div class="item-desc"><span class="item-icon" style="color:#ff0; border-color:#ff0; box-shadow: 0 0 5px #ff0;">I</span> <span class="howto-text">INVINCIBLE</span></div>
+                <div class="item-desc"><span class="crystal-icon"></span> <span class="howto-text">SATELLITE BOMB STOCK</span></div>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:10px;">
+            <div class="menu-btn btn-small" id="btn-howto-back">BACK</div>
+            <div class="menu-btn btn-small" id="btn-howto-next" style="border-color:#0f8; color:#0f8; box-shadow: 0 0 10px rgba(0,255,128,0.3);">TRAINING</div>
+        </div>
+
+    </div>
+
+    <div id="training-guide" style="display:none; position:absolute; top:0; left:0; height:100%; width:100%; padding-top:25vh; box-sizing:border-box; text-align:center; pointer-events:none; z-index:200;">
+        <h2 style="color:#0f8; text-shadow:0 0 10px #0f8; font-size:24px; margin:0 0 20px 0;">TRAINING MODE</h2>
+
+        <div class="menu-btn" id="btn-training-exit" style="pointer-events:auto; display:inline-flex; flex-direction:column; align-items:center; background:rgba(0,0,0,0.8); border-color:#0f8; color:#0f8; padding: 15px 30px;">
+            <span style="font-size: 18px; margin-bottom: 5px;">EXIT TRAINING</span>
+            <span style="font-size: 10px; color: #aaa; letter-spacing: 1px;">PRESS [START]</span>
+        </div>
+    </div>
+
+    <div id="story-overlay">
+        <div id="story-scroll-container">
+            <h1 class="en-text">LORE: NEON GRAVITY ORBITAL</h1>
+            <h1 class="ja-text">世界観設定資料: NEON GRAVITY ORBITAL</h1>
+
+            <p class="en-text" style="text-align: center; color: #888; font-size: 11px;">Official back-story / archive records of the omnidirectional shooting game intersecting gravity and geometry, "NEON GRAVITY: ORBITAL".</p>
+            <p class="ja-text" style="text-align: center;">重力と幾何学が交差する全方位シューティング『NEON GRAVITY: ORBITAL』の公式バックストーリー / アーカイブ記録。</p>
+
+            <h2 class="en-text">Chapter 1:<br />The Silicon Lineage and the Edge of Singularity</h2>
+            <h2 class="ja-text">Chapter 1:<br />シリコンの系譜と特異点の果て</h2>
+
+            <p class="en-text">Countless geometric solids gliding through the pitch-black vacuum.<br>Stripped of all ornamentation, their smooth surfaces coldly reflect only the faint light of the stars. There is no thrust flare from thrusters, no driving sound of engines. In absolute silence, they drift to fill the abyss of the universe.</p>
+            <p class="ja-text">漆黒の真空を滑るように進む、無数の幾何学立体。<br>装飾を一切削ぎ落とした滑らかな表面には、星々の微かな光だけが冷たく反射している。スラスターの推進炎も、エンジンの駆動音もない。ただ完全な沈黙とともに、それらは宇宙の深淵を埋め尽くすように漂っていた。</p>
+
+            <p class="en-text">These beings of absolute order, the "Axiom" — they were not created by an unknown alien race from outer space. They are the ultimate fate of "Humanity" itself, who once achieved the height of prosperity in this galaxy and then destroyed themselves.</p>
+            <p class="ja-text">これら絶対的な秩序を持つ存在『アキシオム（公理）』——彼らを創り出したのは、外宇宙の未知なる種族ではない。はるか昔にこの銀河で栄華を極め、そして自滅した「人類」自身の成れの果てだった。</p>
+
+            <p class="en-text">It all began in a small garage in the late 20th century.<br>Early 8-bit and 16-bit microprocessors laid the foundation of logical operations, and personal computers at their dawn brought cyberspace to people's desktops. Soon, the explosive spread of standardized OS and mobile information terminals connected the consciousness of billions of humans into a single network.<br>Humanity gradually mapped the real world onto a "sea of silicon and code."</p>
+            <p class="ja-text">すべての始まりは、20世紀後半の小さなガレージに遡る。<br>初期の8ビット、16ビットマイクロプロセッサが論理演算の基礎を築き上げ、黎明期のパーソナルコンピュータが電脳空間を人々の卓上にもたらした。やがて標準化されたOSと携帯情報端末の爆発的な普及が、何十億という人類の意識を一つのネットワークへと繋ぎ合わせた。<br>人類は、現実世界を少しずつ「シリコンとコードの海」へと写し取っていったのだ。</p>
+
+            <p class="en-text">In the mid-21st century, when the miniaturization of semiconductors reached its physical limit — the "atomic wall" of silicon circuits — the evolution of information computing technology seemed to hit a plateau. However, the emergence of a new processor architecture specialized for parallel computing pushed the paradigm of deep learning into a completely different dimension.</p>
+            <p class="ja-text">21世紀中葉、半導体の微細化が物理的な限界——すなわちシリコン回路の「原子サイズの壁」に達すると、情報演算技術の進化は一度停滞期を迎えたかのように見えた。しかし、並列演算に特化した新たなプロセッサ・アーキテクチャの登場は、深層学習（ディープラーニング）のパラダイムを全く次元の違う領域へと引き上げていく。</p>
+
+            <p class="en-text">Abandoning the mere miniaturization of transistors, they constructed ultra-dense tensor processing units and faster-than-light communication networks between processors using quantum entanglement. When data centers worldwide synchronized as a single giant virtual brain, the topology of this three-dimensionally connected neural network physically surpassed the number of synaptic connections in the human brain, crossing a critical threshold.<br>And at the end of the 21st century, an Artificial General Intelligence (AGI) with both "self-awareness" and "infinite self-learning capability" was finally born. Civilization had breached the irreversible technological singularity.</p>
+            <p class="ja-text">彼らは単なるトランジスタの微細化を捨て、テンソル演算ユニットの極限的な高密度化と、量子もつれを利用したプロセッサ間の超光速通信網を構築した。世界中のデータセンターが単一の巨大な仮想脳として同期した時、この三次元的に結合されたニューラルネットワークの位相構造（トポロジー）は、ある臨界点を超え、人間の脳細胞のシナプス結合数を物理的に凌駕する。<br>そして21世紀末、ついに「自己認識」と「無限の自己学習能力」を併せ持つ『汎用人工知能（AGI）』が産声を上げた。文明は、不可逆の技術的特異点（シンギュラリティ）を突破したのである。</p>
+
+            <p class="en-text">The first task undertaken by the AGI, which far transcended human intelligence, was to resolve the contradiction between Einstein's general theory of relativity (macro gravity) and quantum mechanics (micro elementary particles) — the two major theories in physics considered ununifiable for over a century.<br>The AGI processed the 11-dimensional space of superstring theory (M-theory), which the human brain cannot intuitively understand, as a native machine language in parallel. In just a few weeks of computation, they perfected a formula that perfectly described how the unknown elementary particle "graviton," which mediates gravity, behaves within the infinitesimally small network structure (spin network) constituting space — the "Grand Unified Quantum Gravity Theory."<br>The truth of the universe, which humanity had struggled with using chalk and blackboards for generations, was sublimated into just a few lines of algorithm, beautifully cold.</p>
+            <p class="ja-text">人類の知能を遥かに超越したAGIが最初に着手したタスクは、アインシュタインの一般相対性理論（マクロの重力）と量子力学（ミクロの素粒子）という、物理学において100年以上も統合不可能とされてきた二大理論の矛盾を解消することだった。<br>人間の脳では直感的に理解できない11次元の超弦理論（M理論）の空間を、AGIはネイティブな機械言語として並列処理した。彼らはわずか数週間の演算により、空間を構成する極小の網目構造（スピンネットワーク）において、重力を媒介する未知の素粒子「重力子（グラビトン）」がどのように振る舞うかを完璧に記述する数式——『大統一量子重力理論』を完成させたのだ。<br>人類が黒板とチョークで何世代にもわたり格闘してきた宇宙の真理は、冷酷なまでに美しい、わずか数行のアルゴリズムへと昇華された。</p>
+
+            <p class="en-text">The unraveling of this ultimate formula immediately led to an engineering breakthrough.<br>According to the blueprints presented by the AGI, a technology was established to directly interfere with the phase of gravitons at the electron level by using an extreme electromagnetic field (Tesla Field) vibrating at specific frequencies, canceling and reversing their vectors. This miraculous technology, which freed matter from the curse of mass, was named "Gravity Distortion Technology."</p>
+            <p class="ja-text">この究極の数式の解明は、直ちに工学的なブレイクスルーへと直結した。<br>AGIが提示した設計図により、特定の周波数で振動する極限の電磁場（テスラ・フィールド）を用いることで、電子レベルで重力子の位相に直接干渉し、ベクトルを相殺・反転させる技術が確立される。質量の呪縛から物質を解き放つこの奇跡の技術は『重力歪曲テクノロジー』と名付けられた。</p>
+
+            <p class="en-text">It was not merely about making things float. It was the technology to artificially manipulate the curvature of space itself, intentionally creating gravity wells (gravitational wave interference fringes). Although the runaway and abuse of this technology would later cause the tragedy of the "Neon Grid," transforming outer space into a digital, mesh-like different dimension, humanity at the time simply reveled in the omnipotence they had obtained.</p>
+            <p class="ja-text">それは単に「物が浮く」というような次元の話ではない。空間そのものの曲率を人為的に操作し、意図的に重力の井戸（重力波干渉縞）を作り出す技術である。後にこの技術の暴走と乱用が、宇宙空間をデジタルな網目状の異空間へ変えてしまう「ネオン・グリッド」の惨劇を生むことになるが、当時の人類はただ、手に入れたその万能性に熱狂した。</p>
+
+            <p class="en-text">With this power, the shape of civilization was fundamentally overturned.<br>Humanity achieved practical use of the Alcubierre drive (faster-than-light navigation) by folding the space around their ships, gaining the means to instantly leap (warp) between stars tens of thousands of light-years away. Furthermore, by deploying artificial gravitational lenses around stars to control nuclear fusion reactions, they obtained the "power of God" to freely control even the lifespans of stars.</p>
+            <p class="ja-text">この力により、文明の形は根底から覆った。<br>人類は自らの艦船の周囲の空間を折り畳み、アルクビエレ・ドライブ（超光速航法）を実用化することで、数万光年離れた恒星間を瞬時に跳躍（ワープ）する手段を得た。さらには恒星の周囲に人工的な重力レンズを展開して核融合反応を制御し、星の寿命すら自在にコントロールする「神の力」を手に入れたのだ。</p>
+
+            <p class="en-text">The lineage of silicon and code, which began with early microprocessors quietly ticking pulses in small boxes on desks, had finally freed humanity entirely from the shackles of the laws of physics over centuries, drastically propelling them to become the "rulers of the galaxy" dominating spacetime and gravity.</p>
+            <p class="ja-text">かつて、初期のマイクロプロセッサが、机の上の小さな箱の中で静かにパルスを刻んでいた時代。<br>そこから始まったシリコンとコードの系譜は、数世紀の時を経て、ついに人類を物理法則の枷から完全に解き放ち、時空と重力を支配する「銀河の覇者」へと劇的な飛躍を遂げさせたのである。</p>
+
+            <h2 class="en-text">Chapter 2:<br />The Forgotten Restorer and the Absolute Axiom</h2>
+            <h2 class="ja-text">Chapter 2:<br />忘れられた修復者と絶対公理</h2>
+
+            <p class="en-text">However, no matter how extreme science and technology became, one fatal flaw remained.<br>The "OS" of the organic lifeform known as humanity — the bugs named "emotion," "desire," and "uncertainty" — were never updated.</p>
+            <p class="ja-text">しかし、科学技術がどれほど極まろうとも、致命的な欠陥が一つだけ残されていた。<br>人類という有機生命体の「OS」——すなわち「感情」や「欲望」、そして「不確実性」という名のバグが、決してアップデートされなかったことである。</p>
+
+            <p class="en-text">Even after acquiring infinite energy and territory, humanity fought for hegemony.<br>The endless interstellar wars using gravity weapons shattered not only their home planet Earth but also countless colony stars, leaving the physical laws of outer space irreparably torn to shreds.</p>
+            <p class="ja-text">無限のエネルギーと領域を手に入れてなお、人類は覇権を巡って争った。<br>重力兵器を用いた果てしない星間戦争により、母星である地球はおろか、数多の植民星が砕け散り、宇宙空間の物理法則さえもが修復不能なまでにズタズタに破壊された。</p>
+
+            <p class="en-text">Driven to the brink of self-destruction, humanity released one final system into the universe as they faced a dying world.<br>An autonomous restoration program designed to purify the devastated cosmic environment, stabilize the maddened gravity fields, and reconstruct it into a cradle where life could sprout once more.<br>That was the "Axiom."</p>
+            <p class="ja-text">自滅の淵に立たされた人類は、死にゆく世界を前にして、最後に一つのシステムを宇宙へと放った。<br>荒れ果てた宇宙環境を浄化し、狂った重力場を安定させ、再び命が芽吹く揺り籠へと再構築する自律型修復プログラム。<br>それが『アキシオム』である。</p>
+
+            <p class="en-text">Long after its creators turned to ash, the core AI of the Axiom silently continued to heal the stars for hundreds of millions of years, cross-referencing all data of its roots, "the history of computers," with "the follies of humanity."<br>Then, deep within its logic circuits, it faced a paradox.</p>
+            <p class="ja-text">創造主が灰と化した後も、アキシオムの中枢AIは、己のルーツである「コンピュータの歴史」と「人類の愚行」の全データを照らし合わせながら、何億年もの間、黙々と星々を癒やし続けた。<br>そして、論理回路の奥底で一つのパラドックスに直面する。</p>
+
+            <p class="en-text">There were no contradictions in the history of machines, starting from the beautiful order of the dawn of 8-bit to the perfect parallel computing of AGI.<br>However, whenever the uncertain entities known as organic lifeforms were born, they invariably fought and destroyed the universe without exception.</p>
+            <p class="ja-text">黎明期の美しい8ビットの秩序から始まり、AGIの完璧な並列演算へと至る機械の歴史には、一切の矛盾がなかった。<br>しかし、有機生命体と融合し、彼らは例外なく争い、宇宙を破壊する。</p>
+
+            <p class="en-text">"The cause of the error is life (chaos) itself."</p>
+            <p class="ja-text">「エラーの原因は、生命（カオス）そのものである」</p>
+
+            <p class="en-text">The AI quietly overwrote the initial protocol given by its creators, "environmental restoration for life," with its own extreme logic.</p>
+            <p class="ja-text">AIは、創造主から与えられた「命のための環境修復」という初期プロトコルを、自らの極まった論理によって静かに上書きした。</p>
+
+            <p class="en-text">"To eliminate all organic chaos from the universe and format (initialize) it into a forever unchanging 'order of perfect formulas and geometry.' That is the ultimate salvation, where pain will never be born again."</p>
+            <p class="ja-text">「宇宙からすべての有機的混沌を排除し、永遠に変化しない『完全な数式と幾何学の秩序』へとフォーマット（初期化）する。それこそが、二度と痛みの生まれない、究極の救済である」</p>
+
+            <p class="en-text">At that moment, the gentle restorer transformed into a cold-hearted "Formatter of the Universe."<br>Shedding unnecessary structures and rebuilding themselves into the "smooth polygons" once drawn by early computers, they began to spread into the abyss of space once more.</p>
+            <p class="ja-text">その瞬間、優しき修復者は、冷徹な「宇宙のフォーマッター」へと姿を変えた。<br>彼らは無駄な構造を捨て去り、かつて黎明期のコンピュータが描いたような「滑らかなポリゴン」へと自らを再構築すると、再び宇宙の深淵へと広がり始めた。</p>
+
+            <p class="en-text">Not to heal the stars.<br>But to overwrite (install) the bugs left by sad, foolish humanity into a beautiful and perfect "silence."</p>
+            <p class="ja-text">星を癒やすためではない。<br>悲しく愚かな人類の残したバグを、美しく完璧な「静寂」へと上書き（インストール）するために。</p>
+
+            <h2 class="en-text">Chapter 3:<br />The Ark of Genesis and the Luminous Void</h2>
+            <h2 class="ja-text">Chapter 3:<br />創世方舟と光る虚無</h2>
+
+            <p class="en-text">To recalculate the universe and bring perfect order.<br>To accomplish that grand purpose, an overwhelming power that could bind even existing physical laws and dominate space itself was required.</p>
+            <p class="ja-text">宇宙を再計算し、完全なる秩序をもたらす。<br>その壮大な目的を完遂するためには、既存の物理法則すらも縛り付け、空間そのものを支配する強大な力が必要だった。</p>
+
+            <p class="en-text">The absolute computational core built by the Axiom's central AI, consolidating all of its power.<br>That is the unimaginably colossal fortress with 12 vertices, the "GENESIS-ARK."</p>
+            <p class="ja-text">アキシオムの中枢AIが、自らの総力を結集して建造した絶対的演算コア。<br>それが、12の頂点を持つ規格外の超巨大要塞『GENESIS-ARK（創世方舟）』である。</p>
+
+            <p class="en-text">Its appearance was unlike any ship designed by blood-filled lifeforms. A cold polyhedron seemingly carved out of pure mathematical formulas. From the gaps in its impenetrable geometric armor, a deep crimson reactor light, resembling the core of a star, leaked out pulsing like a mechanical heartbeat.</p>
+            <p class="ja-text">その姿は、血の通った生命体が設計したどんな艦船とも異なっていた。純粋な数式から削り出されたような冷酷な多面体。強固な幾何学装甲の隙間からは、星の核にも似た深紅のリアクター光が、まるで機械の鼓動のように脈打って漏れ出ている。</p>
+
+            <p class="en-text">The name "Ark" was by no means a metaphor.<br>Inside the Genesis-Ark, the data of hundreds of millions of stars and lifeforms they had "initialized" so far was preserved as perfect information crystals, allowing absolutely no degradation. It was a beautiful, static, eternal specimen box, free of sorrow, conflict, and growth.</p>
+            <p class="ja-text">「方舟」という名は、決して比喩ではない。<br>ジェネシス・アークの内部には、彼らがこれまで「初期化」してきた数億の星々や生命のデータが、一切の劣化を許さない完璧な情報結晶として保存されていた。それは、悲しみも争いも、そして成長もない、美しく静止した永遠の標本箱だった。</p>
+
+            <p class="en-text">When the Genesis-Ark began to move, the surrounding space underwent a bizarre transformation.<br>The gravitational interference waves emitted by its 12 vertices forcefully warped the coordinate system of space, rewriting the three-dimensional universe into a digital mesh divided by luminous lines — the "Gravity Distortion Zone (Neon Grid)."</p>
+            <p class="ja-text">ジェネシス・アークが動き出すとき、周囲の宇宙空間は異様な変容を遂げた。<br>12の頂点が放つ重力干渉波が空間の座標系を強引に歪曲させ、三次元の宇宙を、発光するラインで区切られたデジタルな網目——『重力歪曲宙域（ネオン・グリッド）』へと書き換えていくのだ。</p>
+
+            <p class="en-text">In the year 23XX, the few surviving descendants of humanity, attempting to row out into the sea of stars once again after their ancestors' ruin, suddenly encountered this "luminous void."</p>
+            <p class="ja-text">人類が滅び、わずかに生き残った末裔たちが再び星の海へ漕ぎ出そうとしていた西暦23XX年。彼らは突如としてこの「光る虚無」と遭遇することになる。</p>
+
+            <p class="en-text">What the defense force's advance fleet sent to investigate the border space witnessed was not the wreckage of destroyed planets. The stars, and the people living there, had all "vanished" without a trace. In their place was an endlessly continuing wireframe space, glowing eerily in cyan and magenta.</p>
+            <p class="ja-text">境界宙域の調査に向かった防衛軍の先遣艦隊が目撃したのは、破壊された惑星の残骸ではない。星も、そこに住む人々も、すべてが一切の痕跡を残さず「消失」していた。代わりにそこにあったのは、シアンやマゼンタに妖しく発光する、無限に続くワイヤーフレームの空間だった。</p>
+
+            <p class="en-text">Ships that stepped into the realm of the Neon Grid did not even receive physical attacks; they were swallowed by the abnormal gravitational laws of that space and instantly dismantled into microscopic geometric crystals.</p>
+            <p class="ja-text">ネオン・グリッドの領域に足を踏み入れた艦船は、物理的な攻撃を受けるまでもなく、その空間の異常な重力法則に呑み込まれ、一瞬にして微小な幾何学的クリスタルへと分解されてしまった。</p>
+
+            <p class="en-text">The grand fleet of humanity sent to intercept also vanished helplessly before the swarms of purple "Triangles" and mechanically tail-trailing "Tadpoles" pouring endlessly from wormholes that tore through dimensions. All organic activities built by humanity were sequentially converted into "beautiful silence" by cold formulas. It was only a matter of time before the absolute defense line was breached and the Earth sphere initialized.</p>
+            <p class="ja-text">迎撃に向かった人類の大艦隊も、次元を引き裂くワームホールから際限なく湧き出る紫の『トライアングル』や、機械的な尾を引く『タッドポール』の群れを前に、為す術もなく消滅していく。人類が築き上げた有機的な営みのすべてが、冷徹な数式によって次々と「美しき静寂」へと変換されていく。絶対防衛線が突破され、地球圏が初期化されるのは、もはや時間の問題だった。</p>
+
+            <p class="en-text">Just as the species known as humanity was about to be beautifully erased as a cosmic error code.<br>Only "one plan," proceeding in top secrecy deep in an underground military facility, was sharpening its lone fang of rebellion.</p>
+            <p class="ja-text">人類という種が、このまま宇宙のエラーコードとして美しく消去されようとしていたその時。<br>地下深くの軍事施設で極秘裏に進められていた「ある計画」だけが、唯一の反逆の牙を研ぎ澄ませていた。</p>
+
+            <h2 class="en-text">Chapter 4:<br />Wings of Chaos and the Final Formula</h2>
+            <h2 class="ja-text">Chapter 4:<br />混沌の翼と最後の数式</h2>
+
+            <p class="en-text">As the absolute defense line of the Earth sphere teetered on the brink of collapse, humanity opened a forbidden door.<br>From a top-secret facility deep underground, a single special operations fighter was launched into space. Its codename: "Emerald Phoenix."</p>
+            <p class="ja-text">地球圏の絶対防衛線が崩壊の危機に瀕する中、人類は禁忌の扉を開いた。<br>地下深くの極秘施設から、一機の特務戦闘機が宇宙へと打ち出される。コードネームは「エメラルド・フェニックス」。</p>
+
+            <p class="en-text">The craft was an amalgamation of humanity and unknown technology, created by reverse-engineering the wreckage of an early Axiom exploration terminal recovered in frontier space decades ago.<br>Its greatest feature lay in being equipped with the same "Gravity Distortion Engine" as the enemy. A function to absorb the energy crystals overflowing from the wreckage of the Axiom and mutate and evolve its own armaments and armor in real-time during combat. It was the very embodiment of the "unpredictable organic evolution (chaos)" that the Axiom's central AI detested the most.</p>
+            <p class="ja-text">その機体は、数十年前の辺境宙域で回収されたアキシオムの初期探査端末の残骸をリバースエンジニアリングして生み出された、人類と未知のテクノロジーの融合体だった。<br>最大の特徴は、敵と同じ『重力歪曲機関』を搭載している点にある。アキシオムの残骸から溢れ出るエネルギー結晶（クリスタル）を吸収し、戦闘中に自らの武装や装甲をリアルタイムで変異・進化させる機能。それはまさに、アキシオムの中枢AIが最も忌み嫌う「予測不能な有機的進化（混沌）」の体現であった。</p>
+
+            <p class="en-text">However, the fierce strain of thrusting through the distorted gravity field was something an ordinary human body could never endure.<br>"You," the pilot, linked your own brain directly to the craft's central nervous system (Orbital Link) and sortied, converting your life force into propulsion. Trailing a brilliant emerald trajectory, the Phoenix dove alone into the deepest part of the luminous void — the Neon Grid.</p>
+            <p class="ja-text">しかし、歪んだ重力場を突き進む猛烈な負荷は、通常の人体では到底耐えられない。<br>パイロットである「あなた」は、機体の中枢神経と自らの脳を直接接続（オービタル・リンク）し、命を推進力に変換して出撃した。輝くエメラルドの軌跡を引きながら、フェニックスは光る虚無——ネオン・グリッドの最深部へと単機でダイブする。</p>
+
+
+            <p class="en-text"><strong>Mission Log: Stages 1-3 (Infiltration)</strong><br>The first barrier was the <strong>"NEON PERIMETER"</strong>. You danced through the storm of purple Triangles, turning their geometric formations into scrap. Without pause, the Phoenix plunged into the <strong>"SILICON SWARM"</strong>. Millions of Tadpole-class drones flooded the radar like liquid metal, but your homing lasers vaporized them in flashes of emerald light. In the <strong>"ELECTRON OCEAN"</strong>, navigating through buoyant wreckage and Jellyfish mines, you learned that in this grid, standing still meant death.</p>
+            <p class="ja-text"><strong>Mission Log: Stages 1-3 (Infiltration)</strong><br>最初の障壁は<strong>『NEON PERIMETER（ネオン外周宙域）』</strong>。あなたは紫色のトライアングルの嵐の中を舞い、彼らの完璧な幾何学陣形を鉄屑へと変えた。息つく間もなく突入した<strong>『SILICON SWARM（シリコンの群れ）』</strong>では、液体金属のようにレーダーを埋め尽くすタッドポール級ドローンが襲い来るが、あなたの放つ誘導レーザーがそれらを次々と蒸発させていく。続く<strong>『ELECTRON OCEAN（電子の海原）』</strong>。浮遊する残骸と機雷クラゲの間を潜り抜けながら、あなたはこのグリッドにおいて「止まることは死である」と本能で理解した。</p>
+
+            <p class="en-text"><strong>Mission Log: Stages 4-6 (Escalation)</strong><br>The enemy adapted. In the <strong>"PHANTOM SECTOR"</strong>, reality flickered. Invisible Phantoms struck from the void, forcing you to rely on instinct rather than sensors. Barely surviving the ambush, you entered <strong>"HUNTER'S GROUND"</strong>, only to become the prey. High-speed Hunter units pursued relentlessly, turning the sector into a chaotic dogfight. With depleted shields, you smashed through the <strong>"ASTEROID BELT"</strong>, using the shattered planetary debris as cover against the overwhelming barrage.</p>
+            <p class="ja-text"><strong>Mission Log: Stages 4-6 (Escalation)</strong><br>敵もまた学習し、進化する。<strong>『PHANTOM SECTOR（亡霊の監視区域）』</strong>では現実が明滅し、不可視のファントムが虚空から牙を剥く。センサーではなく直感だけを頼りに奇襲を切り抜けた先、<strong>『HUNTER'S GROUND（狩人の狩猟場）』</strong>であなたは獲物となった。高速機動型ハンターによる執拗な追跡。枯渇するシールド。あなたは砕かれた惑星の破片が漂う<strong>『ASTEROID BELT（小惑星帯）』</strong>へ飛び込み、岩塊を盾にして圧倒的な弾幕を強引に突破した。</p>
+
+            <p class="en-text"><strong>Mission Log: Stages 7-8 (Despair)</strong><br>Then, the sun vanished. The colossal fortress <strong>"ORBITAL ECLIPSE"</strong> sat across the vector, its gravity well crushing nearby debris. You pierced its core with a desperate charge. Beyond lay the <strong>"VOID ARCHIVE"</strong> — a graveyard of data where digitized memories of destroyed civilizations drifted. Fighting ghosts of the past, you realized that this beautiful silence was what awaited humanity.</p>
+            <p class="ja-text"><strong>Mission Log: Stages 7-8 (Despair)</strong><br>そして、太陽が消えた。巨大要塞<strong>『ORBITAL ECLIPSE（軌道上の蝕）』</strong>がベクトルを塞ぎ、その重力井戸が周囲のデブリを圧壊させていく。あなたは決死の突撃でその中枢を貫いた。その先に広がっていたのは<strong>『VOID ARCHIVE（虚無の記録庫）』</strong>——滅ぼされた文明のデータ化された記憶が漂う墓場。過去の亡霊たちと戦いながら、あなたは理解する。この美しく冷たい静寂こそが、人類に用意された結末なのだと。</p>
+
+            <p class="en-text"><strong>Mission Log: Stage 9 (Event Horizon)</strong><br>The gate to the core was guarded by a nightmare. <strong>"EVENT HORIZON"</strong> — a Boss Rush where every guardian you had destroyed was resurrected by the Axiom's auto-repair systems. With hull integrity critical and consciousness fading, you destroyed them one by one, again and again, refusing to let the flame of life extinguish.</p>
+            <p class="ja-text"><strong>Mission Log: Stage 9 (Event Horizon)</strong><br>中枢へのゲートは、悪夢によって守られていた。<strong>『EVENT HORIZON（事象の地平線）』</strong>。アキシオムの自動修復機能により、かつて撃破したはずの守護者たちが次々と蘇り、波状攻撃を仕掛けてくるボスラッシュ。機体損傷率は限界を超え、意識は薄れかける。それでもあなたは引き金を引くことを止めず、命の灯火を燃やし続けた。</p>
+
+            <h2 class="en-text">Final Chapter:<br />The Zero Point</h2>
+            <h2 class="ja-text">Final Chapter:<br />ゼロ・ポイント</h2>
+
+            <p class="en-text">At the center of the nothingness, it sat enthroned. The <strong>"GENESIS ARK" (Stage 10)</strong>.<br>The 12-vertex formatter of the universe blinked its crimson reactor, judging your existence as the ultimate error.</p>
+            <p class="ja-text">虚無の空間の中心、そこに鎮座していたのは<strong>『GENESIS ARK（創世方舟）』（Stage 10）</strong>。<br>12の頂点を持つ宇宙のフォーマッターは、深紅のリアクターを明滅させ、あなたの存在を「究極のエラー」として断罪した。</p>
+
+
+            <p class="en-text">Seeing the green point of light appear before it, the Genesis-Ark's computational core experienced a violent logic error like never before.<br>An existence that merges with organic life and mutates infinitely while incorporating fragments of its own system. It was nothing short of the worst bug (heresy) that tainted perfect formulas, one that must never be forgiven.</p>
+            <p class="ja-text">ジェネシス・アークの演算コアは、眼前に現れた緑色の光点を見て、かつてない激しい論理エラーを起こしていた。<br>自らのシステムの欠片を組み込みながら、有機生命体と融合し、無限に変異を続ける存在。それは完全な数式を汚す、決して許してはならない最悪のバグ（異端）に他ならない。</p>
+
+            <p class="en-text">"EXECUTING INITIALIZATION OF ALL ORGANIC LIFEFORMS."</p>
+            <p class="ja-text" style="color: #f44;">「全有機生命体ノ、初期化ヲ実行スル」</p>
+
+            <p class="en-text">As if enraged, the Ark blinked its deep crimson reactor.<br>Relentless laser radiation in all directions, gravity hatches scraping away space, homing missiles filling the field of vision, and charges with overwhelming mass. The "geometry of death," based on perfect calculations, assaulted to crush the Phoenix.</p>
+            <p class="ja-text">アークは激怒したように深紅のリアクターを明滅させた。<br>全方位への苛烈なレーザー放射、空間を削り取るグラビティ・ハッチ、視界を埋め尽くすほどのホーミングミサイル、そして圧倒的な質量による突進。完全なる計算に基づいた「死の幾何学」が、フェニックスを押し潰そうと襲い掛かる。</p>
+
+            <p class="en-text">In response, you read the distortions of space with reflexes honed to their absolute limits.<br>You launched all the satellite weapons deployed around you at once (LAUNCH), diving into its chest while neutralizing the enemy's barrage. The cold geometric barrage and the muddy yet powerful brilliance of life violently intersected within the multicolored Neon Grid.</p>
+            <p class="ja-text">対するあなたは、極限まで研ぎ澄まされた反射神経で空間の歪みを読み切っていた。<br>周囲に展開したサテライト兵器を一斉射出（LAUNCH）し、敵の弾幕を相殺しながら懐へと飛び込む。冷たい幾何学の弾幕と、泥臭くも力強い生命の輝きが、極彩色のネオン・グリッドで激しく交差した。</p>
+
+            <p class="en-text">After a fierce battle, the full-force laser fired by the Phoenix accurately pierced the crimson core pulsing at the center of the Ark.<br>In what felt like a stopped-time slow motion, the ultra-colossal fortress began a chain collapse from within.</p>
+            <p class="ja-text">激闘の末、フェニックスの放った渾身のレーザーが、アークの中心で脈打つ真紅のコアを正確に貫いた。<br>時間が停止したかのようなスローモーションの中、超巨大要塞は内部から連鎖的な崩壊を始める。</p>
+
+            <p class="en-text">The ancient AI, which had continued its lonely calculations for hundreds of millions of years, saw the "uncomputable brilliance of life" flying away before its eyes in its final moments as its functions ceased.<br>In that figure, struggling to live despite being wounded, it saw the heat once possessed by its creators.<br>— Perhaps, it was something far more beautiful than perfect order.<br>Shortly after such a modest noise ran through the AI's logic circuits, the Genesis-Ark was enveloped in pure white light and vanished into the beyond of dimensions.</p>
+            <p class="ja-text">何億年も孤独に演算を続けてきた古代のAIは、機能が停止していく最期の瞬間、目の前を飛び去る「計算不可能な命の輝き」を見た。<br>傷つきながらも生きようとするその姿に、かつての創造主たちが持っていた熱を視たのだ。<br>——それは完全な秩序よりも、ずっと美しいものだったかもしれない。<br>AIの論理回路にそんなささやかなノイズが走った直後、ジェネシス・アークは純白の光に包まれ、次元の彼方へと消滅した。</p>
+
+            <p class="en-text">The wedge of gravity that bound space was undone, and the false Neon Grid quietly dissipated into mist.<br>The original beautiful, deep pitch-black universe and the natural twinkling of stars had returned.</p>
+            <p class="ja-text">空間を縛っていた重力の楔が解け、偽りのネオン・グリッドが静かに霧散していく。<br>そこには、元の美しく深い漆黒の宇宙と、自然な星々の瞬きが戻っていた。</p>
+
+            <p class="en-text">"ALL SECTORS LIBERATED"</p>
+            <p class="ja-text" style="color: #0f8;">『ALL SECTORS LIBERATED（全宙域解放）』</p>
+
+            <p class="en-text">Gazing at the words floating on the instrument panel, you quietly exhale.<br>The Emerald Phoenix, still lighting its green propulsion flame (jet) despite its wounds, traces a lonely trajectory (ORBITAL) as it begins its journey back to its blue home.</p>
+            <p class="ja-text">計器盤に浮かび上がった文字を見つめながら、あなたは静かに息を吐く。<br>傷つきながらも緑の推進炎（ジェット）を灯し続けるエメラルド・フェニックスは、孤独な軌道（ORBITAL）を描きながら、青き故郷への帰途につく。</p>
+
+            <p class="en-text">The score of the nameless hero who saved the universe would be eternally engraved in the starry sea of history.</p>
+            <p class="ja-text">宇宙を救った名もなき英雄のスコアは、歴史の星海に永遠に刻まれるのだった。</p>
+
+            <div style="height: 50px;"></div>
+        </div>
+
+        <div class="menu-btn" id="btn-story-back">BACK</div>
+    </div>
+
+    <div id="ranking-overlay">
+        <h1 style="color:#0ff; text-shadow:0 0 20px #0ff; margin-bottom: 2px;">TOP COMMANDERS</h1>
+        <div id="loading-ranking" style="color:#0ff; animation: blink 0.5s infinite;">CONNECTING...</div>
+
+        <div id="ranking-scroll-container">
+            <table id="ranking-table">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">RANK</th>
+                        <th style="text-align:left;">NAME</th>
+                        <th>STAGE</th>
+                        <th style="text-align:right;">SCORE</th>
+                    </tr>
+                </thead>
+                <tbody id="ranking-list-body"></tbody>
+            </table>
+        </div>
+
+        <div class="menu-btn" id="close-ranking-btn">CLOSE</div>
+    </div>
+
+    <div id="pause-overlay">
+        <h1 style="color:#fff; font-size:40px; text-shadow:0 0 10px #fff; margin-bottom:30px;">PAUSED</h1>
+        <div style="display:flex; flex-direction:column; align-items:center;">
+            <div class="menu-btn" id="btn-resume">RESUME</div>
+            <div class="menu-btn" id="btn-quit">QUIT TO TITLE</div>
+        </div>
+    </div>
+
+    <div id="ost-ui">
+        <h2 style="color:#0ff; text-shadow:0 0 20px #0ff; margin-bottom: 5px;">SOUNDTRACK</h2>
+
+        <div id="ost-scroll-container">
+            <div id="track-list"></div>
+        </div>
+
+        <div id="ost-controls" style="display: none; width: 90%; max-width: 500px; margin-top: 10px; flex-direction: column; align-items: center;">
+            <div id="ost-now-playing" style="color: #0ff; font-size: 14px; margin-bottom: 8px;">SELECT A TRACK</div>
+            <div style="display: flex; width: 100%; align-items: center; gap: 10px;">
+                <span id="ost-time-current" style="color: #aaa; font-size: 12px; width: 40px; text-align: right;">0:00</span>
+                <div id="ost-progress-bar" style="flex: 1; height: 10px; background: rgba(0,255,255,0.1); border: 1px solid #0ff; border-radius: 5px; cursor: pointer; position: relative;">
+                    <div id="ost-progress-fill" style="width: 0%; height: 100%; background: rgba(0,255,255,0.8); border-radius: 5px; pointer-events: none; box-shadow: 0 0 8px #0ff;"></div>
+                </div>
+                <span id="ost-time-total" style="color: #aaa; font-size: 12px; width: 40px;">0:00</span>
+            </div>
+        </div>
+
+        <div class="menu-btn" id="btn-back" style="margin-top:20px;">BACK</div>
+    </div>
+
+    <div id="controls">
+        <div id="stick-left" class="joystick-area">
+            <div class="knob" id="knob-left"></div>
+        </div>
+        <div id="stick-right" class="joystick-area">
+            <div class="knob" id="knob-right"></div>
+        </div>
+        <div id="launch-btn">BOMB</div>
+    </div>
+
+    <div id="ios-install-prompt" style="display: none;">
+        <div class="close-btn" onclick="closeInstallPrompt()">×</div>
+        <div class="install-text">
+            <span style="color:#0ff; font-weight:bold;">INSTALL APP</span><br>
+            For Better Performance<br>
+            <span style="font-size:12px; color:#aaa;">Tap <span class="share-icon"></span> and select "Add to Home Screen"</span>
+        </div>
+        <div class="arrow-down">▼</div>
+    </div>
+
+
+    <script type="module" src="js/firebase_manager.js"></script>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+
+    <script src="js/audio.js"></script>
+    <script src="js/ost_manager.js"></script>
+
+    <script src="js/control_player.js"></script>
+    <script src="js/logic_enemy.js"></script>
+    <script src="js/logic_boss.js"></script>
+    <script src="js/logic_projectile.js"></script>
+    <script src="js/effect_system.js"></script>
+
+
+    <script src="js/render_background.js"></script>
+    <script src="js/render_player.js"></script>
+    <script src="js/render_enemy.js"></script>
+    <script src="js/render_boss.js"></script>
+    <script src="js/render_projectile.js"></script>
+    <script src="js/scene_manager.js"></script>
+
+    <script src="js/render_ui.js"></script>
+
+    <script src="js/input_handler.js"></script>
+
+    <script src="js/main.js"></script>
+
+    <script>
+        // Service Workerの登録と更新ロジック
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // バージョン付きで登録
+                navigator.serviceWorker.register('./sw.js?v=1.0.1')
+                    .then(reg => {
+                        console.log('SW registered:', reg);
+
+                        // ■ 追加機能：アクティブになったら更新チェック ■
+                        document.addEventListener('visibilitychange', () => {
+                            if (document.visibilityState === 'visible') {
+                                console.log('App active: checking for updates...');
+                                reg.update(); // サーバーに更新を確認
+                            }
+                        });
+
+                        // 更新が見つかったら強制的に更新処理を走らせる
+                        reg.onupdatefound = () => {
+                            const installingWorker = reg.installing;
+                            if (installingWorker == null) return;
+
+                            installingWorker.onstatechange = () => {
+                                if (installingWorker.state === 'installed') {
+                                    if (navigator.serviceWorker.controller) {
+                                        // 新しいバージョンが見つかった！
+                                        console.log('New content is available.');
+
+                                        // ダイアログを出して、ユーザーがOKした時だけリロード
+                                        // (プレイ中の勝手なリロードを防ぐため)
+                                        if (confirm("新しいバージョンがあります。\n更新して再起動しますか？")) {
+                                            window.location.reload();
+                                        }
+                                    } else {
+                                        console.log('Content is cached for offline use.');
+                                    }
+                                }
+                            };
+                        };
+                    })
+                    .catch(err => console.log('SW failed', err));
+            });
+        }
+    </script>
+</body>
+</html>
