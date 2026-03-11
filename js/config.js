@@ -19,7 +19,7 @@ const HOWTO_WAIT_TIME = 600;  // HOWTO画面の放置でタイトルに戻る時
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // --- ステージ・難易度設定 ---
-const START_STAGE = 10;        // 開始ステージ
+const START_STAGE = 1;        // 開始ステージ
 const MAX_STAGE = 10;         // 最大ステージ
 
 
@@ -157,7 +157,7 @@ const BOSS_VARIANTS = [
     { name: 'OCTAGON-COMMAND', sides: 8, color: '#f40', hp: 200, bulletCount: 8, speedFactor: 0.8 },
     { name: 'NONA-REVEALER', sides: 9, color: '#f08', hp: 220, bulletCount: 9, speedFactor: 0.7 },
     { name: 'DECA-DECIMATOR', sides: 10, color: '#fff', hp: 300, bulletCount: 10, speedFactor: 0.6 },
-    { name: 'GENESIS-ARK', sides: 12, color: '#00ffff', hp: 10, bulletCount: 12, speedFactor: 0.3 }
+    { name: 'GENESIS-ARK', sides: 12, color: '#00ffff', hp: 1000, bulletCount: 12, speedFactor: 0.3 }
 ];
 
 // --- 弾丸設定 ---
@@ -301,4 +301,5 @@ const ENDING_STORY_TEXT =
 だが、見上げる星海には、確かな希望が満ちている。
 
 還ろう、美しき青き故郷へ。
+
 新たなる重力の地平線が、我々を待っている。`; 
