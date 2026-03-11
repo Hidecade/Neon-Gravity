@@ -1,4 +1,4 @@
-﻿// =========================================================
+// =========================================================
 // Input & Event Handlers (input_handler.js)
 // 役割: キーボード、マウス、タッチ、ゲームパッドの入力制御とUIイベントのバインド
 // =========================================================
@@ -327,6 +327,30 @@ function initInputHandlers() {
             if (e.code === 'Space' && !e.repeat) {
                 if (typeof window.skipStory === 'function') window.skipStory();
             }
+        }
+
+        if (e.code === "F3") {
+            e.preventDefault();
+            if (DEBUG.enabled) DEBUG.showOverlay = !DEBUG.showOverlay;
+            return;
+        }
+
+        if (e.code === "F4") {
+            e.preventDefault();
+            if (DEBUG.enabled) DEBUG.showHitboxes = !DEBUG.showHitboxes;
+            return;
+        }
+
+        if (e.code === "F5") {
+            e.preventDefault();
+            if (DEBUG.enabled) DEBUG.showEnemyTargetLines = !DEBUG.showEnemyTargetLines;
+            return;
+        }
+
+        if (e.code === "F6") {
+            e.preventDefault();
+            if (DEBUG.enabled) DEBUG.showSpawnPoints = !DEBUG.showSpawnPoints;
+            return;
         }
     });
 
