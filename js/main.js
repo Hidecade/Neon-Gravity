@@ -1,4 +1,4 @@
-﻿// =========================================================
+// =========================================================
 // Main Game Engine (main.js)
 // 役割: システム変数の定義、メインループ、画面リサイズ管理
 // =========================================================
@@ -7,14 +7,19 @@
 // 1. システム・グローバル変数
 // =========================================================
 
+
 // --- 基本システム ---
 let baseAppScale = 1.0;         // 画面サイズによる基本拡大率
 let globalUiScale = 1.0;        // UI全体のスケール
 let gameSpeed = 1.0;            // ゲーム全体の速度係数（スロー演出等）
 let cameraScale = 1.0;          // カメラのズーム倍率（1.0=通常、0.75=縮小）
-let frame = 0;                  // 経過フレームカウント
 let width, height;              // 現在のキャンバスサイズ
 let worldSize = 1500;           // ワールドサイズ
+let frame = 0;                  // 経過フレームカウント
+
+let debugFps = 0;
+let debugFrameCounter = 0;
+let debugLastFpsTime = performance.now();
 
 // --- ゲーム状態管理 ---
 var gameState = 'TITLE';        // 現在の状態 ('TITLE', 'PLAYING', 'PAUSED' 等)
@@ -424,6 +429,9 @@ function update() {
     if (typeof checkStageClear === 'function') checkStageClear();
     if (typeof updateCamera === 'function') updateCamera();
     if (typeof updateUI === 'function') updateUI();
+
+    updateDebugStats();
+    updateDebugOverlay();
 }
 
 /**
@@ -439,6 +447,20 @@ function updateEntities() {
     if (typeof updateMissiles === 'function') updateMissiles();
     if (typeof updateParticlesAndRings === 'function') updateParticlesAndRings();
     if (typeof updatePlayerStatus === 'function') updatePlayerStatus();
+}
+
+function updateDebugStats() {
+    if (!DEBUG.enabled) return;
+
+    debugFrameCounter++;
+    const now = performance.now();
+    const elapsed = now - debugLastFpsTime;
+
+    if (elapsed >= 1000) {
+        debugFps = Math.round((debugFrameCounter * 1000) / elapsed);
+        debugFrameCounter = 0;
+        debugLastFpsTime = now;
+    }
 }
 
 // =========================================================
@@ -468,6 +490,9 @@ function draw() {
     if (typeof drawItems === 'function') drawItems();
     if (typeof drawVisualEffects === 'function') drawVisualEffects();
 
+    if (typeof drawDebugWorldOverlay === 'function') drawDebugWorldOverlay();
+
+
     // UI要素描画
     if ((gameState === 'PLAYING' || gameState === 'DYING') && frame % 3 === 0) {
         if (typeof drawMiniMap === 'function') drawMiniMap();
@@ -476,6 +501,80 @@ function draw() {
 
     ctx.restore();
 
+
+}
+
+function updateDebugOverlay() {
+    const el = document.getElementById("debugOverlay");
+    if (!el) return;
+
+    if (!DEBUG.enabled || !DEBUG.showOverlay) {
+        el.style.display = "none";
+        return;
+    }
+
+    el.style.display = "block";
+
+    const enemyCount = Array.isArray(enemies) ? enemies.length : 0;
+    const bulletCount = Array.isArray(bullets) ? bullets.length : 0;
+    const enemyBulletCount = Array.isArray(enemyBullets) ? enemyBullets.length : 0;
+    const particleCount = Array.isArray(particles) ? particles.length : 0;
+    const crystalCount = Array.isArray(crystals) ? crystals.length : 0;
+    const powerupCount = Array.isArray(powerups) ? powerups.length : 0;
+    const missileCount = Array.isArray(missiles) ? missiles.length : 0;
+
+    const totalObjects =
+        enemyCount +
+        bulletCount +
+        enemyBulletCount +
+        particleCount +
+        crystalCount +
+        powerupCount +
+        missileCount;
+
+    const px = player ? Math.round(player.x) : 0;
+    const py = player ? Math.round(player.y) : 0;
+    const php = player?.hp ?? "-";
+    const pinv = player?.invuln ?? 0;
+    const pweapon = player?.weaponLevel ?? "-";
+    const pshield = player?.shield ?? "-";
+
+    const cx = camera ? Math.round(camera.x) : 0;
+    const cy = camera ? Math.round(camera.y) : 0;
+
+    el.textContent =
+        `[DEBUG] ${GAME_VERSION}
+FPS: ${debugFps}
+SCENE: ${gameState}
+STAGE: ${stage} / CURRENT: ${currentStage}
+SCORE: ${score}
+FRAME: ${frame}
+
+PLAYER
+X: ${px} Y: ${py}
+HP: ${php}
+INVULN: ${pinv}
+WEAPON: ${pweapon}
+SHIELD: ${pshield}
+
+CAMERA
+X: ${cx} Y: ${cy}
+
+OBJECTS
+ENEMIES: ${enemyCount}
+PLAYER BULLETS: ${bulletCount}
+ENEMY BULLETS: ${enemyBulletCount}
+PARTICLES: ${particleCount}
+CRYSTALS: ${crystalCount}
+POWERUPS: ${powerupCount}
+MISSILES: ${missileCount}
+TOTAL: ${totalObjects}
+
+FLAGS
+F3 HUD: ${DEBUG.showOverlay ? "ON" : "OFF"}
+F4 HITBOX: ${DEBUG.showHitboxes ? "ON" : "OFF"}
+F5 TARGET: ${DEBUG.showEnemyTargetLines ? "ON" : "OFF"}
+F6 SPAWN: ${DEBUG.showSpawnPoints ? "ON" : "OFF"}`;
 }
 
 // =========================================================
