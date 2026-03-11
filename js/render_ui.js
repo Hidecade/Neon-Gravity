@@ -1,4 +1,4 @@
-﻿
+
 
 function updateUI() {
     // --- ★修正: 'boss' だけでなく 'battleship' (ラスボス) も対象にする ---
@@ -258,4 +258,90 @@ function drawBossWarningEffect() {
 
         ctx.restore();
     }
+}
+
+
+
+function drawDebugWorldOverlay() {
+    if (!DEBUG.enabled) return;
+
+    ctx.save();
+    ctx.lineWidth = 1 / cameraScale;
+
+    // -------------------------
+    // 1) Player hitbox
+    // -------------------------
+    if (DEBUG.showHitboxes && player) {
+        ctx.strokeStyle = "rgba(0,255,255,0.95)";
+        const r = player.hitRadius || player.radius || 8;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(player.x - 12, player.y);
+        ctx.lineTo(player.x + 12, player.y);
+        ctx.moveTo(player.x, player.y - 12);
+        ctx.lineTo(player.x, player.y + 12);
+        ctx.stroke();
+    }
+
+    // -------------------------
+    // 2) Enemy hitboxes
+    // -------------------------
+    if (DEBUG.showHitboxes && Array.isArray(enemies)) {
+        ctx.strokeStyle = "rgba(255,80,80,0.95)";
+        for (const e of enemies) {
+            if (!e) continue;
+            const r = e.hitRadius || e.radius || e.size || 16;
+
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
+
+    // -------------------------
+    // 3) Enemy target lines
+    // -------------------------
+    if (DEBUG.showEnemyTargetLines && player && Array.isArray(enemies)) {
+        ctx.strokeStyle = "rgba(255,255,0,0.8)";
+        for (const e of enemies) {
+            if (!e) continue;
+
+            ctx.beginPath();
+            ctx.moveTo(e.x, e.y);
+            ctx.lineTo(player.x, player.y);
+            ctx.stroke();
+        }
+    }
+
+    // -------------------------
+    // 4) Spawn points
+    // -------------------------
+    if (DEBUG.showSpawnPoints && Array.isArray(enemies)) {
+        ctx.strokeStyle = "rgba(0,255,120,0.9)";
+        for (const e of enemies) {
+            if (!e) continue;
+            if (typeof e.spawnX !== "number" || typeof e.spawnY !== "number") continue;
+
+            ctx.beginPath();
+            ctx.arc(e.spawnX, e.spawnY, 10, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(e.spawnX - 8, e.spawnY);
+            ctx.lineTo(e.spawnX + 8, e.spawnY);
+            ctx.moveTo(e.spawnX, e.spawnY - 8);
+            ctx.lineTo(e.spawnX, e.spawnY + 8);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(e.spawnX, e.spawnY);
+            ctx.lineTo(e.x, e.y);
+            ctx.stroke();
+        }
+    }
+
+    ctx.restore();
 }
