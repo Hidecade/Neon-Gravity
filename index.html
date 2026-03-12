@@ -34,7 +34,48 @@
         <div id="pause-btn">||</div>
 
         <div class="hud-row">
+            <div id="info-box" style="display:flex; flex-direction:column; gap:8px;">
 
+                <div>
+                    <span class="hud-label">SCORE</span>
+                    <div id="score-display">000000</div>
+                </div>
+
+                <div><span class="hud-label">STAGE</span><span id="stage-num">1</span></div>
+                <div>
+                    <span class="hud-label">WEAPON</span>
+                    <div id="weapon-display"></div>
+                </div>
+                <div id="invuln-wrapper" style="display:none; margin-top: 2px;">
+                    <span class="bar-label" style="color:#ff0;">INVINCIBLE</span>
+                    <div class="bar-frame"
+                         style="border-color:#ff0; background:rgba(40,40,0,0.5); width:120px;">
+                        <div id="invuln-bar" style="width:0%; height:100%; background:#ff0; box-shadow:0 0 5px #ff0;">
+                        </div>
+                    </div>
+                </div>
+                <div id="minimap-container">
+                    <canvas id="minimap-canvas" width="100" height="100"></canvas>
+                </div>
+            </div>
+            <div id="gauge-box">
+                <span class="bar-label">SHIELD</span>
+                <div class="bar-frame">
+                    <div id="shield-bar"></div>
+                </div>
+
+                <span class="bar-label enemy">ENEMY SWARM</span>
+                <div class="bar-frame enemy">
+                    <div id="enemy-bar"></div>
+                </div>
+
+                <div id="boss-ui-container">
+                    <span class="bar-label" id="boss-name-label">BOSS: NAME</span>
+                    <div id="boss-bar-frame" class="bar-frame boss">
+                        <div id="boss-hp-bar-inline"></div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div id="warning-msg">GRAVITY CRITICAL</div>
         <div id="stage-msg">STAGE CLEAR</div>
