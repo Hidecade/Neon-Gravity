@@ -1,11 +1,12 @@
 // ★更新するたびに、ここのバージョン番号を書き換えてください（v1 -> v2 -> v3...）
-const CACHE_NAME = 'neon-gravity-v1.3.2';
+const CACHE_NAME = 'neon-gravity-v1.3.0';
 
 // キャッシュするファイルのリスト
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
-    './css/style.css',
+    './scc/style.css',
+
     './js/audio.js',
     './js/config.js',
     './js/control_player.js',
@@ -25,6 +26,8 @@ const ASSETS_TO_CACHE = [
     './js/render_ui.js',
     './js/scene_manager.js',
     './js/utils.js',
+
+
     './img/NeonGravity.png',
     './img/NeonGravity.ico',
 
@@ -33,7 +36,8 @@ const ASSETS_TO_CACHE = [
     './audio/Neon_Gravity_All_Clear.mp3',
     './audio/Neon_Gravity_Boss.mp3',
     './audio/Neon_Gravity_Last.mp3',
-    './audio/Neon_Gravity_Name.mp3',
+    './audio/Neon_Gravity_Name.mp3', 
+    './audio/Neon_Gravity_Ending.mp3',
 
     './audio/Neon_Gravity_01.mp3',
     './audio/Neon_Gravity_02.mp3',
@@ -44,8 +48,6 @@ const ASSETS_TO_CACHE = [
     './audio/Neon_Gravity_07.mp3',
     './audio/Neon_Gravity_08.mp3'
 ];
-
-
 
 // インストール処理
 self.addEventListener('install', (event) => {
