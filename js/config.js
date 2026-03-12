@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-const GAME_VERSION = "1.3.1;
+const GAME_VERSION = "1.3.2;
 
 const DEBUG = {
     enabled: true,
@@ -328,3 +328,4 @@ const ENDING_STORY_TEXT =
 
 還ろう、美しき青き故郷へ。
 新たなる重力の地平線が、我々を待っている。`; 
+
