@@ -5,6 +5,27 @@
 // 警告音の間隔設定
 const WARNING_SOUND_INTERVAL = 48;
 
+// =========================================================
+// 音量設定
+// 0.0 ～ 1.0 を基本に調整
+// master : 全体音量
+// bgm    : BGMの基準音量
+// se     : SE全体の基準倍率
+// seByType : 必要ならSE個別に微調整
+// =========================================================
+const AUDIO_VOLUME = {
+    master: 1.0,
+    bgm: 0.35,
+    se: 0.75,
+    seByType: {
+        warning: 0.85,
+        explode_large: 0.90,
+        explode_medium: 0.95,
+        boss_hit: 0.95,
+        launch: 0.90
+    }
+};
+
 // ストップさせる必要がなく、鳴らしっぱなしで良いSEのリスト
 const ONE_SHOT_SE = [
     'shoot', 'laser', 'enemy_hit',
@@ -35,7 +56,6 @@ const BGM_FILES = {
 
 // --- SEの音響定義ライブラリ ---
 const SE_LIBRARY = {
-    // (SE定義は元のまま変更なしでOKです。長いので省略しませんが、そのまま貼り付けてください)
     shoot: (ctx, t, g) => {
         const o = ctx.createOscillator();
         o.type = 'triangle';
@@ -51,11 +71,14 @@ const SE_LIBRARY = {
         o.frequency.setValueAtTime(120, t);
         o.frequency.linearRampToValueAtTime(80, t + 0.15);
         const mod = ctx.createOscillator();
-        mod.type = 'square'; mod.frequency.value = 500;
+        mod.type = 'square';
+        mod.frequency.value = 500;
         const modGain = ctx.createGain();
         modGain.gain.value = 500;
-        mod.connect(modGain); modGain.connect(o.frequency);
-        mod.start(t); mod.stop(t + 0.15);
+        mod.connect(modGain);
+        modGain.connect(o.frequency);
+        mod.start(t);
+        mod.stop(t + 0.15);
         g.gain.setValueAtTime(0.10, t);
         g.gain.linearRampToValueAtTime(0, t + 0.15);
         return { osc: o, duration: 0.15 };
@@ -76,8 +99,10 @@ const SE_LIBRARY = {
                 subG.gain.setValueAtTime(volume, startTime);
                 subG.gain.linearRampToValueAtTime(volume, startTime + duration - 0.1);
                 subG.gain.linearRampToValueAtTime(0, startTime + duration);
-                o.connect(subG); subG.connect(g);
-                o.start(startTime); o.stop(startTime + duration);
+                o.connect(subG);
+                subG.connect(g);
+                o.start(startTime);
+                o.stop(startTime + duration);
             });
         }
         return { osc: null, duration: (repeatCount * interval) + duration };
@@ -92,8 +117,10 @@ const SE_LIBRARY = {
         f.frequency.exponentialRampToValueAtTime(20, t + 0.4);
         g.gain.setValueAtTime(0.6, t);
         g.gain.linearRampToValueAtTime(0, t + 0.4);
-        n.connect(f); f.connect(g);
-        n.start(t); n.stop(t + 0.4);
+        n.connect(f);
+        f.connect(g);
+        n.start(t);
+        n.stop(t + 0.4);
         return { osc: null, duration: 0.4 };
     },
     explode_medium: (ctx, t, g, noise) => {
@@ -107,31 +134,41 @@ const SE_LIBRARY = {
         f.frequency.exponentialRampToValueAtTime(10, t + dur);
         g.gain.setValueAtTime(1.5, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-        n.connect(f); f.connect(g);
-        n.start(t); n.stop(t + dur);
+        n.connect(f);
+        f.connect(g);
+        n.start(t);
+        n.stop(t + dur);
         return { osc: null, duration: dur };
     },
     explode_large: (ctx, t, g, noise) => {
         if (!noise) return { osc: null, duration: 0 };
         const totalDur = 5.0;
         const bursts = [0, 0.15 + Math.random() * 0.2, 0.85 + Math.random() * 0.2];
+
         bursts.forEach((delay, i) => {
             const startTime = t + delay;
             const n = ctx.createBufferSource();
             n.buffer = noise;
             n.loop = true;
+
             const f = ctx.createBiquadFilter();
             f.type = 'lowpass';
             const startFreq = i === 0 ? 1200 : i === 1 ? 600 : 250;
             const endFreq = 10;
             const dur = i === 2 ? 3.0 : 1.5;
+
             f.frequency.setValueAtTime(startFreq, startTime);
             f.frequency.exponentialRampToValueAtTime(endFreq, startTime + dur);
+
             const subG = ctx.createGain();
             const volume = i === 2 ? 0.8 : 0.5;
             subG.gain.setValueAtTime(volume, startTime);
             subG.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
-            n.connect(f); f.connect(subG); subG.connect(g);
+
+            n.connect(f);
+            f.connect(subG);
+            subG.connect(g);
+
             n.start(startTime, Math.random() * 2);
             n.stop(startTime + dur);
         });
@@ -141,12 +178,17 @@ const SE_LIBRARY = {
         o.type = 'sine';
         o.frequency.setValueAtTime(55, finalBurstTime);
         o.frequency.exponentialRampToValueAtTime(15, finalBurstTime + 2.5);
+
         const og = ctx.createGain();
         og.gain.setValueAtTime(0, finalBurstTime);
         og.gain.linearRampToValueAtTime(0.4, finalBurstTime + 0.05);
         og.gain.exponentialRampToValueAtTime(0.001, finalBurstTime + 3.5);
-        o.connect(og); og.connect(g);
-        o.start(finalBurstTime); o.stop(finalBurstTime + 3.5);
+
+        o.connect(og);
+        og.connect(g);
+        o.start(finalBurstTime);
+        o.stop(finalBurstTime + 3.5);
+
         return { osc: null, duration: totalDur };
     },
     target_ping: (ctx, t, g) => {
@@ -160,6 +202,7 @@ const SE_LIBRARY = {
     launch: (ctx, t, g, noise) => {
         const dur = 1.5;
         const fadeInTime = 1.0;
+
         if (noise) {
             const n = ctx.createBufferSource();
             n.buffer = noise;
@@ -168,25 +211,36 @@ const SE_LIBRARY = {
             filter.frequency.setValueAtTime(5000, t);
             filter.frequency.exponentialRampToValueAtTime(1000, t + dur);
             filter.Q.value = 0.5;
+
             const noiseGain = ctx.createGain();
             noiseGain.gain.setValueAtTime(0, t);
             noiseGain.gain.linearRampToValueAtTime(2.0, t + fadeInTime);
             noiseGain.gain.exponentialRampToValueAtTime(0.01, t + dur);
-            n.connect(filter); filter.connect(noiseGain); noiseGain.connect(g);
-            n.start(t); n.stop(t + dur);
+
+            n.connect(filter);
+            filter.connect(noiseGain);
+            noiseGain.connect(g);
+            n.start(t);
+            n.stop(t + dur);
         }
+
         const metallicFreqs = [2043, 3102, 4519];
         metallicFreqs.forEach((freq, index) => {
             const osc = ctx.createOscillator();
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(freq, t);
+
             const oscGain = ctx.createGain();
             oscGain.gain.setValueAtTime(0, t);
             oscGain.gain.linearRampToValueAtTime(0.02 - (index * 0.005), t + fadeInTime);
             oscGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
-            osc.connect(oscGain); oscGain.connect(g);
-            osc.start(t); osc.stop(t + dur);
+
+            osc.connect(oscGain);
+            oscGain.connect(g);
+            osc.start(t);
+            osc.stop(t + dur);
         });
+
         g.gain.setValueAtTime(0, t);
         g.gain.linearRampToValueAtTime(0.08, t + fadeInTime);
         g.gain.exponentialRampToValueAtTime(0.005, t + dur);
@@ -230,27 +284,38 @@ const SE_LIBRARY = {
         const basePitch = 95 + Math.random() * 10;
         o.frequency.setValueAtTime(basePitch, t);
         o.frequency.exponentialRampToValueAtTime(basePitch - 10, t + dur);
+
         const mod = ctx.createOscillator();
-        mod.type = 'square'; mod.frequency.value = 750 + Math.random() * 100;
+        mod.type = 'square';
+        mod.frequency.value = 750 + Math.random() * 100;
         const modGain = ctx.createGain();
         modGain.gain.value = 600;
-        mod.connect(modGain); modGain.connect(o.frequency);
-        mod.start(t); mod.stop(t + dur);
+        mod.connect(modGain);
+        modGain.connect(o.frequency);
+        mod.start(t);
+        mod.stop(t + dur);
+
         const env = ctx.createGain();
         env.gain.setValueAtTime(0.15, t);
         env.gain.exponentialRampToValueAtTime(0.001, t + dur);
-        o.connect(env); env.connect(panner);
-        o.start(t); o.stop(t + dur);
+        o.connect(env);
+        env.connect(panner);
+        o.start(t);
+        o.stop(t + dur);
 
         const subOsc = ctx.createOscillator();
         subOsc.type = 'sine';
         subOsc.frequency.setValueAtTime(150, t);
         subOsc.frequency.exponentialRampToValueAtTime(30, t + 0.1);
+
         const subEnv = ctx.createGain();
         subEnv.gain.setValueAtTime(0.4, t);
         subEnv.gain.exponentialRampToValueAtTime(0.001, t + dur);
-        subOsc.connect(subEnv); subEnv.connect(panner);
-        subOsc.start(t); subOsc.stop(t + dur);
+        subOsc.connect(subEnv);
+        subEnv.connect(panner);
+        subOsc.start(t);
+        subOsc.stop(t + dur);
+
         return { osc: null, duration: dur };
     },
     enemy_hit: (ctx, t, g, noise) => {
@@ -265,8 +330,10 @@ const SE_LIBRARY = {
         f.Q.value = 0.5;
         g.gain.setValueAtTime(0.1, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + duration);
-        n.connect(f); f.connect(g);
-        n.start(t); n.stop(t + duration);
+        n.connect(f);
+        f.connect(g);
+        n.start(t);
+        n.stop(t + duration);
         return { osc: null, duration: duration };
     },
     select: (ctx, t, g) => {
@@ -280,16 +347,21 @@ const SE_LIBRARY = {
     },
     warp: (ctx, t, g, noise) => {
         const dur = 1.2;
+
         const o = ctx.createOscillator();
         o.type = 'sine';
         o.frequency.setValueAtTime(400, t);
         o.frequency.exponentialRampToValueAtTime(6000, t + dur);
+
         const env = ctx.createGain();
         env.gain.setValueAtTime(0, t);
         env.gain.linearRampToValueAtTime(0.15, t + 0.1);
         env.gain.exponentialRampToValueAtTime(0.001, t + dur);
-        o.connect(env); env.connect(g);
-        o.start(t); o.stop(t + dur);
+
+        o.connect(env);
+        env.connect(g);
+        o.start(t);
+        o.stop(t + dur);
 
         if (noise) {
             const n = ctx.createBufferSource();
@@ -298,38 +370,51 @@ const SE_LIBRARY = {
             f.type = 'highpass';
             f.frequency.setValueAtTime(500, t);
             f.frequency.exponentialRampToValueAtTime(8000, t + dur);
+
             const ng = ctx.createGain();
             ng.gain.setValueAtTime(0, t);
             ng.gain.linearRampToValueAtTime(0.6, t + 0.2);
             ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
-            n.connect(f); f.connect(ng); ng.connect(g);
-            n.start(t); n.stop(t + dur);
+
+            n.connect(f);
+            f.connect(ng);
+            ng.connect(g);
+            n.start(t);
+            n.stop(t + dur);
         }
+
         return { osc: null, duration: dur };
     },
     warp_in: (ctx, t, g, noise) => {
         const dur = 2.2;
+
         const o = ctx.createOscillator();
         o.type = 'triangle';
         o.frequency.setValueAtTime(800, t);
         o.frequency.exponentialRampToValueAtTime(200, t + dur);
+
         const env = ctx.createGain();
         env.gain.setValueAtTime(0, t);
         env.gain.linearRampToValueAtTime(0.05, t + 0.1);
         env.gain.exponentialRampToValueAtTime(0.001, t + dur);
-        o.connect(env); env.connect(g);
-        o.start(t); o.stop(t + dur);
+        o.connect(env);
+        env.connect(g);
+        o.start(t);
+        o.stop(t + dur);
 
         const o2 = ctx.createOscillator();
         o2.type = 'triangle';
         o2.frequency.setValueAtTime(1100, t);
         o2.frequency.exponentialRampToValueAtTime(300, t + dur);
+
         const env2 = ctx.createGain();
         env2.gain.setValueAtTime(0, t);
         env2.gain.linearRampToValueAtTime(0.04, t + 0.1);
         env2.gain.exponentialRampToValueAtTime(0.001, t + dur);
-        o2.connect(env2); env2.connect(g);
-        o2.start(t); o2.stop(t + dur);
+        o2.connect(env2);
+        env2.connect(g);
+        o2.start(t);
+        o2.stop(t + dur);
 
         if (noise) {
             const n = ctx.createBufferSource();
@@ -338,15 +423,21 @@ const SE_LIBRARY = {
             f.type = 'highpass';
             f.frequency.setValueAtTime(8000, t);
             f.frequency.exponentialRampToValueAtTime(50, t + dur);
+
             const ng = ctx.createGain();
             ng.gain.setValueAtTime(0, t);
             ng.gain.linearRampToValueAtTime(0.6, t + 0.15);
             ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
-            n.connect(f); f.connect(ng); ng.connect(g);
-            n.start(t); n.stop(t + dur);
+
+            n.connect(f);
+            f.connect(ng);
+            ng.connect(g);
+            n.start(t);
+            n.stop(t + dur);
         }
+
         return { osc: null, duration: dur };
-    },
+    }
 };
 
 
@@ -377,6 +468,52 @@ const AudioSys = {
         console.log("Audio System Soft Reset.");
     },
 
+    // -------------------------------
+    // 音量ユーティリティ
+    // -------------------------------
+    clampVolume(v) {
+        return Math.max(0, Math.min(1, Number(v) || 0));
+    },
+
+    getMasterVolume() {
+        return this.clampVolume(AUDIO_VOLUME.master ?? 1.0);
+    },
+
+    getBgmVolume() {
+        return this.clampVolume((AUDIO_VOLUME.master ?? 1.0) * (AUDIO_VOLUME.bgm ?? 1.0));
+    },
+
+    getSeVolume(type = null) {
+        const base = (AUDIO_VOLUME.master ?? 1.0) * (AUDIO_VOLUME.se ?? 1.0);
+        const typeScale = type ? (AUDIO_VOLUME.seByType?.[type] ?? 1.0) : 1.0;
+        return this.clampVolume(base * typeScale);
+    },
+
+    updateVolumes() {
+        if (this.bgmEl) {
+            this.bgmEl.volume = this.getBgmVolume();
+        }
+    },
+
+    setMasterVolume(value) {
+        AUDIO_VOLUME.master = this.clampVolume(value);
+        this.updateVolumes();
+    },
+
+    setBgmVolume(value) {
+        AUDIO_VOLUME.bgm = this.clampVolume(value);
+        this.updateVolumes();
+    },
+
+    setSeVolume(value) {
+        AUDIO_VOLUME.se = this.clampVolume(value);
+    },
+
+    setSeTypeVolume(type, value) {
+        if (!AUDIO_VOLUME.seByType) AUDIO_VOLUME.seByType = {};
+        AUDIO_VOLUME.seByType[type] = this.clampVolume(value);
+    },
+
     init() {
         if (!this.ctx) {
             try {
@@ -386,13 +523,15 @@ const AudioSys = {
                     this.createNoise();
                     this._unlockAudio();
                 }
-            } catch (e) { console.error("Audio init error:", e); }
+            } catch (e) {
+                console.error("Audio init error:", e);
+            }
         }
 
         if (!this.bgmEl) {
             this.bgmEl = new Audio();
             this.bgmEl.loop = true;
-            this.bgmEl.volume = 0.4;
+            this.bgmEl.volume = this.getBgmVolume();
             this.bgmEl.setAttribute("playsinline", "");
 
             this.bgmEl.addEventListener('ended', () => {
@@ -400,27 +539,41 @@ const AudioSys = {
                     window.playNextOST();
                 } else if (this.bgmEl.loop) {
                     this.bgmEl.currentTime = 0;
-                    this.bgmEl.play().catch(e => { });
+                    this.bgmEl.play().catch(() => { });
                 }
             });
+        } else {
+            this.updateVolumes();
         }
     },
 
     _unlockAudio() {
         if (!this.ctx || this.isUnlocking) return;
         if (this.ctx.state === 'running') return;
+
         this.isUnlocking = true;
         const buffer = this.ctx.createBuffer(1, 1, 22050);
         const source = this.ctx.createBufferSource();
         source.buffer = buffer;
         source.connect(this.ctx.destination);
         source.start(0);
-        this.ctx.resume().then(() => { this.isUnlocking = false; }).catch(() => { this.isUnlocking = false; });
+
+        this.ctx.resume()
+            .then(() => {
+                this.isUnlocking = false;
+            })
+            .catch(() => {
+                this.isUnlocking = false;
+            });
     },
 
     async resume() {
-        if (!this.ctx) { this.init(); return; }
+        if (!this.ctx) {
+            this.init();
+            return;
+        }
         if (this.ctx.state === 'running') return;
+
         try {
             await this.ctx.resume();
             if (this.ctx.state !== 'running') this._unlockAudio();
@@ -432,7 +585,9 @@ const AudioSys = {
         const bSize = this.ctx.sampleRate * 2;
         const buf = this.ctx.createBuffer(1, bSize, this.ctx.sampleRate);
         const data = buf.getChannelData(0);
-        for (let i = 0; i < bSize; i++) data[i] = Math.random() * 2 - 1;
+        for (let i = 0; i < bSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
         this.noiseBuffer = buf;
     },
 
@@ -443,8 +598,10 @@ const AudioSys = {
             }, durationMs);
             return;
         }
+
         const nodeRef = { type, node };
         this.activeNodes.push(nodeRef);
+
         setTimeout(() => {
             const index = this.activeNodes.indexOf(nodeRef);
             if (index > -1) {
@@ -462,15 +619,21 @@ const AudioSys = {
         if (this.lastPlayed[type] && now - this.lastPlayed[type] < 0.05) return;
         this.lastPlayed[type] = now;
 
-        // もしコンテキストが停止(suspended)していたら、SEを鳴らすついでに再開を試みる
         if (this.ctx.state !== 'running') {
             this.ctx.resume().catch(() => { });
         }
 
-
         const t = this.ctx.currentTime;
+
+        // SE個別の音作り用Gain
         const g = this.ctx.createGain();
-        g.connect(this.ctx.destination);
+
+        // SE全体の一括音量制御用Gain
+        const seMasterGain = this.ctx.createGain();
+        seMasterGain.gain.value = this.getSeVolume(type);
+
+        g.connect(seMasterGain);
+        seMasterGain.connect(this.ctx.destination);
 
         try {
             const effect = SE_LIBRARY[type](this.ctx, t, g, this.noiseBuffer);
@@ -479,14 +642,16 @@ const AudioSys = {
                 effect.osc.start(t);
                 effect.osc.stop(t + effect.duration);
             }
+
             const cleanupTime = Math.max(2000, effect.duration * 1000 + 500);
-            this.registerNode(type, g, cleanupTime);
+            this.registerNode(type, seMasterGain, cleanupTime);
         } catch (e) { }
     },
 
     stopSE(targetType = null) {
         if (!this.ctx) return;
         const t = this.ctx.currentTime;
+
         this.activeNodes = this.activeNodes.filter(item => {
             if (!targetType || item.type === targetType) {
                 this.fadeAndDisconnect(item.node, t);
@@ -498,10 +663,14 @@ const AudioSys = {
 
     fadeAndDisconnect(gainNode, time) {
         try {
-            gainNode.gain.cancelScheduledValues(time);
-            gainNode.gain.setValueAtTime(gainNode.gain.value, time);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
-            setTimeout(() => { try { gainNode.disconnect(); } catch (e) { } }, 100);
+            if (gainNode.gain) {
+                gainNode.gain.cancelScheduledValues(time);
+                gainNode.gain.setValueAtTime(Math.max(gainNode.gain.value, 0.001), time);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+            }
+            setTimeout(() => {
+                try { gainNode.disconnect(); } catch (e) { }
+            }, 100);
         } catch (e) { }
     },
 
@@ -510,10 +679,12 @@ const AudioSys = {
     },
 
     playBGM(key, idx = 0) {
+        if (!this.bgmEl) this.init();
         this.stopBgmInterval();
         if (!this.bgmEl) return;
 
         let src = "";
+
         if (key === 'stage') {
             if (BGM_FILES.stages && BGM_FILES.stages[idx]) {
                 src = BGM_FILES.stages[idx];
@@ -532,7 +703,9 @@ const AudioSys = {
         }
 
         const nextFull = new URL(src, window.location.href).href;
-        if (this.currentSrc === nextFull && !this.bgmEl.paused) return;
+        const currentFull = this.currentSrc ? new URL(this.currentSrc, window.location.href).href : "";
+
+        if (currentFull === nextFull && !this.bgmEl.paused) return;
 
         const isOST = (typeof window.gameState !== 'undefined' && window.gameState === 'OST');
         this.bgmEl.loop = !isOST;
@@ -541,13 +714,15 @@ const AudioSys = {
         this.bgmEl.src = src;
         this.currentSrc = src;
         this.bgmEl.currentTime = 0;
-        this.bgmEl.volume = 0.4;
-        this.bgmEl.play().catch(e => { });
+        this.bgmEl.volume = this.getBgmVolume();
+        this.bgmEl.play().catch(() => { });
     },
 
     getBgmPath(key, idx) {
+        if (key === 'stage') {
+            return BGM_FILES.stages[idx % BGM_FILES.stages.length];
+        }
         if (BGM_FILES[key]) {
-            if (key === 'stage') return BGM_FILES.stages[idx % BGM_FILES.stages.length];
             return BGM_FILES[key];
         }
         return BGM_FILES.stages[0];
@@ -562,8 +737,13 @@ const AudioSys = {
 
     fadeOutBGM() {
         return new Promise((resolve) => {
-            if (!this.bgmEl || this.bgmEl.paused) { resolve(); return; }
+            if (!this.bgmEl || this.bgmEl.paused) {
+                resolve();
+                return;
+            }
+
             this.stopBgmInterval();
+
             let vol = this.bgmEl.volume;
             this.bgmFadeInterval = setInterval(() => {
                 if (vol > 0.05) {
@@ -585,28 +765,22 @@ const AudioSys = {
         if (this.bgmEl) this.bgmEl.pause();
     },
 
-    // ★重要修正：!!this.bgmEl.paused を !this.bgmEl.paused に修正
-    // さらに、SE用コンテキストも一時停止させる
     pauseBGM() {
-        // BGMの一時停止
         if (this.bgmEl && !this.bgmEl.paused) {
             this.bgmEl.pause();
         }
-        // ★追加：SE用コンテキストの一時停止（これでワープ音も止まる）
         if (this.ctx && this.ctx.state === 'running') {
-            this.ctx.suspend().catch(e => { });
+            this.ctx.suspend().catch(() => { });
         }
     },
 
-    // ★重要修正：再開時にSE用コンテキストも再開させる
     resumeBGM() {
-        // BGMの再開
         if (this.bgmEl && this.bgmEl.paused && this.currentSrc != null && this.bgmEl.src) {
+            this.bgmEl.volume = this.getBgmVolume();
             this.bgmEl.play().catch(() => { });
         }
-        // ★追加：SE用コンテキストの再開
         if (this.ctx && this.ctx.state === 'suspended') {
-            this.ctx.resume().catch(e => { });
+            this.ctx.resume().catch(() => { });
         }
     }
 };

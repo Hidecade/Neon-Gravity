@@ -3,18 +3,57 @@
 // ==========================================
 
 function drawPlayerBullets() {
-    ctx.fillStyle = '#0f8';
-    ctx.beginPath(); // ループの前にパスを開始
+    ctx.save();
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
     bullets.forEach(b => {
         if (!isOnScreen(b, 50)) return;
 
-        // 各弾丸の円形パスを繋げていく
-        ctx.moveTo(b.x + 2, b.y);
-        ctx.arc(b.x, b.y, 2, 0, Math.PI * 2);
+        // 弾の進行方向から短いレーザー線を作る
+        const vx = b.vx ?? 0;
+        const vy = b.vy ?? -8;
+
+        const speed = Math.hypot(vx, vy) || 1;
+        const nx = vx / speed;
+        const ny = vy / speed;
+
+        // 線の長さ
+        const len = 6;
+
+        // 先端が現在位置、後端が少し後ろ
+        const x1 = b.x;
+        const y1 = b.y;
+        const x2 = b.x - nx * len;
+        const y2 = b.y - ny * len;
+
+        // 外側グロー
+        ctx.strokeStyle = 'rgba(0,255,180,0.22)';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        // 中間光
+        ctx.strokeStyle = 'rgba(0,255,180,0.55)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        // 芯
+        ctx.strokeStyle = '#cffff5';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
     });
 
-    ctx.fill(); // 最後に一括で塗りつぶす
+    ctx.restore();
 }
 
 function drawLasers() {
