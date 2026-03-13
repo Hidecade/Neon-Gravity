@@ -549,7 +549,7 @@ canvas {
 /* 横向き（ランドスケープ）時の文字サイズ調整 */
 @media (orientation: landscape) {
     #story-typing-msg {
-        font-size: 2.5vh !important;
+        font-size: 2.0vh !important;
         margin-bottom: 60px;
     }
 
