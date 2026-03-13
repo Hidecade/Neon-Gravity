@@ -637,7 +637,7 @@ function setPaused(paused) {
             if (typeof AudioSys !== 'undefined') AudioSys.pauseBGM();
         }
     } else {
-        if (typeof AudioSys !== 'undefined') AudioSys.resumeBGM();
+        if (typeof AudioSys !== 'undefined') AudioSys.resumeBGM(false);
     }
 }
 

@@ -107,16 +107,16 @@ const handlePauseClick = (e) => {
 /**
  * ポーズ解除・ゲーム再開時の処理
  */
-const resumeAction = (e) => {
+const resumeAction = async (e) => {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     canvas.focus();
     setTimeout(() => canvas.focus(), 100);
 
-    // iOS等のためにユーザアクションを契機にAudioを明示的再開
     if (typeof AudioSys !== 'undefined') {
-        AudioSys.resume();
-        AudioSys.resumeBGM();
+        await AudioSys.resume(true);
+        await AudioSys.resumeBGM(true);
     }
+
     gameState = 'PLAYING';
     ui.pauseOverlay.style.display = 'none';
 };
@@ -420,7 +420,9 @@ function initInputHandlers() {
         }
     });
     window.addEventListener('focus', () => {
-        if (gameState !== 'PAUSED' && typeof AudioSys !== 'undefined') AudioSys.resumeBGM();
+        if (gameState !== 'PAUSED' && typeof AudioSys !== 'undefined') {
+            AudioSys.resumeBGM(false);
+        }
     });
 
     // -----------------------------------------------------
