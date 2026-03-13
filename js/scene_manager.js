@@ -331,7 +331,7 @@ function checkStageClear() {
         stageClearTimer = 0;
 
         // クリア演出中は操作UIを隠す
-        if (ui.controls) ui.controls.style.display = 'none';
+        //if (ui.controls) ui.controls.style.display = 'none';
         if (ui.pauseBtn) ui.pauseBtn.style.display = 'none';
 
         // --- 演出分岐 ---
@@ -1668,4 +1668,5 @@ function updateTraining() {
     if (player.satellites.length < 12) {
         player.satellites.push({ x: player.x, y: player.y, angle: Math.random() * Math.PI * 2 });
     }
+
 }
