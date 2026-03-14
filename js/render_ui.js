@@ -383,9 +383,14 @@ function showGameMessage({
     kickerEl.textContent = kicker || "";
 
     // 状態リセット
-    overlay.classList.remove("show", "warning", "gold", "compact", "epic-clear");
+    overlay.classList.remove("show", "warning", "gold", "compact", "epic-clear", "story-fade");
     overlay.style.removeProperty("--msg-main-color");
     overlay.style.removeProperty("--msg-glow-color");
+    overlay.style.removeProperty("--msg-sub-color");
+
+    // 直接指定していた色も戻す
+    kickerEl.style.color = "";
+    subEl.style.color = "";
 
     if (type) overlay.classList.add(type);
     if (compact) overlay.classList.add("compact");
@@ -393,9 +398,22 @@ function showGameMessage({
 
     if (textColor) {
         overlay.style.setProperty("--msg-main-color", textColor);
+
+        // sub / kicker は textColor をかなり明るくした白寄り色
+        const softWhite = (typeof lightenHex === "function")
+            ? lightenHex(textColor, 85)
+            : "#f4f8ff";
+
+        overlay.style.setProperty("--msg-sub-color", softWhite);
     }
+
     if (glowColor) {
         overlay.style.setProperty("--msg-glow-color", glowColor);
+    }
+
+    // textColor未指定時の既定色
+    if (!textColor) {
+        overlay.style.setProperty("--msg-sub-color", "#eef6ff");
     }
 
     // 表示を戻してから次フレームで show を付ける

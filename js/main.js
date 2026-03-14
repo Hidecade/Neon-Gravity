@@ -315,8 +315,11 @@ function resize() {
  * メインフレームループ
  */
 function loop() {
+
     requestAnimationFrame(loop);
+
     if (typeof handleGamepadInput === 'function') handleGamepadInput();
+
     if (gameState === 'PAUSED') return;
 
     ctx.fillStyle = '#050505';
@@ -338,7 +341,7 @@ function loop() {
         if (typeof updateDying === 'function') updateDying();
         draw();
 
-    } else if (gameState === 'TITLE') {
+    } else if (gameState === 'TITLE' || gameState === 'OST') {
         introBgSpeed = 2;
         introBgScroll += introBgSpeed * gameSpeed;
 

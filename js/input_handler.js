@@ -212,7 +212,7 @@ function handleGamepadInput() {
     const isIntroPlayable = (gameState === 'STAGE_INTRO' && typeof introPhase !== 'undefined' && introPhase === 3);
     if (gameState !== 'PLAYING' && !isIntroPlayable) {
         // スクロール可能な画面の処理
-        if (['STORY', 'RANKING', 'OST'].includes(gameState)) {
+        if (['STORY', 'RANKING'].includes(gameState)) {
             let targetId = gameState === 'STORY' ? 'story-scroll-container' : (gameState === 'RANKING' ? 'ranking-scroll-container' : 'ost-scroll-container');
             const container = document.getElementById(targetId);
             if (container && Math.abs(moveY) > 0.2) container.scrollTop += moveY * 15;

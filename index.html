@@ -446,31 +446,43 @@
 
     <div id="pause-overlay">
         <h1 style="color:#fff; font-size:40px; text-shadow:0 0 10px #fff; margin-bottom:30px;">PAUSED</h1>
-        <div style="display:flex; flex-direction:column; align-items:center;">
+        <div id="menu-buttons-container">
             <div class="menu-btn" id="btn-resume">RESUME</div>
             <div class="menu-btn" id="btn-quit">QUIT TO TITLE</div>
         </div>
     </div>
 
     <div id="ost-ui">
-        <h2 style="color:#0ff; text-shadow:0 0 20px #0ff; margin-bottom: 5px;">SOUNDTRACK</h2>
+        <div id="ost-shell">
+            <div id="ost-kicker">TACTICAL AUDIO ARCHIVE</div>
 
-        <div id="ost-scroll-container">
-            <div id="track-list"></div>
+            <h2 id="ost-title">SOUNDTRACK</h2>
+
+            <div id="ost-glow-ring"></div>
+            <div id="ost-scanline"></div>
         </div>
 
-        <div id="ost-controls" style="display: none; width: 90%; max-width: 500px; margin-top: 10px; flex-direction: column; align-items: center;">
-            <div id="ost-now-playing" style="color: #0ff; font-size: 14px; margin-bottom: 8px;">SELECT A TRACK</div>
-            <div style="display: flex; width: 100%; align-items: center; gap: 10px;">
-                <span id="ost-time-current" style="color: #aaa; font-size: 12px; width: 40px; text-align: right;">0:00</span>
-                <div id="ost-progress-bar" style="flex: 1; height: 10px; background: rgba(0,255,255,0.1); border: 1px solid #0ff; border-radius: 5px; cursor: pointer; position: relative;">
-                    <div id="ost-progress-fill" style="width: 0%; height: 100%; background: rgba(0,255,255,0.8); border-radius: 5px; pointer-events: none; box-shadow: 0 0 8px #0ff;"></div>
+        <div id="ost-panel">
+            <div id="ost-scroll-container">
+                <div id="track-list"></div>
+            </div>
+
+            <div id="ost-controls">
+                <div id="ost-now-playing">SELECT A TRACK</div>
+
+                <div id="ost-progress-row">
+                    <span id="ost-time-current">0:00</span>
+
+                    <div id="ost-progress-bar">
+                        <div id="ost-progress-fill"></div>
+                    </div>
+
+                    <span id="ost-time-total">0:00</span>
                 </div>
-                <span id="ost-time-total" style="color: #aaa; font-size: 12px; width: 40px;">0:00</span>
             </div>
         </div>
 
-        <div class="menu-btn" id="btn-back" style="margin-top:20px;">BACK</div>
+        <div class="menu-btn" id="btn-back">BACK</div>
     </div>
 
     <div id="controls">
