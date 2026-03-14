@@ -175,7 +175,7 @@
     }
 
     #menu-title .title-main {
-        font-size: clamp(24px, 4.2vw, 52px);
+        font-size: clamp(24px, 4.2vw, 30px);
         letter-spacing: 0.12em;
         text-indent: 0.12em;
     }

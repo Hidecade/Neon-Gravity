@@ -300,7 +300,7 @@
     }
 
     #ost-title {
-        font-size: clamp(24px, 8vw, 38px);
+        font-size: clamp(24px, 8vw, 30px);
         letter-spacing: 0.10em;
         text-indent: 0.10em;
     }
