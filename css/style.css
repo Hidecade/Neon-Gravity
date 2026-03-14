@@ -1618,6 +1618,65 @@ canvas {
     }
 }
 
+/* ---------- OST 横画面・高さが低い端末対策 ---------- */
+@media (orientation: landscape) and (max-height: 560px) {
+
+    #ost-shell {
+        margin-bottom: 10px;
+        padding: 6px 14px 6px;
+        min-width: min(86vw, 680px);
+    }
+
+    #ost-kicker {
+        margin-bottom: 6px;
+        font-size: clamp(9px, 0.9vw, 12px);
+        letter-spacing: 0.24em;
+    }
+
+    #ost-title {
+        font-size: clamp(20px, 3vw, 38px);
+        letter-spacing: 0.12em;
+        text-indent: 0.12em;
+    }
+
+    #ost-glow-ring {
+        width: min(46vw, 360px);
+        height: min(46vw, 360px);
+    }
+
+    #ost-panel {
+        width: min(66vw, 480px);
+        padding: 10px 10px 10px;
+        border-radius: 16px;
+    }
+
+    #ost-scroll-container {
+        max-height: 40vh;
+    }
+
+    .track-item {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+
+    #ost-controls {
+        margin-top: 8px;
+    }
+
+    #ost-now-playing {
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+
+    #ost-progress-bar {
+        height: 8px;
+    }
+
+    #btn-back {
+        margin-top: 10px;
+    }
+}
+
 
 /* ---------- 9.7 HOW TO PLAY 画面 ---------- */
 #howto-overlay {
