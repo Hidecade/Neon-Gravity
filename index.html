@@ -12,6 +12,7 @@
     <title>NEON GRAVITY</title>
 
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/overlay.css">
 <link rel="stylesheet" href="css/title.css">
 <link rel="stylesheet" href="css/ranking.css">
 <link rel="stylesheet" href="css/ost.css">
@@ -38,12 +39,10 @@
 
         <div class="hud-row">
             <div id="info-box" style="display:flex; flex-direction:column; gap:8px;">
-
                 <div>
                     <span class="hud-label">SCORE</span>
                     <div id="score-display">000000</div>
                 </div>
-
                 <div><span class="hud-label">STAGE</span><span id="stage-num">1</span></div>
                 <div>
                     <span class="hud-label">WEAPON</span>
@@ -66,12 +65,10 @@
                 <div class="bar-frame">
                     <div id="shield-bar"></div>
                 </div>
-
                 <span class="bar-label enemy">ENEMY SWARM</span>
                 <div class="bar-frame enemy">
                     <div id="enemy-bar"></div>
                 </div>
-
                 <div id="boss-ui-container">
                     <span class="bar-label" id="boss-name-label">BOSS: NAME</span>
                     <div id="boss-bar-frame" class="bar-frame boss">
@@ -105,17 +102,17 @@
         </div>
     </div>
 
-    <div id="title-overlay">
-        <div id="title-shell">
-            <div id="title-kicker">TACTICAL GRAVITY STRIKE SYSTEM</div>
+    <div id="title-overlay" class="overlay-bg">
+        <div class="overlay-header">
+            <div class="overlay-glow-ring"></div>
+            <div class="overlay-scanline"></div>
 
-            <h1 id="menu-title">
-                <span class="title-main">NEON GRAVITY</span>
-                <span class="title-sub">ORBITAL</span>
+            <div class="overlay-kicker">TACTICAL GRAVITY STRIKE SYSTEM</div>
+
+            <h1 class="overlay-title">
+                <span class="overlay-title-main">NEON GRAVITY</span>
+                <span class="overlay-title-sub">ORBITAL</span>
             </h1>
-
-            <div id="title-glow-ring"></div>
-            <div id="title-scanline"></div>
         </div>
 
         <div id="menu-buttons-container">
@@ -128,7 +125,7 @@
         </div>
 
         <div id="menu-footer">
-            PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
+            PC: [X] Bomb | MOBILE: Small Button to Bomb<br>
             <span id="version-num"></span> | &copy; 2026 Hidecade
         </div>
     </div>
@@ -426,12 +423,17 @@
         <div class="menu-btn" id="btn-story-back">BACK</div>
     </div>
 
-    <div id="ranking-overlay">
-        <div id="ranking-shell">
-            <div id="ranking-glow-ring"></div>
-            <div id="ranking-scanline"></div>
-            <div id="ranking-kicker">GALACTIC RECORD ARCHIVE</div>
-            <h1 class="ranking-title">TOP COMMANDERS</h1>
+    <div id="ranking-overlay" class="overlay-bg">
+        <div class="overlay-header">
+            <div class="overlay-glow-ring"></div>
+            <div class="overlay-scanline"></div>
+
+            <div class="overlay-kicker">GALACTIC RECORD ARCHIVE</div>
+
+            <h1 class="overlay-title">
+                <span class="overlay-title-main">TOP COMMANDERS</span>
+                <span class="overlay-title-sub">WORLD RANKING</span>
+            </h1>
         </div>
 
         <div id="ranking-panel">
@@ -463,14 +465,17 @@
         </div>
     </div>
 
-    <div id="ost-ui">
-        <div id="ost-shell">
-            <div id="ost-kicker">TACTICAL AUDIO ARCHIVE</div>
+    <div id="ost-ui" class="overlay-bg">
+        <div class="overlay-header">
+            <div class="overlay-glow-ring"></div>
+            <div class="overlay-scanline"></div>
 
-            <h2 id="ost-title">SOUNDTRACK</h2>
+            <div class="overlay-kicker">TACTICAL SOUND ARCHIVE</div>
 
-            <div id="ost-glow-ring"></div>
-            <div id="ost-scanline"></div>
+            <h1 class="overlay-title">
+                <span class="overlay-title-main">ORIGINAL SOUNDTRACK</span>
+                <span class="overlay-title-sub">NEON GRAVITY</span>
+            </h1>
         </div>
 
         <div id="ost-panel">

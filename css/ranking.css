@@ -2,141 +2,13 @@
 
 #ranking-overlay {
     display: none;
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    height: 100%;
     z-index: 1000;
-
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-
     padding: 18px;
     box-sizing: border-box;
-    overflow: hidden;
-    pointer-events: auto;
-
-    background:
-        radial-gradient(circle at 50% 30%,
-            rgba(0, 220, 255, 0.10) 0%,
-            rgba(0, 120, 255, 0.06) 18%,
-            rgba(0, 0, 0, 0.22) 42%,
-            rgba(0, 0, 0, 0.72) 72%,
-            rgba(0, 0, 0, 0.92) 100%);
 }
 
-#ranking-overlay::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-        linear-gradient(to bottom,
-            rgba(255,255,255,0.03) 0%,
-            rgba(255,255,255,0.00) 20%,
-            rgba(0,255,255,0.04) 55%,
-            rgba(0,0,0,0.14) 100%);
-    mix-blend-mode: screen;
-}
-
-/* shell */
-
-#ranking-shell {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 18px;
-    padding: 12px 24px 10px;
-    min-width: min(88vw, 760px);
-    z-index: 1;
-}
-
-#ranking-kicker {
-    margin-bottom: 10px;
-    color: rgba(180, 255, 255, 0.72);
-    font-family: 'Orbitron', monospace;
-    font-size: clamp(10px, 1vw, 14px);
-    letter-spacing: 0.36em;
-    text-transform: uppercase;
-    text-shadow: 0 0 10px rgba(0,255,255,0.22);
-    opacity: 0.9;
-}
-
-.ranking-title {
-    position: relative;
-    margin: 0;
-    text-align: center;
-    line-height: 1;
-    z-index: 2;
-
-    color: #b8ffff;
-    font-family: 'Orbitron', monospace;
-    font-size: clamp(28px, 4.2vw, 56px);
-    font-weight: 900;
-    letter-spacing: 0.16em;
-    text-indent: 0.16em;
-    text-shadow:
-        0 0 8px rgba(180,255,255,0.65),
-        0 0 18px rgba(0,255,255,0.50),
-        0 0 42px rgba(0,170,255,0.42),
-        0 0 80px rgba(0,90,255,0.22);
-}
-
-#ranking-glow-ring {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: min(62vw, 560px);
-    height: min(62vw, 560px);
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    border: 1px solid rgba(0, 255, 255, 0.14);
-    box-shadow:
-        0 0 24px rgba(0,255,255,0.10),
-        inset 0 0 28px rgba(0,160,255,0.08);
-    z-index: 0;
-    pointer-events: none;
-}
-
-#ranking-glow-ring::before,
-#ranking-glow-ring::after {
-    content: "";
-    position: absolute;
-    inset: 18%;
-    border-radius: 50%;
-    border: 1px solid rgba(120, 255, 255, 0.10);
-}
-
-#ranking-glow-ring::after {
-    inset: 32%;
-    border-color: rgba(120, 180, 255, 0.10);
-}
-
-#ranking-scanline {
-    position: absolute;
-    top: 52%;
-    left: 50%;
-    width: min(82vw, 760px);
-    height: 2px;
-    transform: translate(-50%, -50%);
-    background: linear-gradient(
-        to right,
-        rgba(0,0,0,0),
-        rgba(120,255,255,0.0),
-        rgba(120,255,255,0.65),
-        rgba(120,255,255,0.0),
-        rgba(0,0,0,0)
-    );
-    box-shadow: 0 0 16px rgba(0,255,255,0.24);
-    opacity: 0.8;
-    pointer-events: none;
-    z-index: 1;
-}
 
 /* panel */
-
 #ranking-panel {
     position: relative;
     z-index: 2;
@@ -308,10 +180,6 @@
         margin-bottom: 14px;
     }
 
-    .ranking-title {
-        font-size: clamp(28px, 3.4vw, 54px);
-    }
-
     #ranking-panel {
         width: min(70vw, 560px);
     }
@@ -327,16 +195,6 @@
     #ranking-shell {
         min-width: 92vw;
         padding: 10px 10px 8px;
-    }
-
-    #ranking-kicker {
-        letter-spacing: 0.22em;
-    }
-
-    .ranking-title {
-        font-size: clamp(24px, 8vw, 30px);
-        letter-spacing: 0.10em;
-        text-indent: 0.10em;
     }
 
     #ranking-panel {
@@ -362,23 +220,6 @@
         margin-bottom: 10px;
         padding: 6px 14px 6px;
         min-width: min(86vw, 680px);
-    }
-
-    #ranking-kicker {
-        margin-bottom: 6px;
-        font-size: clamp(9px, 0.9vw, 12px);
-        letter-spacing: 0.24em;
-    }
-
-    .ranking-title {
-        font-size: clamp(20px, 3vw, 30px);
-        letter-spacing: 0.12em;
-        text-indent: 0.12em;
-    }
-
-    #ranking-glow-ring {
-        width: min(46vw, 360px);
-        height: min(46vw, 360px);
     }
 
     #ranking-panel {

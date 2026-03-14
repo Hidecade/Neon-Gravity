@@ -891,9 +891,6 @@ canvas {
 /* =========================================================
    9. 各種オーバーレイ画面
    ========================================================= */
-
-
-
 /* ---------- 9.2 ポーズ画面 ---------- */
 #pause-overlay {
     position: absolute;
@@ -915,7 +912,6 @@ canvas {
     font-size: calc(40px * var(--ui-scale)) !important;
     margin-bottom: calc(30px * var(--ui-scale)) !important;
 }
-
 
 /* ---------- 9.4 名前入力画面 ---------- */
 #name-input-area {
@@ -1017,10 +1013,6 @@ canvas {
 #player-name-input::placeholder {
     color: #477;
 }
-
-
-
-
 
 /* ---------- 9.7 HOW TO PLAY 画面 ---------- */
 #howto-overlay {
@@ -1418,16 +1410,6 @@ canvas {
         letter-spacing: 0.24em;
     }
 
-    #menu-title .title-main {
-        letter-spacing: 0.12em;
-        text-indent: 0.12em;
-    }
-
-    #menu-title .title-sub {
-        letter-spacing: 0.42em;
-        text-indent: 0.42em;
-    }
-
     .menu-btn {
         min-width: 78vw;
     }
@@ -1517,15 +1499,6 @@ canvas {
     #title-shell {
         margin-bottom: 20px;
         padding-top: 12px;
-    }
-
-    #menu-title .title-main {
-        font-size: clamp(30px, 5.2vw, 78px);
-    }
-
-    #menu-title .title-sub {
-        margin-top: 8px;
-        font-size: clamp(12px, 1.3vw, 20px);
     }
 
     #menu-buttons-container {

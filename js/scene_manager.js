@@ -617,11 +617,6 @@ function returnToTitle() {
         titleKicker.style.display = '';
     }
 
-    const titleGlowRing = document.getElementById('title-glow-ring');
-    if (titleGlowRing) {
-        titleGlowRing.style.display = '';
-    }
-
     const titleScanline = document.getElementById('title-scanline');
     if (titleScanline) {
         titleScanline.style.display = '';

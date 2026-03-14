@@ -879,10 +879,26 @@ function updateFighterJetAI(eb) {
 
 
 function applyWorldBoundary(e) {
-    if (e.x < WALL_MARGIN || e.x > worldSize - WALL_MARGIN) e.vx *= -1.2;
-    if (e.y < WALL_MARGIN || e.y > worldSize - WALL_MARGIN) e.vy *= -1.2;
-    e.x = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, e.x));
-    e.y = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, e.y));
+
+    if (e.x < WALL_MARGIN) {
+        e.x = WALL_MARGIN;
+        e.vx = Math.abs(e.vx);
+    }
+
+    if (e.x > worldSize - WALL_MARGIN) {
+        e.x = worldSize - WALL_MARGIN;
+        e.vx = -Math.abs(e.vx);
+    }
+
+    if (e.y < WALL_MARGIN) {
+        e.y = WALL_MARGIN;
+        e.vy = Math.abs(e.vy);
+    }
+
+    if (e.y > worldSize - WALL_MARGIN) {
+        e.y = worldSize - WALL_MARGIN;
+        e.vy = -Math.abs(e.vy);
+    }
 }
 
 
