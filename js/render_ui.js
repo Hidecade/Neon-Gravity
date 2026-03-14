@@ -127,19 +127,19 @@ function drawMiniMap() {
             miniMapCtx.arc(e.x * scale, e.y * scale, 3.5, 0, Math.PI * 2);
             miniMapCtx.fill();
             // ボスのグロー効果
-            miniMapCtx.shadowBlur = 5;
+            //miniMapCtx.shadowBlur = 5;
             miniMapCtx.shadowColor = '#f00';
         } else {
             // 雑魚敵：小さな紫点
             miniMapCtx.fillStyle = e.color || '#f0f';
-            miniMapCtx.shadowBlur = 0;
+            //miniMapCtx.shadowBlur = 0;
             miniMapCtx.fillRect(e.x * scale - 1, e.y * scale - 1, 2, 2);
         }
     });
 
     // 4. 自機の位置（緑の点 + 軽い光）
     miniMapCtx.fillStyle = '#0f0';
-    miniMapCtx.shadowBlur = 8;
+    //miniMapCtx.shadowBlur = 8;
     miniMapCtx.shadowColor = '#0f0';
     miniMapCtx.beginPath();
     miniMapCtx.arc(player.x * scale, player.y * scale, 2.5, 0, Math.PI * 2);
@@ -341,4 +341,115 @@ function drawDebugWorldOverlay() {
     }
 
     ctx.restore();
+}
+
+
+let gameMessageHideTimer = null;
+let gameMessageFadeHandler = null;
+
+function showGameMessage({
+    main = "",
+    sub = "",
+    kicker = "",
+    type = "",
+    compact = false,
+    duration = 0,
+    textColor = "",
+    glowColor = "",
+    extraClass = ""
+} = {}) {
+    const overlay = document.getElementById("game-message-overlay");
+    const mainEl = document.getElementById("game-message-main");
+    const subEl = document.getElementById("game-message-sub");
+    const kickerEl = document.getElementById("game-message-kicker");
+
+    if (!overlay || !mainEl || !subEl || !kickerEl) return;
+
+    // 以前の自動非表示タイマー解除
+    if (gameMessageHideTimer) {
+        clearTimeout(gameMessageHideTimer);
+        gameMessageHideTimer = null;
+    }
+
+    // 前回の transitionend ハンドラ解除
+    if (gameMessageFadeHandler) {
+        overlay.removeEventListener("transitionend", gameMessageFadeHandler);
+        gameMessageFadeHandler = null;
+    }
+
+    // 内容更新
+    mainEl.innerHTML = main;
+    subEl.textContent = sub || "";
+    kickerEl.textContent = kicker || "";
+
+    // 状態リセット
+    overlay.classList.remove("show", "warning", "gold", "compact", "epic-clear");
+    overlay.style.removeProperty("--msg-main-color");
+    overlay.style.removeProperty("--msg-glow-color");
+
+    if (type) overlay.classList.add(type);
+    if (compact) overlay.classList.add("compact");
+    if (extraClass) overlay.classList.add(extraClass);
+
+    if (textColor) {
+        overlay.style.setProperty("--msg-main-color", textColor);
+    }
+    if (glowColor) {
+        overlay.style.setProperty("--msg-glow-color", glowColor);
+    }
+
+    // 表示を戻してから次フレームで show を付ける
+    overlay.style.display = "flex";
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            overlay.classList.add("show");
+        });
+    });
+
+    if (duration > 0) {
+        gameMessageHideTimer = setTimeout(() => {
+            hideGameMessage();
+        }, duration);
+    }
+}
+
+function hideGameMessage(immediate = false) {
+    const overlay = document.getElementById("game-message-overlay");
+    if (!overlay) return;
+
+    if (gameMessageHideTimer) {
+        clearTimeout(gameMessageHideTimer);
+        gameMessageHideTimer = null;
+    }
+
+    if (gameMessageFadeHandler) {
+        overlay.removeEventListener("transitionend", gameMessageFadeHandler);
+        gameMessageFadeHandler = null;
+    }
+
+    // 即消し
+    if (immediate) {
+        overlay.classList.remove("show", "warning", "gold", "compact", "epic-clear", "story-fade");
+        overlay.style.display = "none";
+        return;
+    }
+
+    // すでに非表示なら何もしない
+    if (!overlay.classList.contains("show")) {
+        overlay.style.display = "none";
+        return;
+    }
+
+    gameMessageFadeHandler = (e) => {
+        if (e.target !== overlay) return;
+        overlay.style.display = "none";
+        overlay.removeEventListener("transitionend", gameMessageFadeHandler);
+        gameMessageFadeHandler = null;
+    };
+
+    overlay.addEventListener("transitionend", gameMessageFadeHandler);
+
+    // フェードアウト開始
+    overlay.classList.remove("show");
 }

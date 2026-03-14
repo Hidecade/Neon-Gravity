@@ -15,17 +15,17 @@
  */
 function startGame() {
     // 1. タイトルUIのフェードアウト（クリック防止とフォーカス維持）
-    ui.overlay.style.transition = 'opacity 0.2s';
-    ui.overlay.style.opacity = '0';
-    ui.overlay.style.pointerEvents = 'none';
+    ui.titleOverlay.style.transition = 'opacity 0.2s';
+    ui.titleOverlay.style.opacity = '0';
+    ui.titleOverlay.style.pointerEvents = 'none';
     canvas.focus(); // 即座にキャンバスへフォーカス
 
     setTimeout(() => {
-        ui.overlay.style.display = 'none';
+        ui.titleOverlay.style.display = 'none';
         // 次回表示時のためにスタイルを裏でリセット
-        ui.overlay.style.transition = '';
-        ui.overlay.style.opacity = '1';
-        ui.overlay.style.pointerEvents = 'auto';
+        ui.titleOverlay.style.transition = '';
+        ui.titleOverlay.style.opacity = '1';
+        ui.titleOverlay.style.pointerEvents = 'auto';
     }, 500);
 
     ui.ost.style.display = 'none';
@@ -68,8 +68,7 @@ function startGame() {
     ui.shieldBar.classList.remove('shield-critical');
     ui.shieldBar.style.backgroundColor = '#0ff';
     ui.enemyBar.style.width = "100%";
-    ui.warn.style.display = 'none';
-    ui.msg.style.display = 'none';
+    //hideGameMessage(true); 
     ui.pauseBtn.style.display = 'flex';
 
     gameState = 'PLAYING';
@@ -88,8 +87,7 @@ function startStage() {
         hud.style.display = 'none';
         hud.style.opacity = '0';
     }
-    ui.msg.style.display = 'none';
-    ui.warn.style.display = 'none';
+    //hideGameMessage(true); 
     if (ui.bossContainer) ui.bossContainer.style.display = 'none';
 
     // 2. ゲーム内変数のリセット
@@ -148,17 +146,7 @@ function startStage() {
             skipContainer.style.transition = 'opacity 0.5s';
         }
 
-        // ステージタイトルの多言語対応構築
-        const data = STAGE_TITLES[stage] || { en: "UNKNOWN SECTOR", ja: "未知の宙域" };
-        const lang = (window.navigator.languages && window.navigator.languages[0]) || window.navigator.language;
-        const isJa = lang && lang.startsWith('ja');
-
-        let msgContent = `<span style="font-size: 0.7em; letter-spacing: 4px; opacity: 0.8; display:block; margin-bottom:10px;">- STAGE ${stage} -</span>`;
-        msgContent += `<span style="display:block;">${data.en}</span>`;
-        if (isJa) {
-            msgContent += `<span style="font-size: 0.6em; font-family: sans-serif; letter-spacing: 2px; color: rgba(255,255,255,0.6); display:block; margin-top:10px;">${data.ja}</span>`;
-        }
-
+        
         // BGM制御
         if (typeof AudioSys !== 'undefined') {
             if (stage === 10) AudioSys.playBGM('last');
@@ -169,24 +157,24 @@ function startStage() {
             }
         }
 
-        // ステージテーマカラーの適用
-        ui.msg.innerHTML = msgContent;
+        // ステージタイトルの多言語対応構築
+        const data = STAGE_TITLES[stage] || { en: "UNKNOWN SECTOR", ja: "未知の宙域" };
+        const lang = (window.navigator.languages && window.navigator.languages[0]) || window.navigator.language;
+        const isJa = lang && lang.startsWith('ja');
+
+        // ステージテーマカラー
         const themeHex = STAGE_THEMES[stage] || '#00bbff';
-        const textBodyColor = lightenHex ? lightenHex(themeHex, 70) : '#fff'; // lightenHex未定義対策
+        const textBodyColor = lightenHex ? lightenHex(themeHex, 70) : '#ffffff';
         const glowColor = themeHex;
 
-        ui.msg.style.color = textBodyColor;
-        ui.msg.style.textShadow = `0 0 10px ${glowColor}, 0 0 20px ${glowColor}, 0 0 40px ${glowColor}, 0 0 80px ${glowColor}`;
-        ui.msg.style.display = 'block';
-        ui.msg.style.transition = 'none';
-        ui.msg.style.opacity = '0';
-        ui.msg.style.transform = `scale(${globalUiScale})`;
-
-        // タイトルフェードイン
-        setTimeout(() => {
-            ui.msg.style.transition = "opacity 0.5s ease-out";
-            ui.msg.style.opacity = "1";
-        }, 100);
+        // 表示
+        showGameMessage({
+            kicker: `STAGE ${stage}`,
+            main: data.en,
+            sub: isJa ? data.ja : "",
+            textColor: textBodyColor,
+            glowColor: glowColor
+        });
 
         // ノルマと初期ワームホールの配置
         if (stage === 9 || stage === 10) {
@@ -279,20 +267,20 @@ function resetGame() {
     ui.shieldBar.classList.remove('shield-critical');
     ui.shieldBar.style.backgroundColor = '#0ff';
     ui.enemyBar.style.width = "100%";
-    ui.warn.style.display = 'none';
-    ui.msg.style.display = 'none';
+    //hideGameMessage(true); 
+
     ui.pauseBtn.style.display = 'flex';
     if (ui.bossContainer) ui.bossContainer.style.display = 'none';
 
     // UIオーバーレイのゴースト化消去
-    ui.overlay.style.transition = 'opacity 0.2s';
-    ui.overlay.style.opacity = '0';
-    ui.overlay.style.pointerEvents = 'none';
+    ui.titleOverlay.style.transition = 'opacity 0.2s';
+    ui.titleOverlay.style.opacity = '0';
+    ui.titleOverlay.style.pointerEvents = 'none';
     setTimeout(() => {
-        ui.overlay.style.display = 'none';
-        ui.overlay.style.transition = '';
-        ui.overlay.style.opacity = '1';
-        ui.overlay.style.pointerEvents = 'auto';
+        ui.titleOverlay.style.display = 'none';
+        ui.titleOverlay.style.transition = '';
+        ui.titleOverlay.style.opacity = '1';
+        ui.titleOverlay.style.pointerEvents = 'auto';
     }, 500);
 
     const bgmIndex = Math.floor((stage - 1) / 2) % BGM_FILES.stages.length;
@@ -346,24 +334,18 @@ function checkStageClear() {
                 AudioSys.playBGM('all_clear');
             }
 
-            const clearText = `ALL MISSION CLEAR<br><span id="clear-score-text" style="opacity: 0; display: inline-block; margin-top: 20px; font-size: 0.6em; color: #fff; text-shadow: 0 0 10px #fff, 0 0 20px #0ff; letter-spacing: 4px;">TOTAL SCORE: ${score.toLocaleString()}</span>`;
-            showMessage(clearText, 'gold');
-
-            ui.msg.style.transition = "none";
-            ui.msg.style.opacity = "0";
-            ui.msg.style.transform = `translateY(100px) scale(${globalUiScale})`;
+            showGameMessage({
+                kicker: "FINAL RESULT",
+                main: "ALL MISSION CLEAR",
+                sub: `TOTAL SCORE: ${score.toLocaleString()}`,
+                type: "gold",
+                extraClass: "epic-clear"
+            });
 
             window.isFireworksActive = true;
-            if (typeof triggerRandomFireworkLoop === 'function') triggerRandomFireworkLoop();
-
-            // テキストのせり上がりアニメーション
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    ui.msg.style.transition = "opacity 6s ease-out, transform 6s ease-out";
-                    ui.msg.style.opacity = "1";
-                    ui.msg.style.transform = `translateY(0px) scale(${globalUiScale})`;
-                });
-            });
+            if (typeof triggerRandomFireworkLoop === 'function') {
+                triggerRandomFireworkLoop();
+            }
 
             setTimeout(() => {
                 const scoreSpan = document.getElementById("clear-score-text");
@@ -376,9 +358,19 @@ function checkStageClear() {
         } else {
             // 通常クリア
             gameSpeed = 0.25;
-            if (typeof distortGrid === 'function') distortGrid(worldSize / 2, worldSize / 2, 1000, worldSize);
-            if (typeof AudioSys !== 'undefined') AudioSys.playBGM('clear');
-            showMessage("STAGE " + stage + " CLEAR", 'default');
+
+            if (typeof distortGrid === 'function') {
+                distortGrid(worldSize / 2, worldSize / 2, 1000, worldSize);
+            }
+
+            if (typeof AudioSys !== 'undefined') {
+                AudioSys.playBGM('clear');
+            }
+
+            showGameMessage({
+                main: `STAGE ${stage} CLEAR`,
+                glowColor: STAGE_THEMES[stage] || '#00bbff'
+            });
         }
     }
 }
@@ -418,10 +410,7 @@ async function showGameOver() {
     // 画面上のUIを全消去
     const hud = document.querySelector('.hud-row');
     if (hud) hud.style.display = 'none';
-    ui.endingHud.style.display = 'none';
-    ui.overlay.style.display = 'none';
-    ui.msg.style.display = 'none';
-    ui.warn.style.display = 'none';
+    ui.titleOverlay.style.display = 'none';
     if (ui.bossContainer) ui.bossContainer.style.display = 'none';
     ui.pauseBtn.style.display = 'none';
 
@@ -440,6 +429,8 @@ async function showGameOver() {
         }
 
         ui.nameInputArea.style.display = 'flex';
+
+
         const msgPara = document.querySelector("#name-input-area p");
         const nameInp = document.getElementById("player-name-input");
         msgPara.style.textAlign = "center";
@@ -523,11 +514,12 @@ async function showGameOver() {
  */
 function proceedToNextMenu() {
     ui.nameInputArea.style.display = 'none';
-    ui.overlay.style.display = 'flex';
+    ui.titleOverlay.style.display = 'flex';
 
     let titleHTML = `GAME OVER`;
     let titleColor = '#f00';
 
+    /*
     if (isStageClear) {
         titleHTML = `MISSION COMPLETE<br><span style="font-size:20px;color:#0ff;">SCORE: ${score.toLocaleString()}</span>`;
         titleColor = '#0ff';
@@ -536,6 +528,17 @@ function proceedToNextMenu() {
     ui.titleText.innerHTML = titleHTML;
     ui.titleText.style.color = titleColor;
     ui.titleText.style.textShadow = `0 0 20px ${titleColor}`;
+    */
+
+    if (isStageClear) {
+        showGameMessage({
+            kicker: "MISSION RESULT",
+            main: "MISSION COMPLETE",
+            sub: `SCORE: ${score.toLocaleString()}`,
+            type: "gold"
+        });
+    }
+
 
     ui.btnStart.innerText = 'RETRY';
     ui.btnStart.style.display = 'block';
@@ -547,13 +550,10 @@ function proceedToNextMenu() {
 
     ui.pauseBtn.style.display = 'none';
 
-    const btnHowto = document.getElementById('btn-howto');
-    if (btnHowto) btnHowto.style.display = 'none';
-    const btnRanking = document.getElementById('btn-ranking');
-    if (btnRanking) btnRanking.style.display = 'none';
+    if (ui.btnHowto) ui.btnHowto.style.display = 'none';
+    if (ui.btnRanking) ui.btnRanking.style.display = 'none';
     if (ui.btnOst) ui.btnOst.style.display = 'none';
-    const btnStory = document.getElementById('btn-story');
-    if (btnStory) btnStory.style.display = 'none';
+    if (ui.btnStory) ui.btnStory.style.display = 'none';
 
     if (window.refreshMenuButtons) window.refreshMenuButtons();
 }
@@ -575,53 +575,122 @@ function returnToTitle() {
     introAlpha = 0;
     introBgScroll = 0;
 
+    // タイトル背景を初期状態へ戻す
+    camera.x = worldSize / 2 - width / (2 * cameraScale);
+    camera.y = worldSize / 2 - height / (2 * cameraScale);
+
+    if (typeof initGrid === 'function') initGrid();
+    if (typeof initStars === 'function') initStars();
+    if (typeof initNebulae === 'function') initNebulae('#00bbff');
+
+    // 前フレームの描画状態をクリア
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#050505';
+    ctx.fillRect(0, 0, width, height);
+
+    // UIの表示状態
+    ui.gameoverOverlay.style.display = 'none';
+    ui.titleOverlay.style.display = 'flex';
+
     ui.ost.style.display = 'none';
-    ui.overlay.style.display = 'flex';
+    ui.titleOverlay.style.display = 'flex';
     ui.controls.style.display = 'none';
-    ui.msg.style.display = 'none';
+    hideGameMessage(true); 
 
     const guide = document.getElementById('training-guide');
     if (guide) guide.style.display = 'none';
+
     const hud = document.querySelector('.hud-row');
     if (hud) hud.style.display = 'none';
+
     ui.pauseBtn.style.display = 'none';
 
-    ui.titleText.innerHTML = `NEON GRAVITY<br><span style="font-size:20px;color:#fff;">ORBITAL</span>`;
-    ui.titleText.style.color = '#0ff';
-    ui.titleText.style.textShadow = '0 0 20px #0ff';
-
-    ui.btnStart.innerText = 'START GAME';
-    ui.btnStart.style.display = 'block';
-    ui.btnStart.style.borderColor = '#0ff';
-    ui.btnStart.style.color = '#0ff';
-
-    if (ui.btnOst) ui.btnOst.style.display = 'block';
-    if (ui.btnTitle) ui.btnTitle.style.display = 'none';
-
-    const btnHowto = document.getElementById('btn-howto');
-    if (btnHowto) {
-        btnHowto.style.display = 'block';
-        btnHowto.style.borderColor = '#0ff';
-        btnHowto.style.color = '#0ff';
+    // タイトル周辺の追加要素がある場合に備える
+    const titleShell = document.getElementById('title-shell');
+    if (titleShell) {
+        titleShell.style.display = 'flex';
     }
 
-    const btnStory = document.getElementById('btn-story');
-    if (btnStory) {
-        btnStory.style.display = 'block';
-        btnStory.style.borderColor = '#0ff';
-        btnStory.style.color = '#0ff';
+    const titleKicker = document.getElementById('title-kicker');
+    if (titleKicker) {
+        titleKicker.style.display = '';
     }
 
-    const btnRanking = document.getElementById('btn-ranking');
-    if (btnRanking) {
-        btnRanking.style.display = 'block';
-        btnRanking.style.borderColor = '#0ff';
-        btnRanking.style.color = '#0ff';
-        btnRanking.onclick = () => window.showRanking(null);
+    const titleGlowRing = document.getElementById('title-glow-ring');
+    if (titleGlowRing) {
+        titleGlowRing.style.display = '';
+    }
+
+    const titleScanline = document.getElementById('title-scanline');
+    if (titleScanline) {
+        titleScanline.style.display = '';
+    }
+
+    // ボタンを通常タイトル状態へ戻す
+    if (ui.btnStart) {
+        ui.btnStart.innerText = 'START GAME';
+        ui.btnStart.style.display = 'block';
+        ui.btnStart.style.borderColor = '';
+        ui.btnStart.style.color = '';
+        ui.btnStart.style.background = '';
+        ui.btnStart.style.transform = '';
+    }
+
+    if (ui.btnTitle) {
+        ui.btnTitle.style.display = 'none';
+        ui.btnTitle.style.borderColor = '';
+        ui.btnTitle.style.color = '';
+        ui.btnTitle.style.background = '';
+        ui.btnTitle.style.transform = '';
+    }
+
+    if (ui.btnOst) {
+        ui.btnOst.style.display = 'block';
+        ui.btnOst.style.borderColor = '';
+        ui.btnOst.style.color = '';
+        ui.btnOst.style.background = '';
+        ui.btnOst.style.transform = '';
+    }
+
+    if (ui.btnHowto) {
+        ui.btnHowto.style.display = 'block';
+        ui.btnHowto.style.borderColor = '';
+        ui.btnHowto.style.color = '';
+        ui.btnHowto.style.background = '';
+        ui.btnHowto.style.transform = '';
+    }
+
+    if (ui.btnStory) {
+        ui.btnStory.style.display = 'block';
+        ui.btnStory.style.borderColor = '';
+        ui.btnStory.style.color = '';
+        ui.btnStory.style.background = '';
+        ui.btnStory.style.transform = '';
+    }
+
+    if (ui.btnRanking) {
+        ui.btnRanking.style.display = 'block';
+        ui.btnRanking.style.borderColor = '';
+        ui.btnRanking.style.color = '';
+        ui.btnRanking.style.background = '';
+        ui.btnRanking.style.transform = '';
+        ui.btnRanking.onclick = () => window.showRanking(null);
+    }
+
+    const menuButtons = document.getElementById('menu-buttons-container');
+    if (menuButtons) {
+        menuButtons.style.display = 'flex';
+    }
+
+    const menuFooter = document.getElementById('menu-footer');
+    if (menuFooter) {
+        menuFooter.style.display = 'block';
     }
 
     if (window.refreshMenuButtons) window.refreshMenuButtons();
 }
+
 
 /**
  * ポーズ機能の切り替え
@@ -661,7 +730,7 @@ function requestFullScreen() {
 function openStory() {
     if (typeof resetTitleIdle === 'function') resetTitleIdle();
     gameState = 'STORY';
-    ui.overlay.style.display = 'none';
+    ui.titleOverlay.style.display = 'none';
     const storyOverlay = document.getElementById('story-overlay');
     if (storyOverlay) storyOverlay.style.display = 'flex';
 
@@ -690,7 +759,7 @@ function closeStory() {
 function showHowTo() {
     gameState = 'HOWTO';
     titleIdleTimer = 0;
-    ui.overlay.style.display = 'none';
+    ui.titleOverlay.style.display = 'none';
 
     const howtoUI = document.getElementById('howto-overlay');
     howtoUI.style.display = 'flex';
@@ -713,7 +782,7 @@ function hideHowTo() {
 
     setTimeout(() => {
         howtoUI.style.display = 'none';
-        ui.overlay.style.display = 'flex';
+        ui.titleOverlay.style.display = 'flex';
         gameState = 'TITLE';
         if (window.refreshMenuButtons) window.refreshMenuButtons();
     }, 500);
@@ -796,7 +865,7 @@ function updateIntro() {
         }
         if (introTimer > 180) {
             introPhase = 2; introTimer = 0;
-            ui.msg.style.transition = "opacity 1.0s ease-in"; ui.msg.style.opacity = "0";
+            hideGameMessage();
             const storyText = STAGE_STORY_TEXTS[stage];
             if (storyText) setTimeout(() => { playStoryTyping(storyText); }, 500);
             else isSkippingStory = true;
@@ -1064,6 +1133,7 @@ async function playStoryTyping(text, options = {}) {
 /**
  * ストーリーテキストを外部からスキップする
  */
+
 window.skipStory = function () {
     if (gameState === 'STAGE_INTRO' && introPhase === 1 && introTimer < 60) return;
 
@@ -1072,24 +1142,34 @@ window.skipStory = function () {
     isSkipComplete = false;
 
     const container = document.getElementById('story-typing-container');
-    const msgEl = ui.msg;
     const typingMsg = document.getElementById('story-typing-msg');
 
     const fadeStyle = "opacity 1.0s ease-out";
-    if (container) { container.style.transition = fadeStyle; container.style.opacity = "0"; }
-    if (msgEl) { msgEl.style.transition = fadeStyle; msgEl.style.opacity = "0"; }
-    if (typingMsg) { typingMsg.style.transition = fadeStyle; typingMsg.style.opacity = "0"; }
+    if (container) {
+        container.style.transition = fadeStyle;
+        container.style.opacity = "0";
+    }
+    if (typingMsg) {
+        typingMsg.style.transition = fadeStyle;
+        typingMsg.style.opacity = "0";
+    }
 
     setTimeout(() => {
         isSkipComplete = true;
+
         if (container) {
             container.style.display = 'none';
             container.classList.remove('ending-mode');
+            container.style.transition = '';
+            container.style.opacity = '';
         }
+
         if (typingMsg) {
             typingMsg.style.display = 'none';
             typingMsg.innerHTML = '';
             typingMsg.scrollTop = 0;
+            typingMsg.style.transition = '';
+            typingMsg.style.opacity = '';
         }
 
         if (gameState === 'ENDING_STORY') {
@@ -1102,8 +1182,7 @@ window.skipStory = function () {
  * イントロを強制スキップしてゲームプレイへ移行
  */
 function skipToPlaying() {
-    ui.msg.style.display = 'none';
-    ui.msg.style.opacity = '0';
+    hideGameMessage(); 
     const storyTypingContainer = document.getElementById('story-typing-container');
     if (storyTypingContainer) storyTypingContainer.style.display = 'none';
 
@@ -1123,15 +1202,19 @@ function updateDying() {
     dyingTimer--;
 
     if (dyingTimer === 135) {
-        ui.msg.style.opacity = "0";
+        hideGameMessage(); // フェードアウト
     }
+
     if (dyingTimer === 120) {
-        showMessage("GAME OVER", 'red');
-        ui.msg.style.fontSize = "calc(32px * var(--ui-scale, 1))";
+        showGameMessage({
+            main: "GAME OVER",
+            type: "warning",
+            duration: 0
+        });
     }
 
     if (dyingTimer === 20) {
-        ui.msg.style.opacity = "0";
+        hideGameMessage(); // フェードアウト
     }
 
     if (gameSpeed < 1.0) {
@@ -1151,7 +1234,7 @@ function updateDying() {
 
     if (dyingTimer <= 0) {
         gameSpeed = 1.0;
-        ui.msg.style.display = 'none';
+        hideGameMessage(true); // 即消し
         showGameOver();
     }
 }
@@ -1285,7 +1368,7 @@ function updateWarpProcess() {
         // 1秒のフェードアウト完了後、少し余韻を持たせて（80フレーム目）次へ遷移
         if (player.exitTimer > 80) {
             if (introPhase === 0) {
-                ui.msg.style.display = 'none';
+                hideGameMessage(true);
                 isWarpingOut = false;
                 player.warpTimer = 0;
                 player.warpSoundPlayed = false;
@@ -1477,65 +1560,43 @@ function triggerBossEncounter() {
 // =========================================================
 
 /**
- * 画面中央のメッセージ表示
- */
-function showMessage(textHTML, colorType = 'default') {
-    if (msgHideTimeout) {
-        clearTimeout(msgHideTimeout);
-        msgHideTimeout = null;
-    }
-
-    ui.msg.innerHTML = textHTML;
-    ui.msg.style.display = 'block';
-    ui.msg.style.transition = 'none';
-    ui.msg.style.opacity = '0';
-    ui.msg.style.transform = `scale(${globalUiScale})`;
-
-    const baseSize = (window.innerWidth > window.innerHeight) ? 20 : 28;
-    ui.msg.style.fontSize = `calc(${baseSize}px * var(--ui-scale, 1))`;
-
-    if (colorType === 'red') {
-        ui.msg.style.color = "#f00";
-        ui.msg.style.textShadow = "0 0 15px #f00, 0 0 30px #f00";
-    } else if (colorType === 'gold') {
-        ui.msg.style.color = "#ffd700";
-        ui.msg.style.textShadow = "0 0 20px #ffd700, 0 0 40px #ffaa00";
-    } else {
-        ui.msg.style.color = "#fff";
-        ui.msg.style.textShadow = "0 0 15px #0ff, 0 0 30px #0ff, 0 0 60px #0ff";
-    }
-
-    setTimeout(() => {
-        ui.msg.style.transition = "opacity 0.2s ease-out";
-        ui.msg.style.opacity = "1";
-    }, 50);
-}
-
-/**
  * ボス警告テキストと画面メッセージのフェード処理更新
  */
 function updateMessageAndBossWarning() {
     if (stageMessageTimer > 0) {
         stageMessageTimer--;
+
         if (stageMessageTimer === 0 && !isBossWarning) {
-            ui.msg.style.transition = "opacity 0.3s ease-in";
-            requestAnimationFrame(() => { ui.msg.style.opacity = "0"; });
-            if (msgHideTimeout) clearTimeout(msgHideTimeout);
-            msgHideTimeout = setTimeout(() => {
-                if (stageMessageTimer === 0 && !isBossWarning) ui.msg.style.display = 'none';
-                msgHideTimeout = null;
-            }, 300);
+            hideGameMessage(); // フェードアウト
         }
     }
+
     if (isBossWarning) {
         warningTimer--;
+
         if (warningTimer <= 0) {
             isBossWarning = false;
             gameSpeed = 1.0;
+
+            // ボス警告終了時に警告メッセージも消す
+            hideGameMessage();
+
             if (stage !== 9 && stage !== 10) {
-                wormholes.unshift({ x: nextBossSpawnX, y: nextBossSpawnY, life: 300, maxLife: 300, active: true });
-                if (typeof spawnEnemy === 'function') spawnEnemy(nextBossSpawnX, nextBossSpawnY, 'boss');
-                if (typeof distortGrid === 'function') distortGrid(nextBossSpawnX, nextBossSpawnY, 250, 400);
+                wormholes.unshift({
+                    x: nextBossSpawnX,
+                    y: nextBossSpawnY,
+                    life: 300,
+                    maxLife: 300,
+                    active: true
+                });
+
+                if (typeof spawnEnemy === 'function') {
+                    spawnEnemy(nextBossSpawnX, nextBossSpawnY, 'boss');
+                }
+
+                if (typeof distortGrid === 'function') {
+                    distortGrid(nextBossSpawnX, nextBossSpawnY, 250, 400);
+                }
             }
         }
     }
@@ -1555,16 +1616,36 @@ function handleGlobalStateUpdates() {
 
     bossAngerMinionSpeedMag = 1.0;
     const currentBoss = enemies.find(e => e.type === 'boss' || e.type === 'battleship');
+
+    // ボス発狂警告
     if (currentBoss && currentBoss.aliveTimer > 1800) {
-        // 長時間生存による発狂化
-        bossAngerMinionSpeedMag = Math.min(3.0, 1.0 + (currentBoss.aliveTimer - 1800) * 0.0005);
+        bossAngerMinionSpeedMag = Math.min(
+            3.0,
+            1.0 + (currentBoss.aliveTimer - 1800) * 0.0005
+        );
+        // 点滅
         if (frame % 60 < 30) {
-            ui.warn.innerText = "CRITICAL: ENEMY ACCELERATING";
-            ui.warn.style.display = 'block';
-            ui.warn.style.color = '#f00';
+
+            if (!isBossRageWarningVisible) {
+                showGameMessage({
+                    kicker: "WARNING",
+                    main: "ENEMY ACCELERATING",
+                    type: "warning",
+                    compact: true
+                });
+
+                isBossRageWarningVisible = true;
+            }
+        } else {
+            hideGameMessage();
+            isBossRageWarningVisible = false;
         }
-    } else if (!isBossWarning) {
-        ui.warn.style.display = 'none';
+    }
+    else if (!isBossWarning) {
+        if (isBossRageWarningVisible) {
+            hideGameMessage();
+            isBossRageWarningVisible = false;
+        }
     }
 
     if (stage === 10 && gameState === 'PLAYING') {

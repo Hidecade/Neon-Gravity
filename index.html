@@ -77,20 +77,15 @@
                 </div>
             </div>
         </div>
-        <div id="warning-msg">GRAVITY CRITICAL</div>
-        <div id="stage-msg">STAGE CLEAR</div>
-
+        <div id="game-message-overlay" class="hidden">
+            <div id="game-message-kicker"></div>
+            <div id="game-message-main"></div>
+            <div id="game-message-sub"></div>
+        </div>
 
         <div id="story-typing-container" style="display:none;">
             <div id="story-typing-msg"></div>
             <div id="skip-button" onclick="skipStory()">SKIP STORY</div>
-        </div>
-
-        <div id="ending-msg">
-            <h1 style="color:#fff; font-size:30px; text-shadow:0 0 30px #0ff; margin-bottom:5px;">MISSION COMPLETE</h1>
-            <p style="color:#0ff; font-size:14px; letter-spacing:3px; margin-bottom:15px;">ALL SECTORS LIBERATED</p>
-            <div id="final-score-val" style="color:#fff; font-size:24px; margin-bottom:20px; font-family:'Orbitron';">TOTAL SCORE: 0</div>
-            <div class="menu-btn" id="btn-next-result" style="margin-top:10px;">NEXT</div>
         </div>
     </div>
 
@@ -107,12 +102,20 @@
         </div>
     </div>
 
-    <div id="overlay">
-        <h1 id="menu-title">
-            NEON GRAVITY<br><span>ORBITAL</span>
-        </h1>
+    <div id="title-overlay">
+        <div id="title-shell">
+            <div id="title-kicker">TACTICAL GRAVITY STRIKE SYSTEM</div>
 
-        <div id="menu-buttons-container" style="display:flex; flex-direction:column; align-items:center;">
+            <h1 id="menu-title">
+                <span class="title-main">NEON GRAVITY</span>
+                <span class="title-sub">ORBITAL</span>
+            </h1>
+
+            <div id="title-glow-ring"></div>
+            <div id="title-scanline"></div>
+        </div>
+
+        <div id="menu-buttons-container">
             <div class="menu-btn" id="btn-start">START GAME</div>
             <div class="menu-btn" id="btn-howto">HOW TO PLAY</div>
             <div class="menu-btn" id="btn-ranking">WORLD RANKING</div>
@@ -121,10 +124,31 @@
             <div class="menu-btn" id="btn-title" style="display:none;">TITLE</div>
         </div>
 
-        <div id="menu-footer" style="font-size: 12px; color: #888; margin-top: 20px; text-align: center;">
+        <div id="menu-footer">
             PC: [X] Bomb | MOBILE: Small Button to Bomb<br />
             <span id="version-num"></span> | &copy; 2026 Hidecade
         </div>
+    </div>
+
+    <div id="gameover-overlay" style="display:none;">
+
+        <div id="gameover-shell">
+            <div id="gameover-kicker">MISSION STATUS: FAILED</div>
+
+            <h1 id="gameover-title">
+                <span class="gameover-main">GAME OVER</span>
+                <span class="gameover-sub">COMBAT LINK SEVERED</span>
+            </h1>
+
+            <div id="gameover-glow-ring"></div>
+            <div id="gameover-scanline"></div>
+        </div>
+
+        <div id="gameover-buttons-container">
+            <div class="menu-btn" id="btn-retry">RETRY</div>
+            <div class="menu-btn" id="btn-gameover-title">TITLE</div>
+        </div>
+
     </div>
 
     <div id="howto-overlay">

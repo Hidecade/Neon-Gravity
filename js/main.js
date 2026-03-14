@@ -128,6 +128,7 @@ let stageMessageTimer = 0;           // ステージ開始メッセージ用
 let nextBossSpawnX = 0;              // 出現予定座標X
 let nextBossSpawnY = 0;              // 出現予定座標Y
 let bossAngerMinionSpeedMag = 1.0;   // 怒り状態の敵速度補正
+let isBossRageWarningVisible = false;
 
 let levelItemsDroppedInStage = 0;    // ステージ内でのレベルアイテムドロップ数
 
@@ -141,10 +142,12 @@ const miniMapCanvas = document.getElementById('minimap-canvas');
 const miniMapCtx = miniMapCanvas.getContext('2d');
 
 const ui = {
-    overlay: document.getElementById('overlay'),
+    titleOverlay: document.getElementById('title-overlay'),
+    gameoverOverlay: document.getElementById('gameover-overlay'),
+    titleText: document.querySelector('#title-overlay h1'),
     pauseOverlay: document.getElementById('pause-overlay'),
+
     ost: document.getElementById('ost-ui'),
-    endingHud: document.getElementById('ending-msg'),
     nameInputArea: document.getElementById("name-input-area"),
     score: document.getElementById('score-display'),
     stage: document.getElementById('stage-num'),
@@ -154,8 +157,6 @@ const ui = {
     enemyBar: document.getElementById('enemy-bar'),
     invulnWrapper: document.getElementById('invuln-wrapper'),
     invulnBar: document.getElementById('invuln-bar'),
-    msg: document.getElementById('stage-msg'),
-    warn: document.getElementById('warning-msg'),
     bossContainer: document.getElementById('boss-ui-container'),
     bossNameLabel: document.getElementById('boss-name-label'),
     bossBarFrame: document.getElementById('boss-bar-frame'),
@@ -168,15 +169,17 @@ const ui = {
     stickL: document.getElementById('stick-left'),
     stickR: document.getElementById('stick-right'),
     btnStart: document.getElementById('btn-start'),
-    btnOst: document.getElementById('btn-ost'),
     btnTitle: document.getElementById('btn-title'),
-    titleText: document.querySelector('#overlay h1'),
     btnBackTitle: document.getElementById('btn-back-to-title'),
     btnNextResult: document.getElementById('btn-next-result'),
-    finalScore: document.getElementById('final-score-val'),
     submitBtn: document.getElementById("submit-score-btn"),
     skipScoreBtn: document.getElementById("skip-score-btn"),
-    nameInput: document.getElementById("player-name-input")
+    nameInput: document.getElementById("player-name-input"),
+
+    btnOst: document.getElementById('btn-ost'),
+    btnHowto: document.getElementById('btn-howto'),
+    btnStory: document.getElementById('btn-story'),
+    btnRanking: document.getElementById('btn-ranking'),
 };
 
 let currentMenuButtons = [];
@@ -205,7 +208,7 @@ window.refreshMenuButtons = function (resetIndex = true) {
             if (window.getComputedStyle(btn).display !== 'none') currentMenuButtons.push(btn);
         });
     } else if (gameState === 'TITLE' || gameState === 'GAMEOVER_UI') {
-        document.querySelectorAll('#overlay .menu-btn').forEach(btn => {
+        document.querySelectorAll('#title-overlay .menu-btn').forEach(btn => {
             if (window.getComputedStyle(btn).display !== 'none') currentMenuButtons.push(btn);
         });
     } else if (gameState === 'OST') {
@@ -334,6 +337,18 @@ function loop() {
     } else if (gameState === 'DYING') {
         if (typeof updateDying === 'function') updateDying();
         draw();
+
+    } else if (gameState === 'TITLE') {
+        introBgSpeed = 2;
+        introBgScroll += introBgSpeed * gameSpeed;
+
+        drawTitleBackground();
+
+        if (typeof updateParticlesAndRings === 'function') {
+            updateParticlesAndRings();
+        }
+
+        return;
     } else if (['GAMEOVER_UI', 'ENDING', 'ENDING_STORY'].includes(gameState)) {
         introBgSpeed = 2;
         introBgScroll += introBgSpeed * gameSpeed;
@@ -404,8 +419,7 @@ function update() {
         const waitTime = (stage === MAX_STAGE) ? 900 : 180;
 
         if (stageClearTimer === waitTime) {
-            ui.msg.style.transition = "opacity 2.0s ease-in";
-            ui.msg.style.opacity = "0";
+            hideGameMessage();   // メッセージフェードアウト
 
             isWarpingOut = true;
             player.warpSoundPlayed = false;

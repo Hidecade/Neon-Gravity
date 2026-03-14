@@ -225,11 +225,12 @@ function damage(v) {
         gameState = 'DYING';
         AudioSys.stopSE('warning');
 
-        // ★共通関数を使用（これだけ少し光を弱くする）
-        showMessage("SHIELD LOST", 'red');
-        ui.msg.style.opacity = "0";
-        ui.msg.style.textShadow = "0 0 5px #f00";
-        setTimeout(() => { ui.msg.style.opacity = "1"; }, 10);
+        showGameMessage({
+            main: "SHIELD LOST",
+            type: "warning",
+            compact: true,
+            duration: 1200
+        });
 
         player.invuln = 0;
         player.laserTimer = 0;

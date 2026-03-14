@@ -9,7 +9,8 @@ let ostUpdateInterval = null;
 // OST画面を開く関数（曲リストの生成）
 function openOST() {
     if (typeof AudioSys !== 'undefined') AudioSys.resume();
-    ui.overlay.style.display = 'none';
+    //ui.overlay.style.display = 'none';
+    ui.titleOverlay.style.display = 'none';
 
     gameState = 'OST'; // ★ここで状態をOSTにする
     ui.ost.style.display = 'flex';

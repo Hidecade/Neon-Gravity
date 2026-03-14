@@ -46,25 +46,6 @@ function drawBackground() {
         });
     }
 
-    /*
-    // --- 3. 遠景：巨大な背景グリッド (変更なし) ---
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.03)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    const bigGridSize = 200;
-    const parallaxGrid = 0.2;
-    const offX = (camera.x * parallaxGrid) % bigGridSize;
-    const offY = (camera.y * parallaxGrid) % bigGridSize;
-    for (let x = -offX; x < width; x += bigGridSize) {
-        ctx.moveTo(x, 0); ctx.lineTo(x, height);
-    }
-    for (let y = -offY; y < height; y += bigGridSize) {
-        ctx.moveTo(0, y); ctx.lineTo(width, y);
-    }
-    ctx.stroke();
-
-    */
-
     // ----------------------------------------------------
     // 4. 星の描画 (変更なし)
     // ----------------------------------------------------
@@ -105,8 +86,13 @@ function drawBackground() {
 
 
     // ★ ここに追加：エンディング系ステートなら、グリッド描画を行わずに終了する
-    if (gameState === 'ENDING_STORY' || gameState === 'GAMEOVER_UI' || gameState === 'ENDING') {
-        return;
+    if (
+        gameState === 'ENDING_STORY' ||
+        gameState === 'GAMEOVER_UI' ||
+        gameState === 'ENDING' ||
+        gameState === 'TITLE'
+        ) {
+            return;
     }
 
     // ==========================================
@@ -202,6 +188,18 @@ function drawBackground() {
         ctx.restore();
     }
 }
+
+function drawTitleBackground() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#050505";
+    ctx.fillRect(0, 0, width, height);
+
+    if (typeof drawBackground === "function") {
+        drawBackground();
+    }
+}
+
 
 function drawWorldBounds() {
     const color = STAGE_THEMES[stage] || '#00f0ff';

@@ -26,8 +26,7 @@ canvas {
    ========================================================= */
 #ui {
     position: absolute;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
     pointer-events: none;
@@ -39,7 +38,7 @@ canvas {
 }
 
 .hud-row {
-    display: none; /* 初期状態では非表示 */
+    display: none;
     justify-content: space-between;
     width: 100%;
     max-width: 800px;
@@ -50,8 +49,8 @@ canvas {
     font-size: 24px;
     color: #0ff;
     text-shadow: 0 0 10px #0ff;
-    letter-spacing: 0px;
-    margin-bottom: 0px;
+    letter-spacing: 0;
+    margin-bottom: 0;
 }
 
 .sub-text {
@@ -71,14 +70,15 @@ canvas {
     font-size: 24px;
     color: #fff;
     font-weight: bold;
-    line-height: 1.0;
+    line-height: 1;
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
 /* =========================================================
    3. ゲージ・バーコンポーネント
    ========================================================= */
-#gauge-box, #info-box > div {
+#gauge-box,
+#info-box > div {
     pointer-events: none;
 }
 
@@ -95,11 +95,13 @@ canvas {
     color: #0ff;
 }
 
-    .bar-label.enemy, #boss-name-label {
-        color: #f44;
-    }
+.bar-label.enemy,
+#boss-name-label {
+    color: #f44;
+}
 
-.bar-frame, .laser-bar-frame {
+.bar-frame,
+.laser-bar-frame {
     width: 100%;
     height: 8px;
     border: 1.5px solid rgba(0, 255, 255, 0.5);
@@ -113,7 +115,8 @@ canvas {
     margin-bottom: 0;
 }
 
-.bar-frame.enemy, .bar-frame.boss {
+.bar-frame.enemy,
+.bar-frame.boss {
     border-color: rgba(255, 68, 68, 0.5);
 }
 
@@ -172,15 +175,15 @@ canvas {
     box-sizing: border-box;
 }
 
-    .w-block:last-child {
-        margin-right: 0;
-    }
+.w-block:last-child {
+    margin-right: 0;
+}
 
-    .w-block.active {
-        background: #0f0;
-        border-color: #0f0;
-        box-shadow: 0 0 5px #0f0;
-    }
+.w-block.active {
+    background: #0f0;
+    border-color: #0f0;
+    box-shadow: 0 0 5px #0f0;
+}
 
 #boss-ui-container {
     display: none;
@@ -190,112 +193,301 @@ canvas {
 /* =========================================================
    4. ゲーム中メッセージ
    ========================================================= */
-#warning-msg {
-    display: none;
+#game-message-overlay {
     position: absolute;
-    top: 20%;
-    width: 100%;
+    inset: 0;
+    z-index: 100;
+    pointer-events: none;
+
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
     text-align: center;
-    color: #f00;
-    font-size: calc(24px * var(--ui-scale, 1));
+
+    padding: 20px 24px 24vh;
+    box-sizing: border-box;
+
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+
+    transition:
+        opacity 0.45s ease,
+        visibility 0.45s ease,
+        transform 0.45s ease;
+}
+
+#game-message-overlay.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+#game-message-kicker {
+    margin-bottom: 8px;
+    color: rgba(180, 255, 255, 0.78);
+    font-size: clamp(9px, 1.2vw, 13px);
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    text-shadow: 0 0 8px rgba(0,255,255,0.18);
+
+    opacity: 0;
+    transform: translateY(10px);
+    transition:
+        opacity 0.35s ease 0.05s,
+        transform 0.35s ease 0.05s;
+}
+
+#game-message-main {
+    color: var(--msg-main-color, #fff);
+    font-size: clamp(24px, 5vw, 42px);
+    font-weight: 900;
+    line-height: 1.08;
+    letter-spacing: 0.10em;
+    text-indent: 0.10em;
+    text-shadow:
+        0 0 15px var(--msg-glow-color, #0ff),
+        0 0 30px var(--msg-glow-color, #0ff),
+        0 0 60px var(--msg-glow-color, #0ff);
+    white-space: pre-wrap;
+
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+    transition:
+        opacity 0.42s ease 0.08s,
+        transform 0.42s ease 0.08s;
+}
+
+#game-message-sub {
+    margin-top: 10px;
+    color: #dff;
+    font-size: clamp(11px, 2.1vw, 16px);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-indent: 0.16em;
+    line-height: 1.4;
+    text-shadow:
+        0 0 8px rgba(255,255,255,0.22),
+        0 0 18px rgba(0,255,255,0.16);
+
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+        opacity 0.38s ease 0.16s,
+        transform 0.38s ease 0.16s;
+}
+
+#game-message-overlay.show #game-message-kicker,
+#game-message-overlay.show #game-message-main,
+#game-message-overlay.show #game-message-sub {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+#game-message-overlay.warning #game-message-main {
+    color: #ff4a4a;
+    text-shadow:
+        0 0 12px rgba(255,0,0,0.8),
+        0 0 28px rgba(255,0,0,0.5),
+        0 0 50px rgba(255,80,80,0.28);
     animation: blink 0.2s infinite;
 }
 
-#stage-msg {
-    display: none;
-    position: absolute;
-    top: 30%;
-    width: 100%;
-    text-align: center;
-    color: #fff;
-    font-size: calc(28px * var(--ui-scale, 1));
-    font-weight: 900;
-    text-shadow: 0 0 15px #0ff, 0 0 30px #0ff, 0 0 60px #0ff;
-    letter-spacing: 8px;
-    margin-right: -8px;
-    z-index: 100;
-    pointer-events: none;
-    animation: clear-glow 1.0s ease-in-out infinite;
-    white-space: pre-wrap;
-    transition: opacity 0.2s;
-    line-height: 1.4;
+#game-message-overlay.warning #game-message-kicker,
+#game-message-overlay.warning #game-message-sub {
+    color: rgba(255, 150, 150, 0.85);
 }
+
+#game-message-overlay.gold #game-message-main {
+    color: #ffd700;
+    text-shadow:
+        0 0 12px rgba(255,215,0,0.7),
+        0 0 28px rgba(255,170,0,0.45),
+        0 0 56px rgba(255,170,0,0.25);
+}
+
+#game-message-overlay.compact {
+    justify-content: flex-start;
+    padding-top: 14vh;
+    padding-bottom: 0;
+}
+
+#game-message-overlay.epic-clear #game-message-main,
+#game-message-overlay.epic-clear #game-message-sub,
+#game-message-overlay.epic-clear #game-message-kicker {
+    transition:
+        opacity 6s ease-out,
+        transform 6s ease-out;
+}
+
+#game-message-overlay.epic-clear #game-message-main {
+    color: #ffd700;
+    text-shadow:
+        0 0 12px rgba(255,215,0,0.78),
+        0 0 28px rgba(255,170,0,0.52),
+        0 0 56px rgba(255,170,0,0.30);
+}
+
+#game-message-overlay.epic-clear:not(.show) #game-message-kicker,
+#game-message-overlay.epic-clear:not(.show) #game-message-main,
+#game-message-overlay.epic-clear:not(.show) #game-message-sub {
+    opacity: 0;
+    transform: translateY(80px) scale(0.97);
+}
+
+#game-message-overlay.epic-clear.show #game-message-kicker,
+#game-message-overlay.epic-clear.show #game-message-main,
+#game-message-overlay.epic-clear.show #game-message-sub {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+#game-message-overlay.story-fade {
+    transition:
+        opacity 1s ease,
+        visibility 1s ease,
+        transform 1s ease;
+}
+
+/* =========================================================
+   縦画面
+   - やや小さめ
+   ========================================================= */
+@media (orientation: portrait) {
+    #game-message-overlay {
+        padding: 16px 20px 27vh;
+    }
+
+    #game-message-kicker {
+        font-size: clamp(8px, 2.2vw, 11px);
+        letter-spacing: 0.22em;
+    }
+
+    #game-message-main {
+        font-size: clamp(20px, 7vw, 34px);
+        letter-spacing: 0.08em;
+        text-indent: 0.08em;
+        line-height: 1.1;
+    }
+
+    #game-message-sub {
+        font-size: clamp(10px, 3.2vw, 14px);
+        letter-spacing: 0.12em;
+        text-indent: 0.12em;
+        margin-top: 8px;
+    }
+
+    #game-message-overlay.compact {
+        padding-top: 12vh;
+    }
+}
+
+/* =========================================================
+   横画面
+   - やや大きめ、でも大きすぎない
+   ========================================================= */
+@media (orientation: landscape) {
+    #game-message-overlay {
+        padding: 18px 28px 20vh;
+    }
+
+    #game-message-kicker {
+        font-size: clamp(10px, 0.95vw, 13px);
+    }
+
+    #game-message-main {
+        font-size: clamp(26px, 3.4vw, 48px);
+        letter-spacing: 0.11em;
+        text-indent: 0.11em;
+    }
+
+    #game-message-sub {
+        font-size: clamp(11px, 1.1vw, 16px);
+        letter-spacing: 0.14em;
+        text-indent: 0.14em;
+    }
+
+    #game-message-overlay.compact {
+        padding-top: 11vh;
+    }
+}
+
+/* =========================================================
+   横長かつ低い画面
+   ========================================================= */
+@media (orientation: landscape) and (max-height: 560px) {
+    #game-message-overlay {
+        padding-bottom: 16vh;
+    }
+
+    #game-message-main {
+        font-size: clamp(22px, 3vw, 38px);
+    }
+
+    #game-message-sub {
+        font-size: clamp(10px, 1vw, 14px);
+    }
+}
+
 
 /* =========================================================
    5. ストーリー表示用オーバーレイ
    ========================================================= */
-
-/* 背景を黒くして中央揃えにするコンテナ */
 #story-typing-container {
-    display: none; /* 初期状態は非表示 */
-    position: fixed; /* 画面全体を覆う */
+    display: none;
+    position: fixed;
     inset: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.0);
-
-    z-index: 2000; /* 最前面 */
+    background: rgba(0, 0, 0, 0);
+    z-index: 2000;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    pointer-events: auto; /* クリックを受け付ける（スキップボタン用） */
+    pointer-events: auto;
     box-sizing: border-box;
 }
 
-/* ストーリーテキスト本体 */
 #story-typing-msg {
     position: absolute;
     top: auto;
     left: auto;
     transform: none;
-    margin: 0;
+    margin: 0 0 100px 0;
     width: 80%;
-    max-width: 800px; /* 横に広がりすぎないように制限 */
-
-    text-align: left; /* 長文は左揃えの方が読みやすい */
+    max-width: 800px;
+    text-align: left;
     font-family: 'Courier New', Courier, monospace;
     font-size: calc(16px * var(--ui-scale, 1));
-
     font-weight: bold;
     color: #0f8;
     text-shadow: 0 0 5px #0f8;
-    white-space: pre-wrap; /* 改行を反映 */
+    white-space: pre-wrap;
     line-height: 1.8;
-
-    pointer-events: none; /* テキスト自体はクリック判定なし */
-    margin-bottom: 100px;
+    pointer-events: none;
     overflow-y: visible;
     box-sizing: border-box;
 }
 
-/* =========================================================
-   エンディング専用レイアウト
-   - 本文は上下余白あり
-   - 本文はボタンの上まで
-   - 長文は本文内だけスクロール
-   ========================================================= */
+/* ---------- エンディング専用 ---------- */
 #story-typing-container.ending-mode {
     justify-content: flex-start;
     align-items: center;
-
-    /* 上下余白 */
     padding-top: 60px;
     padding-right: 0;
     padding-bottom: 120px;
     padding-left: 0;
-
     box-sizing: border-box;
     overflow: hidden;
-
-    /* ほんの少し暗幕感 */
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(0, 0, 0, 0.10) 0%,
-            rgba(0, 0, 0, 0.04) 18%,
-            rgba(0, 0, 0, 0.04) 82%,
-            rgba(0, 0, 0, 0.12) 100%
-        );
+    background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.10) 0%,
+        rgba(0, 0, 0, 0.04) 18%,
+        rgba(0, 0, 0, 0.04) 82%,
+        rgba(0, 0, 0, 0.12) 100%
+    );
 }
 
 #story-typing-container.ending-mode #story-typing-msg {
@@ -304,24 +496,18 @@ canvas {
     left: auto;
     transform: none;
     pointer-events: auto;
-
     width: min(82vw, 920px);
     max-width: min(82vw, 920px);
-
-    /* containerの上下paddingを除いた高さ = ボタンの上まで */
     height: calc(100vh - 60px - 120px);
     max-height: calc(100vh - 60px - 120px);
-
     margin: 0;
     padding:
         clamp(16px, 2.2vh, 24px)
         clamp(18px, 2.4vw, 28px)
         clamp(18px, 2.6vh, 28px);
-
     box-sizing: border-box;
     overflow-y: auto;
     overflow-x: hidden;
-
     color: #eafcff;
     text-align: left;
     font-family: 'Courier New', Courier, monospace;
@@ -329,29 +515,22 @@ canvas {
     font-weight: 700;
     line-height: 1.95;
     letter-spacing: 0.03em;
-
     text-shadow:
         0 0 4px rgba(255, 255, 255, 0.35),
         0 0 10px rgba(0, 255, 200, 0.18),
         0 0 22px rgba(0, 180, 255, 0.10);
-
-    margin-bottom: 0;
-
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(8, 18, 24, 0.28) 0%,
-            rgba(8, 18, 24, 0.14) 100%
-        );
+    background: linear-gradient(
+        to bottom,
+        rgba(8, 18, 24, 0.28) 0%,
+        rgba(8, 18, 24, 0.14) 100%
+    );
     border: 1px solid rgba(120, 255, 230, 0.18);
     border-radius: 18px;
     box-shadow:
         inset 0 0 24px rgba(120, 255, 230, 0.05),
         0 0 18px rgba(0, 255, 200, 0.05);
-
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
-
     -webkit-mask-image: linear-gradient(
         to bottom,
         transparent 0%,
@@ -366,12 +545,10 @@ canvas {
         #000 94%,
         transparent 100%
     );
-
     scrollbar-width: thin;
     scrollbar-color: rgba(80, 255, 220, 0.55) rgba(255, 255, 255, 0.06);
 }
 
-/* WebKit系スクロールバー */
 #story-typing-container.ending-mode #story-typing-msg::-webkit-scrollbar {
     width: 10px;
 }
@@ -391,13 +568,12 @@ canvas {
     border: 2px solid rgba(0, 0, 0, 0.12);
 }
 
-/* 行ごとの余白を少し整える */
 #story-typing-container.ending-mode #story-typing-msg > div {
     min-height: 1.6em;
     margin-bottom: 0.38em;
 }
 
-/* スキップ / NEXT ボタン */
+/* ---------- スキップ / NEXT ボタン ---------- */
 #skip-button {
     position: fixed;
     left: 50%;
@@ -405,43 +581,33 @@ canvas {
     transform: translateX(-50%);
     right: auto;
     margin: 0;
-
     min-width: 148px;
     height: 46px;
     padding: 0 22px;
-
     display: inline-flex;
     align-items: center;
     justify-content: center;
-
     color: #dffff8;
     border: 1px solid rgba(120, 255, 230, 0.30);
     cursor: pointer;
-
     font-family: 'Orbitron', monospace;
     font-size: calc(14px * var(--ui-scale, 1));
     font-weight: 700;
     letter-spacing: 2px;
-
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(10, 28, 34, 0.82),
-            rgba(6, 16, 22, 0.92)
-        );
-
+    background: linear-gradient(
+        to bottom,
+        rgba(10, 28, 34, 0.82),
+        rgba(6, 16, 22, 0.92)
+    );
     text-shadow: 0 0 8px rgba(120, 255, 230, 0.35);
     box-shadow:
         0 0 14px rgba(0, 255, 200, 0.16),
         inset 0 0 14px rgba(120, 255, 230, 0.07);
-
     border-radius: 999px;
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-
     pointer-events: auto;
     z-index: 2001;
-
     transition:
         opacity 0.25s ease,
         transform 0.2s ease,
@@ -453,12 +619,11 @@ canvas {
 
 #skip-button:hover {
     transform: translateX(-50%) translateY(-1px);
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(18, 44, 54, 0.92),
-            rgba(8, 24, 32, 0.96)
-        );
+    background: linear-gradient(
+        to bottom,
+        rgba(18, 44, 54, 0.92),
+        rgba(8, 24, 32, 0.96)
+    );
     color: #fff;
     box-shadow:
         0 0 20px rgba(0, 255, 200, 0.24),
@@ -470,123 +635,19 @@ canvas {
     transform: translateX(-50%) translateY(0);
 }
 
-/* カーソル点滅アニメーション */
-.cursor-blink {
-    animation: blink-anim 0.8s infinite;
-    display: inline-block;
-    vertical-align: bottom;
-    color: #fff; /* カーソルは白く目立たせる */
-}
-
-@keyframes blink-anim {
-    0%, 100% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0;
-    }
-}
-
-/* 追加で使いたい場合の上品な点滅 */
-@keyframes ending-button-pulse {
-    0%, 100% {
-        opacity: 0.72;
-        box-shadow:
-            0 0 10px rgba(0, 255, 200, 0.12),
-            inset 0 0 10px rgba(120, 255, 230, 0.05);
-    }
-
-    50% {
-        opacity: 1;
-        box-shadow:
-            0 0 22px rgba(0, 255, 200, 0.28),
-            inset 0 0 14px rgba(120, 255, 230, 0.10);
-    }
-}
-
 #skip-button.ending-next {
     animation: ending-button-pulse 1.4s ease-in-out infinite;
 }
 
-/* モバイル用の調整 */
-@media (max-width: 600px) {
-    #story-typing-msg {
-        width: 90%;
-        font-size: 14px;
-    }
-
-    #story-typing-container.ending-mode {
-        padding-top: 18px;
-        padding-right: 0;
-        padding-bottom: 88px;
-        padding-left: 0;
-    }
-
-    #story-typing-container.ending-mode #story-typing-msg {
-        width: 92vw;
-        max-width: 92vw;
-        height: calc(100vh - 18px - 88px);
-        max-height: calc(100vh - 18px - 88px);
-
-        padding: 14px 14px 16px;
-        font-size: 14px;
-        line-height: 1.78;
-        letter-spacing: 0.02em;
-        border-radius: 14px;
-    }
-
-    #skip-button {
-        bottom: 18px;
-        min-width: 124px;
-        height: 40px;
-        padding: 0 18px;
-        font-size: 13px;
-        letter-spacing: 0.10em;
-    }
-}
-
-/* 横向き（ランドスケープ）時の文字サイズ調整 */
-@media (orientation: landscape) {
-    #story-typing-msg {
-        font-size: 2.0vh !important;
-        margin-bottom: 60px;
-    }
-
-    #story-typing-container.ending-mode #story-typing-msg {
-        margin-bottom: 0;
-    }
-}
-
-/* 横長かつ高さが低い端末向け */
-@media (orientation: landscape) and (max-height: 560px) {
-    #story-typing-container.ending-mode {
-        padding-top: 14px;
-        padding-bottom: 72px;
-    }
-
-    #story-typing-container.ending-mode #story-typing-msg {
-        width: min(88vw, 920px);
-        max-width: min(88vw, 920px);
-        height: calc(100vh - 14px - 72px);
-        max-height: calc(100vh - 14px - 72px);
-
-        font-size: clamp(13px, 2.3vh, 17px);
-        line-height: 1.7;
-        padding-top: 12px;
-        padding-bottom: 12px;
-    }
-
-    #skip-button {
-        bottom: 12px;
-        height: 36px;
-        min-width: 118px;
-        font-size: 12px;
-    }
+.cursor-blink {
+    animation: blink-anim 0.8s infinite;
+    display: inline-block;
+    vertical-align: bottom;
+    color: #fff;
 }
 
 /* =========================================================
-   5. ミニマップ
+   6. ミニマップ
    ========================================================= */
 #minimap-container {
     position: relative;
@@ -610,12 +671,11 @@ canvas {
 }
 
 /* =========================================================
-   6. 操作コントローラー
+   7. 操作コントローラー
    ========================================================= */
 #controls {
     position: absolute;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
     z-index: 50;
@@ -638,23 +698,24 @@ canvas {
     pointer-events: none;
 }
 
-    .joystick-area::before, .joystick-area::after {
-        content: '';
-        position: absolute;
-        background: rgba(0, 255, 255, 0.2);
-    }
+.joystick-area::before,
+.joystick-area::after {
+    content: '';
+    position: absolute;
+    background: rgba(0, 255, 255, 0.2);
+}
 
-    .joystick-area::before {
-        width: 100%;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
-    }
+.joystick-area::before {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+}
 
-    .joystick-area::after {
-        width: 1px;
-        height: 100%;
-        background: linear-gradient(180deg, transparent, rgba(0, 255, 255, 0.2), transparent);
-    }
+.joystick-area::after {
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+}
 
 .knob {
     width: 50px;
@@ -663,29 +724,31 @@ canvas {
     background: rgba(0, 255, 255, 0.15);
     border: 2px solid #0ff;
     position: absolute;
-    transform: translate(0,0);
+    transform: translate(0, 0);
     transition: transform 0.05s;
     box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
     z-index: 2;
 }
 
-    .knob::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 8px;
-        height: 8px;
-        background: #fff;
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
-        box-shadow: 0 0 10px #fff;
-    }
+.knob::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px #fff;
+}
 
 #launch-btn {
     position: absolute;
     width: 60px;
     height: 60px;
+    right: 15px;
+    bottom: 150px;
     border-radius: 50%;
     background: rgba(255, 255, 0, 0.1);
     border: 2px solid #ff0;
@@ -704,25 +767,24 @@ canvas {
     z-index: 100;
 }
 
-    #launch-btn::before {
-        content: '';
-        position: absolute;
-        width: 70px;
-        height: 70px;
-        border: 1px dashed rgba(255, 255, 0, 0.4);
-        border-radius: 50%;
-        animation: rotate 4s linear infinite;
-    }
+#launch-btn::before {
+    content: '';
+    position: absolute;
+    width: 70px;
+    height: 70px;
+    border: 1px dashed rgba(255, 255, 0, 0.4);
+    border-radius: 50%;
+    animation: rotate 4s linear infinite;
+}
 
-    #launch-btn.active {
-        background: #ff0;
-        color: #000;
-        transform: scale(0.85);
-        box-shadow: 0 0 30px #ff0;
-        text-shadow: none;
-    }
+#launch-btn.active {
+    background: #ff0;
+    color: #000;
+    transform: scale(0.85);
+    box-shadow: 0 0 30px #ff0;
+    text-shadow: none;
+}
 
-/* 横画面時のデフォルト配置 */
 #stick-left {
     left: 10px;
     bottom: 10px;
@@ -733,54 +795,72 @@ canvas {
     bottom: 10px;
 }
 
-#launch-btn {
-    right: 15px;
-    bottom: 150px;
-}
-
 /* =========================================================
-   7. 共通ボタン類 (サイズを可変に対応)
+   8. 共通ボタン類
    ========================================================= */
 .menu-btn {
-    background: rgba(0, 255, 255, 0.1);
-    border: 1px solid #0ff;
-    color: #0ff;
-    padding: calc(8px * var(--ui-scale)) calc(20px * var(--ui-scale));
-    margin: calc(8px * var(--ui-scale));
-    font-size: calc(18px * var(--ui-scale));
-    min-width: calc(200px * var(--ui-scale));
-    cursor: pointer;
+    min-width: min(72vw, 320px);
+    padding: 12px 20px;
+    border: 1px solid rgba(120, 255, 255, 0.20);
+    border-radius: 999px;
+    background: linear-gradient(
+        to bottom,
+        rgba(8, 24, 32, 0.76),
+        rgba(4, 12, 20, 0.88)
+    );
+    color: #d9ffff;
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(13px, 1.2vw, 16px);
+    font-weight: 700;
+    letter-spacing: 0.16em;
     text-align: center;
-    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
-    transition: transform 0.2s, background 0.2s;
+    cursor: pointer;
+    box-shadow:
+        0 0 10px rgba(0, 255, 255, 0.08),
+        inset 0 0 14px rgba(120, 255, 255, 0.04);
+    transition:
+        transform 0.18s ease,
+        box-shadow 0.22s ease,
+        border-color 0.22s ease,
+        background 0.22s ease;
+}
+
+.menu-btn:hover {
+    transform: translateY(-1px) scale(1.01);
+    border-color: rgba(120, 255, 255, 0.46);
+    background: linear-gradient(
+        to bottom,
+        rgba(12, 34, 46, 0.92),
+        rgba(6, 18, 28, 0.96)
+    );
+    box-shadow:
+        0 0 18px rgba(0, 255, 255, 0.16),
+        inset 0 0 18px rgba(120, 255, 255, 0.08);
+}
+
+.menu-btn:active {
+    transform: scale(0.95);
+}
+
+.menu-btn.selected,
+.track-item.selected {
+    color: #fff !important;
+    transform: scale(1.05);
+    border-color: #fff !important;
 }
 
 .btn-small {
     min-width: calc(120px * var(--ui-scale));
 }
 
-.menu-btn:active {
-    background: #0ff;
-    color: #000;
-    transform: scale(0.95);
-}
-
-.menu-btn.selected, .track-item.selected {
-    color: #fff !important;
-    transform: scale(1.05);
-    border-color: #fff !important;
-}
-
-/* ポーズボタンやフッター */
+/* ---------- ポーズボタン ---------- */
 #pause-btn {
-    /* 位置やサイズもスケールさせる */
+    position: absolute;
     right: calc(30px * var(--ui-scale));
     bottom: calc(240px * var(--ui-scale));
     width: calc(40px * var(--ui-scale));
     height: calc(40px * var(--ui-scale));
     font-size: calc(18px * var(--ui-scale));
-    /* 以下デザイン */
-    position: absolute;
     background: rgba(0, 20, 40, 0.8);
     border: 2px solid rgba(0, 255, 255, 0.5);
     color: #0ff;
@@ -795,52 +875,190 @@ canvas {
     box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
 }
 
+/* ---------- フッター ---------- */
 #menu-footer {
-    font-size: calc(12px * var(--ui-scale)) !important;
-    margin-top: calc(20px * var(--ui-scale)) !important;
+    margin-top: 22px;
+    text-align: center;
+    color: #7f8d96;
+    font-size: clamp(11px, 0.95vw, 13px);
+    line-height: 1.7;
+    letter-spacing: 0.04em;
+    position: relative;
+    z-index: 2;
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.06);
 }
 
 /* =========================================================
-   8. 各種オーバーレイ画面
+   9. 各種オーバーレイ画面
    ========================================================= */
 
-/* --- 8.1 タイトル画面 --- */
-#overlay {
+/* ---------- 9.1 タイトル画面 ---------- */
+#title-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: #000000 !important;
+    inset: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    overflow: hidden;
     z-index: 100;
     pointer-events: auto;
     transition: opacity 0.5s ease;
     opacity: 1;
+    background: radial-gradient(
+        circle at 50% 30%,
+        rgba(0, 220, 255, 0.10) 0%,
+        rgba(0, 120, 255, 0.06) 18%,
+        rgba(0, 0, 0, 0.22) 42%,
+        rgba(0, 0, 0, 0.72) 72%,
+        rgba(0, 0, 0, 0.92) 100%
+    );
+}
+
+#title-overlay::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.03) 0%,
+        rgba(255, 255, 255, 0.00) 20%,
+        rgba(0, 255, 255, 0.04) 55%,
+        rgba(0, 0, 0, 0.14) 100%
+    );
+    mix-blend-mode: screen;
+}
+
+#title-shell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 28px;
+    padding: 22px 24px 18px;
+    min-width: min(90vw, 860px);
+    z-index: 1;
+}
+
+#title-kicker {
+    margin-bottom: 12px;
+    color: rgba(180, 255, 255, 0.72);
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(10px, 1vw, 14px);
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.22);
+    opacity: 0.9;
 }
 
 #menu-title {
-    color: #0ff;
-    text-shadow: 0 0 20px #0ff;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
     text-align: center;
-    margin-bottom: calc(20px * var(--ui-scale));
-    font-size: calc(36px * var(--ui-scale));
-    line-height: 1.2;
+    line-height: 1;
+    z-index: 2;
 }
 
-    #menu-title span {
-        color: #fff;
-        font-size: calc(20px * var(--ui-scale));
-    }
+#menu-title .title-main {
+    display: block;
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(34px, 6.6vw, 96px);
+    font-weight: 900;
+    letter-spacing: 0.20em;
+    text-indent: 0.20em;
+    color: #b8ffff;
+    text-shadow:
+        0 0 8px rgba(180, 255, 255, 0.65),
+        0 0 18px rgba(0, 255, 255, 0.50),
+        0 0 42px rgba(0, 170, 255, 0.42),
+        0 0 80px rgba(0, 90, 255, 0.22);
+    animation: titlePulse 3.2s ease-in-out infinite;
+}
 
-/* --- 8.2 ポーズ画面 --- */
+#menu-title .title-sub {
+    display: block;
+    margin-top: 12px;
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(14px, 1.7vw, 24px);
+    font-weight: 700;
+    letter-spacing: 0.72em;
+    text-indent: 0.72em;
+    color: #ffffff;
+    opacity: 0.95;
+    text-shadow:
+        0 0 8px rgba(255, 255, 255, 0.38),
+        0 0 18px rgba(0, 255, 255, 0.20);
+}
+
+#title-glow-ring {
+    position: absolute;
+    top: 52%;
+    left: 50%;
+    width: min(72vw, 680px);
+    height: min(72vw, 680px);
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 1px solid rgba(0, 255, 255, 0.14);
+    box-shadow:
+        0 0 24px rgba(0, 255, 255, 0.10),
+        inset 0 0 28px rgba(0, 160, 255, 0.08);
+    z-index: 0;
+    pointer-events: none;
+}
+
+#title-glow-ring::before,
+#title-glow-ring::after {
+    content: "";
+    position: absolute;
+    inset: 18%;
+    border-radius: 50%;
+    border: 1px solid rgba(120, 255, 255, 0.10);
+}
+
+#title-glow-ring::after {
+    inset: 32%;
+    border-color: rgba(120, 180, 255, 0.10);
+}
+
+#title-scanline {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(84vw, 760px);
+    height: 2px;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(
+        to right,
+        rgba(0, 0, 0, 0),
+        rgba(120, 255, 255, 0),
+        rgba(120, 255, 255, 0.65),
+        rgba(120, 255, 255, 0),
+        rgba(0, 0, 0, 0)
+    );
+    box-shadow: 0 0 16px rgba(0, 255, 255, 0.24);
+    opacity: 0.8;
+    animation: scanSweep 4.6s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+#menu-buttons-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    z-index: 2;
+}
+
+/* ---------- 9.2 ポーズ画面 ---------- */
 #pause-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.7);
@@ -852,74 +1070,120 @@ canvas {
     pointer-events: auto;
 }
 
-    #pause-overlay h1 {
-        color: #fff;
-        text-shadow: 0 0 10px #fff;
-        font-size: calc(40px * var(--ui-scale)) !important;
-        margin-bottom: calc(30px * var(--ui-scale)) !important;
-    }
+#pause-overlay h1 {
+    color: #fff;
+    text-shadow: 0 0 10px #fff;
+    font-size: calc(40px * var(--ui-scale)) !important;
+    margin-bottom: calc(30px * var(--ui-scale)) !important;
+}
 
-/* --- 8.3 エンディング画面 --- */
-#ending-msg {
+
+/* ---------- 9.4 名前入力画面 ---------- */
+#name-input-area {
     display: none;
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.9);
-    z-index: 200;
+    z-index: 220;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    padding: 24px 20px;
+    box-sizing: border-box;
     pointer-events: auto;
-    text-align: center;
+
+    background:
+        radial-gradient(circle at 50% 35%,
+            rgba(0, 180, 255, 0.10) 0%,
+            rgba(0, 0, 0, 0.20) 30%,
+            rgba(0, 0, 0, 0.72) 68%,
+            rgba(0, 0, 0, 0.92) 100%);
 }
 
-#final-score-val {
-    background: rgba(0, 255, 255, 0.1);
-    padding: 10px 30px;
-    border-top: 1px solid rgba(0, 255, 255, 0.3);
-    border-bottom: 1px solid rgba(0, 255, 255, 0.3);
-    margin-bottom: 30px;
-}
-
-/* --- 8.4 名前入力画面 --- */
-#name-input-area {
-    display: none;
-    flex-direction: column;
-    align-items: center;
+#name-input-area::before {
+    content: "";
     position: absolute;
-    top: 55%;
-    width: 100%;
-    background: #000 !important;
-    z-index: 200;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(to bottom,
+            rgba(255,255,255,0.03) 0%,
+            rgba(255,255,255,0.00) 16%,
+            rgba(0,255,255,0.03) 52%,
+            rgba(0,0,0,0.12) 100%);
+    mix-blend-mode: screen;
+}
+
+#name-input-area > * {
+    position: relative;
+    z-index: 1;
+}
+
+#name-input-area p {
+    margin: 0 0 16px 0;
+    text-align: center;
+    color: #9fefff;
+    font-size: clamp(14px, 1.2vw, 18px);
+    line-height: 1.8;
+    letter-spacing: 0.06em;
+    text-shadow:
+        0 0 8px rgba(0,255,255,0.18);
+}
+
+#result-score-display {
+    display: block;
+    width: min(90vw, 460px);
+    margin: 0 auto 20px;
+    padding: 16px 18px;
+    text-align: center;
+    color: #fff;
+    font-size: clamp(22px, 2.5vw, 34px);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    background:
+        linear-gradient(
+            to bottom,
+            rgba(10, 24, 34, 0.76),
+            rgba(4, 10, 18, 0.92)
+        );
+    border-top: 1px solid rgba(120,255,255,0.28);
+    border-bottom: 1px solid rgba(120,255,255,0.28);
+    box-shadow:
+        0 0 18px rgba(0,255,255,0.08),
+        inset 0 0 16px rgba(120,255,255,0.04);
+    text-shadow:
+        0 0 8px rgba(255,255,255,0.28),
+        0 0 16px rgba(0,255,255,0.16);
 }
 
 #player-name-input {
-    background: rgba(0, 0, 0, 0.8);
-    border: 2px solid #0ff;
+    display: block;
+    width: min(90vw, 320px);
+    background: rgba(0, 0, 0, 0.76);
+    border: 1px solid rgba(120,255,255,0.58);
     color: #fff;
-    font-family: 'Orbitron';
-    font-size: 24px;
-    padding: 10px;
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(18px, 2vw, 24px);
+    padding: 12px 14px;
     text-align: center;
-    width: 250px;
     outline: none;
-    margin-bottom: 10px;
-    box-shadow: 0 0 10px #0ff;
+    margin: 0 auto 16px;
+    box-sizing: border-box;
+    box-shadow:
+        0 0 12px rgba(0,255,255,0.16),
+        inset 0 0 8px rgba(120,255,255,0.05);
 }
 
-    #player-name-input::placeholder {
-        color: #055;
-    }
+#player-name-input::placeholder {
+    color: #477;
+}
 
-/* --- 8.5 ランキング画面 --- */
+/* ---------- 9.5 ランキング画面 ---------- */
 #ranking-overlay {
     display: none;
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.95);
@@ -931,12 +1195,12 @@ canvas {
     box-sizing: border-box;
 }
 
-    #ranking-overlay h1 {
-        color: #0ff;
-        text-shadow: 0 0 20px #0ff;
-        font-size: calc(32px * var(--ui-scale)) !important;
-        margin-bottom: calc(10px * var(--ui-scale)) !important;
-    }
+#ranking-overlay h1 {
+    color: #0ff;
+    text-shadow: 0 0 20px #0ff;
+    font-size: calc(32px * var(--ui-scale)) !important;
+    margin-bottom: calc(10px * var(--ui-scale)) !important;
+}
 
 #ranking-scroll-container {
     width: 95%;
@@ -953,16 +1217,16 @@ canvas {
     font-size: calc(14px * var(--ui-scale));
 }
 
-    #ranking-table th {
-        border-bottom: 1px solid #0ff;
-        color: #0ff;
-        padding: 10px;
-    }
+#ranking-table th {
+    border-bottom: 1px solid #0ff;
+    color: #0ff;
+    padding: 10px;
+}
 
-    #ranking-table td {
-        border-bottom: 1px solid #333;
-        padding: 8px 10px;
-    }
+#ranking-table td {
+    border-bottom: 1px solid #333;
+    padding: 8px 10px;
+}
 
 .rank-1 {
     color: #ffd700;
@@ -983,12 +1247,11 @@ canvas {
     font-weight: bold;
 }
 
-/* --- 8.6 OST画面 --- */
+/* ---------- 9.6 OST画面 ---------- */
 #ost-ui {
     display: none;
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
     background: #000;
@@ -1003,12 +1266,12 @@ canvas {
     opacity: 1;
 }
 
-    #ost-ui h2 {
-        color: #0ff;
-        text-shadow: 0 0 20px #0ff;
-        font-size: calc(28px * var(--ui-scale)) !important;
-        margin-bottom: calc(10px * var(--ui-scale)) !important;
-    }
+#ost-ui h2 {
+    color: #0ff;
+    text-shadow: 0 0 20px #0ff;
+    font-size: calc(28px * var(--ui-scale)) !important;
+    margin-bottom: calc(10px * var(--ui-scale)) !important;
+}
 
 #ost-scroll-container {
     width: 90%;
@@ -1022,23 +1285,23 @@ canvas {
     scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
 }
 
-    #ost-scroll-container::-webkit-scrollbar {
-        width: 6px;
-    }
+#ost-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
 
-    #ost-scroll-container::-webkit-scrollbar-track {
-        background: rgba(0, 255, 255, 0.05);
-        border-radius: 3px;
-    }
+#ost-scroll-container::-webkit-scrollbar-track {
+    background: rgba(0, 255, 255, 0.05);
+    border-radius: 3px;
+}
 
-    #ost-scroll-container::-webkit-scrollbar-thumb {
-        background: rgba(0, 255, 255, 0.5);
-        border-radius: 3px;
-    }
+#ost-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 255, 0.5);
+    border-radius: 3px;
+}
 
-        #ost-scroll-container::-webkit-scrollbar-thumb:hover {
-            background: #0ff;
-        }
+#ost-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #0ff;
+}
 
 .track-item {
     padding: calc(15px * var(--ui-scale)) calc(20px * var(--ui-scale));
@@ -1050,22 +1313,21 @@ canvas {
     cursor: pointer;
 }
 
-    .track-item.playing {
-        color: #0ff;
-        border-color: #0ff;
-        text-shadow: 0 0 10px #0ff;
-        background: rgba(0, 255, 255, 0.05);
-    }
+.track-item.playing {
+    color: #0ff;
+    border-color: #0ff;
+    text-shadow: 0 0 10px #0ff;
+    background: rgba(0, 255, 255, 0.05);
+}
 
-/* --- 8.7 HOW TO PLAY 画面 --- */
+/* ---------- 9.7 HOW TO PLAY 画面 ---------- */
 #howto-overlay {
     display: none;
     position: absolute;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
-    background-color: #000000 !important;
+    background-color: #000 !important;
     z-index: 150;
     flex-direction: column;
     align-items: center;
@@ -1085,7 +1347,6 @@ canvas {
     display: block;
 }
 
-/* --- HOW TO コンテナの調整 --- */
 .howto-container {
     display: flex;
     gap: 20px;
@@ -1105,15 +1366,14 @@ canvas {
     text-align: left;
 }
 
-    .howto-panel:first-child {
-        flex: 1.2;
-    }
+.howto-panel:first-child {
+    flex: 1.2;
+}
 
-    .howto-panel:last-child {
-        flex: 1;
-    }
+.howto-panel:last-child {
+    flex: 1;
+}
 
-/* --- HOW TO アイコン・レイアウト用 --- */
 .control-group {
     display: flex;
     align-items: center;
@@ -1122,10 +1382,10 @@ canvas {
     padding-bottom: calc(8px * var(--ui-scale));
 }
 
-    .control-group:last-child {
-        border-bottom: none;
-        margin-bottom: 0;
-    }
+.control-group:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
 
 .icon-box {
     display: flex;
@@ -1142,7 +1402,7 @@ canvas {
     width: calc(64px * var(--ui-scale));
     height: calc(30px * var(--ui-scale));
     margin-bottom: 4px;
-    filter: drop-shadow(0 0 5px rgba(0,255,255,0.5));
+    filter: drop-shadow(0 0 5px rgba(0, 255, 255, 0.5));
 }
 
 .device-label {
@@ -1157,18 +1417,19 @@ canvas {
     line-height: 1.6;
 }
 
-.lbl {
-    display: inline-block;
-    width: calc(40px * var(--ui-scale));
-    color: #0ff;
-    font-weight: bold;
-}
-
+.lbl,
 .lbl-y {
     display: inline-block;
     width: calc(40px * var(--ui-scale));
-    color: #ff0;
     font-weight: bold;
+}
+
+.lbl {
+    color: #0ff;
+}
+
+.lbl-y {
+    color: #ff0;
 }
 
 .keyboard-icon {
@@ -1176,8 +1437,8 @@ canvas {
     filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.8));
 }
 
-/* キーの共通スタイル */
-.key-group rect, .key-space {
+.key-group rect,
+.key-space {
     fill: rgba(0, 255, 255, 0.15);
     stroke: currentColor;
     stroke-width: 1px;
@@ -1200,7 +1461,7 @@ canvas {
 
 .key {
     display: inline-block;
-    padding: 1px 4px 0px 4px;
+    padding: 1px 4px 0 4px;
     margin: 0 1px;
     border: 1px solid #0ff;
     border-radius: 4px;
@@ -1210,7 +1471,7 @@ canvas {
     font-weight: bold;
     color: #fff;
     box-shadow: 0 0 5px rgba(0, 255, 255, 0.4), inset 0 0 5px rgba(0, 255, 255, 0.2);
-    text-shadow: 0 0 3px rgba(255,255,255,0.5);
+    text-shadow: 0 0 3px rgba(255, 255, 255, 0.5);
     vertical-align: middle;
 }
 
@@ -1235,7 +1496,7 @@ canvas {
 .howto-text {
     color: #aaa;
     font-size: calc(12px * var(--ui-scale));
-    line-height: 2.0;
+    line-height: 2;
 }
 
 .howto-highlight {
@@ -1287,15 +1548,14 @@ canvas {
     animation: blink 1.5s infinite;
 }
 
-/* --- 8.8 STORY 画面 --- */
+/* ---------- 9.8 STORY 画面 ---------- */
 #story-overlay {
     display: none;
     position: absolute;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
-    background-color: #000000 !important;
+    background-color: #000 !important;
     z-index: 120;
     flex-direction: column;
     align-items: center;
@@ -1320,45 +1580,46 @@ canvas {
     scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
 }
 
-    #story-scroll-container::-webkit-scrollbar {
-        width: 6px;
-    }
+#story-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
 
-    #story-scroll-container::-webkit-scrollbar-track {
-        background: rgba(0, 255, 255, 0.05);
-        border-radius: 3px;
-    }
+#story-scroll-container::-webkit-scrollbar-track {
+    background: rgba(0, 255, 255, 0.05);
+    border-radius: 3px;
+}
 
-    #story-scroll-container::-webkit-scrollbar-thumb {
-        background: rgba(0, 255, 255, 0.5);
-        border-radius: 3px;
-    }
+#story-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 255, 0.5);
+    border-radius: 3px;
+}
 
-        #story-scroll-container::-webkit-scrollbar-thumb:hover {
-            background: #0ff;
-        }
+#story-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #0ff;
+}
 
-    #story-scroll-container h1, #story-scroll-container h2 {
-        color: #0ff;
-        text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
-        margin-top: 2em;
-        margin-bottom: 0.8em;
-        font-weight: bold;
-    }
+#story-scroll-container h1,
+#story-scroll-container h2 {
+    color: #0ff;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+    margin-top: 2em;
+    margin-bottom: 0.8em;
+    font-weight: bold;
+}
 
-    #story-scroll-container h1 {
-        font-size: 22px;
-        text-align: center;
-        margin-top: 0;
-        border-bottom: 2px solid #0ff;
-        padding-bottom: 10px;
-    }
+#story-scroll-container h1 {
+    font-size: 22px;
+    text-align: center;
+    margin-top: 0;
+    border-bottom: 2px solid #0ff;
+    padding-bottom: 10px;
+}
 
-    #story-scroll-container h2 {
-        font-size: 16px;
-        border-bottom: 1px dashed #0ff;
-        padding-bottom: 5px;
-    }
+#story-scroll-container h2 {
+    font-size: 16px;
+    border-bottom: 1px dashed #0ff;
+    padding-bottom: 5px;
+}
 
 .en-text {
     color: #ccc;
@@ -1378,25 +1639,100 @@ canvas {
 }
 
 #story-scroll-container strong {
-    color: #ffffff;
+    color: #fff;
     font-weight: bold;
     text-shadow: 0 0 5px rgba(255, 255, 255, 0.9);
 }
 
 /* =========================================================
-   9. レスポンシブ設定 (縦画面: Portrait)
+   10. デバッグオーバーレイ
    ========================================================= */
-@media (orientation: portrait) {
-    /* タイトル画面 */
-    #menu-title {
-        font-size: 36px;
+#debugOverlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 9999;
+    min-width: 150px;
+    max-width: 360px;
+    color: #00ffff;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    background: rgba(0, 0, 0, 0.80);
+    border: 1px solid rgba(0, 255, 255, 0.85);
+    border-radius: 8px;
+    padding: 12px 14px;
+    box-shadow: 0 0 12px rgba(0, 255, 255, 0.18);
+    white-space: pre-wrap;
+    pointer-events: none;
+    display: none;
+}
+
+/* =========================================================
+   11. レスポンシブ設定
+   ========================================================= */
+
+/* ---------- 小画面 ---------- */
+@media (max-width: 600px) {
+    #story-typing-msg {
+        width: 90%;
+        font-size: 14px;
     }
 
-        #menu-title span {
-            font-size: 20px;
-        }
+    #story-typing-container.ending-mode {
+        padding-top: 18px;
+        padding-right: 0;
+        padding-bottom: 88px;
+        padding-left: 0;
+    }
 
-    /* コントローラー配置 */
+    #story-typing-container.ending-mode #story-typing-msg {
+        width: 92vw;
+        max-width: 92vw;
+        height: calc(100vh - 18px - 88px);
+        max-height: calc(100vh - 18px - 88px);
+        padding: 14px 14px 16px;
+        font-size: 14px;
+        line-height: 1.78;
+        letter-spacing: 0.02em;
+        border-radius: 14px;
+    }
+
+    #skip-button {
+        bottom: 18px;
+        min-width: 124px;
+        height: 40px;
+        padding: 0 18px;
+        font-size: 13px;
+        letter-spacing: 0.10em;
+    }
+
+    #title-shell {
+        min-width: 92vw;
+        padding: 16px 10px 10px;
+    }
+
+    #title-kicker {
+        letter-spacing: 0.24em;
+    }
+
+    #menu-title .title-main {
+        letter-spacing: 0.12em;
+        text-indent: 0.12em;
+    }
+
+    #menu-title .title-sub {
+        letter-spacing: 0.42em;
+        text-indent: 0.42em;
+    }
+
+    .menu-btn {
+        min-width: 78vw;
+    }
+}
+
+/* ---------- 縦画面 ---------- */
+@media (orientation: portrait) {
     #stick-left {
         left: 10px;
         bottom: 50px;
@@ -1412,7 +1748,6 @@ canvas {
         bottom: 220px;
     }
 
-    /* ミニマップ */
     #minimap-container {
         position: absolute;
         top: 10px;
@@ -1421,7 +1756,6 @@ canvas {
         margin-top: 0;
     }
 
-    /* ポーズボタン */
     #pause-btn {
         right: auto;
         left: 50%;
@@ -1429,11 +1763,10 @@ canvas {
         bottom: 15px;
     }
 
-        #pause-btn:active {
-            transform: translateX(-50%) scale(0.9);
-        }
+    #pause-btn:active {
+        transform: translateX(-50%) scale(0.9);
+    }
 
-    /* HOW TO 画面 */
     .howto-container {
         flex-direction: column;
         gap: 15px;
@@ -1468,8 +1801,86 @@ canvas {
     }
 }
 
+/* ---------- 横画面 ---------- */
+@media (orientation: landscape) {
+    #story-typing-msg {
+        font-size: 2vh !important;
+        margin-bottom: 60px;
+    }
+
+    #story-typing-container.ending-mode #story-typing-msg {
+        margin-bottom: 0;
+    }
+
+    #title-shell {
+        margin-bottom: 20px;
+        padding-top: 12px;
+    }
+
+    #menu-title .title-main {
+        font-size: clamp(30px, 5.2vw, 78px);
+    }
+
+    #menu-title .title-sub {
+        margin-top: 8px;
+        font-size: clamp(12px, 1.3vw, 20px);
+    }
+
+    #menu-buttons-container {
+        gap: 10px;
+    }
+
+    .menu-btn {
+        min-width: min(46vw, 320px);
+        padding: 10px 18px;
+    }
+
+    #menu-footer {
+        margin-top: 16px;
+    }
+
+    #training-guide {
+        padding-top: 25vh !important;
+    }
+
+    #btn-training-exit {
+        position: absolute !important;
+        bottom: 20px !important;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-top: 0 !important;
+        background: rgba(0, 0, 0, 0.9) !important;
+    }
+}
+
+/* ---------- 横長かつ低い端末 ---------- */
+@media (orientation: landscape) and (max-height: 560px) {
+    #story-typing-container.ending-mode {
+        padding-top: 14px;
+        padding-bottom: 72px;
+    }
+
+    #story-typing-container.ending-mode #story-typing-msg {
+        width: min(88vw, 920px);
+        max-width: min(88vw, 920px);
+        height: calc(100vh - 14px - 72px);
+        max-height: calc(100vh - 14px - 72px);
+        font-size: clamp(13px, 2.3vh, 17px);
+        line-height: 1.7;
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+
+    #skip-button {
+        bottom: 12px;
+        height: 36px;
+        min-width: 118px;
+        font-size: 12px;
+    }
+}
+
 /* =========================================================
-   10. アニメーション & iOSプロンプト
+   12. アニメーション
    ========================================================= */
 @keyframes blink {
     50% {
@@ -1477,11 +1888,19 @@ canvas {
     }
 }
 
+@keyframes blink-anim {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0;
+    }
+}
+
 @keyframes clear-glow {
     0%, 100% {
         filter: brightness(1);
     }
-
     50% {
         filter: brightness(1.8) scale(1.02);
     }
@@ -1491,7 +1910,6 @@ canvas {
     from {
         transform: rotate(0deg);
     }
-
     to {
         transform: rotate(360deg);
     }
@@ -1502,7 +1920,6 @@ canvas {
         bottom: -100px;
         opacity: 0;
     }
-
     to {
         bottom: 20px;
         opacity: 1;
@@ -1513,13 +1930,57 @@ canvas {
     0%, 100% {
         transform: translateY(0);
     }
-
     50% {
         transform: translateY(5px);
     }
 }
 
-/* iOS インストールプロンプト */
+@keyframes ending-button-pulse {
+    0%, 100% {
+        opacity: 0.72;
+        box-shadow:
+            0 0 10px rgba(0, 255, 200, 0.12),
+            inset 0 0 10px rgba(120, 255, 230, 0.05);
+    }
+    50% {
+        opacity: 1;
+        box-shadow:
+            0 0 22px rgba(0, 255, 200, 0.28),
+            inset 0 0 14px rgba(120, 255, 230, 0.10);
+    }
+}
+
+@keyframes titlePulse {
+    0%, 100% {
+        text-shadow:
+            0 0 8px rgba(180, 255, 255, 0.65),
+            0 0 18px rgba(0, 255, 255, 0.50),
+            0 0 42px rgba(0, 170, 255, 0.42),
+            0 0 80px rgba(0, 90, 255, 0.22);
+    }
+    50% {
+        text-shadow:
+            0 0 12px rgba(220, 255, 255, 0.82),
+            0 0 26px rgba(0, 255, 255, 0.62),
+            0 0 56px rgba(0, 170, 255, 0.54),
+            0 0 110px rgba(0, 90, 255, 0.30);
+    }
+}
+
+@keyframes scanSweep {
+    0%, 100% {
+        transform: translate(-50%, -50%) scaleX(0.72);
+        opacity: 0.30;
+    }
+    50% {
+        transform: translate(-50%, -50%) scaleX(1);
+        opacity: 0.95;
+    }
+}
+
+/* =========================================================
+   13. iOS インストールプロンプト
+   ========================================================= */
 #ios-install-prompt {
     position: fixed;
     bottom: 20px;
@@ -1557,28 +2018,28 @@ canvas {
     margin: 0 2px;
 }
 
-    .share-icon::before {
-        content: '';
-        position: absolute;
-        top: -4px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 1px;
-        height: 8px;
-        background: #fff;
-    }
+.share-icon::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 8px;
+    background: #fff;
+}
 
-    .share-icon::after {
-        content: '';
-        position: absolute;
-        top: -4px;
-        left: 50%;
-        transform: translateX(-50%) rotate(45deg);
-        width: 4px;
-        height: 4px;
-        border-top: 1px solid #fff;
-        border-left: 1px solid #fff;
-    }
+.share-icon::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 4px;
+    height: 4px;
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+}
 
 .arrow-down {
     color: #0ff;
@@ -1596,53 +2057,12 @@ canvas {
 }
 
 /* =========================================================
-   11. その他 (横画面設定・言語切り替え)
+   14. ストーリー画面の言語切り替え
    ========================================================= */
-@media (orientation: landscape) {
-    /* トレーニングモード全体のコンテナ調整 */
-    #training-guide {
-        padding-top: 25vh !important;
-    }
-
-    /* トレーニングモードのEXITボタンを画面下に固定 */
-    #btn-training-exit {
-        position: absolute !important;
-        bottom: 20px !important;
-        left: 50%;
-        transform: translateX(-50%);
-        margin-top: 0 !important;
-        background: rgba(0, 0, 0, 0.9) !important;
-    }
-}
-
-/* ストーリー画面の言語切り替え用スタイル */
 .lang-ja .en-text {
     display: none !important;
 }
 
 .lang-en .ja-text {
     display: none !important;
-}
-
-
-
-#debugOverlay {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 9999;
-    min-width: 150px;
-    max-width: 360px;
-    color: #00ffff;
-    font-family: monospace;
-    font-size: 12px;
-    line-height: 1.45;
-    background: rgba(0,0,0,0.80);
-    border: 1px solid rgba(0,255,255,0.85);
-    border-radius: 8px;
-    padding: 12px 14px;
-    box-shadow: 0 0 12px rgba(0,255,255,0.18);
-    white-space: pre-wrap;
-    pointer-events: none;
-    display: none ;
 }
