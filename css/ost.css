@@ -1,0 +1,377 @@
+/* ---------- 9.6 OST画面 ---------- */
+#ost-ui {
+    display: none;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 110;
+
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    padding: 18px;
+    box-sizing: border-box;
+    pointer-events: auto;
+    overflow: hidden;
+
+    background:
+        radial-gradient(circle at 50% 30%,
+            rgba(0, 220, 255, 0.10) 0%,
+            rgba(0, 120, 255, 0.06) 18%,
+            rgba(0, 0, 0, 0.22) 42%,
+            rgba(0, 0, 0, 0.72) 72%,
+            rgba(0, 0, 0, 0.92) 100%);
+}
+
+#ost-ui::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(to bottom,
+            rgba(255,255,255,0.03) 0%,
+            rgba(255,255,255,0.00) 20%,
+            rgba(0,255,255,0.04) 55%,
+            rgba(0,0,0,0.14) 100%);
+    mix-blend-mode: screen;
+}
+
+#ost-shell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 18px;
+    padding: 12px 24px 10px;
+    min-width: min(88vw, 760px);
+    z-index: 1;
+}
+
+#ost-kicker {
+    margin-bottom: 10px;
+    color: rgba(180, 255, 255, 0.72);
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(10px, 1vw, 14px);
+    letter-spacing: 0.36em;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(0,255,255,0.22);
+    opacity: 0.9;
+}
+
+#ost-title {
+    position: relative;
+    margin: 0;
+    text-align: center;
+    line-height: 1;
+    z-index: 2;
+
+    color: #b8ffff;
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(30px, 4.8vw, 62px);
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-indent: 0.16em;
+    text-shadow:
+        0 0 8px rgba(180,255,255,0.65),
+        0 0 18px rgba(0,255,255,0.50),
+        0 0 42px rgba(0,170,255,0.42),
+        0 0 80px rgba(0,90,255,0.22);
+}
+
+#ost-glow-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(62vw, 560px);
+    height: min(62vw, 560px);
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 1px solid rgba(0, 255, 255, 0.14);
+    box-shadow:
+        0 0 24px rgba(0,255,255,0.10),
+        inset 0 0 28px rgba(0,160,255,0.08);
+    z-index: 0;
+    pointer-events: none;
+}
+
+#ost-glow-ring::before,
+#ost-glow-ring::after {
+    content: "";
+    position: absolute;
+    inset: 18%;
+    border-radius: 50%;
+    border: 1px solid rgba(120, 255, 255, 0.10);
+}
+
+#ost-glow-ring::after {
+    inset: 32%;
+    border-color: rgba(120, 180, 255, 0.10);
+}
+
+#ost-scanline {
+    position: absolute;
+    top: 52%;
+    left: 50%;
+    width: min(82vw, 760px);
+    height: 2px;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(
+        to right,
+        rgba(0,0,0,0),
+        rgba(120,255,255,0.0),
+        rgba(120,255,255,0.65),
+        rgba(120,255,255,0.0),
+        rgba(0,0,0,0)
+    );
+    box-shadow: 0 0 16px rgba(0,255,255,0.24);
+    opacity: 0.8;
+    pointer-events: none;
+    z-index: 1;
+}
+
+#ost-panel {
+    position: relative;
+    z-index: 2;
+    width: min(92vw, 560px);
+    padding: 18px 16px 16px;
+    border-radius: 22px;
+    border: 1px solid rgba(120,255,255,0.18);
+    background:
+        linear-gradient(
+            to bottom,
+            rgba(10, 24, 34, 0.72),
+            rgba(4, 10, 18, 0.90)
+        );
+    box-shadow:
+        0 0 30px rgba(0,255,255,0.08),
+        inset 0 0 24px rgba(120,255,255,0.04);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+#ost-scroll-container {
+    width: 100%;
+    max-height: 48vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin: 0;
+    padding-right: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
+}
+
+#ost-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+#ost-scroll-container::-webkit-scrollbar-track {
+    background: rgba(0, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+#ost-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 255, 0.5);
+    border-radius: 3px;
+}
+
+#ost-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #0ff;
+}
+
+.track-item {
+    padding: calc(14px * var(--ui-scale)) calc(18px * var(--ui-scale));
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    color: #9bb6c2;
+    text-align: center;
+    font-size: calc(15px * var(--ui-scale));
+    box-sizing: border-box;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.16s ease;
+}
+
+.track-item:hover {
+    color: #d8f8ff;
+    background: rgba(0,255,255,0.04);
+}
+
+.track-item.playing {
+    color: #0ff;
+    border-color: rgba(0,255,255,0.55);
+    text-shadow: 0 0 10px #0ff;
+    background: rgba(0, 255, 255, 0.08);
+}
+
+#ost-controls {
+    display: none;
+    width: 100%;
+    margin-top: 14px;
+    flex-direction: column;
+    align-items: center;
+}
+
+#ost-now-playing {
+    color: #d8ffff;
+    font-size: 14px;
+    margin-bottom: 10px;
+    text-shadow: 0 0 8px rgba(0,255,255,0.18);
+    text-align: center;
+}
+
+#ost-progress-row {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 10px;
+}
+
+#ost-time-current,
+#ost-time-total {
+    color: #9aa8b2;
+    font-size: 12px;
+    width: 40px;
+}
+
+#ost-time-current {
+    text-align: right;
+}
+
+#ost-progress-bar {
+    flex: 1;
+    height: 10px;
+    background: rgba(0,255,255,0.10);
+    border: 1px solid rgba(0,255,255,0.55);
+    border-radius: 999px;
+    cursor: pointer;
+    position: relative;
+    box-shadow:
+        0 0 10px rgba(0,255,255,0.06),
+        inset 0 0 10px rgba(0,255,255,0.04);
+}
+
+#ost-progress-fill {
+    width: 0%;
+    height: 100%;
+    background: rgba(0,255,255,0.82);
+    border-radius: 999px;
+    pointer-events: none;
+    box-shadow: 0 0 8px #0ff;
+}
+
+#btn-back {
+    margin-top: 18px;
+    position: relative;
+    z-index: 2;
+}
+
+@media (orientation: landscape) {
+    #ost-shell {
+        margin-bottom: 14px;
+    }
+
+    #ost-title {
+        font-size: clamp(28px, 3.4vw, 54px);
+    }
+
+    #ost-panel {
+        width: min(70vw, 560px);
+    }
+
+    #ost-scroll-container {
+        max-height: 50vh;
+    }
+}
+
+@media (max-width: 600px) {
+    #ost-shell {
+        min-width: 92vw;
+        padding: 10px 10px 8px;
+    }
+
+    #ost-kicker {
+        letter-spacing: 0.22em;
+    }
+
+    #ost-title {
+        font-size: clamp(24px, 8vw, 38px);
+        letter-spacing: 0.10em;
+        text-indent: 0.10em;
+    }
+
+    #ost-panel {
+        width: 94vw;
+        padding: 14px 12px 12px;
+        border-radius: 18px;
+    }
+
+    .track-item {
+        font-size: 13px;
+        padding: 12px 10px;
+    }
+}
+
+/* ---------- OST 横画面・高さが低い端末対策 ---------- */
+@media (orientation: landscape) and (max-height: 560px) {
+
+    #ost-shell {
+        margin-bottom: 10px;
+        padding: 6px 14px 6px;
+        min-width: min(86vw, 680px);
+    }
+
+    #ost-kicker {
+        margin-bottom: 6px;
+        font-size: clamp(9px, 0.9vw, 12px);
+        letter-spacing: 0.24em;
+    }
+
+    #ost-title {
+        font-size: clamp(20px, 3vw, 38px);
+        letter-spacing: 0.12em;
+        text-indent: 0.12em;
+    }
+
+    #ost-glow-ring {
+        width: min(46vw, 360px);
+        height: min(46vw, 360px);
+    }
+
+    #ost-panel {
+        width: min(66vw, 480px);
+        padding: 10px 10px 10px;
+        border-radius: 16px;
+    }
+
+    #ost-scroll-container {
+        max-height: 40vh;
+    }
+
+    .track-item {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+
+    #ost-controls {
+        margin-top: 8px;
+    }
+
+    #ost-now-playing {
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+
+    #ost-progress-bar {
+        height: 8px;
+    }
+
+    #btn-back {
+        margin-top: 10px;
+    }
+}

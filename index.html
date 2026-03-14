@@ -12,6 +12,9 @@
     <title>NEON GRAVITY</title>
 
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/ost.css">
+    <link rel="stylesheet" href="css/title.css">
+    <link rel="stylesheet" href="css/ranking.css">
 
     <link rel="icon" href="img/NeonGravity.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
@@ -424,21 +427,29 @@
     </div>
 
     <div id="ranking-overlay">
-        <h1 style="color:#0ff; text-shadow:0 0 20px #0ff; margin-bottom: 2px;">TOP COMMANDERS</h1>
-        <div id="loading-ranking" style="color:#0ff; animation: blink 0.5s infinite;">CONNECTING...</div>
+        <div id="ranking-shell">
+            <div id="ranking-glow-ring"></div>
+            <div id="ranking-scanline"></div>
+            <div id="ranking-kicker">GALACTIC RECORD ARCHIVE</div>
+            <h1 class="ranking-title">TOP COMMANDERS</h1>
+        </div>
 
-        <div id="ranking-scroll-container">
-            <table id="ranking-table">
-                <thead>
-                    <tr>
-                        <th style="width:50px;">RANK</th>
-                        <th style="text-align:left;">NAME</th>
-                        <th>STAGE</th>
-                        <th style="text-align:right;">SCORE</th>
-                    </tr>
-                </thead>
-                <tbody id="ranking-list-body"></tbody>
-            </table>
+        <div id="ranking-panel">
+            <div id="loading-ranking">CONNECTING...</div>
+
+            <div id="ranking-scroll-container">
+                <table id="ranking-table">
+                    <thead>
+                        <tr>
+                            <th class="col-rank">RANK</th>
+                            <th class="col-name">NAME</th>
+                            <th class="col-stage">STAGE</th>
+                            <th class="col-score">SCORE</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-list-body"></tbody>
+                </table>
+            </div>
         </div>
 
         <div class="menu-btn" id="close-ranking-btn">CLOSE</div>

@@ -70,57 +70,113 @@ window.firebaseOps = {
 
 // --- ランキング表示関数 (引数 onClose で閉じた後の処理を受け取る) ---
 window.showRanking = async function (onClose = null) {
-    if (!rankingOverlay) return; // 要素がない場合はスキップ
+    if (!rankingOverlay) return;
 
+    // 他のオーバーレイを閉じる
+    if (ui.titleOverlay) ui.titleOverlay.style.display = "none";
+    if (ui.gameoverOverlay) ui.gameoverOverlay.style.display = "none";
+    if (ui.ost) ui.ost.style.display = "none";
+    if (ui.nameInputArea) ui.nameInputArea.style.display = "none";
+
+    // ランキング表示
     rankingOverlay.style.display = "flex";
-    if (loadingEl) loadingEl.style.display = "block";
-    if (tableEl) tableEl.style.display = "none";
-    if (rankingBody) rankingBody.innerHTML = "";
 
-    // 閉じた後のアクションを保存
+    // 初期状態
+    if (loadingEl) {
+        loadingEl.style.display = "block";
+        loadingEl.innerText = "CONNECTING...";
+    }
+
+    if (tableEl) {
+        tableEl.style.display = "none";
+    }
+
+    if (rankingBody) {
+        rankingBody.innerHTML = "";
+    }
+
+    // 閉じた後のアクション保存
     onRankingCloseAction = onClose;
 
     try {
         const snapshot = await window.firebaseOps.getRanking();
 
-        if (snapshot.empty) {
-            if (rankingBody) rankingBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">NO DATA</td></tr>';
-        } else {
-            let rank = 1;
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                const tr = document.createElement("tr");
-                let rankClass = "";
-                let rankText = "#" + rank;
-                if (rank === 1) { rankClass = "rank-1"; rankText = "1ST"; }
-                else if (rank === 2) { rankClass = "rank-2"; rankText = "2ND"; }
-                else if (rank === 3) { rankClass = "rank-3"; rankText = "3RD"; }
+        if (rankingBody) {
+            if (!snapshot || snapshot.empty) {
+                rankingBody.innerHTML = `
+                    <tr>
+                        <td class="col-rank"></td>
+                        <td class="col-name" colspan="3" style="text-align:center;">NO DATA</td>
+                    </tr>
+                `;
+            } else {
+                let rank = 1;
 
-                const stageVal = data.stage;
-                let stageText = "-";
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const tr = document.createElement("tr");
 
-                if (stageVal === "CLEAR" || stageVal === "ALL") {
-                    stageText = '<span style="color:#ffd700; font-weight:bold;">ALL</span>'; // 金色のALL表示
-                } else if (typeof stageVal === 'number' || !isNaN(stageVal)) {
-                    stageText = "ST." + stageVal;
-                }
+                    let rankClass = "";
+                    let rankText = "#" + rank;
 
-                tr.innerHTML = `
-                        <td class="${rankClass}" style="text-align:center;">${rankText}</td>
-                        <td style="text-align:left;">${escapeHtml(data.name)}</td>
-                        <td style="text-align:center;">${stageText}</td>
-                        <td style="text-align:right; color:#0ff;">${data.score.toLocaleString()}</td>
+                    if (rank === 1) {
+                        rankClass = "rank-1";
+                        rankText = "1ST";
+                    } else if (rank === 2) {
+                        rankClass = "rank-2";
+                        rankText = "2ND";
+                    } else if (rank === 3) {
+                        rankClass = "rank-3";
+                        rankText = "3RD";
+                    }
+
+                    const stageVal = data.stage;
+                    let stageText = "-";
+                    let stageClass = "";
+
+                    if (stageVal === "CLEAR" || stageVal === "ALL") {
+                        stageText = "ALL";
+                        stageClass = "stage-all-clear";
+                    } else if (typeof stageVal === "number" || !isNaN(stageVal)) {
+                        stageText = "ST." + stageVal;
+                    }
+
+                    tr.innerHTML = `
+                        <td class="col-rank ${rankClass}">${rankText}</td>
+                        <td class="col-name">${escapeHtml(data.name || "NO NAME")}</td>
+                        <td class="col-stage ${stageClass}">${stageText}</td>
+                        <td class="col-score">${Number(data.score || 0).toLocaleString()}</td>
                     `;
-                if (rankingBody) rankingBody.appendChild(tr);
-                rank++;
-            });
+
+                    rankingBody.appendChild(tr);
+                    rank++;
+                });
+            }
         }
-        if (loadingEl) loadingEl.style.display = "none";
-        if (tableEl) tableEl.style.display = "table";
-        if (window.refreshMenuButtons) window.refreshMenuButtons();
+
+        if (loadingEl) {
+            loadingEl.style.display = "none";
+        }
+
+        if (tableEl) {
+            tableEl.style.display = "table";
+        }
+
+        if (window.refreshMenuButtons) {
+            window.refreshMenuButtons();
+        }
+
     } catch (e) {
         console.error("Ranking Error:", e);
-        if (loadingEl) loadingEl.innerText = "CONNECTION ERROR";
+
+        if (loadingEl) {
+            loadingEl.style.display = "block";
+            loadingEl.innerText = "CONNECTION ERROR";
+        }
+
+        if (tableEl) {
+            tableEl.style.display = "none";
+        }
     }
 };
 
@@ -134,16 +190,18 @@ const btnRanking = document.getElementById("btn-ranking");
 if (btnRanking) btnRanking.onclick = () => window.showRanking(null);
 
 // CLOSEボタンの動作設定
-if (closeRankingBtn) {
-    closeRankingBtn.onclick = () => {
-        if (rankingOverlay) rankingOverlay.style.display = "none";
-        // 閉じた後の処理があれば実行（ここでゲームオーバー画面への移行などを行う）
-        if (onRankingCloseAction) {
-            onRankingCloseAction();
-            onRankingCloseAction = null; // 一度実行したらリセット
-        }
-    };
-}
+closeRankingBtn.onclick = () => {
+    rankingOverlay.style.display = "none";
+
+    if (typeof onRankingCloseAction === "function") {
+        const action = onRankingCloseAction;
+        onRankingCloseAction = null;
+        action();
+    } else {
+        if (ui.titleOverlay) ui.titleOverlay.style.display = "flex";
+    }
+};
+
 
 // 準備完了イベント発火
 window.dispatchEvent(new Event('firebase-ready'));
