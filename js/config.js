@@ -1,4 +1,4 @@
-﻿// =========================================================
+// =========================================================
 // Game Configuration & Constants
 // =========================================================
 
@@ -27,7 +27,7 @@ const HOWTO_WAIT_TIME = 600;  // HOWTO画面の放置でタイトルに戻る時
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // --- ステージ・難易度設定 ---
-const START_STAGE = 4;        // 開始ステージ
+const START_STAGE = 1;        // 開始ステージ
 const MAX_STAGE = 10;         // 最大ステージ
 
 
