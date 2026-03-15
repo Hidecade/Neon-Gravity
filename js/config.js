@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-const GAME_VERSION = "1.3.11";
+const GAME_VERSION = "1.3.12";
 
 const DEBUG = {
     enabled: true,
@@ -180,7 +180,7 @@ const STAGE_ENEMIES = {
     1: ['triangle', 'triangle', 'triangle', 'dragon'],
     2: ['triangle', 'tadpole', 'tadpole', 'dragon'],
     3: ['bubble', 'bubble', 'bubble', 'jellyfish', 'spark_jelly'],
-    4: ['phantom', 'triangle', 'tadpole', 'asteroid', 'sweeper'],
+    4: ['phantom', 'phantom', 'tadpole', 'tadpole', 'triangle', 'triangle', 'tadpole', 'tadpole', 'sweeper'],
     5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'asteroid'],
     6: ['asteroid', 'asteroid', 'asteroid', 'phantom', 'tadpole', 'tadpole'],
     7: ['triangle', 'tadpole', 'dragon', 'triangle', 'eclipse', 'triangle', 'asteroid'],

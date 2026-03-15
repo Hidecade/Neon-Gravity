@@ -1223,7 +1223,10 @@ function destroyEnemy(e) {
         // asteroid または bubble 以外の場合に撃破数を加算する
         if (e.type !== 'asteroid' && e.type !== 'bubble') {
             if (e.type === 'triangle') {
-                enemiesKilled += 0.2;
+                // ★修正：variant が 'sweeper' ではない場合のみカウントする
+                if (e.variant !== 'sweeper') {
+                    enemiesKilled += 0.2;
+                }
             } else {
                 enemiesKilled += 1;
             }
@@ -1239,10 +1242,10 @@ function destroyEnemy(e) {
         particleCount = 30;
     } else if (e.type === 'phantom' || e.type === 'triangle') {
         // ★ 破片演出がある敵は、細かい火花を極端に減らす（控えめにする）
-        particleCount = 3;
+        particleCount = 10;
     } else if (e.type === 'jellyfish' || e.type === 'bubble') {
         // ★追加: クラゲとバブルは通常の火花（線）をゼロにする
-        particleCount = 2;
+        particleCount = 5;
     }
 
 
@@ -1893,7 +1896,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
                 isWarping: true, warpPercent: 0
             });
         }
-        spawnedCount += count; 
+        //spawnedCount += count; 
     }
 }
 
