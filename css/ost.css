@@ -197,7 +197,7 @@
 
 .track-item {
         padding: calc(8px * var(--ui-scale, 1)) calc(10px * var(--ui-scale, 1));
-        font-size: calc(14px * var(--ui-scale, 1));
+        font-size: calc(15px * var(--ui-scale, 1));
         line-height: 1.2;
     }
 
