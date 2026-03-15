@@ -9,27 +9,33 @@ let ostUpdateInterval = null;
 // OST画面を開く関数（曲リストの生成）
 function openOST() {
     if (typeof AudioSys !== 'undefined') AudioSys.resume();
-    
+
+    gameState = 'OST';
+    titleIdleTimer = 0;
+
     ui.titleOverlay.style.display = 'none';
 
-    gameState = 'OST'; // ★ここで状態をOSTにする
-    ui.ost.style.display = 'flex';
+    // フェードイン開始前の初期状態
+    ui.ostOverlay.style.display = 'flex';
+    ui.ostOverlay.style.opacity = '0';
 
     const list = document.getElementById('track-list');
+    if (!list) return;
+
     list.innerHTML = '';
 
     // 曲リストの定義
     ostTracks = [
         { n: 'Title Theme', k: 'title' }
     ];
+
     // ステージ曲
-    // config.js の STAGE_TITLES や BGM_FILES.stages を使ってリスト化
-    // (ここでは簡易的にBGM_FILESを参照している想定)
     if (typeof BGM_FILES !== 'undefined' && BGM_FILES.stages) {
         BGM_FILES.stages.forEach((path, index) => {
             ostTracks.push({ n: `Stage ${index + 1} BGM`, k: 'stage', i: index });
         });
     }
+
     // その他の曲
     ostTracks.push(
         { n: 'Boss Encounter', k: 'boss' },
@@ -37,7 +43,7 @@ function openOST() {
         { n: 'Mission Complete', k: 'clear' },
         { n: 'All Mission Complete', k: 'all_clear' },
         { n: 'Name Entry', k: 'name' },
-        { n: 'Ending Theme', k: 'ending' } 
+        { n: 'Ending Theme', k: 'ending' }
     );
 
     // リスト描画
@@ -53,10 +59,54 @@ function openOST() {
     const ostControls = document.getElementById('ost-controls');
     if (ostControls) ostControls.style.display = 'flex';
 
-    // プログレスバーの更新開始（定義されていれば）
-    if (typeof startOstProgressUpdate === 'function') startOstProgressUpdate();
-    if (window.refreshMenuButtons) window.refreshMenuButtons();
+    // プログレスバーの更新開始
+    if (typeof startOstProgressUpdate === 'function') {
+        startOstProgressUpdate();
+    }
+
+    if (window.refreshMenuButtons) {
+        window.refreshMenuButtons(true);
+    }
+
+    // フェードイン
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            ui.ostOverlay.style.opacity = '1';
+        });
+    });
 }
+
+
+// OSTを閉じる処理
+function closeOST() {
+    titleIdleTimer = 0;
+
+    // プログレス更新停止
+    if (ostUpdateInterval) {
+        clearInterval(ostUpdateInterval);
+        ostUpdateInterval = null;
+    }
+
+    // フェードアウト
+    ui.ostOverlay.style.opacity = '0';
+
+    setTimeout(() => {
+        ui.ostOverlay.style.display = 'none';
+
+        // BGMをゲーム用設定へ戻す
+        if (typeof AudioSys !== 'undefined' && AudioSys.bgmEl) {
+            AudioSys.bgmEl.loop = true;
+        }
+
+        ui.titleOverlay.style.display = 'flex';
+        gameState = 'TITLE';
+
+        if (window.refreshMenuButtons) {
+            window.refreshMenuButtons();
+        }
+    }, 300);
+}
+
 
 // 指定したインデックスのOSTを再生する関数
 function playOSTTrack(idx) {
@@ -129,15 +179,6 @@ function startOstProgressUpdate() {
     }, 200);
 }
 
-// OSTを閉じる処理
-function closeOST() {
-    if (ostUpdateInterval) clearInterval(ostUpdateInterval);
-
-    // ★変更：即座に止める処理を削除（returnToTitle側でフェードアウトさせるため）
-
-    if (AudioSys.bgmEl) AudioSys.bgmEl.loop = true; // ゲーム用にループを戻す
-    returnToTitle();
-}
 
 // シークバー（再生バー）のクリック・タップ操作
 const ostProgressBar = document.getElementById('ost-progress-bar');

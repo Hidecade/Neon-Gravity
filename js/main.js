@@ -146,8 +146,9 @@ const ui = {
     gameoverOverlay: document.getElementById('gameover-overlay'),
     titleText: document.querySelector('#title-overlay h1'),
     pauseOverlay: document.getElementById('pause-overlay'),
+    howtoOverlay: document.getElementById('howto-overlay'),
 
-    ost: document.getElementById('ost-ui'),
+    ostOverlay: document.getElementById('ost-overlay'),
     nameInputArea: document.getElementById("name-input-area"),
     score: document.getElementById('score-display'),
     stage: document.getElementById('stage-num'),
@@ -212,7 +213,7 @@ window.refreshMenuButtons = function (resetIndex = true) {
             if (window.getComputedStyle(btn).display !== 'none') currentMenuButtons.push(btn);
         });
     } else if (gameState === 'OST') {
-        document.querySelectorAll('#ost-ui .track-item, #ost-ui .menu-btn').forEach(btn => currentMenuButtons.push(btn));
+        document.querySelectorAll('#ost-overlay .track-item, #ost-overlay .menu-btn').forEach(btn => currentMenuButtons.push(btn));
     } else if (gameState === 'STORY') {
         const backBtn = document.getElementById('btn-story-back');
         if (backBtn) currentMenuButtons.push(backBtn);
@@ -341,7 +342,7 @@ function loop() {
         if (typeof updateDying === 'function') updateDying();
         draw();
 
-    } else if (gameState === 'TITLE' || gameState === 'OST') {
+    } else if (gameState === 'TITLE' || gameState === 'OST' || gameState === 'HOWTO' || gameState === 'RANKING') {
         introBgSpeed = 2;
         introBgScroll += introBgSpeed * gameSpeed;
 
@@ -371,7 +372,15 @@ function loop() {
     // フェードアウトのタイミングを「ワープアウト中」に変更！
     // ==========================================
     // 'PLAYING' も条件に追加し、ワープ中に黒い幕を描けるようにします
-    if (['PLAYING', 'DYING', 'ENDING', 'ENDING_STORY', 'GAMEOVER_UI', 'TITLE', 'HOWTO', 'HOWTO_CLOSING', 'STORY'].includes(gameState)) {
+    if (['PLAYING', 
+        'DYING', 
+        'ENDING', 
+        'ENDING_STORY', 
+        'GAMEOVER_UI', 
+        'TITLE', 
+        'HOWTO', 
+        'RANKING',
+        'STORY'].includes(gameState)) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.globalCompositeOperation = 'source-over'; // 加算合成をリセット
 

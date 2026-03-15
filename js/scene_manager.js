@@ -28,7 +28,7 @@ function startGame() {
         ui.titleOverlay.style.pointerEvents = 'auto';
     }, 500);
 
-    ui.ost.style.display = 'none';
+    ui.ostOverlay.style.display = 'none';
 
     // 2. グローバル変数の初期化
     score = 0;
@@ -593,7 +593,7 @@ function returnToTitle() {
     ui.gameoverOverlay.style.display = 'none';
     ui.titleOverlay.style.display = 'flex';
 
-    ui.ost.style.display = 'none';
+    ui.ostOverlay.style.display = 'none';
     ui.titleOverlay.style.display = 'flex';
     ui.controls.style.display = 'none';
     hideGameMessage(true); 
@@ -752,35 +752,37 @@ function closeStory() {
  * HOW TO PLAY 画面の開閉
  */
 function showHowTo() {
+
     gameState = 'HOWTO';
     titleIdleTimer = 0;
+
     ui.titleOverlay.style.display = 'none';
+    ui.howtoOverlay.style.display = 'flex';
 
-    const howtoUI = document.getElementById('howto-overlay');
-    howtoUI.style.display = 'flex';
-
-    if (window.refreshMenuButtons) window.refreshMenuButtons(true);
+    if (window.refreshMenuButtons) {
+        window.refreshMenuButtons(true);
+    }
 
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-            howtoUI.style.opacity = '1';
+            ui.howtoOverlay.style.opacity = '1';
         });
     });
 }
 
 function hideHowTo() {
-    gameState = 'HOWTO_CLOSING';
-    titleIdleTimer = 0;
 
-    const howtoUI = document.getElementById('howto-overlay');
-    howtoUI.style.opacity = '0';
+    titleIdleTimer = 0;
+    ui.howtoOverlay.style.opacity = '0';
 
     setTimeout(() => {
-        howtoUI.style.display = 'none';
+        ui.howtoOverlay.style.display = 'none';
         ui.titleOverlay.style.display = 'flex';
         gameState = 'TITLE';
-        if (window.refreshMenuButtons) window.refreshMenuButtons();
-    }, 500);
+        if (window.refreshMenuButtons) {
+            window.refreshMenuButtons();
+        }
+    }, 300);
 }
 
 /**

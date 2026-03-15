@@ -68,20 +68,19 @@ window.firebaseOps = {
     }
 };
 
-// --- ランキング表示関数 (引数 onClose で閉じた後の処理を受け取る) ---
 window.showRanking = async function (onClose = null) {
     if (!rankingOverlay) return;
 
     // 他のオーバーレイを閉じる
     if (ui.titleOverlay) ui.titleOverlay.style.display = "none";
     if (ui.gameoverOverlay) ui.gameoverOverlay.style.display = "none";
-    if (ui.ost) ui.ost.style.display = "none";
+    if (ui.ostOverlay) ui.ostOverlay.style.display = "none";
     if (ui.nameInputArea) ui.nameInputArea.style.display = "none";
 
-    // ランキング表示
-    rankingOverlay.style.display = "flex";
-
     // 初期状態
+    rankingOverlay.style.display = "flex";
+    rankingOverlay.style.opacity = "0";
+
     if (loadingEl) {
         loadingEl.style.display = "block";
         loadingEl.innerText = "CONNECTING...";
@@ -95,7 +94,6 @@ window.showRanking = async function (onClose = null) {
         rankingBody.innerHTML = "";
     }
 
-    // 閉じた後のアクション保存
     onRankingCloseAction = onClose;
 
     try {
@@ -154,17 +152,19 @@ window.showRanking = async function (onClose = null) {
             }
         }
 
-        if (loadingEl) {
-            loadingEl.style.display = "none";
-        }
-
-        if (tableEl) {
-            tableEl.style.display = "table";
-        }
+        if (loadingEl) loadingEl.style.display = "none";
+        if (tableEl) tableEl.style.display = "table";
 
         if (window.refreshMenuButtons) {
             window.refreshMenuButtons();
         }
+
+        // フェードイン開始
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                rankingOverlay.style.opacity = "1";
+            });
+        });
 
     } catch (e) {
         console.error("Ranking Error:", e);
@@ -180,27 +180,39 @@ window.showRanking = async function (onClose = null) {
     }
 };
 
+function hideRanking() {
+    if (!rankingOverlay) return;
+
+    rankingOverlay.style.opacity = "0";
+
+    setTimeout(() => {
+        rankingOverlay.style.display = "none";
+
+        if (typeof onRankingCloseAction === "function") {
+            const action = onRankingCloseAction;
+            onRankingCloseAction = null;
+            action();
+        } else {
+            if (ui.titleOverlay) ui.titleOverlay.style.display = "flex";
+            gameState = "TITLE";
+        }
+
+        if (window.refreshMenuButtons) {
+            window.refreshMenuButtons();
+        }
+    }, 300);
+}
+
+const btnRanking = document.getElementById("btn-ranking");
+if (btnRanking) btnRanking.onclick = () => window.showRanking(null);
+
+if (closeRankingBtn) closeRankingBtn.onclick = hideRanking;
+
 // 初期化完了時、名前の読み込み
 const saved = localStorage.getItem("neonGravity_last_name");
 const nameInput = document.getElementById("player-name-input");
 if (saved && nameInput) nameInput.value = saved;
 
-// タイトル画面のランキングボタン（閉じた後は何もしない）
-const btnRanking = document.getElementById("btn-ranking");
-if (btnRanking) btnRanking.onclick = () => window.showRanking(null);
-
-// CLOSEボタンの動作設定
-closeRankingBtn.onclick = () => {
-    rankingOverlay.style.display = "none";
-
-    if (typeof onRankingCloseAction === "function") {
-        const action = onRankingCloseAction;
-        onRankingCloseAction = null;
-        action();
-    } else {
-        if (ui.titleOverlay) ui.titleOverlay.style.display = "flex";
-    }
-};
 
 
 // 準備完了イベント発火
