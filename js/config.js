@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-const GAME_VERSION = "1.3.9";
+const GAME_VERSION = "1.3.10";
 
 const DEBUG = {
     enabled: true,
@@ -255,7 +255,7 @@ const DROP_RATES = {
 
 // --- 演出設定 ---
 const EXPLOSION_SPEED_MAG = 2.0; // 撃破火花の散る速さ
-const EXPLOSION_COUNT_MAG = 1.5; // 撃破火花の量
+const EXPLOSION_COUNT_MAG = 5.0; // 撃破火花の量
 
 // --- ステージテキスト・色 ---
 const STAGE_TITLES = {

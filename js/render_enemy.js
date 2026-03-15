@@ -41,19 +41,27 @@ function drawTriangleEnemy(ctx, e) {
     ctx.translate(e.x, e.y);
     ctx.rotate(e.angle);
 
-    const currentScale = (e.scale || 0.7) * G_SCALE * 1.2;
+    let currentScale = (e.scale || 0.7) * G_SCALE * 1.2;
+    let visualAlpha = 1.0;
+
+    // ▼ 出現中の拡大演出
+    if (e.isWarping) {
+        const scaleFactor = 0.1 + (e.warpPercent || 0) * 0.9;
+        currentScale *= scaleFactor;
+        visualAlpha = e.warpPercent || 0;
+    }
+
     ctx.scale(currentScale, currentScale);
 
     // --- 2. 描画設定 ---
-    const visualAlpha = e.isWarping ? (e.warpPercent || 0) : 1.0;
     ctx.globalAlpha = visualAlpha;
-    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalCompositeOperation = 'lighter'; // 加算合成で発光を表現
 
     // --- 3. 3D形状（縦長の正八面体） ---
     const size = 12;
     const pts = [
-        { x: 3.5, y: 0, z: 0 },  // 前頂点（縦長）
-        { x: -1.2, y: 0, z: 0 },  // 後頂点
+        { x: 3.5, y: 0, z: 0 },  // 前頂点
+        { x: -1.2, y: 0, z: 0 }, // 後頂点
         { x: 0, y: 1, z: 1 }, { x: 0, y: -1, z: 1 },
         { x: 0, y: -1, z: -1 }, { x: 0, y: 1, z: -1 }
     ];
@@ -72,44 +80,58 @@ function drawTriangleEnemy(ctx, e) {
         [2, 3], [3, 4], [4, 5], [5, 2]
     ];
 
-    // --- 5. ワイヤーフレーム ---
-    ctx.strokeStyle = e.color || '#0ff';
-    ctx.lineWidth = 2;
+    // --- 5. ワイヤーフレーム（ネオン発光強化） ---
+    const mainColor = e.color || '#0ff';
+    
+    // パスの作成
     ctx.beginPath();
     lines.forEach(l => {
         ctx.moveTo(proj[l[0]].x, proj[l[0]].y);
         ctx.lineTo(proj[l[1]].x, proj[l[1]].y);
     });
+
+    // 5-A. 外側のぼんやりした光（太く、薄く）
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 5.0;
+    ctx.globalAlpha = visualAlpha * 0.3;
     ctx.stroke();
 
+    // 5-B. メインの線
+    ctx.lineWidth = 2.0;
+    ctx.globalAlpha = visualAlpha;
+    ctx.stroke();
+
+    // 5-C. 芯の白い光
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 0.5;
+    ctx.globalAlpha = visualAlpha * 0.8;
     ctx.stroke();
 
-    // --- 6. 点滅する熱源コア ---
-    // フレーム数から0.8〜1.2の範囲で揺らぎを作る
+    // --- 6. 点滅する熱源コア（ネオンレイヤー） ---
     const pulse = 0.8 + Math.sin(frame * 0.15) * 0.2;
 
-    // レイヤー1：赤（外側）
+    // レイヤー1：赤（外側のグロー）
+    ctx.globalAlpha = visualAlpha * 0.4;
     ctx.fillStyle = '#f00';
     ctx.beginPath();
-    ctx.arc(0, 0, 7.5 * pulse, 0, Math.PI * 2);
+    ctx.arc(0, 0, 12 * pulse, 0, Math.PI * 2); // 範囲を広げてぼかしの代わりにする
     ctx.fill();
 
-    // レイヤー2：橙（中間）
+    // レイヤー2：橙（実体感）
+    ctx.globalAlpha = visualAlpha * 0.8;
     ctx.fillStyle = '#f90';
     ctx.beginPath();
-    ctx.arc(0, 0, 5 * pulse, 0, Math.PI * 2);
+    ctx.arc(0, 0, 6 * pulse, 0, Math.PI * 2);
     ctx.fill();
 
-    // レイヤー3：白（中心）
+    // レイヤー3：白（中心の輝き）
+    ctx.globalAlpha = visualAlpha;
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.arc(0, 0, 2.5, 0, Math.PI * 2); // 中心は安定させるため固定
+    ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
-    ctx.globalCompositeOperation = 'source-over';
 }
 
 function drawDragonEnemy(ctx, e) {
@@ -183,14 +205,19 @@ function drawDragonEnemy(ctx, e) {
 
     const pulse = 0.8 + Math.sin(frame * 0.15) * 0.2;
 
+    // 1. 光の拡散部分（シャドウの代わり）
+    ctx.globalAlpha = 0.3; // 薄くする
     ctx.fillStyle = '#ff4400';
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = '#ff4400';
+    ctx.beginPath();
+    ctx.arc(0, 0, 15 * pulse, 0, Math.PI * 2); // ぼかし幅と同じくらい大きく描く
+    ctx.fill();
+
+    // 2. コアの中心部分
+    ctx.globalAlpha = 1.0; // 濃さを戻す
     ctx.beginPath();
     ctx.arc(0, 0, 5 * pulse, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.shadowBlur = 0;
     ctx.fillStyle = '#ffaa00';
     ctx.beginPath();
     ctx.arc(0, 0, 3 * pulse, 0, Math.PI * 2);
@@ -216,10 +243,29 @@ function drawDragonEnemy(ctx, e) {
 
 function drawCubeEnemy(ctx, e) {
     ctx.save();
-    ctx.translate(e.x, e.y);
-    ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
 
-    // --- 1. アイテムの種類に応じたコアの色設定 ---
+    // --- 1. 座標と進行方向への回転 ---
+    ctx.translate(e.x, e.y);
+
+    // ▼▼▼ 修正: 出現中のスケール計算と透明度 ▼▼▼
+    let currentScale = (e.scale || 0.8) * G_SCALE;
+    let visualAlpha = 1.0;
+
+    if (e.isWarping) {
+        // 出現率に応じて0.1倍から1.0倍まで拡大
+        const scaleFactor = 0.1 + (e.warpPercent || 0) * 0.9;
+        currentScale *= scaleFactor;
+        visualAlpha = e.warpPercent || 0;
+    }
+
+    ctx.scale(currentScale, currentScale);
+    
+    // ネオン表現の基本（加算合成）と出現時の透明度を設定
+    ctx.globalAlpha = visualAlpha;
+    ctx.globalCompositeOperation = 'lighter';
+    // ▲▲▲ 修正ここまで ▲▲▲
+
+    // --- 2. アイテムの種類に応じたコアの色設定 ---
     let coreColor = '#ff0'; // デフォルト（クリスタル/なし）：黄
     if (e.drop === 'laser') coreColor = '#0ff';      // レーザー：シアン
     if (e.drop === 'level') coreColor = '#0f0';      // レベルアップ：緑
@@ -229,31 +275,24 @@ function drawCubeEnemy(ctx, e) {
     const pulse = (Math.sin(frame * 0.15) * 0.5) + 0.5;
     const coreSize = 6 + pulse * 4;
 
-    ctx.shadowBlur = 15 + pulse * 10;
-    ctx.shadowColor = coreColor;
-
-    // コアの外光（パルスに合わせて透明度変化）
     const rgb = coreColor === '#ff0' ? '255, 255, 0' :
         coreColor === '#0ff' ? '0, 255, 255' :
             coreColor === '#0f0' ? '0, 255, 0' : '255, 255, 255';
 
-    ctx.fillStyle = `rgba(${rgb}, ${0.4 + pulse * 0.4})`;
+    // コアの外光
+    // (既に rgba で透明度が指定されているので、visualAlpha を乗算してフェードインに対応)
+    ctx.fillStyle = `rgba(${rgb}, ${(0.4 + pulse * 0.4) * visualAlpha})`;
     ctx.beginPath();
     ctx.arc(0, 0, coreSize, 0, Math.PI * 2);
     ctx.fill();
 
     // コアの中心（高輝度）
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = `rgba(255, 255, 255, ${visualAlpha})`;
     ctx.beginPath();
     ctx.arc(0, 0, coreSize * 0.4, 0, Math.PI * 2);
     ctx.fill();
 
-    // --- 2. 外殻のワイヤーフレーム (緑色で固定) ---
-    ctx.shadowBlur = 5;
-    ctx.shadowColor = e.color;
-    ctx.strokeStyle = e.color;
-    ctx.lineWidth = 1.5;
-
+    // --- 3. 外殻のワイヤーフレーム ---
     const size = 16;
     const pts = [
         { x: -1, y: -1, z: -1 }, { x: 1, y: -1, z: -1 },
@@ -283,10 +322,22 @@ function drawCubeEnemy(ctx, e) {
         ctx.moveTo(proj[l[0]].x, proj[l[0]].y);
         ctx.lineTo(proj[l[1]].x, proj[l[1]].y);
     });
+
+    // ▼▼▼ 修正: shadowBlurを使わないマルチパス描画 ▼▼▼
+    ctx.strokeStyle = e.color;
+
+    // 1. 光の拡散部分（太く、薄く）
+    ctx.globalAlpha = visualAlpha * 0.4;
+    ctx.lineWidth = 6.0;
     ctx.stroke();
 
+    // 2. 線の中心（細く、濃く）
+    ctx.globalAlpha = visualAlpha;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    // ▲▲▲ 修正ここまで ▲▲▲
+
     ctx.restore();
-    ctx.shadowBlur = 0;
 }
 
 function drawHunterEnemy(ctx, e) {
@@ -305,7 +356,7 @@ function drawHunterEnemy(ctx, e) {
     // --- 外郭のカラー（e.colorを反映） ---
     let mainColor = isDmg ? '#ffffff' : (e.color || '#00ffff');
 
-    ctx.shadowBlur = 8;
+    //ctx.shadowBlur = 8;
     ctx.shadowColor = mainColor;
     ctx.strokeStyle = mainColor;
     ctx.lineWidth = 1.2;
@@ -373,7 +424,7 @@ function drawHunterEnemy(ctx, e) {
     // コアの外光（グローエフェクト）
     ctx.globalCompositeOperation = 'lighter';
 
-    ctx.shadowBlur = isAiming ? 25 : 15;
+    //ctx.shadowBlur = isAiming ? 25 : 15;
     ctx.shadowColor = '#ff0000';
 
     // 放射状グラデーションで「熱源」を表現
@@ -470,7 +521,7 @@ function drawTadpoleEnemy(ctx, e) {
     // ワイヤーフレームの設定
     ctx.strokeStyle = baseColor;
     ctx.lineWidth = 2.5;
-    ctx.shadowBlur = 15;
+    //ctx.shadowBlur = 0;
     ctx.shadowColor = baseColor;
 
     // --- メインボディ「＝＝＝」部分 ---
@@ -509,30 +560,41 @@ function drawTadpoleEnemy(ctx, e) {
     // --- コア・ユニット ---
     // 中心部で強く輝く水色のエネルギー体
     ctx.fillStyle = lightColor;
-    ctx.shadowBlur = 20;
+    //ctx.shadowBlur = 0;
     ctx.shadowColor = baseColor;
     ctx.beginPath();
     ctx.rect(5, -4, 8, 8);
     ctx.fill();
 
     ctx.restore();
-    ctx.shadowBlur = 0;
+    //ctx.shadowBlur = 0;
 }
 
 function drawAsteroidEnemy(ctx, e) {
     ctx.save();
+
+    // --- 1. 座標の決定 ---
     ctx.translate(e.x, e.y);
-    const s = e.scale * G_SCALE;
-    ctx.scale(s, s);
+
+    // ▼▼▼ 修正: 出現中のスケール計算と透明度 ▼▼▼
+    let baseScale = e.scale * G_SCALE;
+    let visualAlpha = 1.0;
+
+    if (e.isWarping) {
+        // 出現率に応じて0.1倍から1.0倍まで拡大
+        const scaleFactor = 0.1 + (e.warpPercent || 0) * 0.9;
+        baseScale *= scaleFactor;
+        visualAlpha = e.warpPercent || 0;
+    }
+
+    ctx.scale(baseScale, baseScale);
+    // ▲▲▲ 修正ここまで ▲▲▲
 
     if (e.variant === 'bubble') {
-        ctx.globalCompositeOperation = 'lighter';
-
-        // ★変更1：時間をゆっくり進めて、ゆったりとした動きにする (0.04 -> 0.02)
+        // バブル（泡）の描画
         const time = frame * 0.02;
         const baseRadius = 22;
 
-        // ★変更2：衝突の余韻を少し長く残す (0.85 -> 0.92)
         e.bend = (e.bend || 0) * 0.92;
 
         const points = [];
@@ -540,11 +602,6 @@ function drawAsteroidEnemy(ctx, e) {
 
         for (let i = 0; i < numPoints; i++) {
             const ang = (Math.PI * 2 / numPoints) * i;
-
-            // ★変更3：揺れ幅（係数）を全体的に大きくし、より複雑な波形にする
-            // メインの大きな揺れ: 0.8 -> 1.5
-            // サブの不規則な揺れ: 0.4 -> 0.8
-            // 衝突時の影響: 0.3 -> 0.4
             const noise = Math.sin(time + i) * 1.5
                 + Math.cos(time * 1.3 + i * 1.5) * 0.8
                 + Math.sin(frame * 0.2 + i) * e.bend * 0.4;
@@ -552,7 +609,6 @@ function drawAsteroidEnemy(ctx, e) {
             const r = baseRadius + noise;
             points.push({ x: Math.cos(ang) * r, y: Math.sin(ang) * r });
         }
-
 
         ctx.beginPath();
         let xc = (points[numPoints - 1].x + points[0].x) / 2;
@@ -568,53 +624,48 @@ function drawAsteroidEnemy(ctx, e) {
         }
         ctx.closePath();
 
-        // ★追加: 奥のグリッドを暗く沈ませる「遮光レイヤー」
-        ctx.globalCompositeOperation = 'source-over'; // 通常のアルファブレンド
-        ctx.fillStyle = 'rgba(0, 5, 20, 0.6)'; // 半透明の暗い色（深海のようなネイビーブラック）
-        ctx.fill(); // まず暗く塗りつぶす
+        // 奥のグリッドを隠す「遮光レイヤー」
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = `rgba(0, 5, 20, ${0.6 * visualAlpha})`; // 透明度を考慮
+        ctx.fill();
 
-        // ★変更: フチやハイライトだけを光らせる（加算合成）
+        // 輪郭とハイライトの加算合成
         ctx.globalCompositeOperation = 'lighter';
         const grad = ctx.createRadialGradient(-6, -6, 2, 0, 0, baseRadius + 4);
-        // 中間の透明度を0にすることで、さきほど塗った「暗さ」を活かします
-        grad.addColorStop(0, 'rgba(255, 255, 255, 0.15)'); // 中心はわずかに光る
-        grad.addColorStop(0.4, 'rgba(0, 255, 255, 0)');    // 中間は完全に透明（奥の暗さが見える）
-        grad.addColorStop(0.85, 'rgba(0, 255, 255, 0.4)'); // 輪郭のフチは光る
-        grad.addColorStop(1, 'rgba(0, 255, 255, 0)');      // 完全に溶け込む
+        grad.addColorStop(0, `rgba(255, 255, 255, ${0.15 * visualAlpha})`);
+        grad.addColorStop(0.4, 'rgba(0, 255, 255, 0)');
+        grad.addColorStop(0.85, `rgba(0, 255, 255, ${0.4 * visualAlpha})`);
+        grad.addColorStop(1, 'rgba(0, 255, 255, 0)');
 
         ctx.fillStyle = grad;
-        ctx.fill(); // 上からグラデーションを重ね塗り
+        ctx.fill();
 
         // 輪郭線
-        ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
-        ctx.lineWidth = 1.2 / s;
+        ctx.strokeStyle = `rgba(0, 255, 255, ${0.5 * visualAlpha})`;
+        ctx.lineWidth = 1.2 / baseScale;
         ctx.stroke();
 
-        // フィルタを解除
-        ctx.filter = 'none';
-
-        // --- ハイライト削除済み ---
-
-        // 内部のキラキラ（そのまま残す）
-        ctx.fillStyle = '#fff';
+        // 内部のキラキラ
+        ctx.fillStyle = `rgba(255, 255, 255, ${visualAlpha})`;
         for (let i = 0; i < 2; i++) {
             const slowTime = time * 0.5 + i;
             const bx = Math.cos(slowTime) * 10;
             const by = Math.sin(slowTime * 1.2) * 10;
-            ctx.globalAlpha = 0.2 + Math.sin(slowTime) * 0.1;
+            ctx.globalAlpha = (0.2 + Math.sin(slowTime) * 0.1) * visualAlpha;
             ctx.beginPath();
             ctx.arc(bx, by, 1.5, 0, Math.PI * 2);
             ctx.fill();
         }
 
     } else {
-        // 岩の描画（影を消してソリッドな質感に）
+        // 岩（アステロイド）の描画
         ctx.rotate(e.angle);
+        ctx.globalAlpha = visualAlpha;
+        ctx.globalCompositeOperation = 'lighter';
         ctx.strokeStyle = e.color;
-        ctx.lineWidth = 1.5 / s; // 少し線を太くして視認性を確保
+        ctx.lineWidth = 1.5 / baseScale;
 
-        ctx.shadowBlur = 0;
-
+        // 外郭パス
         ctx.beginPath();
         for (let i = 0; i < 8; i++) {
             const r = 22 * (0.8 + Math.sin(i * 2.1 + e.size * 5) * 0.25);
@@ -623,15 +674,22 @@ function drawAsteroidEnemy(ctx, e) {
             else ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
         }
         ctx.closePath();
+
+        // 線の「光の拡散」部分を重ね書きで表現（shadowBlurの代わり）
+        ctx.globalAlpha = visualAlpha * 0.3;
+        ctx.lineWidth = 4.0 / baseScale;
+        ctx.stroke();
+
+        // 線の芯
+        ctx.globalAlpha = visualAlpha;
+        ctx.lineWidth = 1.5 / baseScale;
         ctx.stroke();
 
         // 内部のひび割れライン
-        ctx.globalAlpha = 0.3; // 少しだけ濃くする
+        ctx.globalAlpha = 0.3 * visualAlpha;
         ctx.beginPath();
         ctx.moveTo(-10, -5);
         ctx.lineTo(5, 8);
-
-        ctx.fillStyle = 'rgba(20, 10, 0, 0.5)'; ctx.fill();
         ctx.stroke();
     }
 
@@ -942,15 +1000,30 @@ function drawEclipseEnemy(ctx, e) {
 
 function drawJellyfishEnemy(ctx, e) {
     ctx.save();
+    
+    // --- 1. 座標と進行方向への回転 ---
     ctx.translate(e.x, e.y);
     ctx.rotate(e.angle);
-    ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
+
+    // ▼▼▼ 修正: 出現中のスケール計算と透明度 ▼▼▼
+    let currentScale = (e.scale || 1.0) * G_SCALE;
+    let visualAlpha = 1.0;
+
+    if (e.isWarping) {
+        // 出現率に応じて0.1倍から1.0倍まで拡大
+        const scaleFactor = 0.1 + (e.warpPercent || 0) * 0.9;
+        currentScale *= scaleFactor;
+        visualAlpha = e.warpPercent || 0;
+    }
+
+    ctx.scale(currentScale, currentScale);
+    // ▲▲▲ 修正ここまで ▲▲▲
 
     const pulse = Math.sin(e.timer * 0.08);
     const squeeze = Math.max(0, pulse);
     const isSpark = (e.variant === 'spark');
 
-    // --- 旋回に合わせた「能動的な足の曲がり」計算（控えめ調整版） ---
+    // --- 旋回に合わせた「能動的な足の曲がり」計算 ---
     if (e.prevAngle === undefined) e.prevAngle = e.angle;
     if (e.bend === undefined) e.bend = 0;
 
@@ -958,96 +1031,163 @@ function drawJellyfishEnemy(ctx, e) {
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
 
-    // ★係数を 3000 -> 600 (1/5) に減少。より自然なしなりへ。
     const targetBend = angleDiff * 600;
-    e.bend += (targetBend - e.bend) * 0.1; // 追従を少しマイルドに
-    e.bend *= 0.9; // 復元力
+    e.bend += (targetBend - e.bend) * 0.1;
+    e.bend *= 0.9;
 
-    // ★最大曲がり幅も 50 -> 10 (1/5) に制限
     const maxBend = 10;
     e.bend = Math.max(-maxBend, Math.min(maxBend, e.bend));
 
+    // ネオン表現の基本（加算合成）
     ctx.globalCompositeOperation = 'lighter';
 
-    // --- 1. 波打つ触手 ---
-    ctx.lineWidth = isSpark ? 2.0 : 1.5;
-    ctx.strokeStyle = e.color;
-    ctx.globalAlpha = 0.5;
-
+    // ==========================================
+    // 1. 波打つ触手
+    // ==========================================
     const tentacleCount = isSpark ? 6 : 4;
     const spacing = isSpark ? 2.5 : 4;
 
-    for (let i = 0; i < tentacleCount; i++) {
-        ctx.beginPath();
-        const startY = (i - (tentacleCount - 1) / 2) * spacing;
-        ctx.moveTo(-5, startY);
+    // ▼▼▼ 修正: shadowBlurを使わないマルチパス描画（触手） ▼▼▼
+    ctx.strokeStyle = e.color;
 
+    // 触手のパスを配列に記録（マルチパス描画のため）
+    const tentaclePaths = [];
+    for (let i = 0; i < tentacleCount; i++) {
+        const startY = (i - (tentacleCount - 1) / 2) * spacing;
         const waveSpd = isSpark ? 0.15 : 0.1;
         const waveAmp = isSpark ? 12 : 8;
         const wave1 = Math.sin(e.timer * waveSpd - i * 0.5) * waveAmp;
         const wave2 = Math.cos(e.timer * (waveSpd * 0.5) + i) * (waveAmp * 1.2);
         const stretch = squeeze * 15;
 
-        // ベジェ曲線の y 座標に bend を適用。先端に向けて効果を強める。
-        ctx.bezierCurveTo(
-            -20 - stretch, startY + wave1 + e.bend * 0.3,
-            -40 - stretch * 2, startY + wave2 + e.bend * 1.0,
-            -65 - stretch * 3, startY + wave1 * 1.5 + e.bend * 2.0
-        );
-        ctx.stroke();
-
-        if (isSpark && Math.random() < 0.1) {
-            ctx.save();
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5; ctx.globalAlpha = 0.4;
-            ctx.stroke();
-            ctx.restore();
-        }
+        tentaclePaths.push({
+            startY: startY,
+            cp1x: -20 - stretch, cp1y: startY + wave1 + e.bend * 0.3,
+            cp2x: -40 - stretch * 2, cp2y: startY + wave2 + e.bend * 1.0,
+            endX: -65 - stretch * 3, endY: startY + wave1 * 1.5 + e.bend * 2.0
+        });
     }
 
-    // --- 2. 傘（変更なし） ---
-    ctx.globalAlpha = 0.8;
+    // 1-A. 触手の拡散光（太く薄く）
+    ctx.globalAlpha = 0.2 * visualAlpha;
+    ctx.lineWidth = (isSpark ? 6.0 : 4.5);
+    ctx.beginPath();
+    tentaclePaths.forEach(p => {
+        ctx.moveTo(-5, p.startY);
+        ctx.bezierCurveTo(p.cp1x, p.cp1y, p.cp2x, p.cp2y, p.endX, p.endY);
+    });
+    ctx.stroke();
+
+    // 1-B. 触手の芯（細く濃く）
+    ctx.globalAlpha = 0.6 * visualAlpha;
+    ctx.lineWidth = (isSpark ? 2.0 : 1.5);
+    ctx.beginPath();
+    tentaclePaths.forEach(p => {
+        ctx.moveTo(-5, p.startY);
+        ctx.bezierCurveTo(p.cp1x, p.cp1y, p.cp2x, p.cp2y, p.endX, p.endY);
+    });
+    ctx.stroke();
+
+    // 1-C. Spark特有の白いハイライト
+    if (isSpark && Math.random() < 0.1) {
+        ctx.strokeStyle = '#fff'; 
+        ctx.lineWidth = 0.5; 
+        ctx.globalAlpha = 0.4 * visualAlpha;
+        ctx.stroke(); // すでにbeginPathされているパスをそのまま白でなぞる
+    }
+    // ▲▲▲ 修正ここまで ▲▲▲
+
+
+    // ==========================================
+    // 2. 傘
+    // ==========================================
+    // グラデーションの透明度にも visualAlpha を反映
     const grad = ctx.createRadialGradient(5, 0, 0, 5, 0, 20);
-    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0, `rgba(255, 255, 255, ${visualAlpha})`);
     const innerGlow = isSpark && e.chargeLevel ? Math.min(1.0, e.chargeLevel) : 0.4;
+    // e.color を rgba に変換して透明度を乗算するのは処理が重いため、塗り全体の globalAlpha で代用します
     grad.addColorStop(innerGlow, e.color);
     grad.addColorStop(1, 'transparent');
+
     const headX = 22 + squeeze * 6;
     const rearX = -6 + squeeze * 4;
     const widthY = 10 - squeeze * 3;
+
+    // 傘の形状パス
     ctx.beginPath();
     ctx.moveTo(headX, 0);
     ctx.quadraticCurveTo(8, widthY, rearX, widthY);
     ctx.quadraticCurveTo(0, 0, rearX, -widthY);
     ctx.quadraticCurveTo(8, -widthY, headX, 0);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(10, 0, 30, 0.7)'; ctx.fill();
-    ctx.fillStyle = grad; ctx.fill();
-    ctx.strokeStyle = e.color; ctx.lineWidth = 1.5;
-    ctx.shadowBlur = isSpark ? 25 : 15; ctx.shadowColor = e.color;
+
+    // 2-A. 下敷きの塗りつぶし
+    ctx.globalAlpha = 0.7 * visualAlpha;
+    ctx.fillStyle = 'rgba(10, 0, 30, 1.0)'; 
+    ctx.fill();
+    
+    // 2-B. グラデーションの塗りつぶし
+    ctx.globalAlpha = 0.8 * visualAlpha;
+    ctx.fillStyle = grad; 
+    ctx.fill();
+
+    // ▼▼▼ 修正: shadowBlurを使わないマルチパス描画（傘の輪郭） ▼▼▼
+    ctx.strokeStyle = e.color;
+
+    // 輪郭の拡散光（太く薄く）
+    ctx.globalAlpha = 0.3 * visualAlpha;
+    ctx.lineWidth = isSpark ? 8.0 : 5.0;
     ctx.stroke();
 
-    // --- 3. コア（変更なし） ---
+    // 輪郭の芯（細く濃く）
+    ctx.globalAlpha = 0.9 * visualAlpha;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // ▲▲▲ 修正ここまで ▲▲▲
+
+
+    // ==========================================
+    // 3. コア
+    // ==========================================
     let coreColor = '#fff';
     if (isSpark) {
         const greenVal = Math.floor(60 + Math.sin(frame * 0.2) * 60);
         coreColor = `rgb(255, ${greenVal}, 0)`;
     }
-    ctx.fillStyle = coreColor;
-    ctx.shadowBlur = isSpark ? 20 : 0; ctx.shadowColor = coreColor;
+
+    // コアのパス生成
     ctx.beginPath();
     if (isSpark) {
         const coreSize = 3 + pulse * 2 + (e.chargeLevel || 0) * 4;
         for (let j = 0; j < 6; j++) {
             const a = (Math.PI * 2 / 6) * j + frame * 0.2;
             const r = coreSize * (0.8 + Math.random() * 0.4);
-            const cx = 4 + Math.cos(a) * r; const cy = Math.sin(a) * r * 0.8;
+            const cx = 4 + Math.cos(a) * r; 
+            const cy = Math.sin(a) * r * 0.8;
             if (j === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
         }
-        ctx.closePath(); ctx.fill();
+        ctx.closePath(); 
     } else {
         ctx.ellipse(4 + squeeze * 2, 0, 3 + pulse * 2, 2 + pulse, 0, 0, Math.PI * 2);
-        ctx.fill();
     }
+
+    // ▼▼▼ 修正: shadowBlurを使わないマルチパス描画（コア） ▼▼▼
+    ctx.fillStyle = coreColor;
+
+    if (isSpark) {
+        // Spark時はコアの拡散光を強調
+        ctx.globalAlpha = 0.4 * visualAlpha;
+        // 擬似的な拡大パスでグローを表現（元のパスをスケールアップ）
+        ctx.save();
+        ctx.scale(1.8, 1.8);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // コアの中心
+    ctx.globalAlpha = visualAlpha;
+    ctx.fill();
+    // ▲▲▲ 修正ここまで ▲▲▲
 
     e.prevAngle = e.angle;
     ctx.restore();
@@ -1067,7 +1207,7 @@ function drawSentinelEnemy(ctx, e) {
     // --- 1. 本体（六角形のセンサーポッド） ---
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
-    ctx.shadowBlur = 10;
+    //ctx.shadowBlur = 10;
     ctx.shadowColor = color;
 
     ctx.beginPath();

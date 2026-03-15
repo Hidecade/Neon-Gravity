@@ -370,7 +370,7 @@ function resize() {
     if (isPortrait) {
         hudScale = 0.9;
     } else if (currentResolution.key === "FHD") {
-        hudScale = 1.4;
+        hudScale = 1.2;
     } else if (
         currentResolution.key === "VGA_L" ||
         currentResolution.key === "VGA_P"

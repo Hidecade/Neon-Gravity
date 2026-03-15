@@ -65,6 +65,12 @@ function updatePlayerBullets() {
                 if (e.type === 'boss' || e.type === 'battleship') { // ★念のためbattleshipも追加
                     e.flashTimer = 5;
                     if (typeof AudioSys !== 'undefined') AudioSys.playSE('boss_hit');
+
+                    // ▼ 追加: 敵機を倒しきれなかった場合に壁ヒットパーティクルを出す
+                    if (e.hp > 0) {
+                        createWallImpact(b.x, b.y, '#0f8');
+                    }
+
                     for (let i = 0; i < 3; i++) {
                         particles.push({
                             x: b.x, y: b.y,
@@ -80,6 +86,9 @@ function updatePlayerBullets() {
                 else {
                     if (e.hp > 0) {
                         if (typeof AudioSys !== 'undefined') AudioSys.playSE('enemy_hit');
+
+                        createWallImpact(b.x, b.y, '#0f8');
+                        
                         const sparkColor = e.color || '#fff';
                         for (let i = 0; i < 4; i++) {
                             particles.push({

@@ -346,13 +346,16 @@ function updateGrid() {
 }
 
 function updateParticlesAndRings() {
-    // --- パーティクルの更新 (変更なし) ---
+    // ▼ ループ外で摩擦係数を事前計算（CPU負荷軽減）
+    const friction = Math.pow(0.92, gameSpeed);
+
+    // --- パーティクルの更新 ---
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.x += p.vx * gameSpeed;
         p.y += p.vy * gameSpeed;
-        p.vx *= Math.pow(0.92, gameSpeed);
-        p.vy *= Math.pow(0.92, gameSpeed);
+        p.vx *= friction; // 事前計算した定数を乗算
+        p.vy *= friction;
 
         if (p.isBubble) {
             p.vy -= 0.01 * gameSpeed;
@@ -362,11 +365,20 @@ function updateParticlesAndRings() {
             p.vy += 0.005 * gameSpeed;
             p.life -= 0.02 * gameSpeed;
         }
+        
         if (p.rotV) p.angle += p.rotV * gameSpeed;
-        if (p.life <= 0) particles.splice(i, 1);
+        
+        // ▼ O(1) での要素削除 (Swap & Pop)
+        if (p.life <= 0) {
+            const lastIdx = particles.length - 1;
+            if (i !== lastIdx) {
+                particles[i] = particles[lastIdx];
+            }
+            particles.pop();
+        }
     }
 
-    // --- リングの更新 (★ここが重要：ボムの動きの分岐) ---
+    // --- リングの更新 ---
     for (let i = rings.length - 1; i >= 0; i--) {
         const r = rings[i];
 
@@ -386,8 +398,13 @@ function updateParticlesAndRings() {
             r.life -= decay * gameSpeed;
         }
 
+        // ▼ O(1) での要素削除 (Swap & Pop)
         if (r.life <= 0) {
-            rings.splice(i, 1);
+            const lastIdx = rings.length - 1;
+            if (i !== lastIdx) {
+                rings[i] = rings[lastIdx];
+            }
+            rings.pop();
         }
     }
 }
@@ -490,22 +507,51 @@ function drawVisualEffects() {
         }
     });
 
-    // 3. 単純なパーティクル（通常の火花）
+    // 3. 単純なパーティクル（通常の火花）のバッチ描画処理
     ctx.save();
     ctx.lineCap = 'round';
-    ctx.beginPath();
+
+    // 描画プロパティごとのグループ化用ハッシュ
+    const batches = {};
+
+    // a. パーティクルをスタイルごとに分類して座標を蓄積
     particles.forEach(p => {
         if (!isOnScreen(p, 50)) return;
         if (p.isShard || p.isBubble) return;
-        ctx.beginPath();
-        const length = 4.0;
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
-        ctx.lineWidth = p.size || 2;
-        ctx.strokeStyle = p.color;
-        ctx.globalAlpha = (p.life > 1) ? 1 : p.life;
-        ctx.stroke();
+
+        // 透過度は小数第1位レベルで丸め、キーの種類（グループ数）を抑える
+        const alpha = p.life > 1 ? 1 : Math.max(0.1, Math.round(p.life * 10) / 10);
+        const lw = p.size ? Math.round(p.size) : 2;
+        const key = `${p.color}_${lw}_${alpha}`;
+
+        if (!batches[key]) {
+            batches[key] = {
+                color: p.color,
+                lineWidth: lw,
+                alpha: alpha,
+                lines: []
+            };
+        }
+        batches[key].lines.push(p);
     });
+
+    // b. グループごとに1回のドローコールでまとめて描画
+    for (const key in batches) {
+        const batch = batches[key];
+        
+        ctx.strokeStyle = batch.color;
+        ctx.lineWidth = batch.lineWidth;
+        ctx.globalAlpha = batch.alpha;
+        
+        ctx.beginPath();
+        batch.lines.forEach(p => {
+            const length = 4.0;
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
+        });
+        ctx.stroke(); // グループにつき1回だけ呼び出す
+    }
+
     ctx.restore();
 
 

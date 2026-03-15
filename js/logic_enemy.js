@@ -1459,8 +1459,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     }
 
     const spd = SPEED_SCALE;
-    const stageMag = (1.0 + (stage - 1) * DIFFICULTY_CONFIG.SPEED_INC) * bossAngerMinionSpeedMag; // ★ここを修正
-    //const stageMag = 1.0 + (stage - 1) * DIFFICULTY_CONFIG.SPEED_INC;
+    const stageMag = (1.0 + (stage - 1) * DIFFICULTY_CONFIG.SPEED_INC) * bossAngerMinionSpeedMag; 
 
     const hpMag = (stage - 1) * DIFFICULTY_CONFIG.HP_INC;
 
@@ -1470,7 +1469,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     const vy = Math.sin(angle) * bSpd;
 
     // -----------------------------------------------------
-    // ★修正：アイテムドロップ決定ロジック (整理版)
+    // アイテムドロップ決定ロジック
     // -----------------------------------------------------
     let dropType = 'crystal'; // デフォルト
     const rnd = Math.random();
@@ -1478,7 +1477,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     // 1. 【最優先】レベルアップアイテム (条件付き)
     if (levelItemsDroppedInStage < 2 && player.weaponLevel < MAX_WEAPON_LEVEL && rnd < DROP_RATES.LEVEL) {
         dropType = 'level';
-        levelItemsDroppedInStage++; // ★出現したらカウントを増やす
+        levelItemsDroppedInStage++; // 出現したらカウントを増やす
     }
     // 2. その他のアイテム抽選 (レベルアップが出なかった場合)
     else {
@@ -1505,7 +1504,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             hp: 8 + hpMag * 2,
             speed: ENEMY_SPEEDS.DRAGON * spd * stageMag,
             color: '#c00', type: 'dragon',
-            angle: Math.atan2(vy, vx), // 初速に合わせた角度を設定
+            angle: Math.atan2(vy, vx),
             segments: [],
             drop: 'none',
             scale: 0.9, fireTimer: 0
@@ -1514,49 +1513,41 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
         const segmentCount = 8;
         const initialAngle = Math.atan2(vy, vx);
         for (let i = 0; i < segmentCount; i++) {
-            // 全ての節に初期座標と進行方向の角度をセット
             enemies[enemies.length - 1].segments.push({
-                x: x,
-                y: y,
-                angle: initialAngle
+                x: x, y: y, angle: initialAngle
             });
         }
         spawnedCount++;
+
     } else if (type === 'cube') {
-        // アイテムキャリア（Cube）はドロップ確定
         enemies.push({
             x, y, vx, vy,
             hp: 2 + Math.floor(hpMag),
             speed: ENEMY_SPEEDS.CUBE * spd * stageMag,
             color: '#0f0', type: 'cube', angle: 0,
-            drop: dropType, // ここで決定したドロップを適用
-            scale: 0.8, rotX: 0, rotY: 0
+            drop: dropType,
+            scale: 0.8, rotX: 0, rotY: 0,
+            isWarping: true, warpPercent: 0
         });
         spawnedCount++;
+
     } else if (type === 'tadpole') {
         enemies.push({
             x: x, y: y, vx: vx, vy: vy,
             hp: 1,
             speed: ENEMY_SPEEDS.TADPOLE * spd * stageMag,
-            color: '#0ff',
-            type: 'tadpole', angle: 0,
+            color: '#0ff', type: 'tadpole', angle: 0,
             drop: 'none',
             scale: 0.6, history: []
         });
         spawnedCount++;
     } else if (type === 'triangle') {
-        // フォーメーションパターンの定義
         const patterns = ['V', 'W', 'H'];
         const pattern = patterns[Math.floor(Math.random() * patterns.length)];
         const initialAngle = Math.atan2(vy, vx);
 
-        // ==========================================
-        // ★ 修正：色指定の確実な継承
-        // 引数 overrideColor が指定されている場合はそれを使用し、
-        // なければランダムに選ぶ
-        // ==========================================
         let selectedColor;
-        let selectedFormationType = 'custom'; // デフォルトはカスタム扱い
+        let selectedFormationType = 'custom';
 
         if (overrideColor) {
             selectedColor = overrideColor;
@@ -1570,14 +1561,12 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             };
             selectedColor = colorMap[selectedFormationType];
         }
-        // ==========================================
 
-        // --- 1. リーダー（中心機）の生成 ---
         const leader = {
             x: x, y: y, vx: vx, vy: vy,
             hp: 1 + Math.floor(hpMag * 0.5),
             speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
-            color: selectedColor, // ★ リーダーの色をセット
+            color: selectedColor,
             type: 'triangle',
             formationType: selectedFormationType,
             angle: initialAngle,
@@ -1585,48 +1574,31 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             scale: 0.1,
             isLeader: true,
             followers: [],
-            isWarping: true,
-            warpPercent: 0,
             rotX: Math.random() * Math.PI,
             rotY: Math.random() * Math.PI,
-            rotZ: Math.random() * Math.PI
+            rotZ: Math.random() * Math.PI,
+            isWarping: true, warpPercent: 0
         };
         enemies.push(leader);
         spawnedCount += 0.2;
 
-        // --- 2. 取り巻き（フォロワー）の生成 ---
-        // リーダーを中心に左右2台ずつ、計4台を配置
         for (let i = 0; i < 4; i++) {
-            // ★修正：ボス戦中、またはStage 9(ボスラッシュ)、Stage 10ならノルマ上限を無視して出し切る
-            // 通常ステージでボスがいない時だけ、ノルマチェックを行う
             const ignoreLimit = isBossSpawned || stage === 9 || stage === 10;
             if (!ignoreLimit && spawnedCount >= enemiesToSpawn) break;
 
             let offX = 0, offY = 0;
-            const side = (i % 2 === 0) ? 1 : -1; // 左右交互 (1 or -1)
-            const step = Math.floor(i / 2) + 1; // 1段目 or 2段目
+            const side = (i % 2 === 0) ? 1 : -1;
+            const step = Math.floor(i / 2) + 1;
 
-            if (pattern === 'V') {
-                // V型: 後方に広がる (リーダーが先端)
-                offX = -step * 25;
-                offY = side * step * 25;
-            }
-            else if (pattern === 'W') {
-                // W型: リーダーを中心にジグザグ配置
-                offX = (step === 1) ? -25 : 0; // 1段目は後ろ、2段目は真横
-                offY = side * step * 25;
-            }
-            else if (pattern === 'H') {
-                // H型: 縦に並ぶ二列の中央にリーダー
-                offX = (step === 1) ? 25 : -25; // 前後に配置
-                offY = side * 25; // 左右幅は固定
-            }
+            if (pattern === 'V') { offX = -step * 25; offY = side * step * 25; }
+            else if (pattern === 'W') { offX = (step === 1) ? -25 : 0; offY = side * step * 25; }
+            else if (pattern === 'H') { offX = (step === 1) ? 25 : -25; offY = side * 25; }
 
             enemies.push({
                 x: x, y: y, vx: vx, vy: vy,
                 hp: 1,
                 speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
-                color: selectedColor, // ★ フォロワーにも「同じ色」をセット
+                color: selectedColor,
                 type: 'triangle',
                 formationType: selectedFormationType,
                 angle: initialAngle,
@@ -1634,11 +1606,10 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
                 scale: 0.1,
                 leader: leader,
                 formOffset: { x: offX, y: offY },
-                isWarping: true,
-                warpPercent: 0,
                 rotX: Math.random() * Math.PI,
                 rotY: Math.random() * Math.PI,
-                rotZ: Math.random() * Math.PI
+                rotZ: Math.random() * Math.PI,
+                isWarping: true, warpPercent: 0
             });
             leader.followers.push(enemies[enemies.length - 1]);
             spawnedCount += 0.2;
@@ -1648,57 +1619,45 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
         const variantIndex = (stage - 1) % BOSS_VARIANTS.length;
         const variant = BOSS_VARIANTS[variantIndex];
         const bossHp = variant.hp + (stage - 1) * 10;
-
-        const sX = Number(x);
-        const sY = Number(y);
+        const sX = Number(x); const sY = Number(y);
 
         enemies.push({
-            x: sX, y: sY,
-            spawnX: sX, spawnY: sY,
+            x: sX, y: sY, spawnX: sX, spawnY: sY,
             vx: 0, vy: 0,
             hp: bossHp, maxHp: bossHp,
             speed: 1.2 * variant.speedFactor * SPEED_SCALE * (1.0 + (stage - 1) * 0.08),
             color: variant.color,
-            type: 'boss', variant: variant,
-            angle: 0,
+            type: 'boss', variant: variant, angle: 0,
             drop: 'shield',
             scale: 1.5 + (variant.sides * 0.1),
             fireTimer: 0, flashTimer: 0,
             spawnTimer: 0, spawnMax: 150,
             isSpawning: true,
-            // ★追加：カメラ補間専用タイマー（isSpawningが消えても止まらない）
             cameraLerpTimer: 0
         });
         spawnedCount++;
-        // bubble か asteroid (rock) の共通処理
+
     } else if (type === 'bubble' || type === 'asteroid') {
         const sizeFactor = 1.0 + (stage - 1) * 0.1;
         const hp = (size === 1 ? 4 : size === 2 ? 2 : 1) + Math.floor((stage - 1) * 0.5);
         const baseScale = size === 1 ? 1.8 : size === 2 ? 1.1 : 0.6;
         const finalScale = baseScale * sizeFactor;
 
-        // スピード定数の選択 (typeによって切り替え)
         const baseSpdConst = (type === 'bubble') ? ENEMY_SPEEDS.BUBBLE : ENEMY_SPEEDS.ASTEROID;
         const moveSpeed = (baseSpdConst * 0.7) * (1 + size * 0.4) * spd * stageMag;
         const ang = Math.random() * Math.PI * 2;
 
         enemies.push({
-            x: x, y: y,
-            vx: Math.cos(ang) * moveSpeed,
-            vy: Math.sin(ang) * moveSpeed,
-            hp: hp,
-            speed: moveSpeed,
+            x: x, y: y, vx: Math.cos(ang) * moveSpeed, vy: Math.sin(ang) * moveSpeed,
+            hp: hp, speed: moveSpeed,
             color: (type === 'bubble') ? '#0ff' : '#fff',
-            type: type,      // 'bubble' か 'asteroid'
-            variant: (type === 'bubble') ? 'bubble' : 'asteroid', // 見た目の指定
-            size: size,
-            angle: Math.random() * Math.PI * 2,
+            type: type, variant: (type === 'bubble') ? 'bubble' : 'asteroid',
+            size: size, angle: Math.random() * Math.PI * 2,
             rotSpd: (Math.random() - 0.5) * 0.1,
-            scale: finalScale,
-            drop: 'none',
-            spawnTimer: 0,
-            trackingStart: 300 + Math.random() * 200,
-            isTracking: false
+            scale: finalScale, drop: 'none',
+            spawnTimer: 0, trackingStart: 300 + Math.random() * 200,
+            isTracking: false,
+            isWarping: true, warpPercent: 0
         });
 
     } else if (type === 'hunter') {
@@ -1706,68 +1665,39 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
             hp: 3 + Math.floor(hpMag * 1.5),
             speed: ENEMY_SPEEDS.HUNTER * spd * stageMag,
-            color: '#fa4',
-            type: 'hunter',
-            angle: 0,
-            drop: dropType,
-            scale: 1.2,
-            actionTimer: 0,
-            state: 'approach', // 初期状態を 'approach' (接近) に設定
-            burstCount: 0      // ★追加：連射数カウント用
+            color: '#fa4', type: 'hunter', angle: 0,
+            drop: dropType, scale: 1.2,
+            actionTimer: 0, state: 'approach', burstCount: 0,
         });
         spawnedCount++;
-        // spawnEnemy関数内の最後の方に追加
+
     } else if (type === 'battleship') {
-        // BOSS_VARIANTS の一番最後の要素（GENESIS-ARK）を取得
         const variant = BOSS_VARIANTS[BOSS_VARIANTS.length - 1];
-
         enemies.push({
-            x: x, y: y,
-            spawnX: x, spawnY: y,
-            vx: 0, vy: 0,
-            hp: variant.hp,
-            maxHp: variant.hp,
-            // 定数の speedFactor を適用（超重厚な動き）
+            x: x, y: y, spawnX: x, spawnY: y, vx: 0, vy: 0,
+            hp: variant.hp, maxHp: variant.hp,
             speed: variant.speedFactor * SPEED_SCALE,
-            color: variant.color,
-            type: 'battleship',
-            angle: 0,
-            drop: 'none',
-            scale: 1.0,
-
-            fireTimer: 0,
-            flashTimer: 0,
-            spawnTimer: 0,
-            spawnMax: 240,
-            isSpawning: true,
-
-            // variant 情報をそのまま持たせる
-            variant: variant
+            color: variant.color, type: 'battleship', angle: 0,
+            drop: 'none', scale: 1.0,
+            fireTimer: 0, flashTimer: 0, spawnTimer: 0, spawnMax: 240,
+            isSpawning: true, variant: variant
         });
         spawnedCount++;
-
         if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_large');
+
     } else if (type === 'phantom') {
         enemies.push({
             x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
             hp: 4 + Math.floor(hpMag),
             speed: ENEMY_SPEEDS.PHANTOM * spd * stageMag,
-            color: '#0ff',
-            type: 'phantom',
-            angle: 0,
-            drop: dropType,
-            scale: 1.0,
-            state: 'stealth', // 状態管理：stealth, appear, dash
-            timer: 0,
-            alpha: 0.1, // 初期はほぼ透明
-            trail: []
+            color: '#0ff', type: 'phantom', angle: 0,
+            drop: dropType, scale: 1.0,
+            state: 'stealth', timer: 0, alpha: 0.1, trail: []
         });
         spawnedCount++;
-    } else if (type === 'eclipse') {
-        // --- ★追加：出現制限ロジック ---
-        const MIN_DISTANCE = 600; // Eclipse同士の最低間隔（ピクセル）
 
-        // 既に存在している Eclipse との距離をチェック
+    } else if (type === 'eclipse') {
+        const MIN_DISTANCE = 600;
         const tooClose = enemies.some(other => {
             if (other.type === 'eclipse') {
                 const dist = Math.hypot(x - other.x, y - other.y);
@@ -1775,58 +1705,42 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             }
             return false;
         });
-
-        // 近すぎる場合は、今回の出現を中止する
         if (tooClose) return;
 
-        // --- ここから通常の出現処理 ---
         enemies.push({
             x: x, y: y, vx: vx * 0.2, vy: vy * 0.2,
             hp: 24 + hpMag * 5,
             speed: ENEMY_SPEEDS.ECLIPSE * spd * stageMag,
-            color: '#0ff',
-            type: 'eclipse',
-            angle: 0,
-            rotSpeed: 0.02,
-            drop: dropType,
-            scale: 1.5,
-            actionTimer: 0
+            color: '#0ff', type: 'eclipse', angle: 0,
+            rotSpeed: 0.02, drop: dropType, scale: 1.5, actionTimer: 0
         });
         spawnedCount++;
+
     } else if (type === 'jellyfish' || type === 'spark_jelly') {
         const isSpark = (type === 'spark_jelly');
-
         enemies.push({
             x: x, y: y, vx: vx * 0.1, vy: vy * 0.1,
             hp: (isSpark ? 4 : 2) + Math.floor(hpMag * 1.5),
             speed: ENEMY_SPEEDS.JELLYFISH * spd * stageMag * (isSpark ? 1.2 : 1.0),
-            color: '#0ff', // ★変更: すべてシアン（#0ff）に統一
-            type: 'jellyfish',
-            variant: isSpark ? 'spark' : 'normal',
-            angle: angle,
-            prevAngle: angle,
-            bend: 0,
-            drop: dropType,
-            scale: isSpark ? 1.4 : 1.2,
-            timer: Math.random() * 100,
-            canFire: true,
-            chargeLevel: 0
+            color: '#0ff', type: 'jellyfish', variant: isSpark ? 'spark' : 'normal',
+            angle: angle, prevAngle: angle, bend: 0,
+            drop: dropType, scale: isSpark ? 1.4 : 1.2,
+            timer: Math.random() * 100, canFire: true, chargeLevel: 0,
+            isWarping: true, warpPercent: 0
         });
         spawnedCount++;
+
     } else if (type === 'sentinel') {
         enemies.push({
             x: x, y: y, vx: 0, vy: 0,
             hp: 3 + Math.floor(hpMag),
             speed: ENEMY_SPEEDS.SENTINEL * spd * stageMag,
-            color: '#ff3366', // 鮮やかなネオンピンク
-            type: 'sentinel',
-            angle: 0,
-            drop: dropType,
-            scale: 1.1,
-            timer: Math.random() * 100, // 個体ごとにタイミングをずらす
-            orbitDist: 200 + Math.random() * 100, // プレイヤーとの距離
-            orbitDir: Math.random() > 0.5 ? 1 : -1, // 右回りか左回りか
-            state: 'orbit' // orbit: 周回, scan: 照準, fire: 発射
+            color: '#ff3366', type: 'sentinel', angle: 0,
+            drop: dropType, scale: 1.1,
+            timer: Math.random() * 100,
+            orbitDist: 200 + Math.random() * 100,
+            orbitDir: Math.random() > 0.5 ? 1 : -1,
+            state: 'orbit'
         });
         spawnedCount++;
     }
@@ -1911,6 +1825,23 @@ function updateEnemies() {
         // 敵のプロパティとしてフラグを保存（プレイヤーの弾との判定に使うため）
         e.inActiveRange = inActiveRange;
 
+        // ▼▼▼ ここから追加: ワープイン演出（拡大・フェードイン）の進行 ▼▼▼
+        if (e.isWarping) {
+            if (e.warpPercent === undefined) e.warpPercent = 0;
+            
+            // 30フレーム（約0.5秒）かけて 0.0 から 1.0 に増やす
+            e.warpPercent += 1.0 / 30; 
+            
+            if (e.warpPercent >= 1.0) {
+                e.warpPercent = 1.0;
+                e.isWarping = false; // 出現完了
+                
+                // 必要に応じて出現時の波紋エフェクトなどを出す
+                // if (typeof createWallImpact === 'function') createWallImpact(e.x, e.y, '#fff');
+            }
+            
+            // 出現中は移動や攻撃をさせない場合はここで return; してもOKです
+        }
         // ========================================================
         // ★修正：ボスの死亡アニメーション（フェードアウト＆誘爆）
         // ========================================================
