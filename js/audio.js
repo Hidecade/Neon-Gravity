@@ -360,48 +360,34 @@ const AudioSys = {
     activeNodes: [],
     bgmFadeInterval: null,
     lastPlayed: {},
-    isUnlocking: false,
-    wasBgmPlayingBeforeHide: false,
-    isPageHidden: false,
-    lastResumeAt: 0,
-    _lifecycleHooksInstalled: false,
 
     reset() {
         this.stopBgmInterval();
-
-        if (!this.ctx) {
-            this.init();
-        } else {
-            this.resume(false);
-        }
-
         if (this.bgmEl) {
             this.bgmEl.pause();
             this.bgmEl.currentTime = 0;
             this.bgmEl.src = "";
             this.currentSrc = null;
         }
-
-        console.log("Audio System Soft Reset.");
     },
 
     init() {
+        // AudioContextの初期化
         if (!this.ctx) {
             try {
                 const AC = window.AudioContext || window.webkitAudioContext;
                 if (AC) {
                     this.ctx = new AC();
                     this.createNoise();
-                    this._unlockAudio();
                 }
             } catch (e) {
                 console.error("Audio init error:", e);
             }
         }
 
+        // BGM用Audio要素の初期化
         if (!this.bgmEl) {
             this.bgmEl = new Audio();
-            this.bgmEl.loop = true;
             this.bgmEl.volume = 0.4;
             this.bgmEl.setAttribute("playsinline", "");
 
@@ -414,105 +400,17 @@ const AudioSys = {
                 }
             });
         }
-
-        this.installLifecycleHooks();
-    },
-
-    async ensureAudioReady(fromUserGesture = false) {
-        if (!this.ctx) {
-            this.init();
-        }
-        if (!this.ctx) return false;
-
-        try {
-            if (this.ctx.state !== "running") {
-                await this.ctx.resume();
-            }
-
-            // iPhone Safari対策: running にならない時は再アンロック
-            if (this.ctx.state !== "running" && fromUserGesture) {
-                this._unlockAudio();
-                await this.ctx.resume().catch(() => { });
-            }
-
-            this.lastResumeAt = performance.now();
-            return this.ctx.state === "running";
-        } catch (e) {
-            return false;
-        }
-    },
-
-    _unlockAudio() {
-        if (!this.ctx || this.isUnlocking) return;
-        if (this.ctx.state === "running") return;
-
-        this.isUnlocking = true;
-
-        try {
-            const buffer = this.ctx.createBuffer(1, 1, 22050);
-            const source = this.ctx.createBufferSource();
-            source.buffer = buffer;
-            source.connect(this.ctx.destination);
-            source.start(0);
-
-            this.ctx.resume()
-                .then(() => { this.isUnlocking = false; })
-                .catch(() => { this.isUnlocking = false; });
-        } catch (e) {
-            this.isUnlocking = false;
-        }
-    },
-
-    async resume(fromUserGesture = false) {
-        return await this.ensureAudioReady(fromUserGesture);
     },
 
     createNoise() {
         if (!this.ctx) return;
-
         const bSize = this.ctx.sampleRate * 2;
         const buf = this.ctx.createBuffer(1, bSize, this.ctx.sampleRate);
         const data = buf.getChannelData(0);
-
         for (let i = 0; i < bSize; i++) {
             data[i] = Math.random() * 2 - 1;
         }
-
         this.noiseBuffer = buf;
-    },
-
-    installLifecycleHooks() {
-        if (this._lifecycleHooksInstalled) return;
-        this._lifecycleHooksInstalled = true;
-
-        document.addEventListener("visibilitychange", () => {
-            this.isPageHidden = document.hidden;
-
-            if (document.hidden) {
-                this.wasBgmPlayingBeforeHide = !!(this.bgmEl && !this.bgmEl.paused);
-            }
-        });
-
-        window.addEventListener("pageshow", async () => {
-            await this.ensureAudioReady(false);
-        });
-
-        const resumeFromGesture = async () => {
-            await this.ensureAudioReady(true);
-
-            if (
-                this.wasBgmPlayingBeforeHide &&
-                this.bgmEl &&
-                this.bgmEl.paused &&
-                this.currentSrc
-            ) {
-                this.bgmEl.play().catch(() => { });
-            }
-        };
-
-        window.addEventListener("touchstart", resumeFromGesture, { passive: true });
-        window.addEventListener("pointerdown", resumeFromGesture, { passive: true });
-        window.addEventListener("mousedown", resumeFromGesture, { passive: true });
     },
 
     registerNode(type, node, durationMs) {
@@ -539,12 +437,12 @@ const AudioSys = {
         if (!this.ctx) this.init();
         if (!this.ctx || !SE_LIBRARY[type]) return;
 
-        // 非表示中は鳴らさない
-        if (document.hidden) return;
+        // 休止状態になっていれば復帰させる
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+        }
 
-        // iPhone復帰直後など、まだ running でないならここでは無理に鳴らさない
-        if (this.ctx.state !== "running") return;
-
+        // 連続再生による音割れ防止
         const now = this.ctx.currentTime;
         if (this.lastPlayed[type] && now - this.lastPlayed[type] < 0.05) return;
         this.lastPlayed[type] = now;
@@ -569,7 +467,6 @@ const AudioSys = {
 
     stopSE(targetType = null) {
         if (!this.ctx) return;
-
         const t = this.ctx.currentTime;
         this.activeNodes = this.activeNodes.filter(item => {
             if (!targetType || item.type === targetType) {
@@ -591,23 +488,15 @@ const AudioSys = {
         } catch (e) { }
     },
 
-    getNormalizedUrl(path) {
-        return path ? new URL(path, window.location.href).href : "";
-    },
-
     playBGM(key, idx = 0) {
         this.stopBgmInterval();
         if (!this.bgmEl) this.init();
         if (!this.bgmEl) return;
 
         let src = "";
-
         if (key === "stage") {
-            if (BGM_FILES.stages && BGM_FILES.stages[idx]) {
-                src = BGM_FILES.stages[idx];
-            } else {
-                return;
-            }
+            if (BGM_FILES.stages && BGM_FILES.stages[idx]) src = BGM_FILES.stages[idx];
+            else return;
         } else {
             src = BGM_FILES[key];
         }
@@ -620,19 +509,13 @@ const AudioSys = {
         }
 
         const nextFull = new URL(src, window.location.href).href;
-
         const isOST = (typeof window.gameState !== "undefined" && window.gameState === "OST");
         const noLoopKeys = ["ending", "clear", "all_clear", "name"];
         const shouldLoop = !(isOST || noLoopKeys.includes(key));
 
-        // 先に loop を確定
         this.bgmEl.loop = shouldLoop;
 
-        // 同一曲再生中なら loop だけ合わせて終了
         if (this.currentSrc === nextFull && !this.bgmEl.paused) {
-            if (this.bgmEl.loop !== shouldLoop) {
-                this.bgmEl.loop = shouldLoop;
-            }
             return;
         }
 
@@ -641,16 +524,13 @@ const AudioSys = {
         this.bgmEl.src = nextFull;
         this.currentSrc = nextFull;
         this.bgmEl.volume = 0.4;
-        this.bgmEl.loop = shouldLoop;
 
         this.bgmEl.play().catch(() => { });
     },
 
     getBgmPath(key, idx) {
         if (BGM_FILES[key]) {
-            if (key === "stage") {
-                return BGM_FILES.stages[idx % BGM_FILES.stages.length];
-            }
+            if (key === "stage") return BGM_FILES.stages[idx % BGM_FILES.stages.length];
             return BGM_FILES[key];
         }
         return BGM_FILES.stages[0];
@@ -669,14 +549,11 @@ const AudioSys = {
                 resolve();
                 return;
             }
-
             this.stopBgmInterval();
             let vol = this.bgmEl.volume;
-
             this.bgmFadeInterval = setInterval(() => {
                 if (vol > 0.05) {
                     vol -= 0.05;
-                    if (vol < 0) vol = 0;
                     this.bgmEl.volume = vol;
                 } else {
                     this.bgmEl.volume = 0;
@@ -694,23 +571,19 @@ const AudioSys = {
     },
 
     pauseBGM() {
-        // BGM停止
+        // ★修正点：BGMのAudio要素だけを停止し、AudioContext(SE)のsuspendは行わない
         if (this.bgmEl && !this.bgmEl.paused) {
             this.bgmEl.pause();
         }
-
-        // SE側も停止
-        if (this.ctx && this.ctx.state === "running") {
-            this.ctx.suspend().catch(() => { });
-        }
     },
 
-    async resumeBGM(fromUserGesture = false) {
-        // 先に AudioContext を確実に復帰
-        await this.ensureAudioReady(fromUserGesture);
-
-        // その後 BGM を再開
-        if (this.bgmEl && this.bgmEl.paused && this.currentSrc != null && this.bgmEl.src) {
+    resumeBGM() {
+        // ★修正点：複雑な監視ロジックを捨て、素直に再開を試みる
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+        }
+        
+        if (this.bgmEl && this.bgmEl.paused && this.currentSrc) {
             this.bgmEl.play().catch(() => { });
         }
     }
