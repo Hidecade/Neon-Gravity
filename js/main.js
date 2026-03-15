@@ -441,7 +441,7 @@ function loop() {
         if (typeof updateDying === 'function') updateDying();
         draw();
 
-    } else if (gameState === 'TITLE' || gameState === 'OST' || gameState === 'HOWTO' || gameState === 'RANKING') {
+    } else if (gameState === 'TITLE' || gameState === 'OST' || gameState === 'HOWTO' || gameState === 'RANKING'|| gameState === 'STORY') {
         introBgSpeed = 2;
         introBgScroll += introBgSpeed * gameSpeed;
 

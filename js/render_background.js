@@ -93,7 +93,8 @@ function drawBackground() {
         gameState === 'TITLE' ||
         gameState === 'HOWTO'||
         gameState === 'OST'||
-        gameState === 'RANKING'
+        gameState === 'RANKING'||
+        gameState === 'STORY'
         ) {
             return;
     }
