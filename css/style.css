@@ -6,6 +6,12 @@
     --hud-scale: 1;
 }
 
+/* ▼ iOS Safariでの強制文字拡大（Font Boosting）を無効化 */
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
 body {
     margin: 0;
     background: #050505;
