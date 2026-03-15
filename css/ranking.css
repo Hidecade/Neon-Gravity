@@ -11,7 +11,8 @@
 
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+
+    justify-content: flex-start; 
 }
 
 /* panel */
@@ -21,14 +22,9 @@
     z-index: 2;
     width: min(92vw, 560px);
     padding: 18px 16px 16px;
-    border-radius: 22px;
+    border-radius: 3px;
     border: 1px solid rgba(120,255,255,0.18);
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(10, 24, 34, 0.72),
-            rgba(4, 10, 18, 0.90)
-        );
+    background: rgba(0,0,0,0.5);
     box-shadow:
         0 0 30px rgba(0,255,255,0.08),
         inset 0 0 24px rgba(120,255,255,0.04);
@@ -53,7 +49,6 @@
 
 #ranking-scroll-container {
     width: 100%;
-    max-height: 48vh;
     overflow-y: auto;
     overflow-x: hidden;
     margin: 0;
@@ -88,14 +83,13 @@
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
-    font-size: calc(14px * var(--ui-scale, 1));
+    font-size: calc(16px * var(--ui-scale, 1));
 }
 
 #ranking-table th {
     position: sticky;
     top: 0;
     z-index: 1;
-    background: rgba(6, 18, 28, 0.92);
     border-bottom: 1px solid rgba(0,255,255,0.55);
     color: #9fefff;
     padding: 12px 10px;
@@ -182,19 +176,23 @@
 
 /* ---------- portrait ---------- */
 @media (orientation: portrait) {
+    #ranking-overlay {
+        padding-top: 5vh; /
+    }
+
     #ranking-shell {
         min-width: 92vw;
         padding: 10px 10px 8px;
     }
 
     #ranking-panel {
-        width: 94vw;
+        width: 90vw;
         padding: 14px 12px 12px;
-        border-radius: 18px;
+        border-radius: 3px;
     }
 
     #ranking-scroll-container {
-        max-height: 48vh;
+        max-height: 65vh;
     }
 
     #loading-ranking {
@@ -204,12 +202,12 @@
     }
 
     #ranking-table {
-        font-size: calc(12px * var(--ui-scale, 1));
+        font-size: calc(16px * var(--ui-scale, 1));
     }
 
     #ranking-table th,
     #ranking-table td {
-        padding: 8px 6px;
+        padding: 9px 6px;
     }
 
     #ranking-table th.col-rank,
@@ -234,6 +232,10 @@
 
 /* ---------- landscape ---------- */
 @media (orientation: landscape) {
+    #ranking-overlay {
+        padding-top: 4vh; /
+    }
+
     #ranking-shell {
         margin-bottom: 10px;
         padding: 6px 14px 6px;
@@ -243,11 +245,11 @@
     #ranking-panel {
         width: min(66vw, 480px);
         padding: 10px 10px 10px;
-        border-radius: 16px;
+        border-radius: 3px;
     }
 
     #ranking-scroll-container {
-        max-height: 40vh;
+        max-height: 50vh;
     }
 
     #loading-ranking {
@@ -257,7 +259,7 @@
     }
 
     #ranking-table {
-        font-size: calc(11px * var(--ui-scale, 1));
+        font-size: calc(14px * var(--ui-scale, 1));
     }
 
     #ranking-table th {

@@ -3,6 +3,7 @@
     display: none;
     z-index: 110;
     padding: 18px;
+    justify-content: flex-start; /* ▼ 画面の上部に寄せる設定 */
     box-sizing: border-box;
     opacity: 0;
     transition: opacity 0.5s ease;
@@ -13,14 +14,9 @@
     z-index: 2;
     width: min(92vw, 560px);
     padding: 18px 16px 16px;
-    border-radius: 22px;
+    border-radius: 3px;
     border: 1px solid rgba(120,255,255,0.18);
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(10, 24, 34, 0.72),
-            rgba(4, 10, 18, 0.90)
-        );
+    background: rgba(0,0,0,0.5);
     box-shadow:
         0 0 30px rgba(0,255,255,0.08),
         inset 0 0 24px rgba(120,255,255,0.04);
@@ -149,14 +145,18 @@
 
 /* ---------- portrait ---------- */
 @media (orientation: portrait) {
+    #ost-overlay {
+        padding-top: 5vh; /* ▼ 縦画面時は画面上部から10%下げる */
+    }
+
     #ost-panel {
-        width: 94vw;
+        width: 90vw;
         padding: 14px 12px 12px;
-        border-radius: 18px;
+        border-radius: 3px;
     }
 
     #ost-scroll-container {
-        max-height: 48vh;
+        max-height: 55vh;
     }
 
     .track-item {
@@ -179,6 +179,9 @@
 
 /* ---------- landscape ---------- */
 @media (orientation: landscape) {
+    #ost-overlay {
+        padding-top: 4vh; /* ▼ 横画面時は画面上部から4%下げる（隙間が少ないため控えめ） */
+    }
     #ost-shell {
         margin-bottom: 10px;
         padding: 6px 14px 6px;
@@ -188,11 +191,11 @@
     #ost-panel {
         width: min(66vw, 480px);
         padding: 10px 10px 10px;
-        border-radius: 16px;
+        border-radius: 3px;
     }
 
     #ost-scroll-container {
-        max-height: 40vh;
+        max-height: 45vh;
     }
 
 .track-item {

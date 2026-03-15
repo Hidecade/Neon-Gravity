@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-const GAME_VERSION = "1.3.8";
+const GAME_VERSION = "1.3.9";
 
 const DEBUG = {
     enabled: true,
