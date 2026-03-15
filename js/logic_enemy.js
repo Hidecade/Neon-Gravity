@@ -830,50 +830,44 @@ function updateSentinelAI(e) {
 }
 
 function updateSweeperAI(e) {
-    // --- 加速処理 ---
-    const accel = 0.15 * SPEED_SCALE; 
-    if (e.vy > 0) {
-        e.vy += accel * gameSpeed;
-    } else {
-        e.vy -= accel * gameSpeed;
-    }
+    // --- 汎用的な加速処理 ---
+    const accel = 0.20 * SPEED_SCALE; 
+    
+    // 現在向いている方向（angle）に向かって加速力を足す
+    e.vx += Math.cos(e.angle) * accel * gameSpeed;
+    e.vy += Math.sin(e.angle) * accel * gameSpeed;
 
-    const maxSpeed = 30.0 * SPEED_SCALE;
-    if (Math.abs(e.vy) > maxSpeed) {
-        e.vy = (e.vy > 0) ? maxSpeed : -maxSpeed;
+    // 最高速度の制限
+    const maxSpeed = 40.0 * SPEED_SCALE;
+    const currentSpeed = Math.hypot(e.vx, e.vy);
+    if (currentSpeed > maxSpeed) {
+        e.vx = (e.vx / currentSpeed) * maxSpeed;
+        e.vy = (e.vy / currentSpeed) * maxSpeed;
     }
 
     // --- 移動と回転 ---
     e.x += e.vx * gameSpeed;
     e.y += e.vy * gameSpeed;
 
-    e.angle = Math.atan2(e.vy, e.vx);
-    e.rotX += 0.4;
+    e.angle = Math.atan2(e.vy, e.vx); // 進行方向を向く
+    e.rotX += 0.4; // 高速ドリル回転
     e.rotY = 0;
     e.rotZ = 0;
 
-    // ==========================================
-    // ★追加：壁に激突したら爆発して消滅する処理
-    // ==========================================
-    
-    // 画面外から出現するため、一度「壁の内側」に入ったかをチェックする
+    // --- 壁に激突したら爆発して消滅 ---
     if (!e.hasEntered) {
-        // WALL_MARGIN は壁の厚み。これを越えて内側に入ったらフラグを立てる
         if (e.y > WALL_MARGIN && e.y < worldSize - WALL_MARGIN &&
             e.x > WALL_MARGIN && e.x < worldSize - WALL_MARGIN) {
-            e.hasEntered = true; // 完全にステージ内に入った！
+            e.hasEntered = true; 
         }
     } else {
-        // ステージ内に入った後、反対側の壁（ワールド境界）にぶつかったら
         if (e.y <= WALL_MARGIN || e.y >= worldSize - WALL_MARGIN ||
             e.x <= WALL_MARGIN || e.x >= worldSize - WALL_MARGIN) {
 
-            // 壁に当たった火花と小爆発のエフェクトを出す
             if (typeof createWallImpact === 'function') createWallImpact(e.x, e.y, e.color);
             if (typeof createExplosion === 'function') createExplosion(e.x, e.y, e.color, 5);
             if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_small');
 
-            // プレイヤーが倒したわけではないので、スコアやアイテムを出さずに完全消滅させる
             e.hp = 0;
             e.isDead = true; 
         }
@@ -1864,39 +1858,72 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
         });
         spawnedCount++;
     } else if (type === 'sweeper') {
-        const isTop = Math.random() > 0.5; 
         const viewW = width / cameraScale;
         const viewH = height / cameraScale;
-
-        const startY = isTop ? camera.y - 60 : camera.y + viewH + 60;
-        const moveVy = isTop ? ENEMY_SPEEDS.SWEEPER * spd * stageMag : -ENEMY_SPEEDS.SWEEPER * spd * stageMag;
-
         const count = 8; 
-        const spacing = viewW / (count + 1); 
+        const spacing = 70; // 機体同士の間隔
+        const totalSpan = spacing * (count - 1);
+        const speed = ENEMY_SPEEDS.SWEEPER * spd * stageMag;
+
+        // ★追加：前回と同じ方向が出ないようにする仕組み
+        if (typeof window.lastSweeperDir === 'undefined') window.lastSweeperDir = -1;
+        let dir;
+        do {
+            dir = Math.floor(Math.random() * 4); // 0:上, 1:下, 2:左, 3:右
+        } while (dir === window.lastSweeperDir);
+        window.lastSweeperDir = dir; // 今回の方向を記憶しておく
+
+        let startX, startY, moveVx, moveVy, baseAngle;
+        let offsetX = 0, offsetY = 0;
+
+        // ★追加：4方向ごとの初期座標・速度・並べ方の計算
+        if (dir === 0) { // 上から下へ
+            startY = camera.y - 60;
+            startX = camera.x + (viewW - totalSpan) / 2; // 中央に揃える
+            offsetX = spacing; // 横に並べる
+            moveVx = 0;
+            moveVy = speed;
+            baseAngle = Math.PI / 2; // 下向き
+        } else if (dir === 1) { // 下から上へ
+            startY = camera.y + viewH + 60;
+            startX = camera.x + (viewW - totalSpan) / 2;
+            offsetX = spacing;
+            moveVx = 0;
+            moveVy = -speed;
+            baseAngle = -Math.PI / 2; // 上向き
+        } else if (dir === 2) { // 左から右へ
+            startX = camera.x - 60;
+            startY = camera.y + (viewH - totalSpan) / 2; // 中央に揃える
+            offsetY = spacing; // 縦に並べる
+            moveVx = speed;
+            moveVy = 0;
+            baseAngle = 0; // 右向き
+        } else if (dir === 3) { // 右から左へ
+            startX = camera.x + viewW + 60;
+            startY = camera.y + (viewH - totalSpan) / 2;
+            offsetY = spacing;
+            moveVx = -speed;
+            moveVy = 0;
+            baseAngle = Math.PI; // 左向き
+        }
 
         for (let i = 0; i < count; i++) {
-            const startX = camera.x + spacing * (i + 1);
             enemies.push({
-                x: startX, y: startY,
-                vx: 0, vy: moveVy,
+                x: startX + offsetX * i,
+                y: startY + offsetY * i,
+                vx: moveVx, vy: moveVy,
                 hp: 2 + Math.floor(hpMag),
                 speed: ENEMY_SPEEDS.SWEEPER * spd * stageMag,
                 color: '#bbbbbb', 
                 type: 'triangle',
                 variant: 'sweeper', 
-                angle: isTop ? Math.PI / 2 : -Math.PI / 2,
+                angle: baseAngle, // 計算した向きをセット
                 drop: Math.random() < 0.1 ? dropType : 'none',
                 scale: 0.8,
-                
-                // ★ 変更：ランダムな転がりを無くし、初期姿勢をピシッと揃える
-                rotX: 0, 
-                rotY: 0,
-                rotZ: 0,
-                
+                rotX: 0, rotY: 0, rotZ: 0,
                 isWarping: true, warpPercent: 0
             });
         }
-        //spawnedCount += count; 
     }
 }
 

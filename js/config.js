@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-const GAME_VERSION = "1.3.12";
+const GAME_VERSION = "1.3.13";
 
 const DEBUG = {
     enabled: true,
@@ -26,59 +26,8 @@ const HOWTO_WAIT_TIME = 600;  // HOWTO画面の放置でタイトルに戻る時
 // --- iOS判定 ---
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-// ----------------------------------------------------------
-// 解像度プリセット
-// ----------------------------------------------------------
-// ・FHD / VGA_L / VGA_P は完全固定
-// ・それ以外のスマホは detectResolution() で
-//   IPHONE_L / IPHONE_P に振り分ける
-// ----------------------------------------------------------
-
-const RESOLUTION_PRESETS = {
-
-    // 1920x1080 (PC / フルHD)
-    FHD: {
-        key: "FHD",
-        width: 1920,
-        height: 1080,
-        uiScale: 1.0
-    },
-
-    // 640x480 (横4:3)
-    VGA_L: {
-        key: "VGA_L",
-        width: 640,
-        height: 480,
-        uiScale: 0.6
-    },
-
-    // 480x640 (縦3:4)
-    VGA_P: {
-        key: "VGA_P",
-        width: 480,
-        height: 640,
-        uiScale: 0.6
-    },
-
-    // iPhone 横画面（論理解像度）
-    IPHONE_L: {
-        key: "IPHONE_L",
-        width: 844,
-        height: 390,
-        uiScale: 0.78
-    },
-
-    // iPhone 縦画面（論理解像度）
-    IPHONE_P: {
-        key: "IPHONE_P",
-        width: 390,
-        height: 844,
-        uiScale: 0.78
-    }
-};
-
 // --- ステージ・難易度設定 ---
-const START_STAGE = 1;        // 開始ステージ
+const START_STAGE = 4;        // 開始ステージ
 const MAX_STAGE = 10;         // 最大ステージ
 
 

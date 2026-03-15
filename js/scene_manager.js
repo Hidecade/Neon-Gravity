@@ -511,29 +511,7 @@ function proceedToNextMenu() {
     ui.nameInputArea.style.display = 'none';
     ui.titleOverlay.style.display = 'flex';
 
-    let titleHTML = `GAME OVER`;
     let titleColor = '#f00';
-
-    /*
-    if (isStageClear) {
-        titleHTML = `MISSION COMPLETE<br><span style="font-size:20px;color:#0ff;">SCORE: ${score.toLocaleString()}</span>`;
-        titleColor = '#0ff';
-    }
-
-    ui.titleText.innerHTML = titleHTML;
-    ui.titleText.style.color = titleColor;
-    ui.titleText.style.textShadow = `0 0 20px ${titleColor}`;
-    */
-
-    if (isStageClear) {
-        showGameMessage({
-            kicker: "MISSION RESULT",
-            main: "MISSION COMPLETE",
-            sub: `SCORE: ${score.toLocaleString()}`,
-            type: "gold"
-        });
-    }
-
 
     ui.btnStart.innerText = 'RETRY';
     ui.btnStart.style.display = 'block';
@@ -1554,6 +1532,9 @@ async function startEndingSequence() {
         typingMsg.style.color = '#fff';
         typingMsg.style.transition = 'none';
         typingMsg.scrollTop = 0;
+        // ★追加：上下のフェードアウト領域（透明になる部分）を避けるための余白
+        typingMsg.style.paddingTop = '40px';
+        typingMsg.style.paddingBottom = '40px';
     }
 
     if (skipBtn) {

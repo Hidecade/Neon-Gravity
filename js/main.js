@@ -353,11 +353,17 @@ function resize() {
     baseAppScale = maxDim / REFERENCE_SIZE;
 
     // ▼ プレイ画面のズームサイズ調整（縦1.2倍、横1.1倍）
+    
     const isPortrait = vh > vw;
-    if (isPortrait) {
-        baseAppScale *= 1.3;
-    } else {
-        baseAppScale *= 1.2;
+    if (currentResolution.key === "FHD") {
+        baseAppScale *= 0.8;
+    }
+    else{
+        if (isPortrait) {
+            baseAppScale *= 1.3;
+        } else {
+            baseAppScale *= 1.2;
+        }
     }
 
     // UIスケール
@@ -367,14 +373,13 @@ function resize() {
     // HUD専用スケール
     let hudScale = 1;
 
-    if (isPortrait) {
-        hudScale = 0.9;
-    } else if (currentResolution.key === "FHD") {
-        hudScale = 1.2;
+    if (currentResolution.key === "FHD") {
+        hudScale = 1.8;
     } else if (
         currentResolution.key === "VGA_L" ||
-        currentResolution.key === "VGA_P"
-    ) {
+        currentResolution.key === "VGA_P") {
+        hudScale = 0.9;
+    } else if (isPortrait) {
         hudScale = 0.9;
     } else {
         hudScale = 1.0;
