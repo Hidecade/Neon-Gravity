@@ -829,6 +829,9 @@ function returnToTitleFromTraining() {
 // =========================================================
 // 3. 演出・アニメーション・シーン更新 (Cinematics & VFX Updates)
 // =========================================================
+let storyTypingSessionId = 0;
+let storyTypingStartTimeout = null;
+let isStoryTypingActive = false;
 
 /**
  * ステージ開始前のイントロ（ワープアウト）演出の更新
@@ -855,33 +858,61 @@ function updateIntro() {
     if (introPhase === 1) {
         if (introTimer === 60) {
             const skipContainer = document.getElementById('story-typing-container');
-            if (skipContainer) {
+            const typingMsg = document.getElementById('story-typing-msg');
+
+            if (skipContainer && typingMsg) {
+                typingMsg.innerHTML = '';
+                typingMsg.style.display = 'none';
                 skipContainer.style.display = 'flex';
-                requestAnimationFrame(() => { skipContainer.style.opacity = '1'; });
+                requestAnimationFrame(() => {
+                    skipContainer.style.opacity = '1';
+                });
             }
         }
+
         if (introTimer > 180) {
-            introPhase = 2; introTimer = 0;
+            introPhase = 2;
+            introTimer = 0;
+
             hideGameMessage();
+
             const storyText = STAGE_STORY_TEXTS[stage];
-            if (storyText) setTimeout(() => { playStoryTyping(storyText); }, 500);
-            else isSkippingStory = true;
+            if (storyText) {
+                resetStoryTypingState();
+
+                storyTypingStartTimeout = setTimeout(() => {
+                    storyTypingStartTimeout = null;
+                    playStoryTyping(storyText);
+                }, 500);
+            } else {
+                isSkippingStory = true;
+            }
         }
     }
+
     // --- Phase 2: ストーリータイピング ---
     else if (introPhase === 2) {
-        const el = document.getElementById('story-typing-msg');
-        if (el.style.display === 'none' && introTimer > 60) {
-            introPhase = 3; introTimer = 0;
+        if (!isStoryTypingActive && introTimer > 60) {
+            introPhase = 3;
+            introTimer = 0;
+
             player.visualYOffset = 700;
             player.visualScale = 0;
 
             const hud = document.querySelector('.hud-row');
-            if (hud) { hud.style.display = 'flex'; hud.style.opacity = '0'; }
+            if (hud) {
+                hud.style.display = 'flex';
+                hud.style.opacity = '0';
+            }
+
             const miniMapContainer = document.getElementById('minimap-container');
-            if (miniMapContainer) { miniMapContainer.style.display = 'block'; miniMapContainer.style.opacity = '0'; }
+            if (miniMapContainer) {
+                miniMapContainer.style.display = 'block';
+                miniMapContainer.style.opacity = '0';
+            }
         }
     }
+
     // --- Phase 3: 自機出現 (ワープイン) ---
     else if (introPhase === 3) {
         const APPEAR_START_TIME = 1;
@@ -904,7 +935,7 @@ function updateIntro() {
 
         const currentVisualY = player.y + player.visualYOffset;
 
-        // カメラ制御（目的地で固定して待ち構える）
+        // カメラ制御
         const viewW = width / cameraScale;
         const viewH = height / cameraScale;
         camera.x = player.x - viewW / 2;
@@ -939,7 +970,7 @@ function updateIntro() {
         }
         updateUIAlpha('pause-btn', isPad ? 'none' : 'flex');
 
-        // エフェクト（彗星の尾）
+        // エフェクト
         const safeVY = (player.visualYOffset !== undefined) ? player.visualYOffset : 700;
         if (introTimer > 5 && introTimer <= ARRIVE_TIME && player.visualScale > 0.1) {
             if (safeVY > 10) {
@@ -959,7 +990,6 @@ function updateIntro() {
             }
         }
 
-        // 多段爆発エフェクト
         if (introTimer === 30 || introTimer === 38 || introTimer === 46) {
             if (introTimer === 30) {
                 if (typeof AudioSys !== 'undefined') AudioSys.playSE('warp_in');
@@ -980,7 +1010,8 @@ function updateIntro() {
                     vx: Math.cos(ang) * spd,
                     vy: Math.sin(ang) * spd - 3,
                     color: Math.random() > 0.5 ? '#fff' : '#0ff',
-                    life: 0.6 + Math.random() * 0.4, size: 2 + Math.random() * 2
+                    life: 0.6 + Math.random() * 0.4,
+                    size: 2 + Math.random() * 2
                 });
             }
         }
@@ -1037,6 +1068,9 @@ async function playStoryTyping(text, options = {}) {
     const el = document.getElementById('story-typing-msg');
     if (!container || !el) return 'missing';
 
+    const sessionId = ++storyTypingSessionId;
+    isStoryTypingActive = true;
+
     const {
         keepVisibleAfterTyping = false,
         waitAfterTypingMs = 6000,
@@ -1046,13 +1080,14 @@ async function playStoryTyping(text, options = {}) {
     isSkippingStory = false;
 
     container.style.display = 'flex';
+    container.style.opacity = '1';
+
     el.style.display = 'block';
     el.style.opacity = '1';
     el.style.transition = 'none';
     el.innerHTML = '';
     el.scrollTop = 0;
 
-    // ビジュアル設定
     let typeColor = '#eee';
     let shadowColor = '#eee';
     if (text.includes('アキシオム') || text.includes('幾何学')) shadowColor = '#0ff';
@@ -1069,7 +1104,7 @@ async function playStoryTyping(text, options = {}) {
     const shouldAutoScroll = autoScroll || container.classList.contains('ending-mode');
 
     for (let lineText of lines) {
-        if (isSkippingStory) break;
+        if (sessionId !== storyTypingSessionId || isSkippingStory) break;
 
         const lineDiv = document.createElement('div');
         lineDiv.style.minHeight = '1.6em';
@@ -1080,11 +1115,11 @@ async function playStoryTyping(text, options = {}) {
         if (shouldAutoScroll) el.scrollTop = el.scrollHeight;
 
         for (let char of lineText) {
-            if (isSkippingStory) break;
+            if (sessionId !== storyTypingSessionId || isSkippingStory) break;
 
             cursor.before(char);
 
-            if (autoScroll) el.scrollTop = el.scrollHeight;
+            if (shouldAutoScroll) el.scrollTop = el.scrollHeight;
 
             let delay = 40;
             if (/[。、，,\.]/.test(char)) delay = 300;
@@ -1094,7 +1129,7 @@ async function playStoryTyping(text, options = {}) {
             await new Promise(resolve => setTimeout(resolve, delay));
         }
 
-        if (isSkippingStory) break;
+        if (sessionId !== storyTypingSessionId || isSkippingStory) break;
 
         if (lineText.trim() !== '') {
             await new Promise(resolve => setTimeout(resolve, 250));
@@ -1103,40 +1138,64 @@ async function playStoryTyping(text, options = {}) {
 
     cursor.remove();
 
+    if (sessionId !== storyTypingSessionId) {
+        isStoryTypingActive = false;
+        return 'cancelled';
+    }
+
     if (isSkippingStory) {
         el.style.display = 'none';
         container.style.display = 'none';
         el.innerHTML = '';
+        isStoryTypingActive = false;
         return 'skipped';
     }
 
     if (waitAfterTypingMs > 0) {
         await new Promise(r => setTimeout(r, waitAfterTypingMs));
+        if (sessionId !== storyTypingSessionId) {
+            isStoryTypingActive = false;
+            return 'cancelled';
+        }
     }
 
-  if (keepVisibleAfterTyping) {
-    return 'completed';
-}
+    if (keepVisibleAfterTyping) {
+        isStoryTypingActive = false;
+        return 'completed';
+    }
 
     el.style.transition = 'opacity 0.6s ease-out';
     el.style.opacity = '0';
     await new Promise(r => setTimeout(r, 600));
+
+    if (sessionId !== storyTypingSessionId) {
+        isStoryTypingActive = false;
+        return 'cancelled';
+    }
+
     el.style.display = 'none';
     container.style.display = 'none';
     el.innerHTML = '';
+    isStoryTypingActive = false;
     return 'completed';
 }
 
 /**
  * ストーリーテキストを外部からスキップする
  */
-
 window.skipStory = function () {
     if (gameState === 'STAGE_INTRO' && introPhase === 1 && introTimer < 60) return;
-
     if (isSkippingStory) return;
+
     isSkippingStory = true;
     isSkipComplete = false;
+
+    if (storyTypingStartTimeout) {
+        clearTimeout(storyTypingStartTimeout);
+        storyTypingStartTimeout = null;
+    }
+
+    storyTypingSessionId++;
 
     const container = document.getElementById('story-typing-container');
     const typingMsg = document.getElementById('story-typing-msg');
@@ -1153,6 +1212,7 @@ window.skipStory = function () {
 
     setTimeout(() => {
         isSkipComplete = true;
+        isStoryTypingActive = false;
 
         if (container) {
             container.style.display = 'none';
@@ -1175,13 +1235,14 @@ window.skipStory = function () {
     }, 1000);
 };
 
+
 /**
  * イントロを強制スキップしてゲームプレイへ移行
  */
 function skipToPlaying() {
-    hideGameMessage(); 
-    const storyTypingContainer = document.getElementById('story-typing-container');
-    if (storyTypingContainer) storyTypingContainer.style.display = 'none';
+    hideGameMessage();
+
+    resetStoryTypingState();
 
     introPhase = 3;
     introTimer = 0;
@@ -1191,6 +1252,38 @@ function skipToPlaying() {
     player.visualYOffset = 700;
     player.visualScale = 0;
 }
+
+function resetStoryTypingState() {
+    storyTypingSessionId++;
+    isStoryTypingActive = false;
+
+    if (storyTypingStartTimeout) {
+        clearTimeout(storyTypingStartTimeout);
+        storyTypingStartTimeout = null;
+    }
+
+    const container = document.getElementById('story-typing-container');
+    const el = document.getElementById('story-typing-msg');
+
+    if (container) {
+        container.style.display = 'none';
+        container.style.opacity = '';
+        container.style.transition = '';
+        container.classList.remove('ending-mode');
+    }
+
+    if (el) {
+        el.style.display = 'none';
+        el.style.opacity = '';
+        el.style.transition = '';
+        el.innerHTML = '';
+        el.scrollTop = 0;
+    }
+}
+
+
+
+
 
 /**
  * プレイヤー死亡演出の更新

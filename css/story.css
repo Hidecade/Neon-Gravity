@@ -248,7 +248,7 @@
     #story-typing-msg {
         width: min(88vw, 1100px);
         max-width: 1100px;
-        font-size: calc(14px * var(--ui-scale, 1));
+        font-size: calc(12px * var(--ui-scale, 1));
         margin-bottom: 60px;
     }
 
@@ -262,7 +262,7 @@
         max-width: 1200px;
         height: calc(100vh - 14px - 72px);
         max-height: calc(100vh - 14px - 72px);
-        font-size: clamp(14px, 2.3vh, 17px);
+        font-size: clamp(12px, 2.3vh, 15px);
         line-height: 1.7;
         padding-top: 12px;
         padding-bottom: 12px;
