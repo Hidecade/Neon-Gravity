@@ -1,6 +1,11 @@
 /* =========================================================
    1. グローバル基本設定
    ========================================================= */
+:root {
+    --ui-scale: 1;
+    --hud-scale: 1;
+}
+
 body {
     margin: 0;
     background: #050505;
@@ -33,45 +38,56 @@ canvas {
     z-index: 60;
     display: flex;
     flex-direction: column;
-    padding: 10px;
+    padding: 16px 18px;
     box-sizing: border-box;
 }
 
 .hud-row {
     display: none;
     justify-content: space-between;
-    width: 100%;
-    max-width: 800px;
+    align-items: flex-start;
+    width: min(100%, 1600px);
     margin: 0 auto;
+    padding: 0 10px;
+    box-sizing: border-box;
+    gap: calc(28px * var(--hud-scale));
+}
+
+#info-box {
+    display: flex;
+    flex-direction: column;
+    gap: calc(8px * var(--hud-scale));
 }
 
 #score-display {
-    font-size: 24px;
+    font-size: calc(24px * var(--hud-scale));
     color: #0ff;
-    text-shadow: 0 0 10px #0ff;
+    text-shadow: 0 0 calc(10px * var(--hud-scale)) #0ff;
     letter-spacing: 0;
     margin-bottom: 0;
+    line-height: 1;
 }
 
 .sub-text {
-    font-size: 12px;
+    font-size: calc(12px * var(--hud-scale));
     color: #aaa;
     font-weight: bold;
 }
 
 .hud-label {
-    font-size: 12px;
+    font-size: calc(12px * var(--hud-scale));
     color: #aaa;
     display: block;
-    margin-bottom: -2px;
+    margin-bottom: calc(-2px * var(--hud-scale));
+    line-height: 1.1;
 }
 
 #stage-num {
-    font-size: 24px;
+    font-size: calc(24px * var(--hud-scale));
     color: #fff;
     font-weight: bold;
     line-height: 1;
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    text-shadow: 0 0 calc(10px * var(--hud-scale)) rgba(255, 255, 255, 0.5);
 }
 
 /* =========================================================
@@ -83,16 +99,17 @@ canvas {
 }
 
 #gauge-box {
-    width: 120px;
+    width: calc(120px * var(--hud-scale));
     text-align: right;
 }
 
 .bar-label {
-    font-size: 12px;
-    letter-spacing: 1px;
-    margin-bottom: 2px;
+    font-size: calc(12px * var(--hud-scale));
+    letter-spacing: calc(1px * var(--hud-scale));
+    margin-bottom: calc(2px * var(--hud-scale));
     display: block;
     color: #0ff;
+    line-height: 1.1;
 }
 
 .bar-label.enemy,
@@ -103,10 +120,10 @@ canvas {
 .bar-frame,
 .laser-bar-frame {
     width: 100%;
-    height: 8px;
+    height: calc(8px * var(--hud-scale));
     border: 1.5px solid rgba(0, 255, 255, 0.5);
     background: rgba(0, 20, 40, 0.8);
-    margin-bottom: 6px;
+    margin-bottom: calc(6px * var(--hud-scale));
     overflow: hidden;
     box-sizing: border-box;
 }
@@ -129,7 +146,7 @@ canvas {
     height: 100%;
     background: #0ff;
     transition: width 0.1s;
-    box-shadow: 0 0 10px #0ff;
+    box-shadow: 0 0 calc(10px * var(--hud-scale)) #0ff;
 }
 
 .shield-critical {
@@ -148,28 +165,28 @@ canvas {
     width: 100%;
     height: 100%;
     background: #f00;
-    box-shadow: 0 0 10px #f00;
+    box-shadow: 0 0 calc(10px * var(--hud-scale)) #f00;
     transition: width 0.2s, background-color 0.3s;
 }
 
 .laser-bar-fill {
     height: 100%;
     background: #0ff;
-    box-shadow: 0 0 8px #0ff;
+    box-shadow: 0 0 calc(8px * var(--hud-scale)) #0ff;
 }
 
 #weapon-display {
-    width: 120px;
-    height: 8px;
+    width: calc(120px * var(--hud-scale));
+    height: calc(8px * var(--hud-scale));
     display: flex;
     justify-content: space-between;
-    margin-top: 4px;
+    margin-top: calc(4px * var(--hud-scale));
 }
 
 .w-block {
     flex: 1;
     height: 100%;
-    margin-right: 3px;
+    margin-right: calc(3px * var(--hud-scale));
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid #444;
     box-sizing: border-box;
@@ -182,12 +199,12 @@ canvas {
 .w-block.active {
     background: #0f0;
     border-color: #0f0;
-    box-shadow: 0 0 5px #0f0;
+    box-shadow: 0 0 calc(5px * var(--hud-scale)) #0f0;
 }
 
 #boss-ui-container {
     display: none;
-    margin-top: 10px;
+    margin-top: calc(10px * var(--hud-scale));
 }
 
 /* =========================================================
@@ -352,87 +369,6 @@ canvas {
 }
 
 /* =========================================================
-   縦画面
-   - やや小さめ
-   ========================================================= */
-@media (orientation: portrait) {
-    #game-message-overlay {
-        padding: 16px 20px 27vh;
-    }
-
-    #game-message-kicker {
-        font-size: clamp(8px, 2.2vw, 11px);
-        letter-spacing: 0.22em;
-    }
-
-    #game-message-main {
-        font-size: clamp(20px, 7vw, 34px);
-        letter-spacing: 0.08em;
-        text-indent: 0.08em;
-        line-height: 1.1;
-    }
-
-    #game-message-sub {
-        font-size: clamp(10px, 3.2vw, 14px);
-        letter-spacing: 0.12em;
-        text-indent: 0.12em;
-        margin-top: 8px;
-    }
-
-    #game-message-overlay.compact {
-        padding-top: 12vh;
-    }
-}
-
-/* =========================================================
-   横画面
-   - やや大きめ、でも大きすぎない
-   ========================================================= */
-@media (orientation: landscape) {
-    #game-message-overlay {
-        padding: 18px 28px 20vh;
-    }
-
-    #game-message-kicker {
-        font-size: clamp(10px, 0.95vw, 13px);
-    }
-
-    #game-message-main {
-        font-size: clamp(26px, 3.4vw, 48px);
-        letter-spacing: 0.11em;
-        text-indent: 0.11em;
-    }
-
-    #game-message-sub {
-        font-size: clamp(11px, 1.1vw, 16px);
-        letter-spacing: 0.14em;
-        text-indent: 0.14em;
-    }
-
-    #game-message-overlay.compact {
-        padding-top: 11vh;
-    }
-}
-
-/* =========================================================
-   横長かつ低い画面
-   ========================================================= */
-@media (orientation: landscape) and (max-height: 560px) {
-    #game-message-overlay {
-        padding-bottom: 16vh;
-    }
-
-    #game-message-main {
-        font-size: clamp(22px, 3vw, 38px);
-    }
-
-    #game-message-sub {
-        font-size: clamp(10px, 1vw, 14px);
-    }
-}
-
-
-/* =========================================================
    5. ストーリー表示用オーバーレイ
    ========================================================= */
 #story-typing-container {
@@ -455,9 +391,9 @@ canvas {
     top: auto;
     left: auto;
     transform: none;
-    margin: 0 0 100px 0;
-    width: 80%;
-    max-width: 800px;
+    margin: 0 0 84px 0;
+    width: min(88vw, 1100px);
+    max-width: 1100px;
     text-align: left;
     font-family: 'Courier New', Courier, monospace;
     font-size: calc(16px * var(--ui-scale, 1));
@@ -475,9 +411,9 @@ canvas {
 #story-typing-container.ending-mode {
     justify-content: flex-start;
     align-items: center;
-    padding-top: 60px;
+    padding-top: 28px;
     padding-right: 0;
-    padding-bottom: 120px;
+    padding-bottom: 84px;
     padding-left: 0;
     box-sizing: border-box;
     overflow: hidden;
@@ -496,25 +432,22 @@ canvas {
     left: auto;
     transform: none;
     pointer-events: auto;
-    width: min(82vw, 920px);
-    max-width: min(82vw, 920px);
-    height: calc(100vh - 60px - 120px);
-    max-height: calc(100vh - 60px - 120px);
+    width: min(88vw, 1200px);
+    max-width: 1200px;
+    height: calc(100vh - 28px - 84px);
+    max-height: calc(100vh - 28px - 84px);
     margin: 0;
-    padding:
-        clamp(16px, 2.2vh, 24px)
-        clamp(18px, 2.4vw, 28px)
-        clamp(18px, 2.6vh, 28px);
+    padding: 14px 14px 16px;
     box-sizing: border-box;
     overflow-y: auto;
     overflow-x: hidden;
     color: #eafcff;
     text-align: left;
     font-family: 'Courier New', Courier, monospace;
-    font-size: clamp(15px, 1.15vw, 20px);
+    font-size: clamp(14px, 1.8vw, 18px);
     font-weight: 700;
-    line-height: 1.95;
-    letter-spacing: 0.03em;
+    line-height: 1.78;
+    letter-spacing: 0.02em;
     text-shadow:
         0 0 4px rgba(255, 255, 255, 0.35),
         0 0 10px rgba(0, 255, 200, 0.18),
@@ -525,7 +458,7 @@ canvas {
         rgba(8, 18, 24, 0.14) 100%
     );
     border: 1px solid rgba(120, 255, 230, 0.18);
-    border-radius: 18px;
+    border-radius: 14px;
     box-shadow:
         inset 0 0 24px rgba(120, 255, 230, 0.05),
         0 0 18px rgba(0, 255, 200, 0.05);
@@ -577,13 +510,13 @@ canvas {
 #skip-button {
     position: fixed;
     left: 50%;
-    bottom: 34px;
-    transform: translateX(-50%);
     right: auto;
+    bottom: 18px;
+    transform: translateX(-50%);
     margin: 0;
-    min-width: 148px;
-    height: 46px;
-    padding: 0 22px;
+    min-width: 124px;
+    height: 40px;
+    padding: 0 18px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -591,9 +524,9 @@ canvas {
     border: 1px solid rgba(120, 255, 230, 0.30);
     cursor: pointer;
     font-family: 'Orbitron', monospace;
-    font-size: calc(14px * var(--ui-scale, 1));
+    font-size: calc(13px * var(--ui-scale, 1));
     font-weight: 700;
-    letter-spacing: 2px;
+    letter-spacing: 0.10em;
     background: linear-gradient(
         to bottom,
         rgba(10, 28, 34, 0.82),
@@ -654,9 +587,9 @@ canvas {
     top: auto;
     left: auto;
     transform: none;
-    margin-top: 5px;
-    width: 100px;
-    height: 100px;
+    margin-top: calc(5px * var(--hud-scale));
+    width: calc(100px * var(--hud-scale));
+    height: calc(100px * var(--hud-scale));
     border: 1px solid rgba(0, 255, 255, 0.5);
     background: rgba(0, 10, 20, 0.6);
     backdrop-filter: blur(2px);
@@ -665,8 +598,8 @@ canvas {
 }
 
 #minimap-canvas {
-    width: 100px;
-    height: 100px;
+    width: 100%;
+    height: 100%;
     display: block;
 }
 
@@ -686,8 +619,8 @@ canvas {
 
 .joystick-area {
     position: absolute;
-    width: 120px;
-    height: 120px;
+    width: calc(120px * var(--ui-scale, 1));
+    height: calc(120px * var(--ui-scale, 1));
     border-radius: 50%;
     border: 1px solid rgba(0, 255, 255, 0.3);
     background: radial-gradient(circle, rgba(0, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.2) 70%);
@@ -718,8 +651,8 @@ canvas {
 }
 
 .knob {
-    width: 50px;
-    height: 50px;
+    width: calc(50px * var(--ui-scale, 1));
+    height: calc(50px * var(--ui-scale, 1));
     border-radius: 50%;
     background: rgba(0, 255, 255, 0.15);
     border: 2px solid #0ff;
@@ -735,8 +668,8 @@ canvas {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 8px;
-    height: 8px;
+    width: calc(8px * var(--ui-scale, 1));
+    height: calc(8px * var(--ui-scale, 1));
     background: #fff;
     border-radius: 50%;
     transform: translate(-50%, -50%);
@@ -745,36 +678,38 @@ canvas {
 
 #launch-btn {
     position: absolute;
-    width: 60px;
-    height: 60px;
-    right: 15px;
-    bottom: 150px;
+    width: calc(60px * var(--ui-scale, 1));
+    height: calc(60px * var(--ui-scale, 1));
+    right: calc(15px * var(--ui-scale, 1));
+    bottom: calc(150px * var(--ui-scale, 1));
     border-radius: 50%;
     background: rgba(255, 255, 0, 0.1);
     border: 2px solid #ff0;
     color: #ff0;
-    font-family: 'Orbitron';
+    font-family: 'Orbitron', monospace;
     font-weight: bold;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    font-size: 11px;
-    letter-spacing: 1px;
+    font-size: calc(11px * var(--ui-scale, 1));
+    letter-spacing: calc(1px * var(--ui-scale, 1));
     box-shadow: 0 0 15px rgba(255, 255, 0, 0.3), inset 0 0 10px rgba(255, 255, 0, 0.2);
     pointer-events: auto;
     text-shadow: 0 0 5px #ff0;
     z-index: 100;
+    box-sizing: border-box;
 }
 
 #launch-btn::before {
     content: '';
     position: absolute;
-    width: 70px;
-    height: 70px;
+    width: calc(70px * var(--ui-scale, 1));
+    height: calc(70px * var(--ui-scale, 1));
     border: 1px dashed rgba(255, 255, 0, 0.4);
     border-radius: 50%;
     animation: rotate 4s linear infinite;
+    box-sizing: border-box;
 }
 
 #launch-btn.active {
@@ -786,20 +721,20 @@ canvas {
 }
 
 #stick-left {
-    left: 10px;
-    bottom: 10px;
+    left: calc(10px * var(--ui-scale, 1));
+    bottom: calc(10px * var(--ui-scale, 1));
 }
 
 #stick-right {
-    right: 10px;
-    bottom: 10px;
+    right: calc(10px * var(--ui-scale, 1));
+    bottom: calc(10px * var(--ui-scale, 1));
 }
 
 /* =========================================================
    8. 共通ボタン類
    ========================================================= */
 .menu-btn {
-    min-width: min(72vw, 220px);
+    min-width: min(78vw, 320px);
     padding: 12px 20px;
     border: 1px solid rgba(120, 255, 255, 0.20);
     border-radius: 999px;
@@ -854,22 +789,18 @@ canvas {
     flex-direction: row;
     justify-content: center;
     align-items: center;
-
     gap: 10px;
     margin-top: 14px;
-
-    flex-wrap: nowrap;   /* 折り返さない */
+    flex-wrap: nowrap;
 }
 
-/* 小さめボタン */
 .btn-small {
-    min-width: 0;             /* menu-btn の min-width 無効化 */
+    min-width: 0;
     width: auto;
-
+    max-width: 150px;
     padding: 6px 12px;
-    font-size: calc(12px * var(--ui-scale));
+    font-size: calc(12px * var(--ui-scale, 1));
     letter-spacing: 0.12em;
-
     text-align: center;
     box-sizing: border-box;
 }
@@ -877,11 +808,11 @@ canvas {
 /* ---------- ポーズボタン ---------- */
 #pause-btn {
     position: absolute;
-    right: calc(30px * var(--ui-scale));
-    bottom: calc(240px * var(--ui-scale));
-    width: calc(40px * var(--ui-scale));
-    height: calc(40px * var(--ui-scale));
-    font-size: calc(18px * var(--ui-scale));
+    right: calc(30px * var(--ui-scale, 1));
+    bottom: calc(240px * var(--ui-scale, 1));
+    width: calc(40px * var(--ui-scale, 1));
+    height: calc(40px * var(--ui-scale, 1));
+    font-size: calc(18px * var(--ui-scale, 1));
     background: rgba(0, 20, 40, 0.8);
     border: 2px solid rgba(0, 255, 255, 0.5);
     color: #0ff;
@@ -894,11 +825,12 @@ canvas {
     pointer-events: auto;
     border-radius: 50%;
     box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+    box-sizing: border-box;
 }
 
 /* ---------- フッター ---------- */
 #menu-footer {
-    margin-top: 22px;
+    margin-top: 18px;
     text-align: center;
     color: #7f8d96;
     font-size: clamp(11px, 0.95vw, 13px);
@@ -930,8 +862,8 @@ canvas {
 #pause-overlay h1 {
     color: #fff;
     text-shadow: 0 0 10px #fff;
-    font-size: calc(40px * var(--ui-scale)) !important;
-    margin-bottom: calc(30px * var(--ui-scale)) !important;
+    font-size: calc(40px * var(--ui-scale, 1)) !important;
+    margin-bottom: calc(30px * var(--ui-scale, 1)) !important;
 }
 
 /* ---------- 9.4 名前入力画面 ---------- */
@@ -948,7 +880,6 @@ canvas {
     padding: 24px 20px;
     box-sizing: border-box;
     pointer-events: auto;
-
     background:
         radial-gradient(circle at 50% 35%,
             rgba(0, 180, 255, 0.10) 0%,
@@ -983,8 +914,7 @@ canvas {
     font-size: clamp(14px, 1.2vw, 18px);
     line-height: 1.8;
     letter-spacing: 0.06em;
-    text-shadow:
-        0 0 8px rgba(0,255,255,0.18);
+    text-shadow: 0 0 8px rgba(0,255,255,0.18);
 }
 
 #result-score-display {
@@ -1052,8 +982,8 @@ canvas {
 }
 
 #story-scroll-container {
-    width: 95%;
-    max-width: 800px;
+    width: min(95%, 1100px);
+    max-width: 1100px;
     flex: 1;
     overflow-y: auto;
     margin: 20px 0;
@@ -1157,20 +1087,45 @@ canvas {
 
 /* =========================================================
    11. レスポンシブ設定
+   - 通常 / portrait / landscape のみ
    ========================================================= */
+@media (orientation: portrait) {
+    #game-message-overlay {
+        padding: 16px 20px 27vh;
+    }
 
-/* ---------- 小画面 ---------- */
-@media (max-width: 600px) {
+    #game-message-kicker {
+        font-size: clamp(8px, 2.2vw, 11px);
+        letter-spacing: 0.22em;
+    }
+
+    #game-message-main {
+        font-size: clamp(20px, 7vw, 34px);
+        letter-spacing: 0.08em;
+        text-indent: 0.08em;
+        line-height: 1.1;
+    }
+
+    #game-message-sub {
+        font-size: clamp(10px, 3.2vw, 14px);
+        letter-spacing: 0.12em;
+        text-indent: 0.12em;
+        margin-top: 8px;
+    }
+
+    #game-message-overlay.compact {
+        padding-top: 12vh;
+    }
+
     #story-typing-msg {
         width: 90%;
-        font-size: 14px;
+        font-size: calc(14px * var(--ui-scale, 1));
+        margin-bottom: 88px;
     }
 
     #story-typing-container.ending-mode {
         padding-top: 18px;
-        padding-right: 0;
         padding-bottom: 88px;
-        padding-left: 0;
     }
 
     #story-typing-container.ending-mode #story-typing-msg {
@@ -1178,57 +1133,30 @@ canvas {
         max-width: 92vw;
         height: calc(100vh - 18px - 88px);
         max-height: calc(100vh - 18px - 88px);
-        padding: 14px 14px 16px;
-        font-size: 14px;
+        font-size: clamp(14px, 3.6vw, 16px);
         line-height: 1.78;
-        letter-spacing: 0.02em;
-        border-radius: 14px;
+        padding: 14px 14px 16px;
     }
 
     #skip-button {
         bottom: 18px;
         min-width: 124px;
         height: 40px;
-        padding: 0 18px;
-        font-size: 13px;
-        letter-spacing: 0.10em;
     }
 
-    #title-shell {
-        min-width: 92vw;
-        padding: 16px 10px 10px;
-    }
-
-    #title-kicker {
-        letter-spacing: 0.24em;
-    }
-
-    .menu-btn {
-        min-width: 78vw;
-    }
-
-    .btn-small {
-        min-width: 0;
-        width: calc((100vw - 48px) / 2);
-        max-width: 150px;
-    }
-}
-
-/* ---------- 縦画面 ---------- */
-@media (orientation: portrait) {
     #stick-left {
-        left: 10px;
-        bottom: 50px;
+        left: calc(10px * var(--ui-scale, 1));
+        bottom: calc(50px * var(--ui-scale, 1));
     }
 
     #stick-right {
-        right: 10px;
-        bottom: 50px;
+        right: calc(10px * var(--ui-scale, 1));
+        bottom: calc(50px * var(--ui-scale, 1));
     }
 
     #launch-btn {
-        right: 5px;
-        bottom: 220px;
+        right: calc(5px * var(--ui-scale, 1));
+        bottom: calc(220px * var(--ui-scale, 1));
     }
 
     #minimap-container {
@@ -1249,17 +1177,74 @@ canvas {
     #pause-btn:active {
         transform: translateX(-50%) scale(0.9);
     }
+
+    #title-shell {
+        min-width: 92vw;
+        padding: 16px 10px 10px;
+    }
+
+    .menu-btn {
+        min-width: 60vw;
+    }
+
+    .btn-small {
+        min-width: 0;
+        width: calc((100vw - 48px) / 2);
+        max-width: 150px;
+    }
 }
 
-/* ---------- 横画面 ---------- */
 @media (orientation: landscape) {
+    #game-message-overlay {
+        padding: 18px 28px 18vh;
+    }
+
+    #game-message-kicker {
+        font-size: clamp(10px, 0.95vw, 13px);
+    }
+
+    #game-message-main {
+        font-size: clamp(22px, 3vw, 42px);
+        letter-spacing: 0.11em;
+        text-indent: 0.11em;
+    }
+
+    #game-message-sub {
+        font-size: clamp(10px, 1vw, 14px);
+        letter-spacing: 0.14em;
+        text-indent: 0.14em;
+    }
+
+    #game-message-overlay.compact {
+        padding-top: 11vh;
+    }
+
     #story-typing-msg {
-        font-size: 2vh !important;
+        font-size: calc(15px * var(--ui-scale, 1));
         margin-bottom: 60px;
     }
 
+    #story-typing-container.ending-mode {
+        padding-top: 14px;
+        padding-bottom: 72px;
+    }
+
     #story-typing-container.ending-mode #story-typing-msg {
-        margin-bottom: 0;
+        width: min(88vw, 1200px);
+        max-width: 1200px;
+        height: calc(100vh - 14px - 72px);
+        max-height: calc(100vh - 14px - 72px);
+        font-size: clamp(13px, 2.3vh, 17px);
+        line-height: 1.7;
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+
+    #skip-button {
+        bottom: 12px;
+        height: 36px;
+        min-width: 118px;
+        font-size: calc(12px * var(--ui-scale, 1));
     }
 
     #title-shell {
@@ -1291,32 +1276,6 @@ canvas {
         transform: translateX(-50%);
         margin-top: 0 !important;
         background: rgba(0, 0, 0, 0.9) !important;
-    }
-}
-
-/* ---------- 横長かつ低い端末 ---------- */
-@media (orientation: landscape) and (max-height: 560px) {
-    #story-typing-container.ending-mode {
-        padding-top: 14px;
-        padding-bottom: 72px;
-    }
-
-    #story-typing-container.ending-mode #story-typing-msg {
-        width: min(88vw, 920px);
-        max-width: min(88vw, 920px);
-        height: calc(100vh - 14px - 72px);
-        max-height: calc(100vh - 14px - 72px);
-        font-size: clamp(13px, 2.3vh, 17px);
-        line-height: 1.7;
-        padding-top: 12px;
-        padding-bottom: 12px;
-    }
-
-    #skip-button {
-        bottom: 12px;
-        height: 36px;
-        min-width: 118px;
-        font-size: 12px;
     }
 }
 

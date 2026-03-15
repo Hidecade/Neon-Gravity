@@ -88,7 +88,6 @@ function updateUI() {
     if (typeof drawMiniMap === 'function') drawMiniMap();
 }
 
-
 function drawMiniMap() {
     // プレイ中または死亡演出中以外は非表示
     const container = document.getElementById('minimap-container');
@@ -342,7 +341,6 @@ function drawDebugWorldOverlay() {
 
     ctx.restore();
 }
-
 
 let gameMessageHideTimer = null;
 let gameMessageFadeHandler = null;

@@ -25,7 +25,6 @@ function clearInputState() {
     if (ui.knobL) ui.knobL.style.transform = 'translate(0,0)';
     if (ui.knobR) ui.knobR.style.transform = 'translate(0,0)';
 }
-
 // =========================================================
 // 2. タッチ・マウス用ロジック
 // =========================================================
@@ -37,58 +36,111 @@ function handleTouch(e) {
     if (e.target.id === 'launch-btn') return; // ボムボタンへのタッチは除外
     e.preventDefault();
 
-    const isIntroPlayable = (gameState === 'STAGE_INTRO' && typeof introPhase !== 'undefined' && introPhase === 3);
+    const isIntroPlayable =
+        (gameState === 'STAGE_INTRO' &&
+            typeof introPhase !== 'undefined' &&
+            introPhase === 3);
+
     if (gameState !== 'PLAYING' && !isIntroPlayable) return;
 
     input.move.active = false;
     input.aim.active = false;
 
+    const canvasRect = canvas.getBoundingClientRect();
+    const canvasCenterX = canvasRect.left + canvasRect.width / 2;
+
     const lR = ui.stickL.getBoundingClientRect();
     const rR = ui.stickR.getBoundingClientRect();
-    const lC = { x: lR.left + lR.width / 2, y: lR.top + lR.height / 2 };
-    const rC = { x: rR.left + rR.width / 2, y: rR.top + rR.height / 2 };
+
+    const lC = {
+        x: lR.left + lR.width / 2,
+        y: lR.top + lR.height / 2
+    };
+
+    const rC = {
+        x: rR.left + rR.width / 2,
+        y: rR.top + rR.height / 2
+    };
 
     for (let i = 0; i < e.touches.length; i++) {
         const t = e.touches[i];
+        const tx = t.clientX;
+        const ty = t.clientY;
 
-        // 画面左半分: 移動スティック
-        if (t.clientX < window.innerWidth / 2) {
-            const dL = Math.hypot(t.clientX - lC.x, t.clientY - lC.y);
+        // canvas表示領域外のタッチは無視
+        if (
+            tx < canvasRect.left ||
+            tx > canvasRect.right ||
+            ty < canvasRect.top ||
+            ty > canvasRect.bottom
+        ) {
+            continue;
+        }
+
+        // 画面左半分ではなく「canvas左半分」を移動スティックにする
+        if (tx < canvasCenterX) {
+            const dL = Math.hypot(tx - lC.x, ty - lC.y);
+
             if (dL < 120) {
                 input.move.active = true;
-                const a = Math.atan2(t.clientY - lC.y, t.clientX - lC.x);
+
+                const a = Math.atan2(ty - lC.y, tx - lC.x);
                 const d = Math.min(dL, 40);
+
                 input.move.x = Math.cos(a) * (d / 40);
                 input.move.y = Math.sin(a) * (d / 40);
-                ui.knobL.style.transform = `translate(${input.move.x * 40}px,${input.move.y * 40}px)`;
+
+                ui.knobL.style.transform =
+                    `translate(${input.move.x * 40}px, ${input.move.y * 40}px)`;
             }
         }
-        // 画面右半分: 照準スティック
+        // canvas右半分を照準スティックにする
         else {
-            const dR = Math.hypot(t.clientX - rC.x, t.clientY - rC.y);
+            const dR = Math.hypot(tx - rC.x, ty - rC.y);
+
             if (dR < 120) {
                 input.aim.active = true;
-                const a = Math.atan2(t.clientY - rC.y, t.clientX - rC.x);
+
+                const a = Math.atan2(ty - rC.y, tx - rC.x);
                 const d = Math.min(dR, 40);
+
                 input.aim.x = Math.cos(a) * (d / 40);
                 input.aim.y = Math.sin(a) * (d / 40);
-                ui.knobR.style.transform = `translate(${input.aim.x * 40}px,${input.aim.y * 40}px)`;
+
+                ui.knobR.style.transform =
+                    `translate(${input.aim.x * 40}px, ${input.aim.y * 40}px)`;
             }
         }
     }
 
     // タッチされていない側のスティックを中央に戻す
-    if (!input.move.active) { input.move.x = 0; input.move.y = 0; ui.knobL.style.transform = 'translate(0,0)'; }
-    if (!input.aim.active) { input.aim.x = 0; input.aim.y = 0; ui.knobR.style.transform = 'translate(0,0)'; }
+    if (!input.move.active) {
+        input.move.x = 0;
+        input.move.y = 0;
+        ui.knobL.style.transform = 'translate(0, 0)';
+    }
+
+    if (!input.aim.active) {
+        input.aim.x = 0;
+        input.aim.y = 0;
+        ui.knobR.style.transform = 'translate(0, 0)';
+    }
 }
 
 /**
  * ボム（サテライト射出）ボタンの処理
  */
 const handleBombPress = (e) => {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
     if (gameState === 'PLAYING') {
-        if (typeof launchSatellites === 'function') launchSatellites();
+        if (typeof launchSatellites === 'function') {
+            launchSatellites();
+        }
+
         ui.launchBtn.classList.add('active');
         setTimeout(() => ui.launchBtn.classList.remove('active'), 100);
     }
@@ -98,9 +150,15 @@ const handleBombPress = (e) => {
  * ポーズボタン押下時の処理
  */
 const handlePauseClick = (e) => {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
     if (gameState === 'PLAYING') {
-        if (typeof setPaused === 'function') setPaused(true);
+        if (typeof setPaused === 'function') {
+            setPaused(true);
+        }
     }
 };
 
@@ -108,7 +166,11 @@ const handlePauseClick = (e) => {
  * ポーズ解除・ゲーム再開時の処理
  */
 const resumeAction = async (e) => {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
     canvas.focus();
     setTimeout(() => canvas.focus(), 100);
 
@@ -192,7 +254,7 @@ function handleGamepadInput() {
         else if (gameState === 'TITLE') {
             window.focus();
             if (document.activeElement) document.activeElement.blur();
-            //if (typeof requestFullScreen === 'function') requestFullScreen();
+            if (typeof requestFullScreen === 'function') requestFullScreen();
             if (typeof AudioSys !== 'undefined') AudioSys.reset();
             if (typeof startGame === 'function') startGame();
         }
@@ -450,7 +512,7 @@ function initInputHandlers() {
 
         newBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            //if (typeof requestFullScreen === 'function') requestFullScreen();
+            if (typeof requestFullScreen === 'function') requestFullScreen();
             if (typeof AudioSys !== 'undefined') AudioSys.reset();
             if (document.activeElement) document.activeElement.blur();
 

@@ -250,55 +250,149 @@ window.updateMenuSelectionUI = function () {
  * アプリケーションの初期化
  */
 function init() {
-    resize();
-    if (typeof AudioSys !== 'undefined') AudioSys.init();
 
+    // 最初に解像度設定
+    resize();
+
+    if (typeof AudioSys !== 'undefined') {
+        AudioSys.init();
+    }
+
+    // PCリサイズ
     window.addEventListener('resize', resize);
 
-    if (typeof initInputHandlers === 'function') initInputHandlers();
+    // スマホ回転対応
+    window.addEventListener('orientationchange', resize);
+
+    if (typeof initInputHandlers === 'function') {
+        initInputHandlers();
+    }
 
     const verEl = document.getElementById('version-num');
-    if (verEl) verEl.innerText = "Version " + GAME_VERSION;
+    if (verEl) {
+        verEl.innerText = "Version " + GAME_VERSION;
+    }
+}
+
+let currentResolution = {
+    key: "FHD",
+    width: 1920,
+    height: 1080,
+    uiScale: 1.0
+};
+
+function detectResolution(screenW, screenH) {
+    const ratio = screenW / screenH;
+    const isPortrait = screenH > screenW;
+
+    // FHD以上の横長画面は最大FHDで打ち止め
+    if (!isPortrait && screenW >= 1600 && ratio > 1.6 && ratio < 1.95) {
+        return {
+            key: "FHD",
+            width: 1920,
+            height: 1080,
+            uiScale: 1.0
+        };
+    }
+
+    // VGA横固定
+    if (!isPortrait && ratio >= 1.2 && ratio <= 1.5 && screenW < 900) {
+        return {
+            key: "VGA_L",
+            width: 640,
+            height: 480,
+            uiScale: 0.6
+        };
+    }
+
+    // VGA縦固定
+    if (isPortrait && ratio >= 0.7 && ratio <= 0.8 && screenW <= 600) {
+        return {
+            key: "VGA_P",
+            width: 480,
+            height: 640,
+            uiScale: 0.6
+        };
+    }
+
+    // それ以外は実解像度
+    return {
+        key: isPortrait ? "MOBILE_P" : "MOBILE_L",
+        width: screenW,
+        height: screenH,
+        uiScale: isPortrait ? 0.82 : 0.78
+    };
 }
 
 /**
  * 画面リサイズ時のキャンバスサイズ計算とUIスケール調整
  */
 function resize() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
 
+    currentResolution = detectResolution(vw, vh);
+
+    // 内部解像度を設定
+    width = canvas.width = currentResolution.width;
+    height = canvas.height = currentResolution.height;
+
+    // 画面に収まるように表示サイズだけ縮放
+    const scale = Math.min(vw / width, vh / height);
+    const displayW = Math.round(width * scale);
+    const displayH = Math.round(height * scale);
+
+    canvas.style.width = `${displayW}px`;
+    canvas.style.height = `${displayH}px`;
+    canvas.style.position = 'absolute';
+    canvas.style.left = `${Math.floor((vw - displayW) / 2)}px`;
+    canvas.style.top = `${Math.floor((vh - displayH) / 2)}px`;
+
+    // アプリ全体スケール
     const maxDim = Math.max(width, height);
     baseAppScale = maxDim / REFERENCE_SIZE;
+
     if (width > height) {
         baseAppScale /= 1.1;
     }
 
-    // UIスケールの計算と適用
-    const screenBaseSize = Math.max(width, height);
-    globalUiScale = screenBaseSize / 800;
-    globalUiScale = Math.max(0.8, Math.min(globalUiScale, 2.0));
-    const maxAllowedScale = width / Math.min(width, 800);
-    globalUiScale = Math.min(globalUiScale, maxAllowedScale);
+    // UIスケール
+    globalUiScale = currentResolution.uiScale;
+    document.documentElement.style.setProperty('--ui-scale', globalUiScale);
 
+    // HUD専用スケール
+    let hudScale = 1;
+
+    if (currentResolution.key === "FHD") {
+        hudScale = 1.7;
+    } else if (
+        currentResolution.key === "VGA_L" ||
+        currentResolution.key === "VGA_P"
+    ) {
+        hudScale = 0.9;
+    } else {
+        // スマホ / タブレット系
+        hudScale = 1.0;
+    }
+
+    document.documentElement.style.setProperty('--hud-scale', hudScale);
+
+    // stage / warning メッセージだけ必要ならスケール
     const scaleElements = [
-        document.querySelector('.hud-row'),
         document.getElementById('stage-msg'),
         document.getElementById('warning-msg')
     ];
 
     scaleElements.forEach(el => {
-        if (el) {
-            el.style.transformOrigin = el.id === 'stage-msg' || el.id === 'warning-msg' ? 'center center' : 'top center';
-            el.style.transform = `scale(${globalUiScale})`;
-        }
+        if (!el) return;
+        el.style.transformOrigin = 'center center';
+        el.style.transform = `scale(${globalUiScale})`;
     });
 
-    document.documentElement.style.setProperty('--ui-scale', globalUiScale);
-
-    // 背景要素の再初期化
+    // 必要なら再初期化
     if (typeof initGrid === 'function') initGrid();
     if (typeof initStars === 'function') initStars();
+
     if (typeof initNebulae === 'function') {
         if (gameState === 'ENDING' || gameState === 'ENDING_STORY') {
             initNebulae('#00ccff');
