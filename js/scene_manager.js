@@ -68,7 +68,6 @@ function startGame() {
     ui.shieldBar.classList.remove('shield-critical');
     ui.shieldBar.style.backgroundColor = '#0ff';
     ui.enemyBar.style.width = "100%";
-    //hideGameMessage(true); 
     ui.pauseBtn.style.display = 'flex';
 
     gameState = 'PLAYING';

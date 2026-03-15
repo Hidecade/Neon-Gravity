@@ -539,6 +539,21 @@ function initInputHandlers() {
         };
     }
 
+    // ▼ ここから追加: FPSタップ表示の切り替え処理
+    const fpsZone = document.getElementById('simple-fps-zone');
+    const fpsText = document.getElementById('simple-fps-text');
+    if (fpsZone && fpsText) {
+        let isFpsVisible = false;
+        const toggleFps = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            isFpsVisible = !isFpsVisible;
+            fpsText.style.opacity = isFpsVisible ? '1' : '0';
+        };
+        fpsZone.addEventListener('mousedown', toggleFps);
+        fpsZone.addEventListener('touchstart', toggleFps, { passive: false });
+    }
+
     // その他汎用ボタンの一括バインド用ヘルパー
     const bindBtn = (id, func) => {
         const el = document.getElementById(id);

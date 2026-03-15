@@ -1188,3 +1188,33 @@ canvas {
 .lang-en .ja-text {
     display: none !important;
 }
+
+
+/* =========================================================
+   FPS表示UI (画面中央上部タップ用)
+   ========================================================= */
+#simple-fps-zone {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 50px;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 6px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent; /* タッチ時の青枠を消す */
+}
+
+#simple-fps-text {
+    color: #0ff;
+    font-family: 'Orbitron', monospace;
+    font-size: calc(14px * var(--ui-scale, 1));
+    font-weight: 700;
+    text-shadow: 0 0 6px rgba(0, 255, 255, 0.8);
+    pointer-events: none; /* タッチ判定はzoneに任せる */
+    transition: opacity 0.2s ease;
+}

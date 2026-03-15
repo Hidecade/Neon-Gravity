@@ -592,11 +592,16 @@ function updateDebugStats() {
         debugFps = Math.round((debugFrameCounter * 1000) / elapsed);
         debugFrameCounter = 0;
         debugLastFpsTime = now;
+        
+        // ▼ 追加: 画面上のテキストを更新
+        const fpsEl = document.getElementById('simple-fps-text');
+        if (fpsEl && fpsEl.style.opacity === '1') fpsEl.innerText = `FPS: ${debugFps}`;
     }
 }
 
 function updateDebugOverlay() {
     const el = document.getElementById("debugOverlay");
+
     if (!el) return;
 
         // タイトルでは表示しない
@@ -709,8 +714,6 @@ function draw() {
     if (typeof drawScorePopups === 'function') drawScorePopups();
 
     ctx.restore();
-
-    if (typeof drawDebugOverlay === 'function') drawDebugOverlay();
 }
 
 // =========================================================
