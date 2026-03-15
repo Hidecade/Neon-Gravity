@@ -1229,7 +1229,7 @@ canvas {
     }
 
     #story-typing-msg {
-        font-size: calc(15px * var(--ui-scale, 1));
+        
         margin-bottom: 60px;
     }
 
