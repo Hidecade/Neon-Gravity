@@ -478,7 +478,7 @@ canvas {
     width: calc(60px * var(--ui-scale, 1));
     height: calc(60px * var(--ui-scale, 1));
     right: calc(15px * var(--ui-scale, 1));
-    bottom: calc(150px * var(--ui-scale, 1));
+    bottom: calc(155px * var(--ui-scale, 1));
     border-radius: 50%;
     background: rgba(255, 255, 0, 0.1);
     border: 2px solid #ff0;
@@ -715,16 +715,23 @@ canvas {
 }
 
 #result-score-display {
-display: block;
+    /* ▼ 確実な中央揃えのためのFlex指定とボックス計算の修正 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
     width: min(90vw, 460px);
     margin: 0 auto 20px;
+    
+    /* ▼ 左側にletter-spacingと同じ分の余白を足して視覚的中心を合わせる */
     padding: 16px 18px;
+    padding-left: calc(18px + 0.08em);
+    
     text-align: center;
     color: #fff;
     font-size: clamp(22px, 2.5vw, 34px);
     font-weight: 700;
     letter-spacing: 0.08em;
-    text-indent: 0.08em;  
     background:
         linear-gradient(
             to bottom,
