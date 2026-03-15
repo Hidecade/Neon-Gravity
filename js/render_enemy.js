@@ -359,7 +359,7 @@ function drawHunterEnemy(ctx, e) {
     //ctx.shadowBlur = 8;
     ctx.shadowColor = mainColor;
     ctx.strokeStyle = mainColor;
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.5;
 
     // --- 1. 外郭ワイヤーフレーム（円形） ---
     ctx.beginPath();
@@ -823,7 +823,7 @@ function drawPhantomEnemy(ctx, e) {
 function drawEclipseEnemy(ctx, e) {
     ctx.save();
 
-    // --- 被弾（ダメージ）判定の自己完結ロジック ---
+    // --- 被弾判定 ---
     if (e.prevHp !== undefined && e.hp < e.prevHp) {
         e.flashTimer = 4;
     }
@@ -848,91 +848,60 @@ function drawEclipseEnemy(ctx, e) {
     const baseColor = e.color || '#f05';
     const mainColor = isDmg ? '#fff' : baseColor;
 
+    // ネオン・ワイヤーフレーム共通の描画モード
     ctx.globalCompositeOperation = 'lighter';
 
     // ==========================================
-    // ★ 本体デザインの深化（線を増やしリアクターを追加）
+    // 本体デザイン（shadowBlurを使わず、線の太さと透明度で構築）
     // ==========================================
     const sides = 6;
     const bodyRotation = e.angle * 0.5;
 
     ctx.save();
-    ctx.rotate(bodyRotation);
+    ctx.rotate(bodyRotation + frame * 0.01);
 
-    // 1. 同心円状の拘束グリッド（中心付近）
+    // 1. 同心円状の拘束グリッド
     ctx.strokeStyle = mainColor;
-    for (let r = 15; r <= 25; r += 5) {
+    for (let r = 16; r <= 28; r += 6) {
         ctx.beginPath();
-        ctx.globalAlpha = (0.4 - (r / 100)) * easeProgress;
-        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = (0.5 - (r / 100)) * easeProgress;
+        ctx.lineWidth = 2.0;
+       
         ctx.arc(0, 0, r, 0, Math.PI * 2);
         ctx.stroke();
-    }
-
-    // 2. 多層トラス・フレーム
-    const layers = [
-        { r: 30, lw: 1.5, alpha: 0.6, dash: [] },
-        { r: 35, lw: 1.0, alpha: 0.4, dash: [] },
-        { r: 38, lw: 0.5, alpha: 0.3, dash: [] }
-    ];
-
-    layers.forEach((ly, index) => {
-        ctx.beginPath();
-        ctx.strokeStyle = mainColor;
-        ctx.lineWidth = ly.lw;
-        ctx.globalAlpha = ly.alpha * easeProgress;
-        if (ly.dash.length) ctx.setLineDash(ly.dash);
-
-        for (let i = 0; i <= sides; i++) {
-            const ang = (Math.PI * 2 / sides) * i;
-            const px = Math.cos(ang) * ly.r;
-            const py = Math.sin(ang) * ly.r;
-            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        }
-        ctx.stroke();
         ctx.setLineDash([]);
-
-        // レイヤー間の斜め補強線（トラス）を倍増
-        if (index > 0) {
-            const prevR = layers[index - 1].r;
-            ctx.beginPath();
-            ctx.globalAlpha = 0.2 * easeProgress;
-            for (let i = 0; i < sides; i++) {
-                const ang = (Math.PI * 2 / sides) * i;
-                const nextAng = (Math.PI * 2 / sides) * (i + 1);
-                // 放射状の線
-                ctx.moveTo(Math.cos(ang) * prevR, Math.sin(ang) * prevR);
-                ctx.lineTo(Math.cos(ang) * ly.r, Math.sin(ang) * ly.r);
-                // 交差線
-                ctx.moveTo(Math.cos(ang) * prevR, Math.sin(ang) * prevR);
-                ctx.lineTo(Math.cos(nextAng) * ly.r, Math.sin(nextAng) * ly.r);
-                ctx.moveTo(Math.cos(nextAng) * prevR, Math.sin(nextAng) * prevR);
-                ctx.lineTo(Math.cos(ang) * ly.r, Math.sin(ang) * ly.r);
-            }
-            ctx.stroke();
-        }
-    });
+    }
 
     ctx.restore(); // ボディ回転終了
 
     // --- ブラックホール本体 ---
     const corePulse = 1.0 + Math.sin(frame * 0.05) * 0.08;
-    const holeRad = 10 * corePulse;
+    const holeRad = 12 * corePulse;
 
-    ctx.beginPath(); ctx.arc(0, 0, holeRad * 2.5, 0, Math.PI * 2);
-    const grad = ctx.createRadialGradient(0, 0, holeRad * 0.8, 0, 0, holeRad * 2.5);
-    grad.addColorStop(0, isDmg ? '#fff' : '#f00');
-    grad.addColorStop(0.3, isDmg ? '#fff' : '#a00');
+    ctx.beginPath(); ctx.arc(0, 0, holeRad * 2.8, 0, Math.PI * 2);
+    const grad = ctx.createRadialGradient(0, 0, holeRad * 0.8, 0, 0, holeRad * 2.8);
+    grad.addColorStop(0, isDmg ? '#fff' : '#f05');
+    grad.addColorStop(0.3, isDmg ? '#fff' : '#800');
     grad.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = grad; ctx.fill();
 
+    // 事象の地平面（リング）
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.beginPath(); ctx.arc(0, 0, holeRad + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = isDmg ? '#fff' : '#f05';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // 漆黒の中心
     ctx.globalCompositeOperation = 'source-over';
     ctx.beginPath(); ctx.arc(0, 0, holeRad, 0, Math.PI * 2);
     ctx.fillStyle = isDmg ? '#fff' : '#000';
     ctx.fill();
+    
+    // ==========================================
+    // ★ ビット（6基）をPhantom仕様に変更
+    // ==========================================
     ctx.globalCompositeOperation = 'lighter';
-
-    // --- ビット（6基） ---
     const cycle = timer % 350;
     const isChargingSnipe = (cycle > 200 && cycle < 250);
     const isChargingAoe = (cycle > 80 && cycle < 120);
@@ -948,9 +917,15 @@ function drawEclipseEnemy(ctx, e) {
 
     const smoothAim = aimFactor * aimFactor * (3 - 2 * aimFactor);
     const targetAngle = Math.atan2(player.y - e.y, player.x - e.x);
-    const orbitDist = 50 + Math.sin(frame * 0.05) * 4;
+    const orbitDist = 55 + Math.sin(frame * 0.05) * 5;
 
-    const pts = [{ x: 14, y: 0, z: 0 }, { x: -7, y: 7, z: 4 }, { x: -7, y: -7, z: 4 }, { x: -7, y: 0, z: -8 }];
+    // Phantomと完全に同じ形状（サイズも同じ）
+    const pts = [
+        { x: 15, y: 0, z: 0 },     // 先端
+        { x: -10, y: 10, z: 5 },   // 底面1
+        { x: -10, y: -10, z: 5 },  // 底面2
+        { x: -10, y: 0, z: -9 }    // 底面3
+    ];
     const lines = [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]];
 
     for (let i = 0; i < 6; i++) {
@@ -965,14 +940,38 @@ function drawEclipseEnemy(ctx, e) {
         const p = pts.map(pt => {
             const rx = pt.x * Math.cos(currentLookAngle) - pt.y * Math.sin(currentLookAngle);
             const ry = pt.x * Math.sin(currentLookAngle) + pt.y * Math.cos(currentLookAngle);
-            const finalY = ry * Math.cos(0.4) - pt.z * Math.sin(0.4);
+            const rz = pt.z;
+            
+            // Phantomと同じ投影ロジック
+            const tilt = 0.4;
+            const finalY = ry * Math.cos(tilt) - rz * Math.sin(tilt);
             return { px: rx + ox, py: finalY + oy };
         });
 
-        ctx.strokeStyle = mainColor; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.3 * easeProgress;
-        ctx.beginPath(); lines.forEach(l => { ctx.moveTo(p[l[0]].px, p[l[0]].py); ctx.lineTo(p[l[1]].px, p[l[1]].py); }); ctx.stroke();
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5; ctx.globalAlpha = 0.8 * easeProgress;
-        ctx.beginPath(); lines.forEach(l => { ctx.moveTo(p[l[0]].px, p[l[0]].py); ctx.lineTo(p[l[1]].px, p[l[1]].py); }); ctx.stroke();
+        // 1. Phantomと同じく、本体色（mainColor）で太めの外枠を描く
+        ctx.strokeStyle = mainColor;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = easeProgress * 0.8;
+        ctx.beginPath();
+        lines.forEach(l => { ctx.moveTo(p[l[0]].px, p[l[0]].py); ctx.lineTo(p[l[1]].px, p[l[1]].py); });
+        ctx.stroke();
+
+        // 2. Phantomと同じく、白色（#fff）で細いハイライト芯を描く
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 0.8;
+        ctx.globalAlpha = easeProgress * 0.8;
+        ctx.beginPath();
+        lines.forEach(l => { ctx.moveTo(p[l[0]].px, p[l[0]].py); ctx.lineTo(p[l[1]].px, p[l[1]].py); });
+        ctx.stroke();
+
+        // 3. Phantomと同じく、半透明の本体色で面を塗りつぶす（立体感の強調）
+        ctx.save();
+        ctx.globalAlpha = easeProgress * 0.12;
+        ctx.fillStyle = mainColor;
+        ctx.beginPath();
+        ctx.moveTo(p[0].px, p[0].py); ctx.lineTo(p[1].px, p[1].py); ctx.lineTo(p[2].px, p[2].py);
+        ctx.fill();
+        ctx.restore();
     }
 
     // --- 予兆演出 ---
@@ -981,16 +980,22 @@ function drawEclipseEnemy(ctx, e) {
         if (isChargingAoe) {
             const chargeRatio = (120 - cycle) / 40;
             ctx.strokeStyle = `rgba(255, 0, 80, ${1 - chargeRatio})`;
-            ctx.lineWidth = 3 + chargeRatio * 2;
-            ctx.beginPath(); ctx.arc(0, 0, 70 * chargeRatio, 0, Math.PI * 2); ctx.stroke();
+            ctx.lineWidth = 4 + chargeRatio * 4;
+            ctx.beginPath(); ctx.arc(0, 0, 80 * chargeRatio, 0, Math.PI * 2); ctx.stroke();
         } else if (isChargingSnipe) {
             const targetX = (player.x - e.x) / currentScale;
             const targetY = (player.y - e.y) / currentScale;
-            const laserAlpha = 0.5 + Math.sin(frame * 0.8) * 0.4;
-            ctx.setLineDash([8, 12]);
-            ctx.lineDashOffset = -((frame * 4) % 1000);
-            ctx.lineWidth = 4.0;
-            ctx.strokeStyle = `rgba(255, 0, 80, ${laserAlpha * 0.4})`;
+            const laserAlpha = 0.6 + Math.sin(frame * 0.8) * 0.4;
+            
+            ctx.setLineDash([10, 15]);
+            ctx.lineDashOffset = -(frame * 5 % 1000);
+            
+            ctx.lineWidth = 6.0;
+            ctx.strokeStyle = `rgba(255, 0, 80, ${laserAlpha * 0.3})`;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(targetX, targetY); ctx.stroke();
+            
+            ctx.lineWidth = 2.0;
+            ctx.strokeStyle = `rgba(255, 100, 150, ${laserAlpha})`;
             ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(targetX, targetY); ctx.stroke();
             ctx.setLineDash([]);
         }

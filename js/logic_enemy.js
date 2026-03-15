@@ -550,6 +550,72 @@ function updateEclipseAI(e) {
             if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
             distortGrid(e.x, e.y, 80, 150);
         }
+        
+        // ==========================================
+        // ★追加 攻撃3：ブラックホール（重力引き寄せ）
+        // サイクル 150 〜 220 の間、自機を強烈に吸い寄せる
+        // ==========================================
+        else if (cycle > 150 && cycle < 220) {
+            const pullDx = e.x - player.x;
+            const pullDy = e.y - player.y;
+            const pullDist = Math.hypot(pullDx, pullDy) || 0.001;
+
+            const maxPullDist = 800; // 引力が届く最大距離（画面の大部分）
+            
+            if (pullDist < maxPullDist) {
+                // エクリプスに近いほど引力が強くなる計算
+                const pullStrength = 8.0 * SPEED_SCALE * gameSpeed;
+                const force = pullStrength * (1 - pullDist / maxPullDist);
+
+                // プレイヤーの座標をエクリプス側へ直接引き寄せる
+                player.x += (pullDx / pullDist) * force;
+                player.y += (pullDy / pullDist) * force;
+            }
+
+            // --- 視覚演出 ---
+            // グリッドの歪みは処理が重いため4フレームに1回だけ実行
+            if (frame % 4 === 0) {
+                if (typeof distortGrid === 'function') distortGrid(e.x, e.y, -40, 400);
+            }
+
+            // ==========================================
+            // ★ 渦を巻いて中心で消滅するブラックホールエフェクト
+            // ==========================================
+            // 光の線が途切れないよう【毎フレーム】発生させる
+            const numParticles = 2 + Math.floor(Math.random() * 2);
+            
+            for (let i = 0; i < numParticles; i++) {
+                const pAngle = Math.random() * Math.PI * 2;
+                
+                // 距離を少し調整し、画面の広範囲から集まるように
+                const pDist = 120 + Math.random() * 250; 
+                
+                const colors = ['#ffaaff', '#880000', '#ffffff', '#00ffff'];
+                const pColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                const speed = (14 + Math.random() * 6) * SPEED_SCALE;
+
+                // ★ポイント1：直進ではなく、少しだけ角度をずらして「渦（スワール）」を巻くようにする
+                const swirlAngle = pAngle + 0.15; 
+
+                // ★ポイント2：中心に到達する時間を逆算し、ピッタリ中心で消滅する寿命を設定する
+                // （距離 ÷ 速度）で到達フレーム数を出し、1フレームの減少量(約0.02)を掛ける
+                const exactLife = (pDist / speed) * 0.02;
+
+                particles.push({
+                    x: e.x + Math.cos(pAngle) * pDist,
+                    y: e.y + Math.sin(pAngle) * pDist,
+                    vx: -Math.cos(swirlAngle) * speed, 
+                    vy: -Math.sin(swirlAngle) * speed,
+                    color: pColor,
+                    
+                    // ランダムではなく、計算で求めた「ピッタリ中心で消える寿命」を入れる
+                    life: exactLife, 
+                    
+                    size: 1.5 + Math.random() * 2.5 
+                });
+            }
+        }
         // 攻撃2：超高速レーザー
         else if (cycle === 250 || cycle === 270 || cycle === 290) {
             const bladeCount = 6;
@@ -761,6 +827,57 @@ function updateSentinelAI(e) {
 
     e.x += e.vx * gameSpeed;
     e.y += e.vy * gameSpeed;
+}
+
+function updateSweeperAI(e) {
+    // --- 加速処理 ---
+    const accel = 0.15 * SPEED_SCALE; 
+    if (e.vy > 0) {
+        e.vy += accel * gameSpeed;
+    } else {
+        e.vy -= accel * gameSpeed;
+    }
+
+    const maxSpeed = 30.0 * SPEED_SCALE;
+    if (Math.abs(e.vy) > maxSpeed) {
+        e.vy = (e.vy > 0) ? maxSpeed : -maxSpeed;
+    }
+
+    // --- 移動と回転 ---
+    e.x += e.vx * gameSpeed;
+    e.y += e.vy * gameSpeed;
+
+    e.angle = Math.atan2(e.vy, e.vx);
+    e.rotX += 0.4;
+    e.rotY = 0;
+    e.rotZ = 0;
+
+    // ==========================================
+    // ★追加：壁に激突したら爆発して消滅する処理
+    // ==========================================
+    
+    // 画面外から出現するため、一度「壁の内側」に入ったかをチェックする
+    if (!e.hasEntered) {
+        // WALL_MARGIN は壁の厚み。これを越えて内側に入ったらフラグを立てる
+        if (e.y > WALL_MARGIN && e.y < worldSize - WALL_MARGIN &&
+            e.x > WALL_MARGIN && e.x < worldSize - WALL_MARGIN) {
+            e.hasEntered = true; // 完全にステージ内に入った！
+        }
+    } else {
+        // ステージ内に入った後、反対側の壁（ワールド境界）にぶつかったら
+        if (e.y <= WALL_MARGIN || e.y >= worldSize - WALL_MARGIN ||
+            e.x <= WALL_MARGIN || e.x >= worldSize - WALL_MARGIN) {
+
+            // 壁に当たった火花と小爆発のエフェクトを出す
+            if (typeof createWallImpact === 'function') createWallImpact(e.x, e.y, e.color);
+            if (typeof createExplosion === 'function') createExplosion(e.x, e.y, e.color, 5);
+            if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_small');
+
+            // プレイヤーが倒したわけではないので、スコアやアイテムを出さずに完全消滅させる
+            e.hp = 0;
+            e.isDead = true; 
+        }
+    }
 }
 
 function updateFighterJetAI(eb) {
@@ -1743,6 +1860,40 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             state: 'orbit'
         });
         spawnedCount++;
+    } else if (type === 'sweeper') {
+        const isTop = Math.random() > 0.5; 
+        const viewW = width / cameraScale;
+        const viewH = height / cameraScale;
+
+        const startY = isTop ? camera.y - 60 : camera.y + viewH + 60;
+        const moveVy = isTop ? ENEMY_SPEEDS.SWEEPER * spd * stageMag : -ENEMY_SPEEDS.SWEEPER * spd * stageMag;
+
+        const count = 8; 
+        const spacing = viewW / (count + 1); 
+
+        for (let i = 0; i < count; i++) {
+            const startX = camera.x + spacing * (i + 1);
+            enemies.push({
+                x: startX, y: startY,
+                vx: 0, vy: moveVy,
+                hp: 2 + Math.floor(hpMag),
+                speed: ENEMY_SPEEDS.SWEEPER * spd * stageMag,
+                color: '#bbbbbb', 
+                type: 'triangle',
+                variant: 'sweeper', 
+                angle: isTop ? Math.PI / 2 : -Math.PI / 2,
+                drop: Math.random() < 0.1 ? dropType : 'none',
+                scale: 0.8,
+                
+                // ★ 変更：ランダムな転がりを無くし、初期姿勢をピシッと揃える
+                rotX: 0, 
+                rotY: 0,
+                rotZ: 0,
+                
+                isWarping: true, warpPercent: 0
+            });
+        }
+        spawnedCount += count; 
     }
 }
 
@@ -1911,7 +2062,10 @@ function updateEnemies() {
             switch (e.type) {
                 case 'dragon': updateDragonAI(e); break;
                 case 'tadpole': updateTadpoleAI(e); break;
-                case 'triangle': updateTriangleAI(e); break;
+                case 'triangle': 
+                    if (e.variant === 'sweeper') updateSweeperAI(e);
+                    else updateTriangleAI(e); 
+                    break;
                 case 'cube': updateCubeAI(e); break;
                 case 'asteroid': updateAsteroidAI(e); break;
                 case 'bubble': updateAsteroidAI(e); break;
@@ -1944,6 +2098,11 @@ function updateEnemies() {
         // bubble または asteroid の場合に衝突ロジックを適用
         if (e.type === 'asteroid' || e.type === 'bubble') {
             applyAsteroidCollisions(e);
+        }
+
+        // ★ e.variant !== 'sweeper' を条件に追加（壁でバウンドせず通り抜けるようにする）
+        if (e.variant !== 'sweeper') {
+            applyWorldBoundary(e);
         }
 
         applyWorldBoundary(e);

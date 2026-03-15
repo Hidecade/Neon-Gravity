@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-const GAME_VERSION = "1.3.10";
+const GAME_VERSION = "1.3.11";
 
 const DEBUG = {
     enabled: true,
@@ -129,6 +129,7 @@ const ENEMY_SPEEDS = {
     ECLIPSE: 1.5,
     JELLYFISH: 2.5,
     SENTINEL: 4.0,
+    SWEEPER: 10.0,
     BOSS_MISSILE: 10.0 // ボスミサイル用
 };
 
@@ -151,6 +152,7 @@ const ENEMY_HITBOX = {
     BULLET: 8,
     BOSS: 45,
     SENTINEL: 15,
+    SWEEPER: 15,
 };
 
 
@@ -168,6 +170,7 @@ const ENEMY_SCORES = {
     tadpole: 100,
     jellyfish: 180,
     sentinel: 150,
+    sweeper: 150,
     default: 100
 };
 const DEFAULT_ENEMY_SCORE = ENEMY_SCORES.default;
@@ -177,11 +180,11 @@ const STAGE_ENEMIES = {
     1: ['triangle', 'triangle', 'triangle', 'dragon'],
     2: ['triangle', 'tadpole', 'tadpole', 'dragon'],
     3: ['bubble', 'bubble', 'bubble', 'jellyfish', 'spark_jelly'],
-    4: ['phantom', 'triangle', 'tadpole', 'asteroid'],
+    4: ['phantom', 'triangle', 'tadpole', 'asteroid', 'sweeper'],
     5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'asteroid'],
     6: ['asteroid', 'asteroid', 'asteroid', 'phantom', 'tadpole', 'tadpole'],
     7: ['triangle', 'tadpole', 'dragon', 'triangle', 'eclipse', 'triangle', 'asteroid'],
-    8: ['triangle', 'hunter', 'phantom', 'tadpole', 'eclipse', 'dragon', 'jellyfish', 'asteroid']
+    8: ['triangle', 'hunter', 'phantom', 'tadpole', 'eclipse', 'dragon', 'jellyfish', 'asteroid', 'sweeper']
 };
 
 // Stage 9 (ボスラッシュ) 専用の雑魚スポーン設定
@@ -255,7 +258,7 @@ const DROP_RATES = {
 
 // --- 演出設定 ---
 const EXPLOSION_SPEED_MAG = 2.0; // 撃破火花の散る速さ
-const EXPLOSION_COUNT_MAG = 5.0; // 撃破火花の量
+const EXPLOSION_COUNT_MAG = 3.0; // 撃破火花の量
 
 // --- ステージテキスト・色 ---
 const STAGE_TITLES = {

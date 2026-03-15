@@ -271,6 +271,7 @@ function distortGrid(x, y, force, radius) {
 
                 // 吸い込み時の反転防止リミッター
                 if (force < 0) {
+
                     const speedSq = p.vx * p.vx + p.vy * p.vy;
                     const limitDist = d * 0.5;
 
