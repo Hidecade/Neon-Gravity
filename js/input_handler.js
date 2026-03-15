@@ -254,7 +254,7 @@ function handleGamepadInput() {
         else if (gameState === 'TITLE') {
             window.focus();
             if (document.activeElement) document.activeElement.blur();
-            if (typeof requestFullScreen === 'function') requestFullScreen();
+            //if (typeof requestFullScreen === 'function') requestFullScreen();
             if (typeof AudioSys !== 'undefined') AudioSys.reset();
             if (typeof startGame === 'function') startGame();
         }
@@ -512,7 +512,7 @@ function initInputHandlers() {
 
         newBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (typeof requestFullScreen === 'function') requestFullScreen();
+            //if (typeof requestFullScreen === 'function') requestFullScreen();
             if (typeof AudioSys !== 'undefined') AudioSys.reset();
             if (document.activeElement) document.activeElement.blur();
 

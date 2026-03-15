@@ -17,10 +17,10 @@
     position: relative;
     z-index: 2;
     display: flex;
-    gap: 16px;
     width: min(94vw, 920px);
     align-items: stretch;
     margin-top: 4px;
+    gap: 16px;
 }
 
 .howto-panel {
@@ -55,18 +55,13 @@
     border-bottom: 1px solid rgba(0,255,255,0.45);
     padding-bottom: 6px;
     margin-top: 0;
-    margin-bottom: 12px;
-    font-size: calc(15px * var(--ui-scale, 1));
-    letter-spacing: 0.14em;
     text-shadow: 0 0 10px rgba(0,255,255,0.35);
 }
 
 .control-group {
     display: flex;
     align-items: center;
-    margin-bottom: calc(12px * var(--ui-scale, 1));
     border-bottom: 1px solid rgba(255,255,255,0.08);
-    padding-bottom: calc(8px * var(--ui-scale, 1));
 }
 
 .control-group:last-child {
@@ -99,9 +94,8 @@
 }
 
 .control-desc {
-    font-size: calc(11px * var(--ui-scale, 1));
     color: #ccd8de;
-    line-height: 1.65;
+    font-size: calc(11px * var(--ui-scale, 1));
 }
 
 .lbl,
@@ -176,7 +170,6 @@
 .item-desc {
     display: flex;
     align-items: center;
-    margin-bottom: calc(10px * var(--ui-scale, 1));
 }
 
 .item-icon {
@@ -226,7 +219,6 @@
 .howto-text {
     color: #c7d0d6;
     font-size: calc(11px * var(--ui-scale, 1));
-    line-height: 1.8;
 }
 
 .btn-training {
@@ -253,8 +245,8 @@
     }
 
     .howto-title {
-        font-size: calc(15px * var(--ui-scale, 1));
         margin-bottom: 12px;
+        font-size: calc(15px * var(--ui-scale, 1));
     }
 
     .control-group {
@@ -262,20 +254,16 @@
         padding-bottom: calc(8px * var(--ui-scale, 1));
     }
 
-    .icon-box {
-        width: calc(72px * var(--ui-scale, 1));
-        min-width: calc(72px * var(--ui-scale, 1));
-        margin-right: calc(10px * var(--ui-scale, 1));
+    .control-desc {
+        line-height: 1.65;
     }
 
-    .control-icon {
-        width: calc(56px * var(--ui-scale, 1));
-        height: calc(26px * var(--ui-scale, 1));
+    .item-desc {
+        margin-bottom: calc(10px * var(--ui-scale, 1));
     }
 
-    .control-desc,
     .howto-text {
-        font-size: calc(11px * var(--ui-scale, 1));
+        line-height: 1.8;
     }
 
     .howto-actions {
@@ -310,20 +298,15 @@
         padding-bottom: calc(8px * var(--ui-scale, 1));
     }
 
-    .icon-box {
-        width: calc(72px * var(--ui-scale, 1));
-        min-width: calc(72px * var(--ui-scale, 1));
-        margin-right: calc(10px * var(--ui-scale, 1));
+    .control-desc {
+        line-height: 1.6;
     }
 
-    .control-icon {
-        width: calc(56px * var(--ui-scale, 1));
-        height: calc(26px * var(--ui-scale, 1));
+    .item-desc {
+        margin-bottom: calc(8px * var(--ui-scale, 1));
     }
 
-    .control-desc,
     .howto-text {
-        font-size: calc(11px * var(--ui-scale, 1));
         line-height: 1.6;
     }
 
