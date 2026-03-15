@@ -191,7 +191,7 @@
         width: 90%;
         max-width: 1100px;
         margin: 0 0 88px 0;
-        font-size: calc(14px * var(--ui-scale, 1));
+        font-size: calc(16px * var(--ui-scale, 1));
         line-height: 1.8;
     }
 
@@ -206,7 +206,7 @@
         height: calc(100vh - 18px - 88px);
         max-height: calc(100vh - 18px - 88px);
         padding: 14px 14px 16px;
-        font-size: calc(14px * var(--ui-scale, 1));
+        font-size: calc(16px * var(--ui-scale, 1));
         line-height: 1.78;
     }
 
@@ -215,7 +215,7 @@
         min-width: 124px;
         height: 40px;
         padding: 0 18px;
-        font-size: calc(13px * var(--ui-scale, 1));
+        font-size: calc(16px * var(--ui-scale, 1));
     }
 }
 
@@ -223,13 +223,13 @@
 #story-typing-msg {
         width: min(88vw, 1100px);
         max-width: 1100px;
-        font-size: calc(15px * var(--ui-scale, 1));
+        font-size: calc(16px * var(--ui-scale, 1));
         margin-bottom: 60px;
         line-height: 1.8;
     }
 
     #story-typing-container.ending-mode {
-        padding-top: 14px;
+        padding-top: 15px;
         padding-bottom: 72px;
     }
 
@@ -248,6 +248,6 @@
         min-width: 118px;
         height: 36px;
         padding: 0 16px;
-        font-size: calc(12px * var(--ui-scale, 1));
+        font-size: calc(16px * var(--ui-scale, 1));
     }
 }

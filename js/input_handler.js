@@ -81,34 +81,34 @@ function handleTouch(e) {
         if (tx < canvasCenterX) {
             const dL = Math.hypot(tx - lC.x, ty - lC.y);
 
-            if (dL < 120) {
+            if (dL < 144) {
                 input.move.active = true;
 
                 const a = Math.atan2(ty - lC.y, tx - lC.x);
-                const d = Math.min(dL, 40);
+                const d = Math.min(dL, 48);
 
-                input.move.x = Math.cos(a) * (d / 40);
-                input.move.y = Math.sin(a) * (d / 40);
+                input.move.x = Math.cos(a) * (d / 48);
+                input.move.y = Math.sin(a) * (d / 48);
 
                 ui.knobL.style.transform =
-                    `translate(${input.move.x * 40}px, ${input.move.y * 40}px)`;
+                    `translate(${input.move.x * 48}px, ${input.move.y * 48}px)`;
             }
         }
         // canvas右半分を照準スティックにする
         else {
             const dR = Math.hypot(tx - rC.x, ty - rC.y);
 
-            if (dR < 120) {
+            if (dR < 144) {
                 input.aim.active = true;
 
                 const a = Math.atan2(ty - rC.y, tx - rC.x);
-                const d = Math.min(dR, 40);
+                const d = Math.min(dR, 48);
 
-                input.aim.x = Math.cos(a) * (d / 40);
-                input.aim.y = Math.sin(a) * (d / 40);
+                input.aim.x = Math.cos(a) * (d / 48);
+                input.aim.y = Math.sin(a) * (d / 48);
 
                 ui.knobR.style.transform =
-                    `translate(${input.aim.x * 40}px, ${input.aim.y * 40}px)`;
+                    `translate(${input.aim.x * 48}px, ${input.aim.y * 48}px)`;
             }
         }
     }

@@ -288,10 +288,6 @@ function resetGame() {
 
     gameState = 'PLAYING';
     startStage();
-
-    const isConnected = Array.from(navigator.getGamepads ? navigator.getGamepads() : []).some(gp => gp !== null);
-    ui.controls.style.display = isConnected ? 'none' : 'block';
-    ui.pauseBtn.style.display = isConnected ? 'none' : 'flex';
 }
 
 /**

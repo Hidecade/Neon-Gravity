@@ -250,7 +250,7 @@ canvas {
 #game-message-kicker {
     margin-bottom: 8px;
     color: var(--msg-sub-color, rgba(235, 245, 255, 0.88));
-    font-size: clamp(9px, 1.2vw, 13px);
+    font-size: clamp(11px, 1.4vw, 15px);
     font-weight: 700;
     letter-spacing: 0.28em;
     text-transform: uppercase;
@@ -416,8 +416,8 @@ canvas {
 
 .joystick-area {
     position: absolute;
-    width: calc(120px * var(--ui-scale, 1));
-    height: calc(120px * var(--ui-scale, 1));
+    width: calc(144px * var(--ui-scale, 1));
+    height: calc(140px * var(--ui-scale, 1));
     border-radius: 50%;
     border: 1px solid rgba(0, 255, 255, 0.3);
     background: radial-gradient(circle, rgba(0, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.2) 70%);
@@ -448,8 +448,8 @@ canvas {
 }
 
 .knob {
-    width: calc(50px * var(--ui-scale, 1));
-    height: calc(50px * var(--ui-scale, 1));
+    width: calc(60px * var(--ui-scale, 1));
+    height: calc(60px * var(--ui-scale, 1));
     border-radius: 50%;
     background: rgba(0, 255, 255, 0.15);
     border: 2px solid #0ff;
@@ -465,8 +465,8 @@ canvas {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: calc(8px * var(--ui-scale, 1));
-    height: calc(8px * var(--ui-scale, 1));
+    width: calc(10px * var(--ui-scale, 1));
+    height: calc(10px * var(--ui-scale, 1));
     background: #fff;
     border-radius: 50%;
     transform: translate(-50%, -50%);
@@ -542,7 +542,7 @@ canvas {
     );
     color: #d9ffff;
     font-family: 'Orbitron', monospace;
-    font-size: clamp(13px, 1.2vw, 16px);
+    font-size: clamp(14px, 1.3vw, 17px);
     font-weight: 700;
     letter-spacing: 0.16em;
     text-align: center;
