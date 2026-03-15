@@ -352,9 +352,8 @@ function resize() {
     const maxDim = Math.max(width, height);
     baseAppScale = maxDim / REFERENCE_SIZE;
 
-    if (width > height) {
-        baseAppScale /= 1.1;
-    }
+    //if (width > height) baseAppScale /= 1.1;
+    
 
     // UIスケール
     globalUiScale = currentResolution.uiScale;
