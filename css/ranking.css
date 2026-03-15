@@ -14,8 +14,8 @@
     justify-content: center;
 }
 
-
 /* panel */
+
 #ranking-panel {
     position: relative;
     z-index: 2;
@@ -41,7 +41,7 @@
 #loading-ranking {
     color: #9fefff;
     font-family: 'Orbitron', monospace;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-scale, 1));
     letter-spacing: 0.32em;
     margin-bottom: 12px;
     text-align: center;
@@ -88,7 +88,7 @@
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
-    font-size: calc(14px * var(--ui-scale));
+    font-size: calc(14px * var(--ui-scale, 1));
 }
 
 #ranking-table th {
@@ -180,25 +180,8 @@
     z-index: 2;
 }
 
-/* landscape */
-
-@media (orientation: landscape) {
-    #ranking-shell {
-        margin-bottom: 14px;
-    }
-
-    #ranking-panel {
-        width: min(70vw, 560px);
-    }
-
-    #ranking-scroll-container {
-        max-height: 50vh;
-    }
-}
-
-/* small width */
-
-@media (max-width: 600px) {
+/* ---------- portrait ---------- */
+@media (orientation: portrait) {
     #ranking-shell {
         min-width: 92vw;
         padding: 10px 10px 8px;
@@ -210,19 +193,47 @@
         border-radius: 18px;
     }
 
+    #ranking-scroll-container {
+        max-height: 48vh;
+    }
+
+    #loading-ranking {
+        font-size: calc(12px * var(--ui-scale, 1));
+        margin-bottom: 10px;
+        letter-spacing: 0.24em;
+    }
+
     #ranking-table {
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-scale, 1));
     }
 
     #ranking-table th,
     #ranking-table td {
         padding: 8px 6px;
     }
+
+    #ranking-table th.col-rank,
+    #ranking-table td.col-rank {
+        width: 52px;
+    }
+
+    #ranking-table th.col-stage,
+    #ranking-table td.col-stage {
+        width: 64px;
+    }
+
+    #ranking-table th.col-score,
+    #ranking-table td.col-score {
+        width: 94px;
+    }
+
+    #close-ranking-btn {
+        margin-top: 14px;
+    }
 }
 
-/* landscape + low height */
-
-@media (orientation: landscape) and (max-height: 560px) {
+/* ---------- landscape ---------- */
+@media (orientation: landscape) {
     #ranking-shell {
         margin-bottom: 10px;
         padding: 6px 14px 6px;
@@ -241,11 +252,12 @@
 
     #loading-ranking {
         margin-bottom: 8px;
-        font-size: 11px;
+        font-size: calc(11px * var(--ui-scale, 1));
+        letter-spacing: 0.20em;
     }
 
     #ranking-table {
-        font-size: 11px;
+        font-size: calc(11px * var(--ui-scale, 1));
     }
 
     #ranking-table th {
@@ -254,6 +266,21 @@
 
     #ranking-table td {
         padding: 7px 8px;
+    }
+
+    #ranking-table th.col-rank,
+    #ranking-table td.col-rank {
+        width: 50px;
+    }
+
+    #ranking-table th.col-stage,
+    #ranking-table td.col-stage {
+        width: 62px;
+    }
+
+    #ranking-table th.col-score,
+    #ranking-table td.col-score {
+        width: 92px;
     }
 
     #close-ranking-btn {

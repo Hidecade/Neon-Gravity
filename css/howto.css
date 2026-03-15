@@ -5,7 +5,7 @@
     position: absolute;
     inset: 0;
     z-index: 150;
-    padding: 18px;
+    padding: 14px;
     box-sizing: border-box;
     opacity: 0;
     transition: opacity 0.5s ease;
@@ -17,16 +17,16 @@
     position: relative;
     z-index: 2;
     display: flex;
-    gap: 20px;
-    width: min(95vw, 960px);
+    gap: 16px;
+    width: min(94vw, 920px);
     align-items: stretch;
     margin-top: 4px;
 }
 
 .howto-panel {
     flex: 1;
-    padding: 16px 14px;
-    border-radius: 22px;
+    padding: 12px 12px;
+    border-radius: 18px;
     border: 1px solid rgba(120,255,255,0.18);
     background:
         linear-gradient(
@@ -55,18 +55,18 @@
     border-bottom: 1px solid rgba(0,255,255,0.45);
     padding-bottom: 6px;
     margin-top: 0;
-    margin-bottom: 14px;
-    font-size: calc(16px * var(--ui-scale));
-    letter-spacing: 0.16em;
+    margin-bottom: 12px;
+    font-size: calc(15px * var(--ui-scale, 1));
+    letter-spacing: 0.14em;
     text-shadow: 0 0 10px rgba(0,255,255,0.35);
 }
 
 .control-group {
     display: flex;
     align-items: center;
-    margin-bottom: calc(15px * var(--ui-scale));
+    margin-bottom: calc(12px * var(--ui-scale, 1));
     border-bottom: 1px solid rgba(255,255,255,0.08);
-    padding-bottom: calc(10px * var(--ui-scale));
+    padding-bottom: calc(8px * var(--ui-scale, 1));
 }
 
 .control-group:last-child {
@@ -79,35 +79,35 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: calc(84px * var(--ui-scale));
-    min-width: calc(84px * var(--ui-scale));
-    margin-right: calc(12px * var(--ui-scale));
+    width: calc(72px * var(--ui-scale, 1));
+    min-width: calc(72px * var(--ui-scale, 1));
+    margin-right: calc(10px * var(--ui-scale, 1));
     color: #0ff;
 }
 
 .control-icon {
-    width: calc(64px * var(--ui-scale));
-    height: calc(30px * var(--ui-scale));
+    width: calc(56px * var(--ui-scale, 1));
+    height: calc(26px * var(--ui-scale, 1));
     margin-bottom: 4px;
     filter: drop-shadow(0 0 5px rgba(0,255,255,0.45));
 }
 
 .device-label {
-    font-size: calc(9px * var(--ui-scale));
+    font-size: calc(9px * var(--ui-scale, 1));
     color: #7ed8e0;
     letter-spacing: 0.08em;
 }
 
 .control-desc {
-    font-size: calc(11px * var(--ui-scale));
+    font-size: calc(11px * var(--ui-scale, 1));
     color: #ccd8de;
-    line-height: 1.7;
+    line-height: 1.65;
 }
 
 .lbl,
 .lbl-y {
     display: inline-block;
-    width: calc(42px * var(--ui-scale));
+    width: calc(42px * var(--ui-scale, 1));
     font-weight: bold;
 }
 
@@ -176,7 +176,7 @@
 .item-desc {
     display: flex;
     align-items: center;
-    margin-bottom: calc(12px * var(--ui-scale));
+    margin-bottom: calc(10px * var(--ui-scale, 1));
 }
 
 .item-icon {
@@ -225,8 +225,8 @@
 
 .howto-text {
     color: #c7d0d6;
-    font-size: calc(12px * var(--ui-scale));
-    line-height: 2;
+    font-size: calc(11px * var(--ui-scale, 1));
+    line-height: 1.8;
 }
 
 .btn-training {
@@ -235,8 +235,12 @@
     box-shadow: 0 0 10px rgba(0,255,128,0.3);
 }
 
-/* 小画面 */
-@media (max-width: 700px) {
+/* ---------- portrait ---------- */
+@media (orientation: portrait) {
+    #howto-overlay {
+        padding: 12px;
+    }
+
     .howto-container {
         flex-direction: column;
         width: 96vw;
@@ -244,18 +248,49 @@
     }
 
     .howto-panel {
-        border-radius: 18px;
         padding: 14px 12px;
+        border-radius: 18px;
+    }
+
+    .howto-title {
+        font-size: calc(15px * var(--ui-scale, 1));
+        margin-bottom: 12px;
+    }
+
+    .control-group {
+        margin-bottom: calc(12px * var(--ui-scale, 1));
+        padding-bottom: calc(8px * var(--ui-scale, 1));
+    }
+
+    .icon-box {
+        width: calc(72px * var(--ui-scale, 1));
+        min-width: calc(72px * var(--ui-scale, 1));
+        margin-right: calc(10px * var(--ui-scale, 1));
+    }
+
+    .control-icon {
+        width: calc(56px * var(--ui-scale, 1));
+        height: calc(26px * var(--ui-scale, 1));
+    }
+
+    .control-desc,
+    .howto-text {
+        font-size: calc(11px * var(--ui-scale, 1));
+    }
+
+    .howto-actions {
+        margin-top: 10px;
     }
 }
 
-/* 横画面かつ高さが低い端末 */
-@media (orientation: landscape) and (max-height: 560px) {
+/* ---------- landscape ---------- */
+@media (orientation: landscape) {
     #howto-overlay {
         padding: 10px;
     }
 
     .howto-container {
+        flex-direction: row;
         width: min(94vw, 920px);
         gap: 12px;
     }
@@ -267,28 +302,29 @@
 
     .howto-title {
         margin-bottom: 10px;
-        font-size: 13px;
+        font-size: calc(13px * var(--ui-scale, 1));
     }
 
     .control-group {
-        margin-bottom: 10px;
-        padding-bottom: 8px;
+        margin-bottom: calc(10px * var(--ui-scale, 1));
+        padding-bottom: calc(8px * var(--ui-scale, 1));
     }
 
     .icon-box {
-        width: 72px;
-        min-width: 72px;
-        margin-right: 10px;
+        width: calc(72px * var(--ui-scale, 1));
+        min-width: calc(72px * var(--ui-scale, 1));
+        margin-right: calc(10px * var(--ui-scale, 1));
     }
 
     .control-icon {
-        width: 56px;
-        height: 26px;
+        width: calc(56px * var(--ui-scale, 1));
+        height: calc(26px * var(--ui-scale, 1));
     }
 
     .control-desc,
     .howto-text {
-        font-size: 11px;
+        font-size: calc(11px * var(--ui-scale, 1));
+        line-height: 1.6;
     }
 
     .howto-actions {

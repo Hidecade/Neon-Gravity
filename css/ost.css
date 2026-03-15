@@ -59,11 +59,11 @@
 }
 
 .track-item {
-    padding: calc(14px * var(--ui-scale)) calc(18px * var(--ui-scale));
+    padding: calc(14px * var(--ui-scale, 1)) calc(18px * var(--ui-scale, 1));
     border-bottom: 1px solid rgba(255,255,255,0.08);
     color: #9bb6c2;
     text-align: center;
-    font-size: calc(15px * var(--ui-scale));
+    font-size: calc(15px * var(--ui-scale, 1));
     box-sizing: border-box;
     cursor: pointer;
     transition:
@@ -95,7 +95,7 @@
 
 #ost-now-playing {
     color: #d8ffff;
-    font-size: 14px;
+    font-size: calc(14px * var(--ui-scale, 1));
     margin-bottom: 10px;
     text-shadow: 0 0 8px rgba(0,255,255,0.18);
     text-align: center;
@@ -111,7 +111,7 @@
 #ost-time-current,
 #ost-time-total {
     color: #9aa8b2;
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-scale, 1));
     width: 40px;
 }
 
@@ -147,41 +147,38 @@
     z-index: 2;
 }
 
-@media (orientation: landscape) {
-    #ost-shell {
-        margin-bottom: 14px;
-    }
-
-    #ost-panel {
-        width: min(70vw, 560px);
-    }
-
-    #ost-scroll-container {
-        max-height: 50vh;
-    }
-}
-
-@media (max-width: 600px) {
-    #ost-shell {
-        min-width: 92vw;
-        padding: 10px 10px 8px;
-    }
-
+/* ---------- portrait ---------- */
+@media (orientation: portrait) {
     #ost-panel {
         width: 94vw;
         padding: 14px 12px 12px;
         border-radius: 18px;
     }
 
+    #ost-scroll-container {
+        max-height: 48vh;
+    }
+
     .track-item {
-        font-size: 13px;
-        padding: 12px 10px;
+        font-size: calc(13px * var(--ui-scale, 1));
+        padding: calc(12px * var(--ui-scale, 1)) calc(10px * var(--ui-scale, 1));
+    }
+
+    #ost-now-playing {
+        font-size: calc(13px * var(--ui-scale, 1));
+    }
+
+    #ost-progress-bar {
+        height: 9px;
+    }
+
+    #btn-back {
+        margin-top: 14px;
     }
 }
 
-/* ---------- OST 横画面・高さが低い端末対策 ---------- */
-@media (orientation: landscape) and (max-height: 560px) {
-
+/* ---------- landscape ---------- */
+@media (orientation: landscape) {
     #ost-shell {
         margin-bottom: 10px;
         padding: 6px 14px 6px;
@@ -199,8 +196,9 @@
     }
 
     .track-item {
-        padding: 8px 10px;
-        font-size: 11px;
+        padding: calc(8px * var(--ui-scale, 1)) calc(10px * var(--ui-scale, 1));
+        font-size: calc(15px * var(--ui-scale, 1) * 0.8);
+        line-height: 1.2;
     }
 
     #ost-controls {
@@ -208,8 +206,18 @@
     }
 
     #ost-now-playing {
-        font-size: 12px;
+        font-size: calc(12px * var(--ui-scale, 1));
         margin-bottom: 6px;
+    }
+
+    #ost-time-current,
+    #ost-time-total {
+        font-size: calc(11px * var(--ui-scale, 1));
+        width: 36px;
+    }
+
+    #ost-progress-row {
+        gap: 8px;
     }
 
     #ost-progress-bar {

@@ -14,7 +14,33 @@
     z-index: 2;
 }
 
-@media (orientation: landscape) and (max-height: 560px) {
+/* ---------- portrait ---------- */
+@media (orientation: portrait) {
+    #title-shell {
+        min-width: 92vw;
+        padding: 16px 10px 10px;
+        margin-bottom: 16px;
+    }
+
+    #menu-buttons-container {
+        gap: 12px;
+    }
+
+    #menu-buttons-container .menu-btn {
+        min-width: 78vw;
+        padding: 12px 20px;
+        font-size: clamp(13px, 3.2vw, 16px);
+    }
+
+    #menu-footer {
+        margin-top: 18px;
+        font-size: clamp(11px, 2.4vw, 13px);
+        line-height: 1.7;
+    }
+}
+
+/* ---------- landscape ---------- */
+@media (orientation: landscape) {
     #title-shell {
         margin-bottom: 14px;
         padding: 8px 18px 8px;
