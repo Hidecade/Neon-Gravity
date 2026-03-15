@@ -87,6 +87,8 @@ function closeOST() {
         ostUpdateInterval = null;
     }
 
+    if (AudioSys.bgmEl) AudioSys.bgmEl.pause();
+
     // フェードアウト
     ui.ostOverlay.style.opacity = '0';
 
