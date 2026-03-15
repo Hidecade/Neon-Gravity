@@ -1090,6 +1090,15 @@ canvas {
    - 通常 / portrait / landscape のみ
    ========================================================= */
 @media (orientation: portrait) {
+
+    #ui {
+        padding: 12px 8px;
+    }
+
+    .hud-row {
+        padding: 0 4px;
+    }
+
     #game-message-overlay {
         padding: 16px 20px 27vh;
     }

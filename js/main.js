@@ -361,17 +361,19 @@ function resize() {
     document.documentElement.style.setProperty('--ui-scale', globalUiScale);
 
     // HUD専用スケール
+    const isPortrait = vh > vw;
     let hudScale = 1;
 
-    if (currentResolution.key === "FHD") {
-        hudScale = 1.7;
+    if (isPortrait) {
+        hudScale = 0.9;
+    } else if (currentResolution.key === "FHD") {
+        hudScale = 1.4;
     } else if (
         currentResolution.key === "VGA_L" ||
         currentResolution.key === "VGA_P"
     ) {
         hudScale = 0.9;
     } else {
-        // スマホ / タブレット系
         hudScale = 1.0;
     }
 
