@@ -55,7 +55,7 @@ function startGame() {
     const isConnected = Array.from(gamepads).some(gp => gp !== null);
     ui.controls.style.display = isConnected ? 'none' : 'block';
 
-    cameraScale = 1.0;
+    cameraScale = baseAppScale;
     const viewW = width / cameraScale;
     const viewH = height / cameraScale;
     camera.x = player.x - viewW / 2;
@@ -254,7 +254,7 @@ function resetGame() {
 
     if (typeof clearInputState === 'function') clearInputState();
 
-    cameraScale = 1.0;
+    cameraScale = baseAppScale;
     const viewW = width / cameraScale;
     const viewH = height / cameraScale;
     camera.x = player.x - viewW / 2;

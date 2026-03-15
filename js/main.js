@@ -348,19 +348,23 @@ function resize() {
     canvas.style.left = `${Math.floor((vw - displayW) / 2)}px`;
     canvas.style.top = `${Math.floor((vh - displayH) / 2)}px`;
 
-    // アプリ全体スケール
+// アプリ全体スケール
     const maxDim = Math.max(width, height);
     baseAppScale = maxDim / REFERENCE_SIZE;
 
-    //if (width > height) baseAppScale /= 1.1;
-    
+    // ▼ プレイ画面のズームサイズ調整（縦1.2倍、横1.1倍）
+    const isPortrait = vh > vw;
+    if (isPortrait) {
+        baseAppScale *= 1.3;
+    } else {
+        baseAppScale *= 1.2;
+    }
 
     // UIスケール
     globalUiScale = currentResolution.uiScale;
     document.documentElement.style.setProperty('--ui-scale', globalUiScale);
 
     // HUD専用スケール
-    const isPortrait = vh > vw;
     let hudScale = 1;
 
     if (isPortrait) {
