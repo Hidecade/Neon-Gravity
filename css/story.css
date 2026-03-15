@@ -18,20 +18,12 @@
 
 #story-typing-msg {
     position: absolute;
-    top: auto;
-    left: auto;
-    transform: none;
-    margin: 0 0 84px 0;
-    width: min(88vw, 1100px);
-    max-width: 1100px;
     text-align: left;
     font-family: 'Courier New', Courier, monospace;
-    font-size: calc(16px * var(--ui-scale, 1));
     font-weight: bold;
     color: #0f8;
     text-shadow: 0 0 5px #0f8;
     white-space: pre-wrap;
-    line-height: 1.8;
     pointer-events: none;
     overflow-y: visible;
     box-sizing: border-box;
@@ -41,9 +33,7 @@
 #story-typing-container.ending-mode {
     justify-content: flex-start;
     align-items: center;
-    padding-top: 28px;
     padding-right: 0;
-    padding-bottom: 84px;
     padding-left: 0;
     box-sizing: border-box;
     overflow: hidden;
@@ -58,25 +48,15 @@
 
 #story-typing-container.ending-mode #story-typing-msg {
     position: relative;
-    top: auto;
-    left: auto;
-    transform: none;
-    pointer-events: auto;
-    width: min(88vw, 1200px);
-    max-width: 1200px;
-    height: calc(100vh - 28px - 84px);
-    max-height: calc(100vh - 28px - 84px);
     margin: 0;
-    padding: 14px 14px 16px;
+    pointer-events: auto;
     box-sizing: border-box;
     overflow-y: auto;
     overflow-x: hidden;
     color: #eafcff;
     text-align: left;
     font-family: 'Courier New', Courier, monospace;
-    font-size: clamp(14px, 1.8vw, 18px);
     font-weight: 700;
-    line-height: 1.78;
     letter-spacing: 0.02em;
     text-shadow:
         0 0 4px rgba(255, 255, 255, 0.35),
@@ -140,13 +120,8 @@
 #skip-button {
     position: fixed;
     left: 50%;
-    right: auto;
-    bottom: 18px;
     transform: translateX(-50%);
     margin: 0;
-    min-width: 124px;
-    height: 40px;
-    padding: 0 18px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -154,7 +129,6 @@
     border: 1px solid rgba(120, 255, 230, 0.30);
     cursor: pointer;
     font-family: 'Orbitron', monospace;
-    font-size: calc(13px * var(--ui-scale, 1));
     font-weight: 700;
     letter-spacing: 0.10em;
     background: linear-gradient(
@@ -215,8 +189,10 @@
 @media (orientation: portrait) {
     #story-typing-msg {
         width: 90%;
+        max-width: 1100px;
+        margin: 0 0 88px 0;
         font-size: calc(14px * var(--ui-scale, 1));
-        margin-bottom: 88px;
+        line-height: 1.8;
     }
 
     #story-typing-container.ending-mode {
@@ -229,10 +205,9 @@
         max-width: 92vw;
         height: calc(100vh - 18px - 88px);
         max-height: calc(100vh - 18px - 88px);
+        padding: 14px 14px 16px;
         font-size: calc(14px * var(--ui-scale, 1));
         line-height: 1.78;
-        padding: 14px 14px 16px;
-        border-radius: 14px;
     }
 
     #skip-button {
@@ -245,10 +220,10 @@
 }
 
 @media (orientation: landscape) {
-    #story-typing-msg {
+#story-typing-msg {
         width: min(88vw, 1100px);
         max-width: 1100px;
-        font-size: calc(14px * var(--ui-scale, 1));
+        font-size: clamp(11px, 3.0vh, 14px);
         margin-bottom: 60px;
     }
 
@@ -262,11 +237,9 @@
         max-width: 1200px;
         height: calc(100vh - 14px - 72px);
         max-height: calc(100vh - 14px - 72px);
-        font-size: clamp(12px, 2.3vh, 14px);
+        padding: 12px 14px;
+        font-size: calc(12px * var(--ui-scale, 1));
         line-height: 1.7;
-        padding-top: 12px;
-        padding-bottom: 12px;
-        border-radius: 14px;
     }
 
     #skip-button {

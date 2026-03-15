@@ -195,9 +195,9 @@
         max-height: 40vh;
     }
 
-    .track-item {
+.track-item {
         padding: calc(8px * var(--ui-scale, 1)) calc(10px * var(--ui-scale, 1));
-        font-size: calc(14px * var(--ui-scale, 1));
+        font-size: clamp(10px, 2.5vh, 13px);
         line-height: 1.2;
     }
 
