@@ -239,13 +239,22 @@ function handleGamepadInput() {
         return;
     }
 
-    // --- STARTボタン処理 (ポーズ, 決定など) ---
-    if (startBtn && !input.padStartPressed) {
-        if (isTrainingMode) {
-            if (typeof returnToTitleFromTraining === 'function') returnToTitleFromTraining();
-        }
-        // トレーニング中でない通常のプレイ中ならポーズ
-        else if (gameState === 'PLAYING') {
+// --- STARTボタン & Bボタン(戻る) 処理 ---
+    
+  // --- STARTボタン & Bボタン(戻る) 処理 ---
+    
+    // 現在どのオーバーレイが開いているかを確認
+    const isRankingOpen = document.getElementById('ranking-overlay')?.style.display === 'flex';
+    const isOstOpen = document.getElementById('ost-overlay')?.style.display === 'flex';
+    const isStoryOpen = document.getElementById('story-overlay')?.style.display === 'flex';
+    const isHowToOpen = document.getElementById('howto-overlay')?.style.display === 'flex';
+    
+    // どれかのサブメニューが開いているか
+    const isSubMenuOpen = isRankingOpen || isOstOpen || isStoryOpen || isHowToOpen;
+
+    // 1. STARTボタン専用のアクション (ゲーム開始、ポーズ、リトライなど)
+    if (startBtn && !input.padStartPressed && !isSubMenuOpen) {
+        if (gameState === 'PLAYING') {
             setPaused(true);
         }
         else if (gameState === 'PAUSED') {
@@ -261,26 +270,60 @@ function handleGamepadInput() {
         else if (gameState === 'GAMEOVER_UI') {
             if (typeof resetGame === 'function') resetGame();
         }
-        else if (gameState === 'HOWTO') {
-            if (typeof hideHowTo === 'function') hideHowTo();
+    }
+
+    // 2. 「戻る / キャンセル」アクション (START 又は Bボタン)
+    const isBackAction = (startBtn && !input.padStartPressed) || (bBtn && !input.padBPressed);
+
+    if (isBackAction) {
+        if (isTrainingMode) {
+            if (typeof returnToTitleFromTraining === 'function') returnToTitleFromTraining();
         }
-        else if (['STORY', 'RANKING', 'OST'].includes(gameState)) {
-            if (typeof returnToTitle === 'function') returnToTitle();
+        else if (isHowToOpen) {
+            const btn = document.getElementById('btn-howto-back');
+            if (btn) btn.click();
+            else if (typeof hideHowTo === 'function') hideHowTo();
+        }
+        else if (isSubMenuOpen || ['STORY', 'RANKING', 'OST'].includes(gameState)) {
+            // 各画面の固有の「戻る」ボタンをシミュレートクリックして安全に閉じる
+            let backBtnId = '';
+            if (isStoryOpen || gameState === 'STORY') backBtnId = 'btn-story-back';
+            else if (isRankingOpen || gameState === 'RANKING') backBtnId = 'close-ranking-btn';
+            else if (isOstOpen || gameState === 'OST') backBtnId = 'btn-back';
+            
+            const btn = document.getElementById(backBtnId);
+            if (btn && btn.offsetParent !== null) {
+                btn.click();
+            } else if (typeof returnToTitle === 'function') {
+                returnToTitle(); // フォールバック
+            }
         }
     }
-    input.padStartPressed = startBtn;
 
-    // --- メニュー操作 (PLAYING以外) ---
+    // 状態の保存
+    input.padStartPressed = startBtn;
+    input.padBPressed = bBtn; // Bボタンの長押し防止用
+
+  // --- メニュー操作 (PLAYING以外) ---
     const isIntroPlayable = (gameState === 'STAGE_INTRO' && typeof introPhase !== 'undefined' && introPhase === 3);
     if (gameState !== 'PLAYING' && !isIntroPlayable) {
+
+        // 開いているオーバーレイ（画面）を直接判定する
+        const isRankingOpen = document.getElementById('ranking-overlay')?.style.display === 'flex';
+        const isOstOpen = document.getElementById('ost-overlay')?.style.display === 'flex';
+        const isStoryOpen = document.getElementById('story-overlay')?.style.display === 'flex';
+        
+        // スクロールすべき画面かどうかのフラグ
+        const isScrollScreen = isRankingOpen || isOstOpen || isStoryOpen || ['STORY', 'RANKING', 'OST'].includes(gameState);
+
         // ---------------------------------------------------------
         // スクロール可能な画面の処理 (STORY, RANKING, OST)
         // ---------------------------------------------------------
-        if (['STORY', 'RANKING', 'OST'].includes(gameState)) {
+        if (isScrollScreen) {
             let targetId = '';
-            if (gameState === 'STORY') targetId = 'story-scroll-container';
-            else if (gameState === 'RANKING') targetId = 'ranking-scroll-container';
-            else if (gameState === 'OST') targetId = 'ost-scroll-container';
+            if (isStoryOpen || gameState === 'STORY') targetId = 'story-scroll-container';
+            else if (isRankingOpen || gameState === 'RANKING') targetId = 'ranking-scroll-container';
+            else if (isOstOpen || gameState === 'OST') targetId = 'ost-scroll-container';
 
             const container = document.getElementById(targetId);
             
@@ -291,12 +334,16 @@ function handleGamepadInput() {
             }
         }
 
-        // カーソル移動
+        // カーソル移動 (スクロール画面では上下のカーソル移動を無効化する)
         const isUp = dpadUp || moveY < -0.5;
         const isDown = dpadDown || moveY > 0.5;
         const isLeft = dpadLeft || moveX < -0.5;
         const isRight = dpadRight || moveX > 0.5;
-        if (currentMenuButtons.length > 0 && (isUp || isDown || isLeft || isRight)) {
+        
+        // ★ スクロール画面では上下入力(isUp/isDown)を無視し、スクロールに専念させる
+        const shouldMoveCursor = isScrollScreen ? (isLeft || isRight) : (isUp || isDown || isLeft || isRight);
+
+        if (currentMenuButtons.length > 0 && shouldMoveCursor) {
             if (!input.padDirPressed) {
                 if (isUp || isLeft) selectedMenuIndex--;
                 if (isDown || isRight) selectedMenuIndex++;

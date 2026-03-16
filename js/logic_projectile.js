@@ -11,7 +11,7 @@ function updatePlayerBullets() {
     bullets.forEach(b => {
         b.x += b.vx * gameSpeed;
         b.y += b.vy * gameSpeed;
-        b.life--;
+        b.life -= gameSpeed; // ★スローに連動させる
 
         // --- ★追加：画面（カメラ）の範囲外に出たら弾を消滅させる ---
         if (b.x < camera.x - margin || b.x > camera.x + viewW + margin ||
@@ -119,7 +119,7 @@ function updateLasers() {
     const dynamicMaxLenSq = dynamicMaxLen * dynamicMaxLen;
 
     lasers.forEach(l => {
-        l.life--;
+        l.life -= gameSpeed;
 
         let currentLen = dynamicMaxLen;
         // ★修正2: 現在の長さの2乗も管理（比較用）
@@ -285,7 +285,7 @@ function updateEnemyBullets() {
         }
 
         // --- 4. 寿命の消費と判定 ---
-        eb.life--;
+        eb.life -= gameSpeed;
         if (eb.life <= 0) {
             if (eb.isMissile || eb.isLaserMissile) {
                 eb.isFading = true;
@@ -411,7 +411,7 @@ function updateMissiles() {
         // 移動
         m.x += m.vx * gameSpeed;
         m.y += m.vy * gameSpeed;
-        m.life--;
+        m.life -= gameSpeed;
 
         // --- 4. 壁衝突判定 ---
         if (m.x < WALL_MARGIN || m.x > worldSize - WALL_MARGIN ||
