@@ -118,63 +118,41 @@
 
 /* ---------- スキップ / NEXT ボタン ---------- */
 #skip-button {
+    /* 位置の固定（ここは維持） */
     position: fixed;
+    bottom: 18px; /* portrait基準 */
     left: 50%;
     transform: translateX(-50%);
-    margin: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #dffff8;
-    border: 1px solid rgba(120, 255, 230, 0.30);
-    cursor: pointer;
-    font-family: 'Orbitron', monospace;
-    font-weight: 700;
-    letter-spacing: 0.10em;
-    background: linear-gradient(
-        to bottom,
-        rgba(10, 28, 34, 0.82),
-        rgba(6, 16, 22, 0.92)
-    );
-    text-shadow: 0 0 8px rgba(120, 255, 230, 0.35);
-    box-shadow:
-        0 0 14px rgba(0, 255, 200, 0.16),
-        inset 0 0 14px rgba(120, 255, 230, 0.07);
-    border-radius: 999px;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    pointer-events: auto;
     z-index: 2001;
-    transition:
-        opacity 0.25s ease,
-        transform 0.2s ease,
-        box-shadow 0.25s ease,
-        border-color 0.25s ease,
-        background 0.25s ease,
-        color 0.25s ease;
+
+    /* サイズ調整（menu-btnの最小幅を上書きして少しコンパクトに） */
+    min-width: 140px;
+    height: 40px;
+    padding: 0 20px;
+
+    /* ★文字の完全なセンター配置（共通設定の補強） */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-indent: 0.16em; /* letter-spacing分のズレを補正 */
+    
+    /* 角丸を他のボタンと合わせる (4px) */
+    border-radius: 4px; 
+    
+    pointer-events: auto;
+    transition: all 0.2s ease;
 }
 
+/* ホバー時の挙動を調整（translateXを維持しつつ浮き上がらせる） */
 #skip-button:hover {
-    transform: translateX(-50%) translateY(-1px);
-    background: linear-gradient(
-        to bottom,
-        rgba(18, 44, 54, 0.92),
-        rgba(8, 24, 32, 0.96)
-    );
-    color: #fff;
-    box-shadow:
-        0 0 20px rgba(0, 255, 200, 0.24),
-        inset 0 0 18px rgba(120, 255, 230, 0.10);
-    border-color: rgba(120, 255, 230, 0.52);
+    transform: translateX(-50%) translateY(-2px);
 }
 
 #skip-button:active {
-    transform: translateX(-50%) translateY(0);
+    transform: translateX(-50%) scale(0.96);
 }
 
-#skip-button.ending-next {
-    animation: ending-button-pulse 1.4s ease-in-out infinite;
-}
+
 
 .cursor-blink {
     animation: blink-anim 0.8s infinite;

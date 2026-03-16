@@ -884,11 +884,7 @@ canvas {
         padding: 14px 14px 16px;
     }
 
-    #skip-button {
-        bottom: 18px;
-        min-width: 124px;
-        height: 40px;
-    }
+
 
     #stick-left {
         left: calc(10px * var(--ui-scale, 1));
@@ -987,13 +983,6 @@ canvas {
         line-height: 1.7;
         padding-top: 12px;
         padding-bottom: 12px;
-    }
-
-    #skip-button {
-        bottom: 12px;
-        height: 36px;
-        min-width: 118px;
-        font-size: calc(12px * var(--ui-scale, 1));
     }
 
     #title-shell {
