@@ -1280,18 +1280,9 @@ function destroyEnemy(e) {
 
     // --- 爆発エフェクトの生成 ---
     // 敵の種類に応じて基本の火花（パーティクル）の数を調整
-    let particleCount = 40; // デフォルトの雑魚
-    if (e.type === 'boss') {
-        particleCount = 120;
-    } else if (e.type === 'asteroid') {
-        particleCount = 30;
-    } else if (e.type === 'phantom' || e.type === 'triangle') {
-        // ★ 破片演出がある敵は、細かい火花を極端に減らす（控えめにする）
-        particleCount = 10;
-    } else if (e.type === 'jellyfish' || e.type === 'bubble') {
-        // ★追加: クラゲとバブルは通常の火花（線）をゼロにする
-        particleCount = 5;
-    }
+    const particleCount =
+        EXPLOSION_PARTICLE_COUNT[e.type] ??
+        EXPLOSION_PARTICLE_COUNT.default;
 
 
     for (let i = 0; i < particleCount; i++) {
@@ -1471,6 +1462,39 @@ function destroyEnemy(e) {
     }
     // --- アステロイドの判定 ---
     else if (e.type === 'asteroid') {
+
+        // asteroidサイズに応じたスケール
+        const scale = (4 - (e.size || 2)) * 0.6;
+
+        // 破片数
+        const shardCount = Math.floor((2 + Math.random() * 2) * scale);
+
+        for (let i = 0; i < shardCount; i++) {
+
+            const angle = Math.random() * Math.PI * 2;
+            const speed = (1.5 + Math.random() * 3) * scale;
+
+            particles.push({
+                x: e.x,
+                y: e.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                color: Math.random() < 0.7 ? '#888' : '#bba27a',
+
+                life: 1.2 + Math.random() * 0.5,
+
+                // ★サイズを asteroid に合わせる
+                size: (0.5 + Math.random() * 0.6) * scale,
+
+                isShard: true,
+                shardType: 'rock',
+
+                angle: angle,
+                rotV: (Math.random() - 0.5) * 0.6
+            });
+
+        }
+
         // e.size === 1 が最大サイズです
         if (e.size === 1) {
             AudioSys.playSE('explode_medium');

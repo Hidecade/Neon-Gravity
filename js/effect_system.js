@@ -219,6 +219,8 @@ function createExplosion(x, y, baseColor, n) {
     }
 }
 
+
+
 // 花火ループ用関数（グローバルに定義、またはmain.js内の適当な場所に配置）
 function triggerRandomFireworkLoop() {
     if (gameState !== 'PLAYING' || !window.isFireworksActive) return;
@@ -408,6 +410,7 @@ function updateParticlesAndRings() {
             rings.pop();
         }
     }
+
 }
 
 
@@ -491,6 +494,22 @@ function drawVisualEffects() {
                     else { ctx.moveTo(0, -10); ctx.lineTo(8, 8); ctx.lineTo(-8, 8); }
                     ctx.closePath(); ctx.stroke();
                     ctx.fillStyle = p.color; ctx.globalAlpha = Math.min(1, p.life) * 0.3; ctx.fill();
+                } else if (p.shardType === 'rock') {
+                    ctx.lineWidth = 1.0 / s;
+
+                    ctx.beginPath();
+                    ctx.moveTo(-8, -6);
+                    ctx.lineTo( 6, -4);
+                    ctx.lineTo( 8,  5);
+                    ctx.lineTo(-5,  7);
+                    ctx.closePath();
+
+                    ctx.fillStyle = p.color || '#777';
+                    ctx.globalAlpha = smoothAlpha * 0.55;
+                    ctx.fill();
+
+                    ctx.globalAlpha = smoothAlpha;
+                    ctx.stroke();
                 } else {
                     ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-5, 5); ctx.lineTo(-5, -5); ctx.closePath(); ctx.stroke();
                     ctx.fillStyle = p.color; ctx.globalAlpha = Math.min(1, p.life) * 0.4; ctx.fill();
@@ -629,5 +648,5 @@ function drawVisualEffects() {
 
         ctx.restore();
     });
-}
 
+}

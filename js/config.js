@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-const GAME_VERSION = "1.3.18";
+const GAME_VERSION = "1.3.19";
 
 const DEBUG = {
     enabled: true,
@@ -123,6 +123,16 @@ const ENEMY_SCORES = {
     default: 100
 };
 const DEFAULT_ENEMY_SCORE = ENEMY_SCORES.default;
+
+const EXPLOSION_PARTICLE_COUNT = {
+    default: 40,
+    boss: 120,
+    asteroid: 10,
+    phantom: 10,
+    triangle: 10,
+    jellyfish: 5,
+    bubble: 5
+};
 
 // --- 出現パターン設定 ---
 const STAGE_ENEMIES = {
