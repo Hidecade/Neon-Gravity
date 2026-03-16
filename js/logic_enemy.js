@@ -82,6 +82,25 @@ function updateTriangleAI(e) {
     e.rotX += 0.08;
     e.rotY += 0.12;
     e.rotZ += 0.05;
+
+ if (!e.isWarping && Math.random() < 0.35) {
+    const backX = Math.cos(e.angle + Math.PI);
+    const backY = Math.sin(e.angle + Math.PI);
+
+    const speedBase = 1.8 + Math.random() * 0.4;
+
+    particles.push({
+        x: e.x + backX * 16,
+        y: e.y + backY * 16,
+
+        vx: backX * speedBase,
+        vy: backY * speedBase,
+
+        color: e.color,
+        size: 3,
+        life: 0.45 + Math.random() * 0.08
+    });
+}
 }
 
 function updateTadpoleAI(e) {
@@ -850,9 +869,35 @@ function updateSweeperAI(e) {
     e.y += e.vy * gameSpeed;
 
     e.angle = Math.atan2(e.vy, e.vx); // 進行方向を向く
-    e.rotX += 0.4; // 高速ドリル回転
+    e.rotX += 0.2; // 高速ドリル回転
     e.rotY = 0;
     e.rotZ = 0;
+
+    if (!e.isWarping && Math.random() < 0.5) {
+
+        const backX = Math.cos(e.angle + Math.PI);
+        const backY = Math.sin(e.angle + Math.PI);
+
+        // 進行方向に対して直角（左右方向）
+        const sideX = Math.cos(e.angle + Math.PI / 2);
+        const sideY = Math.sin(e.angle + Math.PI / 2);
+
+        const sideSpread = (Math.random() - 0.5) * 1.4;  // 左右の振れ
+        const speedBase = 1.2 + Math.random() * 1.0;
+
+        particles.push({
+            x: e.x + backX * 16,
+            y: e.y + backY * 16,
+
+            vx: backX * speedBase + sideX * sideSpread,
+            vy: backY * speedBase + sideY * sideSpread,
+
+            color: '#aaf0ff',
+
+            size: 3 + Math.random() * 2,  // ← 太さ
+            life: 0.55 + Math.random() * 0.25
+        });
+    }
 
     // --- 壁に激突したら爆発して消滅 ---
     if (!e.hasEntered) {
@@ -1215,12 +1260,9 @@ function destroyEnemy(e) {
     // --- 通常の敵の撃破 ---
     else {
         // asteroid または bubble 以外の場合に撃破数を加算する
-        if (e.type !== 'asteroid' && e.type !== 'bubble') {
+        if (e.type !== 'asteroid' && e.type !== 'bubble' && e.type !== 'sweeper') {
             if (e.type === 'triangle') {
-                // ★修正：variant が 'sweeper' ではない場合のみカウントする
-                if (e.variant !== 'sweeper') {
-                    enemiesKilled += 0.2;
-                }
+                enemiesKilled += 0.2;
             } else {
                 enemiesKilled += 1;
             }
@@ -1915,8 +1957,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
                 hp: 2 + Math.floor(hpMag),
                 speed: ENEMY_SPEEDS.SWEEPER * spd * stageMag,
                 color: '#bbbbbb', 
-                type: 'triangle',
-                variant: 'sweeper', 
+                type: 'sweeper',
                 angle: baseAngle, // 計算した向きをセット
                 drop: Math.random() < 0.1 ? dropType : 'none',
                 scale: 0.8,
@@ -2092,10 +2133,7 @@ function updateEnemies() {
             switch (e.type) {
                 case 'dragon': updateDragonAI(e); break;
                 case 'tadpole': updateTadpoleAI(e); break;
-                case 'triangle': 
-                    if (e.variant === 'sweeper') updateSweeperAI(e);
-                    else updateTriangleAI(e); 
-                    break;
+                case 'triangle': updateTriangleAI(e); break;
                 case 'cube': updateCubeAI(e); break;
                 case 'asteroid': updateAsteroidAI(e); break;
                 case 'bubble': updateAsteroidAI(e); break;
@@ -2104,6 +2142,7 @@ function updateEnemies() {
                 case 'eclipse': updateEclipseAI(e); break;
                 case 'jellyfish': updateJellyfishAI(e); break;
                 case 'sentinel': updateSentinelAI(e); break;
+                case 'sweeper': updateSweeperAI(e); break;
 
                 case 'fighter': updateFighterJetAI(e); break;
                 case 'boss':

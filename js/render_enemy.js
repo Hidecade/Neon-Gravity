@@ -21,6 +21,7 @@ function drawEnemies() {
         else if (e.type === 'eclipse') drawEclipseEnemy(ctx, e);
         else if (e.type === 'jellyfish') drawJellyfishEnemy(ctx, e);
         else if (e.type === 'sentinel') drawSentinelEnemy(ctx, e);
+        else if (e.type === 'sweeper') drawSweeperEnemy(ctx, e);
 
         else if (e.type === 'fighter') drawFighterJet(ctx, e);
 
@@ -1259,6 +1260,127 @@ function drawSentinelEnemy(ctx, e) {
     ctx.fillStyle = '#fff';
     ctx.beginPath();
     ctx.arc(5, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function drawSweeperEnemy(ctx, e) {
+    if (!e || typeof e.x !== 'number' || isNaN(e.x)) return;
+
+    ctx.save();
+
+    ctx.translate(e.x, e.y);
+    ctx.rotate(e.angle);
+
+    let currentScale = (e.scale || 0.9) * G_SCALE;
+    let visualAlpha = 1.0;
+
+    if (e.isWarping) {
+        const scaleFactor = 0.1 + (e.warpPercent || 0) * 0.9;
+        currentScale *= scaleFactor;
+        visualAlpha = e.warpPercent || 0;
+    }
+
+    ctx.scale(currentScale, currentScale);
+    ctx.globalAlpha = visualAlpha;
+    ctx.globalCompositeOperation = 'lighter';
+
+    const mainColor = e.color || '#66f0ff';
+
+    // ---------------------------------
+    // 四角錐モデル
+    // +X 方向が進行方向
+    // ---------------------------------
+    const size = 15;
+
+    const pts = [
+        { x:  1.9, y:  0.0, z:  0.0 }, // 0: 先端
+        { x: -1.2, y: -0.9, z: -0.9 }, // 1: 底面 左上
+        { x: -1.2, y:  0.9, z: -0.9 }, // 2: 底面 左下
+        { x: -1.2, y:  0.9, z:  0.9 }, // 3: 底面 右下
+        { x: -1.2, y: -0.9, z:  0.9 }  // 4: 底面 右上
+    ];
+
+    // ---------------------------------
+    // 回転
+    // Sweeper は四角錐が回って見えるようにする
+    // ---------------------------------
+    const rotX = e.rotX || 0;
+    const rotZ = e.rotZ || 0;
+
+    const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+    const cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
+
+    const proj = pts.map(p => {
+        // Z回転
+        let x1 = p.x * cosZ - p.y * sinZ;
+        let y1 = p.x * sinZ + p.y * cosZ;
+        let z1 = p.z;
+
+        // X回転
+        let y2 = y1 * cosX - z1 * sinX;
+        let z2 = y1 * sinX + z1 * cosX;
+
+        // 簡易遠近
+        const persp = 1 / (1 + z2 * 0.22);
+
+        return {
+            x: x1 * size * persp,
+            y: y2 * size * persp,
+            z: z2
+        };
+    });
+
+    // ---------------------------------
+    // 線構成
+    // 側面4本 + 底面4本
+    // ---------------------------------
+    const lines = [
+        [0, 1], [0, 2], [0, 3], [0, 4],
+        [1, 2], [2, 3], [3, 4], [4, 1]
+    ];
+
+    ctx.beginPath();
+    for (const [a, b] of lines) {
+        ctx.moveTo(proj[a].x, proj[a].y);
+        ctx.lineTo(proj[b].x, proj[b].y);
+    }
+
+    // 外側グロー
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 5;
+    ctx.globalAlpha = visualAlpha * 0.22;
+    ctx.stroke();
+
+    // 本線
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = visualAlpha;
+    ctx.stroke();
+
+    // 白芯
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 0.7;
+    ctx.globalAlpha = visualAlpha * 0.8;
+    ctx.stroke();
+
+    // ---------------------------------
+    // コア
+    // 少し後方寄り
+    // ---------------------------------
+    const pulse = 0.8 + Math.sin(frame * 0.18) * 0.2;
+    const coreX = -3.0;
+
+    ctx.globalAlpha = visualAlpha * 0.35;
+    ctx.fillStyle = '#f00';
+    ctx.beginPath();
+    ctx.arc(coreX, 0, 8 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = visualAlpha;
+    ctx.fillStyle = '#f90';
+    ctx.beginPath();
+    ctx.arc(coreX, 0, 2.5, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
