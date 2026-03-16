@@ -242,85 +242,94 @@ function updateHunterAI(e) {
     const dy = player.y - e.y;
     const dist = Math.hypot(dx, dy) || 0.001;
 
-    // 定数から基本スピードを取得（SPEED_SCALEは既に掛かっている前提か、ここで掛けるか）
-    // 今回は e.speed (生成時に計算済み) をベースにします
     const baseSpd = e.speed;
-
     e.actionTimer++;
 
     // --- 状態1: 高速接近 (APPROACH) ---
     if (e.state === 'approach') {
-        // 定数 HUNTER_ROT があれば使用、なければ直書き
-        e.angle += ENEMY_SPEEDS.HUNTER_ROT;
+        // 回転しながら近づく
+        e.angle += 0.15;
 
-        // プレイヤーに向かって加速
-        // 加速度も baseSpd に比例させることで、ステージが進んで速くなっても挙動が安定します
         const acc = baseSpd * 0.1;
         e.vx += (dx / dist) * acc;
         e.vy += (dy / dist) * acc;
 
-        if (dist < 180) {
-            e.state = 'attack';
+        if (dist < 400) {
+            e.state = 'aim';
             e.actionTimer = 0;
-            e.burstCount = 0;
         }
     }
-    // --- 状態2: 攻撃 (ATTACK) ---
-    else if (e.state === 'attack') {
+    // --- 状態2: 照準・チャージ (AIM) ---
+    else if (e.state === 'aim') {
+        // 急ブレーキをかける
         e.vx *= 0.85;
         e.vy *= 0.85;
 
+        // 回転を止め、プレイヤーへロックオン
         const targetAngle = Math.atan2(dy, dx);
         let diff = targetAngle - e.angle;
         while (diff <= -Math.PI) diff += Math.PI * 2;
         while (diff > Math.PI) diff -= Math.PI * 2;
-        e.angle += diff * 0.2;
+        e.angle += diff * 0.2; 
 
-        if (e.actionTimer > 20 && e.actionTimer % 10 === 0 && e.burstCount < 3) {
-            // 弾速も定数の影響を受ける
-            const bulletSpd = BULLET_CONFIG.ENEMY_NORMAL.SPEED * 1.3 * SPEED_SCALE;
+        // 約1秒（60フレーム）ほどレーザーで狙いを定めたら発砲
+        if (e.actionTimer > 60) {
+            e.state = 'attack';
+            e.actionTimer = 0;
+            e.burstCount = 0; // ★ここで射撃カウントをリセット
+        }
+    }
+    // --- 状態3: 攻撃 (ATTACK) ---
+    else if (e.state === 'attack') {
+        // ★変更：15フレーム間隔で、合計3発撃つまで繰り返す
+        if (e.actionTimer % 15 === 1 && e.burstCount < 3) { 
+            const bulletSpd = BULLET_CONFIG.ENEMY_NORMAL.SPEED * 2.5 * SPEED_SCALE;
 
             enemyBullets.push({
                 x: e.x, y: e.y,
                 vx: Math.cos(e.angle) * bulletSpd,
                 vy: Math.sin(e.angle) * bulletSpd,
-                life: BULLET_CONFIG.ENEMY_NORMAL.LIFE,
-                color: '#f80'
+                life: BULLET_CONFIG.ENEMY_NORMAL.LIFE * 1.5,
+                color: '#ff0055',
+                size: 4
             });
 
-            // 反動
-            e.vx -= Math.cos(e.angle) * (baseSpd * 0.5);
-            e.vy -= Math.sin(e.angle) * (baseSpd * 0.5);
+            // 発射ごとの反動（連続で撃つため少し抑えめに）
+            e.vx -= Math.cos(e.angle) * (baseSpd * 1.0);
+            e.vy -= Math.sin(e.angle) * (baseSpd * 1.0);
 
-            AudioSys.playSE('shoot');
-            e.burstCount++;
+            if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser'); 
+            
+            e.burstCount++; // 撃った回数をカウント
         }
 
+        // ★変更：3発撃ち終わって、少し硬直（60フレーム経過）したら離脱
         if (e.burstCount >= 3 && e.actionTimer > 60) {
             e.state = 'retreat';
             e.actionTimer = 0;
         }
     }
-    // --- 状態3: 離脱 (RETREAT) ---
+    // --- 状態4: 離脱・再配置 (RETREAT) ---
     else if (e.state === 'retreat') {
-        e.angle -= 0.2;
+        // 再び回転しながら距離を取る
+        e.angle += 0.1;
 
-        const escapeAcc = baseSpd * 0.08;
+        const escapeAcc = baseSpd * 0.05;
         e.vx -= (dx / dist) * escapeAcc;
         e.vy -= (dy / dist) * escapeAcc;
 
-        if (dist > 450 || e.actionTimer > 120) {
+        if (dist > 500 || e.actionTimer > 80) {
             e.state = 'approach';
             e.actionTimer = 0;
         }
     }
 
-    // --- 速度制限（ここが定数活用のキモ） ---
+    // --- 速度制限 ---
     const currentSpeed = Math.hypot(e.vx, e.vy);
-    // 状態に合わせて制限速度を可変にする（接近時は基本の1.5倍まで許容）
     let maxLimit = baseSpd;
     if (e.state === 'approach') maxLimit = baseSpd * 1.5;
-    if (e.state === 'retreat') maxLimit = baseSpd * 1.2;
+    if (e.state === 'aim') maxLimit = baseSpd * 0.2; 
+    if (e.state === 'retreat') maxLimit = baseSpd * 1.0;
 
     if (currentSpeed > maxLimit) {
         e.vx = (e.vx / currentSpeed) * maxLimit;

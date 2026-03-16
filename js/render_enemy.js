@@ -342,134 +342,139 @@ function drawCubeEnemy(ctx, e) {
 }
 
 function drawHunterEnemy(ctx, e) {
+    if (!e || typeof e.x !== 'number' || isNaN(e.x)) return;
+
     ctx.save();
     ctx.translate(e.x, e.y);
 
-    // 自転演出
-    const spin = (e.rotSpeed || 0.12) * frame;
-    ctx.rotate(spin);
-    ctx.scale(e.scale * G_SCALE, e.scale * G_SCALE);
+    // --- 被弾判定 ---
+    if (e.prevHp !== undefined && e.hp < e.prevHp) {
+        e.flashTimer = 4;
+    }
+    e.prevHp = e.hp;
 
     const isAiming = (e.state === 'aim');
     const isDmg = e.flashTimer > 0;
     if (isDmg) e.flashTimer--;
 
-    // --- 外郭のカラー（e.colorを反映） ---
-    let mainColor = isDmg ? '#ffffff' : (e.color || '#00ffff');
+    const mainColor = isDmg ? '#ffffff' : (e.color || '#00ffff');
 
-    //ctx.shadowBlur = 8;
-    ctx.shadowColor = mainColor;
-    ctx.strokeStyle = mainColor;
-    ctx.lineWidth = 1.5;
-
-    // --- 1. 外郭ワイヤーフレーム（円形） ---
-    ctx.beginPath();
-    ctx.arc(0, 0, 16, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // --- 1.2 スポーク（4方向の強化アーム構造） ---
-    for (let i = 0; i < 4; i++) {
-        const ang = (Math.PI / 2) * i;
-        const cos = Math.cos(ang);
-        const sin = Math.sin(ang);
-
-        ctx.beginPath();
-        ctx.strokeStyle = mainColor;
-        ctx.lineWidth = 1.0;
-
-        // 支柱を二股（V字）のトラス構造にする
-        // 中心から少し離れた位置から、先端に向けて広がるライン
-        const armSpread = 0.2; // 広がり具合
-        ctx.moveTo(cos * 4, sin * 4);
-        ctx.lineTo(Math.cos(ang - armSpread) * 14, Math.sin(ang - armSpread) * 14);
-        ctx.moveTo(cos * 4, sin * 4);
-        ctx.lineTo(Math.cos(ang + armSpread) * 14, Math.sin(ang + armSpread) * 14);
-        ctx.stroke();
-
-        // --- 先端のセンサーパーツ（ひし形/ポッド状） ---
-        ctx.save();
-        ctx.translate(cos * 16, sin * 16);
-        ctx.rotate(ang); // スポークの向きに合わせる
-
-        ctx.beginPath();
-        // 鋭いひし形のチップデザイン
-        ctx.moveTo(4, 0);   // 先端
-        ctx.lineTo(0, 3);   // 横
-        ctx.lineTo(-3, 0);  // 後ろ
-        ctx.lineTo(0, -3);  // 横
-        ctx.closePath();
-
-        // ダメージ時は白、通常はメインカラーの塗り
-        ctx.fillStyle = isDmg ? '#fff' : mainColor;
-        ctx.globalAlpha = 0.6; // 少し透けさせてワイヤー感を出す
-        ctx.fill();
-
-        // 輪郭線
-        ctx.globalAlpha = 1.0;
-        ctx.strokeStyle = isDmg ? '#fff' : mainColor;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    // --- 2. 中央の赤く光るコア ---
-    ctx.save();
-    // 自転の影響を受けないよう逆回転させても良いですが、
-    // 円形なのでそのまま描画します。
-
-    // コアの脈動計算
-    const pulse = Math.sin(frame * 0.15) * 1.5;
-    const coreBaseRad = isAiming ? 6 : 4;
-    const coreRad = coreBaseRad + pulse;
-
-    // コアの外光（グローエフェクト）
+    // 全体のスケール適用
+    const rootScale = e.scale * G_SCALE;
+    ctx.scale(rootScale, rootScale);
     ctx.globalCompositeOperation = 'lighter';
 
-    //ctx.shadowBlur = isAiming ? 25 : 15;
-    ctx.shadowColor = '#ff0000';
+    // ==========================================
+    // 1. 幾何学的な多重星（本体）の描画
+    // ==========================================
+    ctx.save();
+    
+    // 常にプレイヤーの方向を向く
+    ctx.rotate(e.angle);
 
-    // 放射状グラデーションで「熱源」を表現
-    const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, coreRad * 1.5);
-    coreGrad.addColorStop(0, '#ffffff');      // 中心は白熱
-    coreGrad.addColorStop(0.3, '#ff3300');    // 中間は鮮やかな赤
-    coreGrad.addColorStop(1, 'transparent'); // 外側へ消える
+    // エイム時の脈動
+    const pulse = isAiming ? 1.05 + Math.sin(frame * 0.4) * 0.05 : 1.0;
+    ctx.scale(pulse, pulse);
 
-    ctx.fillStyle = coreGrad;
+    const R_L = 32;       
+    const R_M = 14;       
+    const R_S = 6;        
+
+    const V = []; 
+    const W = []; 
+    for (let i = 0; i < 8; i++) {
+        const ang = i * Math.PI / 4;
+        const r = (i % 2 === 0) ? R_L : R_M;
+        V.push({ x: Math.cos(ang) * r, y: Math.sin(ang) * r });
+        
+        const wAng = ang + Math.PI / 8;
+        W.push({ x: Math.cos(wAng) * R_S, y: Math.sin(wAng) * R_S });
+    }
+
+    // 外殻
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 1.0;
     ctx.beginPath();
-    ctx.arc(0, 0, coreRad * 1.5, 0, Math.PI * 2);
+    for (let i = 0; i < 8; i++) {
+        ctx.lineTo(V[i].x, V[i].y);
+        ctx.lineTo(W[i].x, W[i].y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+
+    // 内部ウェブ
+    ctx.lineWidth = 1.0;
+    ctx.globalAlpha = 0.5; 
+    ctx.beginPath();
+    ctx.moveTo(V[0].x, V[0].y); ctx.lineTo(V[4].x, V[4].y);
+    ctx.moveTo(V[2].x, V[2].y); ctx.lineTo(V[6].x, V[6].y);
+    ctx.moveTo(V[1].x, V[1].y); ctx.lineTo(V[5].x, V[5].y);
+    ctx.moveTo(V[3].x, V[3].y); ctx.lineTo(V[7].x, V[7].y);
+    ctx.moveTo(V[0].x, V[0].y); ctx.lineTo(V[2].x, V[2].y); ctx.lineTo(V[4].x, V[4].y); ctx.lineTo(V[6].x, V[6].y); ctx.closePath();
+    ctx.moveTo(V[1].x, V[1].y); ctx.lineTo(V[3].x, V[3].y); ctx.lineTo(V[5].x, V[5].y); ctx.lineTo(V[7].x, V[7].y); ctx.closePath();
+    for (let i = 0; i < 8; i += 2) {
+        ctx.moveTo(V[i].x, V[i].y); ctx.lineTo(V[(i + 3) % 8].x, V[(i + 3) % 8].y);
+        ctx.moveTo(V[i].x, V[i].y); ctx.lineTo(V[(i + 5) % 8].x, V[(i + 5) % 8].y);
+    }
+    ctx.stroke();
+
+    // コア
+    ctx.globalAlpha = 1.0;
+    ctx.fillStyle = isAiming ? '#ff0055' : mainColor;
+    ctx.beginPath();
+    const coreR = isAiming ? 4 : 2;
+    ctx.moveTo(coreR, 0); ctx.lineTo(0, coreR); ctx.lineTo(-coreR, 0); ctx.lineTo(0, -coreR);
+    ctx.closePath();
     ctx.fill();
 
-    // コアの実体（中心の小さな円）
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(0, 0, 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    ctx.restore(); // 本体の脈動をリセット
 
-    // --- 3. 照準レーザー（赤いコアに合わせて赤色を強調） ---
-    if (isAiming) {
+    // ==========================================
+    // 2. 照準レーザー（Phantom完全準拠ロジック）
+    // ==========================================
+    // ★変更：エイム状態に入ってから「15フレーム（約0.25秒）」待ち、
+    // 自機の方を向き終わってからレーザーを起動する
+    if (isAiming && e.actionTimer > 15) {
+        
+        // ★変更：15〜25フレームにかけて、レーザーをスッとフェードインさせる
+        const appearRate = Math.min(1.0, (e.actionTimer - 15) / 10);
+
+        // 自機（プレイヤー）までの距離を計算し、スケールで割って長さを補正
+        const dx = player.x - e.x;
+        const dy = player.y - e.y;
+        const dist = Math.hypot(dx, dy) || 0.001;
+        const targetX = dist / rootScale; 
+
+        // 透明度に appearRate を掛けてフェードインを適用
+        const laserAlpha = (0.4 + Math.sin(frame * 0.8) * 0.2) * appearRate;
+        
         ctx.save();
-        ctx.rotate(-spin);
-        ctx.rotate(e.angle);
+        ctx.rotate(e.angle); 
+        
+        ctx.setLineDash([8, 12]);
+        ctx.lineDashOffset = -frame * 3;
 
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.beginPath();
-        ctx.setLineDash([10, 5]);
-        ctx.strokeStyle = `rgba(255, 0, 50, ${0.6 + Math.sin(frame * 0.8) * 0.3})`;
-        ctx.lineWidth = 2;
-        ctx.moveTo(12, 0);
-        ctx.lineTo(600, 0);
+        // 1層目：赤いアウター
+        ctx.lineWidth = 4.0 * G_SCALE;
+        ctx.strokeStyle = `rgba(255, 0, 0, ${laserAlpha * 0.4})`;
+        ctx.beginPath(); 
+        ctx.moveTo(R_L, 0); 
+        ctx.lineTo(targetX, 0); 
         ctx.stroke();
 
-        // 砲口のフラッシュ
-        ctx.beginPath();
-        ctx.arc(12, 0, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffaaaa';
-        ctx.fill();
+        // 2層目：白いインナーコア
+        ctx.lineWidth = 1.2 * G_SCALE;
+        ctx.strokeStyle = `rgba(255, 200, 200, ${laserAlpha})`;
+        ctx.beginPath(); 
+        ctx.moveTo(R_L, 0); 
+        ctx.lineTo(targetX, 0); 
+        ctx.stroke();
+
         ctx.restore();
     }
 
-    ctx.restore();
+    ctx.restore(); // 全体の設定を復元
 }
 
 function drawTadpoleEnemy(ctx, e) {
@@ -1287,6 +1292,7 @@ function drawSweeperEnemy(ctx, e) {
     ctx.globalCompositeOperation = 'lighter';
 
     const mainColor = e.color || '#66f0ff';
+
 
     // ---------------------------------
     // 四角錐モデル
