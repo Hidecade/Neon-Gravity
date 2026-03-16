@@ -22,6 +22,9 @@ const loadingEl = document.getElementById("loading-ranking");
 const tableEl = document.getElementById("ranking-table");
 const closeRankingBtn = document.getElementById("close-ranking-btn");
 
+// --- 定数の定義 ---
+const RANKING_LIMIT = 20; // ランキングの表示・保持件数
+
 // 閉じた後の動作を保存する変数
 let onRankingCloseAction = null;
 
@@ -36,17 +39,17 @@ window.firebaseOps = {
 
     // ランキング取得（表示用）
     getRanking: async () => {
-        const q = query(collection(db, SCORES_COLLECTION), orderBy("score", "desc"), limit(10));
+        const q = query(collection(db, SCORES_COLLECTION), orderBy("score", "desc"), limit(RANKING_LIMIT));
         return await getDocs(q);
     },
 
     // 10位以内かどうかの判定用
     checkRankIn: async (currentScore) => {
-        const q = query(collection(db, SCORES_COLLECTION), orderBy("score", "desc"), limit(10));
+        const q = query(collection(db, SCORES_COLLECTION), orderBy("score", "desc"), limit(RANKING_LIMIT));
         const snapshot = await getDocs(q);
 
-        // データが10件未満なら無条件でランクイン
-        if (snapshot.size < 10) return true;
+        // データがRANKING_LIMIT件未満なら無条件でランクイン
+        if (snapshot.size < RANKING_LIMIT) return true;
 
         // 10位（リストの最後）のスコアを取得
         const tenthData = snapshot.docs[snapshot.size - 1].data();
