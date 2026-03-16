@@ -254,7 +254,7 @@ function updateHunterAI(e) {
         e.vx += (dx / dist) * acc;
         e.vy += (dy / dist) * acc;
 
-        if (dist < 400) {
+        if (dist < 280) {
             e.state = 'aim';
             e.actionTimer = 0;
         }
@@ -283,7 +283,7 @@ function updateHunterAI(e) {
     else if (e.state === 'attack') {
         // ★変更：15フレーム間隔で、合計3発撃つまで繰り返す
         if (e.actionTimer % 15 === 1 && e.burstCount < 3) { 
-            const bulletSpd = BULLET_CONFIG.ENEMY_NORMAL.SPEED * 2.5 * SPEED_SCALE;
+            const bulletSpd = BULLET_CONFIG.ENEMY_NORMAL.SPEED * 1.8 * SPEED_SCALE;
 
             enemyBullets.push({
                 x: e.x, y: e.y,
