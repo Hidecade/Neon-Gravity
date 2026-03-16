@@ -1601,6 +1601,16 @@ function triggerBossEncounter() {
     isBossWarning = true;
     if (typeof AudioSys !== 'undefined') AudioSys.playSE('warning');
 
+    // ==========================================
+    // ★追加: HTMLオーバーレイでWARNINGを表示する
+    // ==========================================
+    showGameMessage({
+        kicker: "TACTICAL ALERT",
+        main: "WARNING !!",
+        sub: "BOSS APPROACHING",
+        type: "warning" // ← これによりCSSで赤く点滅します
+    });
+    
     const centerX = worldSize / 2;
     const centerY = worldSize / 2;
     const dx = centerX - player.x;
