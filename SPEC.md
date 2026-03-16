@@ -2,7 +2,7 @@
 ## NEON GRAVITY: ORBITAL
 
 - Repository baseline: `main` branch audit on March 16, 2026
-- Spec target version: **1.3.15**
+- Spec target version: 
 - Genre: 全方位ツインスティック・アクションシューティング
 - Platform: Web Browser / Mobile Browser / iOS PWA / Gamepad support
 - Display orientation: Landscape recommended, PWA standalone supported
