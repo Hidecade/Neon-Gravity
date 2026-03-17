@@ -256,7 +256,7 @@ function resetGame() {
     player.x = worldSize / 2; player.y = worldSize / 2;
     player.vx = 0; player.vy = 0;
     player.shield = PLAYER_BASE_SHIELD;
-    player.weaponLevel = 1;
+    player.weaponLevel = DEFAULT_WEAPON_LEVEL;
     player.invuln = 0; player.laserTimer = 0;
     player.satellites = [];
     player.history = [];
