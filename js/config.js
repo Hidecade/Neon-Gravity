@@ -141,7 +141,7 @@ const STAGE_ENEMIES = {
     2: ['triangle', 'tadpole', 'tadpole', 'dragon'],
     3: ['bubble', 'bubble', 'bubble', 'jellyfish', 'spark_jelly'],
     4: ['phantom', 'phantom', 'tadpole', 'tadpole', 'tadpole', 'tadpole', 'asteroid'],
-    5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'triangle'],
+    5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'sweeper'],
     6: ['asteroid', 'asteroid', 'asteroid', 'phantom', 'tadpole', 'tadpole'],
     7: ['triangle', 'tadpole', 'dragon', 'triangle', 'eclipse', 'triangle', 'asteroid'],
     8: ['triangle', 'hunter', 'phantom', 'tadpole', 'eclipse', 'dragon', 'jellyfish', 'asteroid', 'sweeper']
