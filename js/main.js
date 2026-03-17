@@ -406,6 +406,9 @@ function resize() {
     if (typeof initNebulae === 'function') {
         if (gameState === 'ENDING' || gameState === 'ENDING_STORY') {
             initNebulae('#00ccff');
+        } else if (['TITLE', 'HOWTO', 'RANKING', 'OST', 'STORY', 'GAMEOVER_UI'].includes(gameState)) {
+            // ★追加：タイトルやメニュー関連の画面ではデフォルトのシアンに固定する
+            initNebulae('#00bbff');
         } else {
             initNebulae();
         }

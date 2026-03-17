@@ -554,6 +554,10 @@ function proceedToNextMenu() {
 function returnToTitle() {
     gameState = 'TITLE';
 
+    bullets = []; lasers = []; enemies = []; enemyBullets = [];
+    particles = []; crystals = []; missiles = []; powerups = [];
+    wormholes = []; scorePopups = []; rings = [];
+
     if (typeof AudioSys !== 'undefined') {
         AudioSys.fadeOutBGM().then(() => {
             AudioSys.currentSrc = null;
@@ -827,6 +831,9 @@ let isStoryTypingActive = false;
  * ステージ開始前のイントロ（ワープアウト）演出の更新
  */
 function updateIntro() {
+
+    if (gameState === 'PAUSED') return;
+
     introTimer++;
 
     // 背景スクロール制御
@@ -1094,6 +1101,12 @@ async function playStoryTyping(text, options = {}) {
     const shouldAutoScroll = autoScroll || container.classList.contains('ending-mode');
 
     for (let lineText of lines) {
+        // 行開始前のポーズ待機
+        while (gameState === 'PAUSED') {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            if (sessionId !== storyTypingSessionId || isSkippingStory) break;
+        }
+
         if (sessionId !== storyTypingSessionId || isSkippingStory) break;
 
         const lineDiv = document.createElement('div');
@@ -1105,6 +1118,12 @@ async function playStoryTyping(text, options = {}) {
         if (shouldAutoScroll) el.scrollTop = el.scrollHeight;
 
         for (let char of lineText) {
+            // ★追加：1文字ごとの出力前にもポーズ待機を入れる
+            while (gameState === 'PAUSED') {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                if (sessionId !== storyTypingSessionId || isSkippingStory) break;
+            }
+
             if (sessionId !== storyTypingSessionId || isSkippingStory) break;
 
             cursor.before(char);
@@ -1117,6 +1136,12 @@ async function playStoryTyping(text, options = {}) {
             else if (char === ' ') delay = 20;
 
             await new Promise(resolve => setTimeout(resolve, delay));
+        }
+
+        // ★追加：行が終わったあとの待機（250ms）に入る前もポーズ判定
+        while (gameState === 'PAUSED') {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            if (sessionId !== storyTypingSessionId || isSkippingStory) break;
         }
 
         if (sessionId !== storyTypingSessionId || isSkippingStory) break;
@@ -1141,9 +1166,21 @@ async function playStoryTyping(text, options = {}) {
         return 'skipped';
     }
 
+    // ★追加：読み終わったあとの長めの待機中もポーズ判定を組み込む
     if (waitAfterTypingMs > 0) {
-        await new Promise(r => setTimeout(r, waitAfterTypingMs));
-        if (sessionId !== storyTypingSessionId) {
+        let waited = 0;
+        while (waited < waitAfterTypingMs) {
+            if (gameState === 'PAUSED') {
+                // ポーズ中はタイマーを進めない
+                await new Promise(resolve => setTimeout(resolve, 100));
+            } else {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                waited += 100;
+            }
+            if (sessionId !== storyTypingSessionId || isSkippingStory) break;
+        }
+
+        if (sessionId !== storyTypingSessionId || isSkippingStory) {
             isStoryTypingActive = false;
             return 'cancelled';
         }

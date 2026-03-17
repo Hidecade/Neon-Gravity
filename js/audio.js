@@ -10,7 +10,7 @@ const ONE_SHOT_SE = [
     'shoot', 'laser', 'enemy_hit',
     'explode_small', 'explode_medium', 'explode_large',
     'target_ping', 'launch', 'powerup', 'damage',
-    'invincible', 'boss_hit'
+    'invincible', 'boss_hit', 'gravity'
 ];
 
 const BGM_FILES = {
@@ -35,12 +35,53 @@ const BGM_FILES = {
 
 // --- 1. SEの音響定義ライブラリ ---
 const SE_LIBRARY = {
+    // ★追加: 重力場（ブラックホール）の吸い込み音
+    gravity: (ctx, t, g, noise) => {
+        const dur = 1.2; // 1回の再生時間（約1.2秒）
+        
+        // --- 1. 低音の地鳴り（重力の歪み） ---
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(30, t); // 超低音から
+        o.frequency.linearRampToValueAtTime(80, t + dur); // 少しだけピッチを上げる
+        
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(0.5, t + 0.1); // ドン！と入る
+        env.gain.exponentialRampToValueAtTime(0.01, t + dur);
+        
+        o.connect(env); env.connect(g);
+        o.start(t); o.stop(t + dur);
+
+        // --- 2. 空間が吸い込まれる風切り音（ノイズ+フィルター） ---
+        if (noise) {
+            const n = ctx.createBufferSource();
+            n.buffer = noise;
+            const f = ctx.createBiquadFilter();
+            f.type = 'bandpass';
+            
+            // シュゥゥゥーッ！と吸い込まれるように周波数を急上昇させる
+            f.frequency.setValueAtTime(150, t);
+            f.frequency.exponentialRampToValueAtTime(3500, t + dur);
+            f.Q.value = 6.0; // キィィンという金属的・SF的な響きを持たせる
+
+            const nEnv = ctx.createGain();
+            nEnv.gain.setValueAtTime(0, t);
+            nEnv.gain.linearRampToValueAtTime(0.8, t + 0.2);
+            nEnv.gain.exponentialRampToValueAtTime(0.01, t + dur);
+
+            n.connect(f); f.connect(nEnv); nEnv.connect(g);
+            n.start(t); n.stop(t + dur);
+        }
+
+        return { osc: null, duration: dur };
+    },
     shoot: (ctx, t, g) => {
         const o = ctx.createOscillator();
         o.type = 'triangle';
         o.frequency.setValueAtTime(800, t);
         o.frequency.exponentialRampToValueAtTime(100, t + 0.1);
-        g.gain.setValueAtTime(0.08, t);
+        g.gain.setValueAtTime(0.06, t);
         g.gain.linearRampToValueAtTime(0, t + 0.1);
         return { osc: o, duration: 0.1 };
     },
@@ -55,7 +96,7 @@ const SE_LIBRARY = {
         modGain.gain.value = 500;
         mod.connect(modGain); modGain.connect(o.frequency);
         mod.start(t); mod.stop(t + 0.15);
-        g.gain.setValueAtTime(0.10, t);
+        g.gain.setValueAtTime(0.08, t);
         g.gain.linearRampToValueAtTime(0, t + 0.15);
         return { osc: o, duration: 0.15 };
     },
@@ -71,7 +112,7 @@ const SE_LIBRARY = {
                 o.type = 'sawtooth';
                 o.frequency.setValueAtTime(freq, startTime);
                 o.frequency.linearRampToValueAtTime(freq * 1.8, startTime + duration);
-                const volume = 0.08;
+                const volume = 0.10;
                 subG.gain.setValueAtTime(volume, startTime);
                 subG.gain.linearRampToValueAtTime(volume, startTime + duration - 0.1);
                 subG.gain.linearRampToValueAtTime(0, startTime + duration);
@@ -89,7 +130,7 @@ const SE_LIBRARY = {
         f.type = 'lowpass';
         f.frequency.setValueAtTime(800, t);
         f.frequency.exponentialRampToValueAtTime(20, t + 0.4);
-        g.gain.setValueAtTime(0.6, t);
+        g.gain.setValueAtTime(0.7, t);
         g.gain.linearRampToValueAtTime(0, t + 0.4);
         n.connect(f); f.connect(g);
         n.start(t); n.stop(t + 0.4);
@@ -104,7 +145,7 @@ const SE_LIBRARY = {
         f.type = 'lowpass';
         f.frequency.setValueAtTime(400, t);
         f.frequency.exponentialRampToValueAtTime(10, t + dur);
-        g.gain.setValueAtTime(1.5, t);
+        g.gain.setValueAtTime(1.7, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + dur);
         n.connect(f); f.connect(g);
         n.start(t); n.stop(t + dur);
@@ -127,7 +168,7 @@ const SE_LIBRARY = {
             f.frequency.setValueAtTime(startFreq, startTime);
             f.frequency.exponentialRampToValueAtTime(endFreq, startTime + dur);
             const subG = ctx.createGain();
-            const volume = i === 2 ? 0.8 : 0.5;
+            const volume = i === 2 ? 0.9 : 0.6;
             subG.gain.setValueAtTime(volume, startTime);
             subG.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
             n.connect(f); f.connect(subG); subG.connect(g);
@@ -534,33 +575,71 @@ const AudioSys = {
         }, durationMs);
     },
 
-    playSE(type) {
+    playSE(type, x = null, y = null) {
         if (!this.ctx) this.init();
         if (!this.ctx || !SE_LIBRARY[type]) return;
 
-        // 非表示中は鳴らさない
         if (document.hidden) return;
-
-        // iPhone復帰直後など、まだ running でないならここでは無理に鳴らさない
         if (this.ctx.state !== "running") return;
 
         const now = this.ctx.currentTime;
         if (this.lastPlayed[type] && now - this.lastPlayed[type] < 0.05) return;
         this.lastPlayed[type] = now;
 
+        // ==========================================
+        // ★ 修正：ベース音量の引き上げと減衰バランスの調整
+        // ==========================================
+        const masterGain = this.ctx.createGain();
+        // 全体のSE音量を強力にブースト（1.0 -> 2.5）
+        masterGain.gain.value = 2.5; 
+
+        if (x !== null && y !== null && typeof player !== 'undefined' && typeof width !== 'undefined') {
+            const dx = x - player.x;
+            const dy = y - player.y;
+            const dist = Math.hypot(dx, dy);
+            
+            const camScale = (typeof cameraScale !== 'undefined') ? cameraScale : 1.0;
+            const screenDiag = Math.hypot(width / camScale, height / camScale);
+            
+            // 音が届く範囲を広く設定
+            const maxDist = screenDiag * 1.2; 
+
+            // ★ 修正：最低音量を 0.4 に引き上げ
+            // これにより、左右に振り切れても「音が小さすぎて聞こえない」状態を防ぎます
+            let volMult = 1.0 - (dist / maxDist);
+            volMult = Math.max(0.4, Math.min(1.0, volMult));
+            
+            // ★ 修正：カーブを緩やかに（0.6乗）
+            // 近くの音を最大音量にしつつ、少し離れても急激に小さくならないようにします
+            masterGain.gain.value *= Math.pow(volMult, 0.6); 
+
+            if (this.ctx.createStereoPanner) {
+                const panner = this.ctx.createStereoPanner();
+                // 左右のパンニングを適切に反映
+                const panLimit = (width / camScale) * 0.45; 
+                panner.pan.value = Math.max(-1.0, Math.min(1.0, dx / panLimit));
+                
+                masterGain.connect(panner);
+                panner.connect(this.ctx.destination);
+            } else {
+                masterGain.connect(this.ctx.destination);
+            }
+        } else {
+            masterGain.connect(this.ctx.destination);
+        }
+        // ==========================================
+
         const t = this.ctx.currentTime;
         const g = this.ctx.createGain();
-        g.connect(this.ctx.destination);
+        g.connect(masterGain); 
 
         try {
             const effect = SE_LIBRARY[type](this.ctx, t, g, this.noiseBuffer);
-
             if (effect.osc) {
                 effect.osc.connect(g);
                 effect.osc.start(t);
                 effect.osc.stop(t + effect.duration);
             }
-
             const cleanupTime = Math.max(2000, effect.duration * 1000 + 500);
             this.registerNode(type, g, cleanupTime);
         } catch (e) { }

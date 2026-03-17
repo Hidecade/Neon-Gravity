@@ -169,7 +169,7 @@
         width: 90%;
         max-width: 1100px;
         margin: 0 0 88px 0;
-        font-size: calc(14px * var(--ui-scale, 1));
+        font-size: calc(15px * var(--ui-scale, 1));
         line-height: 1.8;
     }
 

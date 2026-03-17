@@ -254,7 +254,7 @@ function updateHunterAI(e) {
         e.vx += (dx / dist) * acc;
         e.vy += (dy / dist) * acc;
 
-        if (dist < 280) {
+        if (dist < 250) {
             e.state = 'aim';
             e.actionTimer = 0;
         }
@@ -604,6 +604,11 @@ function updateEclipseAI(e) {
         // サイクル 150 〜 220 の間、自機を強烈に吸い寄せる
         // ==========================================
         else if (cycle > 150 && cycle < 220) {
+
+            if (cycle === 151) {
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('gravity', e.x, e.y);
+            }
+
             const pullDx = e.x - player.x;
             const pullDy = e.y - player.y;
             const pullDist = Math.hypot(pullDx, pullDy) || 0.001;
@@ -1316,7 +1321,7 @@ function destroyEnemy(e) {
 
     // --- Phantom専用の特殊撃破演出 ---
     if (e.type === 'phantom') {
-        AudioSys.playSE('explode_medium'); // 中サイズの爆発音
+        AudioSys.playSE('explode_medium', e.x, e.y); // 中サイズの爆発音
         distortGrid(e.x, e.y, 60, 120);
 
         // 4つの三角錐パーツを独立した破片として放出
@@ -1351,7 +1356,7 @@ function destroyEnemy(e) {
     }
     // --- ★追加：Eclipse専用の特殊撃破演出 ---
     else if (e.type === 'eclipse') {
-        AudioSys.playSE('explode_medium');
+        AudioSys.playSE('explode_medium', e.x, e.y);
         distortGrid(e.x, e.y, 100, 200);
 
         const bitCount = 6;
@@ -1388,7 +1393,7 @@ function destroyEnemy(e) {
     }
     // --- Triangle専用の特殊撃破演出（サイズ微調整版） ---
     else if (e.type === 'triangle') {
-        AudioSys.playSE('explode_small');
+        AudioSys.playSE('explode_small', e.x, e.y);
 
         const shardCount = 3 + Math.floor(Math.random() * 2);
         for (let i = 0; i < shardCount; i++) {
@@ -1420,7 +1425,7 @@ function destroyEnemy(e) {
         }
     }
     else if (e.type === 'dragon') {
-        AudioSys.playSE('explode_medium');
+        AudioSys.playSE('explode_medium', e.x, e.y);
         distortGrid(e.x, e.y, 80, 140);
 
         // 体節をバラバラに放出（頭 + セグメント）
@@ -1450,7 +1455,7 @@ function destroyEnemy(e) {
     }
     // --- ★変更：JellyfishとBubble共通の特殊撃破演出 ---
     else if (e.type === 'jellyfish' || e.type === 'bubble') {
-        AudioSys.playSE('explode_small'); // 少し高い音が水泡が弾ける音に似ます
+        AudioSys.playSE('explode_small', e.x, e.y); // 少し高い音が水泡が弾ける音に似ます
         distortGrid(e.x, e.y, 50, 100);
 
         // ★追加：バブルの場合はサイズ(1が最大, 3が最小)に応じて泡の数を変える
@@ -1478,7 +1483,7 @@ function destroyEnemy(e) {
     }
     // --- その他の敵の処理 ---
     else if (e.type === 'boss' || e.type === 'battleship') {
-        AudioSys.playSE('explode_large');
+        AudioSys.playSE('explode_large', e.x, e.y);
     }
     // --- アステロイドの判定 ---
     else if (e.type === 'asteroid') {
@@ -1517,22 +1522,61 @@ function destroyEnemy(e) {
 
         // e.size === 1 が最大サイズです
         if (e.size === 1) {
-            AudioSys.playSE('explode_medium');
+            AudioSys.playSE('explode_medium', e.x, e.y);
         } else {
-            AudioSys.playSE('explode_small');
+            AudioSys.playSE('explode_small', e.x, e.y);
         }
     }
     // --- 小型（小）：その他雑魚（triangleは上で処理済み）---
     else {
-        AudioSys.playSE('explode_small');
+        AudioSys.playSE('explode_small', e.x, e.y);
     }
 
-    // スコア加算（テーブルから取得、未定義ならデフォルト値）
-    const pts = ENEMY_SCORES[e.type] || DEFAULT_ENEMY_SCORE;
+
+    // =========================================================
+    // ★ 修正：スコア加算（ボスは生存時間でスコアが変動する）
+    // =========================================================
+    let pts = ENEMY_SCORES[e.type] || DEFAULT_ENEMY_SCORE;
+
+    if (e.type === 'boss' || e.type === 'battleship') {
+        const baseScore = pts;
+        const aliveFrames = e.aliveTimer || 0;
+        
+        // 30秒 (60fps * 30 = 1800フレーム) を基準とする
+        const angerThreshold = 1800; 
+
+        if (aliveFrames < angerThreshold) {
+            // --- 早期撃破ボーナス（最大2倍）---
+            // 早く倒すほど倍率が高い（0秒=2.0倍, 30秒=1.0倍）
+            const timeRatio = 1.0 - (aliveFrames / angerThreshold);
+            const bonusMult = 1.0 + (timeRatio * 1.0); 
+            pts = Math.floor(baseScore * bonusMult);
+        } else {
+            // --- 怒りモードペナルティ（最小0.1倍）---
+            // 30秒を超えると徐々に減少し、120秒(7200F)で最低値になる
+            const overTime = aliveFrames - angerThreshold;
+            const penaltyRatio = Math.min(1.0, overTime / (7200 - angerThreshold));
+            const penaltyMult = 1.0 - (penaltyRatio * 0.9); // 1.0 -> 0.1 に減少
+            pts = Math.max(Math.floor(baseScore * penaltyMult), Math.floor(baseScore * 0.1));
+        }
+    }
 
     score += pts;
     ui.score.innerText = score.toString().padStart(6, '0');
-    scorePopups.push({ x: e.x, y: e.y, text: pts, life: 40, alpha: 1, vy: -1 });
+    
+    // ボス撃破時は文字を少し強調する（alphaを高く、寿命を長く）
+    const isBossClass = (e.type === 'boss' || e.type === 'battleship');
+    const popLife = isBossClass ? 120 : 40;
+    const popVy = isBossClass ? -0.5 : -1;
+    
+    scorePopups.push({ 
+        x: e.x, y: e.y, 
+        text: pts, 
+        life: popLife, 
+        alpha: 1, 
+        vy: popVy,
+        isBoss: isBossClass // 描画側で色を変えるためのフラグ
+    });
 
     // ドロップ処理
     if (e.noDrop || e.drop === 'none') return;

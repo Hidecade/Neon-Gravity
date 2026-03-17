@@ -72,6 +72,11 @@ function initNebulae(forcedColor = null) {
     // --- 1. テーマカラーの取得 ---
     // 引数があればそれを使用、なければステージのテーマ色、それもなければシアン
     const themeHex = forcedColor || STAGE_THEMES[stage] || '#00bbff';
+
+    if (!forcedColor && ['TITLE', 'HOWTO', 'RANKING', 'OST', 'STORY', 'GAMEOVER_UI'].includes(gameState)) {
+        themeHex = '#00bbff';
+    }
+    
     const base = hexToRgb(themeHex);
     const spaceDeep = { r: 20, g: 0, b: 60 };
 
