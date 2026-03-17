@@ -540,10 +540,16 @@ function initInputHandlers() {
         }
     });
     window.addEventListener('focus', () => {
-        if (gameState !== 'PAUSED' && typeof AudioSys !== 'undefined') {
-            AudioSys.resumeBGM(false);
+        // プレイ中、導入中、死亡演出中、またはワープ中のみ再開を許可する
+        const activeStates = ['PLAYING', 'STAGE_INTRO', 'DYING'];
+        const isWarping = typeof isWarpingOut !== 'undefined' && isWarpingOut;
+
+        if (activeStates.includes(gameState) || isWarping) {
+            if (typeof AudioSys !== 'undefined') {
+                AudioSys.resumeBGM(false);
+            }
         }
-    });
+    })
 
     // -----------------------------------------------------
     // E. 各種メニューUIボタンのバインド
