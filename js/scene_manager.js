@@ -47,6 +47,11 @@ function startGame() {
     player.invuln = 0;
     player.laserTimer = 0;
     player.history = [];
+    player.hasExitedScreen = false;
+    player.exitTimer = 0;
+    player.warpTimer = 0;
+    player.warpSoundPlayed = false;
+    isWarpingOut = false; // グローバル変数の初期化も確実に行う
 
     // 4. 入力・カメラ・UIのリセット
     if (typeof clearInputState === 'function') clearInputState();
@@ -97,6 +102,11 @@ function startStage() {
     isBossWarning = false;
     warningTimer = 0;
     levelItemsDroppedInStage = 0;
+    player.hasExitedScreen = false;
+    player.exitTimer = 0;
+    player.warpTimer = 0;
+    player.warpSoundPlayed = false;
+    isWarpingOut = false; // グローバル変数の初期化も確実に行う
 
     // 特殊ステージ用の変数をリセット
     if (stage === 9) {
@@ -282,8 +292,8 @@ function resetGame() {
         ui.titleOverlay.style.pointerEvents = 'auto';
     }, 500);
 
-    const bgmIndex = Math.floor((stage - 1) / 2) % BGM_FILES.stages.length;
-    if (typeof AudioSys !== 'undefined') AudioSys.playBGM('stage', bgmIndex);
+    //const bgmIndex = Math.floor((stage - 1) / 2) % BGM_FILES.stages.length;
+    //if (typeof AudioSys !== 'undefined') AudioSys.playBGM('stage', bgmIndex);
 
     gameState = 'PLAYING';
     startStage();
@@ -1610,7 +1620,7 @@ function triggerBossEncounter() {
         sub: "BOSS APPROACHING",
         type: "warning" // ← これによりCSSで赤く点滅します
     });
-    
+
     const centerX = worldSize / 2;
     const centerY = worldSize / 2;
     const dx = centerX - player.x;

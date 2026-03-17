@@ -179,7 +179,7 @@ const resumeAction = async (e) => {
         await AudioSys.resumeBGM(true);
     }
 
-    gameState = 'PLAYING';
+    gameState = previousGameState || 'PLAYING';
     ui.pauseOverlay.style.display = 'none';
 };
 

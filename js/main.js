@@ -629,6 +629,8 @@ function updateDebugOverlay() {
     const crystalCount = Array.isArray(crystals) ? crystals.length : 0;
     const powerupCount = Array.isArray(powerups) ? powerups.length : 0;
     const missileCount = Array.isArray(missiles) ? missiles.length : 0;
+    const ringCount = Array.isArray(rings) ? rings.length : 0;
+    const wormholeCount = Array.isArray(wormholes) ? wormholes.length : 0;
 
     const totalObjects =
         enemyCount +
@@ -637,7 +639,9 @@ function updateDebugOverlay() {
         particleCount +
         crystalCount +
         powerupCount +
-        missileCount;
+        missileCount +
+        ringCount + 
+        wormholeCount;
 
     const px = player ? Math.round(player.x) : 0;
     const py = player ? Math.round(player.y) : 0;
