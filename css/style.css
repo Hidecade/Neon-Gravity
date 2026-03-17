@@ -863,27 +863,6 @@ canvas {
         padding-top: 12vh;
     }
 
-    #story-typing-msg {
-        width: 90%;
-        font-size: calc(14px * var(--ui-scale, 1));
-        margin-bottom: 88px;
-    }
-
-    #story-typing-container.ending-mode {
-        padding-top: 18px;
-        padding-bottom: 88px;
-    }
-
-    #story-typing-container.ending-mode #story-typing-msg {
-        width: 92vw;
-        max-width: 92vw;
-        height: calc(100vh - 18px - 88px);
-        max-height: calc(100vh - 18px - 88px);
-        font-size: clamp(14px, 3.6vw, 16px);
-        line-height: 1.78;
-        padding: 14px 14px 16px;
-    }
-
 
 
     #stick-left {
@@ -964,26 +943,6 @@ canvas {
         padding-top: 11vh;
     }
 
-    #story-typing-msg {
-        
-        margin-bottom: 60px;
-    }
-
-    #story-typing-container.ending-mode {
-        padding-top: 14px;
-        padding-bottom: 72px;
-    }
-
-    #story-typing-container.ending-mode #story-typing-msg {
-        width: min(88vw, 1200px);
-        max-width: 1200px;
-        height: calc(100vh - 14px - 72px);
-        max-height: calc(100vh - 14px - 72px);
-        font-size: clamp(13px, 2.3vh, 17px);
-        line-height: 1.7;
-        padding-top: 12px;
-        padding-bottom: 12px;
-    }
 
     #title-shell {
         margin-bottom: 20px;

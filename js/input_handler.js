@@ -223,7 +223,7 @@ function handleGamepadInput() {
     const dpadLeft = activeGp.buttons[14]?.pressed;
     const dpadRight = activeGp.buttons[15]?.pressed;
 
-    // --- ストーリースキップ判定 ---
+    // 1. STAGE_INTRO のスキップ判定
     if (gameState === 'STAGE_INTRO' && typeof introPhase !== 'undefined' && (introPhase === 1 || introPhase === 2)) {
         const isSkipPressed = (startBtn || aBtn || bBtn || rbBtn);
         if (isSkipPressed && !input.padSkipLatch) {
@@ -239,9 +239,34 @@ function handleGamepadInput() {
         return;
     }
 
-// --- STARTボタン & Bボタン(戻る) 処理 ---
+    // 2. ENDING_STORY のスキップ・進行判定
+    if (gameState === 'ENDING_STORY') {
+        const isSkipPressed = (startBtn || rbBtn); // STARTボタン等でスキップ
+        const isNextAction = aBtn; // Aボタンはテキスト完了後のNEXT進行に限定
+
+        if (isSkipPressed && !input.padSkipLatch) {
+            if (typeof window.skipStory === 'function') window.skipStory();
+            input.padSkipLatch = true;
+        }
+        if (!isSkipPressed) input.padSkipLatch = false;
+
+        if (isNextAction && !input.padAPressed) {
+            const skipBtn = document.getElementById('skip-button');
+            // テキストが完走し「NEXT >>」クラスが付与されている場合のみクリックをトリガー
+            if (skipBtn && skipBtn.classList.contains('ending-next')) {
+                skipBtn.click();
+            }
+            input.padAPressed = true;
+        }
+        if (!isNextAction) input.padAPressed = false;
+
+        // 誤爆防止
+        input.padStartPressed = startBtn;
+        input.padBombPressed = (xBtn || bBtn || rbBtn || rtBtn);
+        return;
+    }
     
-  // --- STARTボタン & Bボタン(戻る) 処理 ---
+    // --- STARTボタン & Bボタン(戻る) 処理 ---
     
     // 現在どのオーバーレイが開いているかを確認
     const isRankingOpen = document.getElementById('ranking-overlay')?.style.display === 'flex';

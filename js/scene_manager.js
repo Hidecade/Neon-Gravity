@@ -518,6 +518,13 @@ async function showGameOver() {
  * リザルト画面・最終メニューの表示
  */
 function proceedToNextMenu() {
+    // 確実にストーリー表示を消去
+    const container = document.getElementById('story-typing-container');
+    if (container) {
+        container.style.display = 'none';
+        container.classList.remove('ending-mode');
+    }
+
     ui.nameInputArea.style.display = 'none';
     ui.titleOverlay.style.display = 'flex';
 
@@ -1183,7 +1190,7 @@ window.skipStory = function () {
     const container = document.getElementById('story-typing-container');
     const typingMsg = document.getElementById('story-typing-msg');
 
-    const fadeStyle = "opacity 1.0s ease-out";
+    const fadeStyle = "opacity 0.8s ease-out"; // テンポ良く消えるように少し短縮
     if (container) {
         container.style.transition = fadeStyle;
         container.style.opacity = "0";
@@ -1201,7 +1208,7 @@ window.skipStory = function () {
             container.style.display = 'none';
             container.classList.remove('ending-mode');
             container.style.transition = '';
-            container.style.opacity = '';
+            container.style.opacity = '1'; // 次回のために確実に不透明に戻す
         }
 
         if (typingMsg) {
@@ -1209,13 +1216,13 @@ window.skipStory = function () {
             typingMsg.innerHTML = '';
             typingMsg.scrollTop = 0;
             typingMsg.style.transition = '';
-            typingMsg.style.opacity = '';
+            typingMsg.style.opacity = '1'; // 次回のために確実に不透明に戻す
         }
 
         if (gameState === 'ENDING_STORY') {
             showGameOver();
         }
-    }, 1000);
+    }, 1000); // フェードアウト完了後に実行
 };
 
 

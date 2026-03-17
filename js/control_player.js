@@ -48,7 +48,19 @@ function updatePlayerMovement() {
 
     const fireInterval = player.laserTimer > 0 ? 4 : 6;
     let isFiring = input.aim.active || isArrowAiming || input.keys['Space'] || input.keys['KeyZ'] || input.padAPressed;
-    if (isFiring && frame % fireInterval === 0) fire();
+
+    if (player.fireTimer === undefined) player.fireTimer = fireInterval; // タイマー初期化
+
+    if (isFiring) {
+        player.fireTimer += gameSpeed; // スピードに応じてタイマーを進める
+        if (player.fireTimer >= fireInterval) {
+            fire();
+            player.fireTimer = 0; // 発射したらタイマーをリセット
+        }
+    } else {
+        // 撃っていない間はタイマーを満タンにしておき、次にボタンを押した瞬間にすぐ発射されるようにする
+        player.fireTimer = fireInterval;
+    }
 
     // サテライト更新
     player.satellites.forEach((s, i) => {
@@ -77,7 +89,18 @@ function updatePlayerRotationAndFiring(mx, my) {
 
     const fireInterval = player.laserTimer > 0 ? 4 : 6;
     let isFiring = input.aim.active || isArrowAiming || input.keys['Space'] || input.keys['KeyZ'] || input.padAPressed;
-    if (isFiring && frame % fireInterval === 0) fire();
+
+    if (player.fireTimer === undefined) player.fireTimer = fireInterval; // タイマー初期化
+
+    if (isFiring) {
+        player.fireTimer += gameSpeed; // スピードに応じてタイマーを進める
+        if (player.fireTimer >= fireInterval) {
+            fire();
+            player.fireTimer = 0; // 発射したらタイマーをリセット
+        }
+    } else {
+        player.fireTimer = fireInterval;
+    }
 }
 
 

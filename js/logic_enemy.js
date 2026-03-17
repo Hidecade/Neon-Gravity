@@ -275,11 +275,11 @@ function updateHunterAI(e) {
         // ==========================================
         // ★ 追加：照準中に「ピピピピ」と鳴らす
         // ==========================================
-        if (Math.floor(e.actionTimer) % 10 === 0) {
-            if (typeof AudioSys !== 'undefined') {
-                AudioSys.playSE('target_ping');
-            }
-        }
+        // if (Math.floor(e.actionTimer) % 10 === 0) {
+        //     if (typeof AudioSys !== 'undefined') {
+        //         AudioSys.playSE('target_ping');
+        //     }
+        // }
 
         // 約1秒（60フレーム）ほどレーザーで狙いを定めたら発砲
         if (e.actionTimer > 60) {
@@ -480,13 +480,13 @@ function updatePhantomAI(e) {
         // ★ 追加：発射前の溜め時間に「ピピピピ」と鳴らす
         // ==========================================
         // 溜め時間（timerが30になるまで）に、8フレームおきに鳴らす
-        if (e.isAiming && Math.floor(e.timer) % 8 === 0) {
-            if (typeof AudioSys !== 'undefined') {
-                AudioSys.playSE('target_ping');
-            }
-        }
+        // if (e.isAiming && Math.floor(e.timer) % 8 === 0) {
+        //     if (typeof AudioSys !== 'undefined') {
+        //         AudioSys.playSE('target_ping');
+        //     }
+        // }
         // ==========================================
-        
+
         if (e.timer >= 30 && e.timer < 30 + gameSpeed) {
             e.isAiming = false;
             for (let i = 0; i < 4; i++) {
