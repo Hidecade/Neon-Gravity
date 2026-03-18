@@ -390,3 +390,6 @@ function hideGameMessage(immediate = false) {
     // フェードアウト開始
     overlay.classList.remove("show");
 }
+
+
+

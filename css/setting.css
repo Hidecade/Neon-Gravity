@@ -1,0 +1,45 @@
+#settings-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 150;
+    padding: 14px;
+    box-sizing: border-box;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+/* ---------- SETTINGS画面のボタン配置 ---------- */
+.settings-buttons-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px; 
+    margin-top: 40px; 
+}
+
+/* ---------- portrait ---------- */
+@media (orientation: portrait) {
+    #settings-overlay {
+        padding-top: 5vh; /* ▼ 縦画面時は画面上部から10%下げる */
+    }
+
+      #settings-buttons-container .menu-btn {
+        min-width: 78vw;
+        padding: 12px 20px;
+        font-size: clamp(13px, 3.2vw, 16px);
+    }
+}
+
+/* ---------- landscape ---------- */
+@media (orientation: landscape) {
+    #settings-overlay {
+        padding-top: 4vh; /* ▼ 横画面時は画面上部から4%下げる（隙間が少ないため控えめ） */
+    }
+
+        #settings-buttons-container .menu-btn {
+        min-width: min(42vw, 280px);
+        padding: 8px 16px;
+        font-size: clamp(12px, 1vw, 14px);
+    }
+}

@@ -34,7 +34,8 @@ function initStars() {
 
     // --- B. 星の生成ループ ---
     // 300個の星を作成します
-    for (let i = 0; i < 300; i++) {
+    const starNum = window.currentStarCount !== undefined ? window.currentStarCount : 300;
+    for (let i = 0; i < starNum; i++) {
         let sx, sy;
 
         // 60%の確率で「星団の近く」に配置し、40%は「ランダム」に配置します
@@ -71,12 +72,12 @@ function initNebulae(forcedColor = null) {
 
     // --- 1. テーマカラーの取得 ---
     // 引数があればそれを使用、なければステージのテーマ色、それもなければシアン
-    const themeHex = forcedColor || STAGE_THEMES[stage] || '#00bbff';
+    let themeHex = forcedColor || STAGE_THEMES[stage] || '#00bbff';
 
     if (!forcedColor && ['TITLE', 'HOWTO', 'RANKING', 'OST', 'STORY', 'GAMEOVER_UI'].includes(gameState)) {
         themeHex = '#00bbff';
     }
-    
+
     const base = hexToRgb(themeHex);
     const spaceDeep = { r: 20, g: 0, b: 60 };
 
@@ -87,7 +88,8 @@ function initNebulae(forcedColor = null) {
 
     // --- 3. 星雲生成ループ ---
     // ★修正2：生成する星雲の数を 12 から 20 に増やして密度を上げる
-    const count = 20;
+    //const count = 20;
+    const count = window.currentNebulaeCount !== undefined ? window.currentNebulaeCount : 20;
 
     for (let i = 0; i < count; i++) {
         // --- A. 星雲の個体差（サイズ・透明度）の設定 ---

@@ -16,8 +16,10 @@ const DEBUG = {
 const G_SCALE = 0.7;          // 全体の描画スケール（標準の70%）
 const SPEED_SCALE = 0.25;     // ゲーム全体の速度倍率（全ての移動に適用）
 const WALL_MARGIN = 5;        // 画面端の見えない壁の余白
-const GRID_SPACING = 32;      // 背景グリッド線の間隔
+let GRID_SPACING = 32;      // 背景グリッド線の間隔
+
 const CAMERA_Y_OFFSET = 0.60; // 自機の画面内Y座標位置（0.5が中央、大きいほど下）
+
 const REFERENCE_SIZE = 1080;   // 画面スケーリングの基準サイズ
 
 const HOWTO_WAIT_TIME = 600;  // HOWTO画面の放置でタイトルに戻る時間
@@ -25,6 +27,31 @@ const HOWTO_WAIT_TIME = 600;  // HOWTO画面の放置でタイトルに戻る時
 
 // --- iOS判定 ---
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+// ==========================================
+// ★追加: グラフィック設定のプリセット
+// ==========================================
+const GRAPHICS_SETTINGS = {
+    HIGH: {
+        gridSpacing: 32,      // 細かいグリッド（綺麗だが重い）
+        explosionMag: 3.0,    // 大量の火花
+        starCount: 300,       // 星の数
+        nebulaeCount: 20      // 星雲の数
+    },
+    MEDIUM: {
+        gridSpacing: 48,      // やや粗いグリッド
+        explosionMag: 1.5,    // 中程度の火花
+        starCount: 150,
+        nebulaeCount: 10
+    },
+    LOW: {
+        gridSpacing: 64,      // 粗いグリッド（軽い）
+        explosionMag: 0.5,    // 最小限の火花
+        starCount: 50,
+        nebulaeCount: 0       // 星雲を描画しない
+    }
+};
+let currentGraphicsQuality = 'HIGH'; // 現在の品質
 
 // --- ステージ・難易度設定 ---
 const START_STAGE = 1;        // 開始ステージ
@@ -218,7 +245,7 @@ const DROP_RATES = {
 
 // --- 演出設定 ---
 const EXPLOSION_SPEED_MAG = 2.0; // 撃破火花の散る速さ
-const EXPLOSION_COUNT_MAG = 3.0; // 撃破火花の量
+let EXPLOSION_COUNT_MAG = 3.0; // 撃破火花の量
 
 // --- ステージテキスト・色 ---
 const STAGE_TITLES = {

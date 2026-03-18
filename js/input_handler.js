@@ -659,4 +659,40 @@ function initInputHandlers() {
     bindBtn('btn-howto-back', hideHowTo);
     bindBtn('btn-howto-next', startTraining);
     bindBtn('btn-training-exit', returnToTitleFromTraining);
-}
+
+    // -----------------------------------------------------
+    // F. SETTINGS（画質設定）メニューのバインド
+    // -----------------------------------------------------
+
+    bindBtn('btn-settings', () => {
+        if (typeof AudioSys !== 'undefined') AudioSys.playSE('click');
+        gameState = 'SETTINGS';
+        ui.titleOverlay.style.display = 'none';
+        document.getElementById('settings-overlay').style.display = 'flex';
+        if (typeof window.refreshMenuButtons === 'function') window.refreshMenuButtons();
+    });
+
+    bindBtn('btn-settings-back', () => {
+        if (typeof AudioSys !== 'undefined') AudioSys.playSE('click');
+        gameState = 'TITLE';
+        document.getElementById('settings-overlay').style.display = 'none';
+        ui.titleOverlay.style.display = 'flex';
+        if (typeof window.refreshMenuButtons === 'function') window.refreshMenuButtons();
+    });
+
+    bindBtn('btn-gfx-high', () => {
+        if (typeof AudioSys !== 'undefined') AudioSys.playSE('click');
+        if (typeof applyGraphicsQuality === 'function') applyGraphicsQuality('HIGH');
+    });
+
+    bindBtn('btn-gfx-medium', () => {
+        if (typeof AudioSys !== 'undefined') AudioSys.playSE('click');
+        if (typeof applyGraphicsQuality === 'function') applyGraphicsQuality('MEDIUM');
+    });
+
+    bindBtn('btn-gfx-low', () => {
+        if (typeof AudioSys !== 'undefined') AudioSys.playSE('click');
+        if (typeof applyGraphicsQuality === 'function') applyGraphicsQuality('LOW');
+    });
+
+} 

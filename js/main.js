@@ -219,6 +219,8 @@ window.refreshMenuButtons = function (resetIndex = true) {
         if (backBtn) currentMenuButtons.push(backBtn);
     } else if (gameState === 'HOWTO') {
         document.querySelectorAll('#howto-overlay .menu-btn').forEach(btn => currentMenuButtons.push(btn));
+    } else if (gameState === 'SETTINGS') {
+        document.querySelectorAll('#settings-overlay .menu-btn').forEach(btn => currentMenuButtons.push(btn));
     } else if (gameState === 'ENDING') {
         document.querySelectorAll('#ending-msg .menu-btn').forEach(btn => currentMenuButtons.push(btn));
     }
@@ -251,8 +253,12 @@ window.updateMenuSelectionUI = function () {
  */
 function init() {
 
-    // 最初に解像度設定
+    // 1. 【最優先】最初に解像度・画面サイズを設定する！
     resize();
+
+    // 2. その後で、保存された画質設定を読み込んで星などを生成する
+    const savedQuality = localStorage.getItem('neonGravity_graphics') || 'HIGH';
+    applyGraphicsQuality(savedQuality);
 
     if (typeof AudioSys !== 'undefined') {
         AudioSys.init();
@@ -272,6 +278,43 @@ function init() {
     if (verEl) {
         verEl.innerText = "Version " + GAME_VERSION;
     }
+}
+
+/**
+ * グラフィック品質を適用し、保存する
+ */
+function applyGraphicsQuality(quality) {
+    if (!GRAPHICS_SETTINGS[quality]) return;
+
+    currentGraphicsQuality = quality;
+    const config = GRAPHICS_SETTINGS[quality];
+
+    // 変数への適用
+    GRID_SPACING = config.gridSpacing;
+    EXPLOSION_COUNT_MAG = config.explosionMag;
+
+    // グローバルに星の数と星雲の数を保存（effect_system.js 用）
+    window.currentStarCount = config.starCount;
+    window.currentNebulaeCount = config.nebulaeCount;
+
+    // 背景システムの再初期化（画面サイズ変更時と同じ処理）
+    if (typeof initGrid === 'function') initGrid();
+    if (typeof initStars === 'function') initStars();
+    if (typeof initNebulae === 'function') initNebulae();
+
+    // ローカルストレージに保存
+    localStorage.setItem('neonGravity_graphics', quality);
+
+    // UIの表示状態を更新
+    const btnHigh = document.getElementById('btn-gfx-high');
+    const btnMed = document.getElementById('btn-gfx-medium');
+    const btnLow = document.getElementById('btn-gfx-low');
+    
+    if(btnHigh) btnHigh.style.color = (quality === 'HIGH') ? '#0f0' : '';
+    if(btnMed) btnMed.style.color = (quality === 'MEDIUM') ? '#0f0' : '';
+    if(btnLow) btnLow.style.color = (quality === 'LOW') ? '#0f0' : '';
+
+    console.log(`Graphics Quality set to: ${quality}`);
 }
 
 let currentResolution = {
@@ -449,7 +492,12 @@ function loop() {
         if (typeof updateDying === 'function') updateDying();
         draw();
 
-    } else if (gameState === 'TITLE' || gameState === 'OST' || gameState === 'HOWTO' || gameState === 'RANKING'|| gameState === 'STORY') {
+    } else if (gameState === 'TITLE' || 
+        gameState === 'OST' || 
+        gameState === 'HOWTO' || 
+        gameState === 'RANKING'|| 
+        gameState === 'STORY' || 
+        gameState === 'SETTINGS') {
         introBgSpeed = 2;
         introBgScroll += introBgSpeed * gameSpeed;
 
@@ -487,7 +535,8 @@ function loop() {
         'TITLE', 
         'HOWTO', 
         'RANKING',
-        'STORY'].includes(gameState)) {
+        'STORY',
+        'SETTINGS'].includes(gameState)) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.globalCompositeOperation = 'source-over'; // 加算合成をリセット
 
@@ -724,7 +773,7 @@ function draw() {
         if (typeof drawMiniMap === 'function') drawMiniMap();
     }
     if (typeof drawScorePopups === 'function') drawScorePopups();
-
+    
     ctx.restore();
 }
 
