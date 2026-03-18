@@ -22,7 +22,7 @@ let width, height;              // 現在のキャンバスサイズ
 let worldSize = 1500;           // ワールドサイズ
 
 // --- ゲーム状態管理 ---
-var gameState = 'TITLE';        // 現在の状態 ('TITLE', 'PLAYING', 'PAUSED' 等)
+let gameState = 'TITLE';        // 現在の状態 ('TITLE', 'PLAYING', 'PAUSED' 等)
 let previousGameState = '';     // ポーズ前の状態保存用
 let stageClearTimer = 0;        // ステージクリア後の待機タイマー
 
@@ -306,15 +306,26 @@ function applyGraphicsQuality(quality) {
     localStorage.setItem('neonGravity_graphics', quality);
 
     // UIの表示状態を更新
+    setQuality(quality);        
+}
+
+function setQuality(quality) {
+    currentGraphicsQuality = quality; // config.js の変数を更新
+    
+// UIの表示状態を更新
     const btnHigh = document.getElementById('btn-gfx-high');
     const btnMed = document.getElementById('btn-gfx-medium');
     const btnLow = document.getElementById('btn-gfx-low');
-    
-    if(btnHigh) btnHigh.style.color = (quality === 'HIGH') ? '#0f0' : '';
-    if(btnMed) btnMed.style.color = (quality === 'MEDIUM') ? '#0f0' : '';
-    if(btnLow) btnLow.style.color = (quality === 'LOW') ? '#0f0' : '';
 
-    console.log(`Graphics Quality set to: ${quality}`);
+    // 一度すべてのボタンからクラスを外す
+    if(btnHigh) btnHigh.classList.remove('active-setting');
+    if(btnMed)  btnMed.classList.remove('active-setting');
+    if(btnLow)  btnLow.classList.remove('active-setting');
+
+    // 選ばれているものだけにクラスを付与する
+    if(quality === 'HIGH' && btnHigh) btnHigh.classList.add('active-setting');
+    if(quality === 'MEDIUM' && btnMed) btnMed.classList.add('active-setting');
+    if(quality === 'LOW' && btnLow) btnLow.classList.add('active-setting');
 }
 
 let currentResolution = {

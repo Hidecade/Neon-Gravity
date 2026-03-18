@@ -39,16 +39,16 @@ const GRAPHICS_SETTINGS = {
         nebulaeCount: 20      // 星雲の数
     },
     MEDIUM: {
-        gridSpacing: 48,      // やや粗いグリッド
+        gridSpacing: 40,      // やや粗いグリッド
         explosionMag: 1.5,    // 中程度の火花
-        starCount: 150,
+        starCount: 250,
         nebulaeCount: 10
     },
     LOW: {
-        gridSpacing: 64,      // 粗いグリッド（軽い）
-        explosionMag: 0.5,    // 最小限の火花
-        starCount: 50,
-        nebulaeCount: 0       // 星雲を描画しない
+        gridSpacing: 48,      // 粗いグリッド（軽い）
+        explosionMag: 1.0,    // 最小限の火花
+        starCount: 200,
+        nebulaeCount: 5       // 星雲を描画しない
     }
 };
 let currentGraphicsQuality = 'HIGH'; // 現在の品質
