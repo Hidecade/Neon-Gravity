@@ -245,7 +245,7 @@
     }
 
     #ranking-panel {
-        width: min(66vw, 480px);
+        width: min(70vw, 480px);
         padding: 10px 10px 10px;
         border-radius: 3px;
     }

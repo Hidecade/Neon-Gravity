@@ -95,9 +95,9 @@ function closeOST() {
     setTimeout(() => {
         ui.ostOverlay.style.display = 'none';
 
-        // BGMをゲーム用設定へ戻す
         if (typeof AudioSys !== 'undefined' && AudioSys.bgmEl) {
             AudioSys.bgmEl.loop = true;
+            AudioSys.bgmEl.onended = null; // イベントを解除
         }
 
         ui.titleOverlay.style.display = 'flex';
@@ -120,6 +120,11 @@ function playOSTTrack(idx) {
     // BGM再生（audio_manager.js の playBGM が呼ばれ、loopがfalseになる）
     if (typeof AudioSys !== 'undefined') {
         AudioSys.playBGM(t.k, t.i);
+
+        if (AudioSys.bgmEl) {
+            AudioSys.bgmEl.loop = false;
+            AudioSys.bgmEl.onended = window.playNextOST;
+        }
     }
 
     // リストの見た目を更新（再生中の曲を光らせる）
