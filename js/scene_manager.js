@@ -837,6 +837,40 @@ function returnToTitleFromTraining() {
     returnToTitle();
 }
 
+function openSetting() {
+    if (typeof resetTitleIdle === 'function') resetTitleIdle();
+    gameState = 'SETTINGS';
+    ui.titleOverlay.style.display = 'none';
+    
+    // IDを settings-overlay (sあり) に修正
+    const settingOverlay = document.getElementById('settings-overlay');
+    if (settingOverlay) {
+        settingOverlay.style.opacity = '0';
+        settingOverlay.style.display = 'flex';
+        settingOverlay.style.pointerEvents = 'auto';
+
+        requestAnimationFrame(() => {
+            settingOverlay.style.opacity = '1';
+        });
+    }
+    if (window.refreshMenuButtons) window.refreshMenuButtons();
+}
+
+function closeSetting() {
+    const settingOverlay = document.getElementById('settings-overlay');
+    if (settingOverlay) {
+        settingOverlay.style.opacity = '0';
+        settingOverlay.style.pointerEvents = 'none';
+
+        setTimeout(() => {
+            settingOverlay.style.display = 'none';
+            returnToTitle();
+        }, 500); 
+    } else {
+        returnToTitle();
+    }
+}
+
 
 // =========================================================
 // 3. 演出・アニメーション・シーン更新 (Cinematics & VFX Updates)

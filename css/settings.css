@@ -1,0 +1,23 @@
+/* ---------- 9.7 SETTINGS 画面 ---------- */
+#settings-overlay {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    
+    position: absolute;
+    inset: 0;
+    z-index: 1000; /* HTML側の指定に合わせる */
+    
+    flex-direction: column;
+    align-items: center;
+    /* ヘッダー・パネル・ボタンを均等配置 */
+    justify-content: space-between; 
+    box-sizing: border-box;
+    padding: 4vh 0; /* 上下の余白 */
+    pointer-events: none;
+}
+
+/* 表示中のみクリック有効 */
+#settings-overlay[style*="display: flex"] {
+    pointer-events: auto !important;
+}
