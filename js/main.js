@@ -298,7 +298,7 @@ function applyGraphicsQuality(quality) {
     window.currentNebulaeCount = config.nebulaeCount;
 
     resize();
-    
+
     // 背景システムの再初期化（画面サイズ変更時と同じ処理）
     if (typeof initGrid === 'function') initGrid();
     if (typeof initStars === 'function') initStars();
@@ -340,8 +340,6 @@ let currentResolution = {
 function detectResolution(screenW, screenH) {
     const ratio = screenW / screenH;
     const isPortrait = screenH > screenW;
-
-
 
     // VGA横固定
     if (!isPortrait && ratio >= 1.2 && ratio <= 1.5 && screenW < 900) {
@@ -420,7 +418,7 @@ function resize() {
     // ▼ プレイ画面のズームサイズ調整（縦1.2倍、横1.1倍）
     
     const isPortrait = vh > vw;
-    if (currentResolution.key === "FHD") {
+    if (currentResolution.key === "HD") {
         baseAppScale *= 0.8;
     }
     else{
@@ -438,7 +436,7 @@ function resize() {
     // HUD専用スケール
     let hudScale = 1;
 
-    if (currentResolution.key === "FHD") {
+    if (currentResolution.key === "HD") {
         hudScale = 1.8;
     } else if (
         currentResolution.key === "VGA_L" ||
