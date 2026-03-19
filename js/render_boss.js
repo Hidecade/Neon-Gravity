@@ -501,7 +501,7 @@ function drawBattleshipBoss(ctx, e) {
     const coreSize = socketRad * 0.6 + pulse * 1.5;
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.shadowBlur = isDmg ? 60 : 30;
+    if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = isDmg ? 60 : 30;
     ctx.shadowColor = colorRedNeon;
 
     ctx.fillStyle = colorDeepRed;
@@ -540,7 +540,7 @@ function drawBattleshipBoss(ctx, e) {
     }
 
     ctx.fillStyle = '#ffffff';
-    ctx.shadowBlur = 10;
+    if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 10;
     ctx.shadowColor = '#fff';
     ctx.globalAlpha = baseAlpha; // ★追加
     ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();

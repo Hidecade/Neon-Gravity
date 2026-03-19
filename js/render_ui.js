@@ -163,7 +163,7 @@ function drawBossWarningEffect() {
     const p = warningTimer / 180;
     ctx.strokeStyle = bossColor;
     ctx.lineWidth = 2;
-    ctx.shadowBlur = 15;
+    //ctx.shadowBlur = 15;
     ctx.shadowColor = bossColor;
     ctx.beginPath();
     ctx.arc(nextBossSpawnX, nextBossSpawnY, 50 + p * 200, 0, Math.PI * 2);

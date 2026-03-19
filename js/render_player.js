@@ -136,7 +136,7 @@ function drawPlayer(ctx, p) {
 
     ctx.strokeStyle = shipColor;
     ctx.lineWidth = 2;
-    ctx.shadowBlur = 10;
+    if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = 10;
     ctx.shadowColor = shipColor;
 
     // --- ベース機体 ---
@@ -177,7 +177,6 @@ function drawPlayer(ctx, p) {
 
         ctx.rotate(frame * 0.1);
         ctx.fillStyle = '#0f0';
-        ctx.shadowBlur = 5;
         ctx.shadowColor = ctx.fillStyle;
 
         // ひし形の描画
@@ -224,7 +223,7 @@ function drawInvulnBarrier(ctx, p) {
     }
 
     ctx.strokeStyle = barrierColor;
-    ctx.shadowBlur = glowBlur;
+    if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = glowBlur;
     ctx.shadowColor = barrierColor;
     ctx.lineWidth = 2.0; // 少し太くして視認性アップ
     ctx.globalCompositeOperation = 'lighter';
@@ -304,7 +303,7 @@ function drawEmeraldPhoenix(ctx, p) {
     if (p.invuln > 0) { mainColor = '#ff0'; accentColor = '#fff'; }
     else if (p.laserTimer > 0) { mainColor = '#0ff'; accentColor = '#fff'; }
 
-    ctx.shadowBlur = 20;
+    if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = 20;
     ctx.shadowColor = mainColor;
     ctx.globalCompositeOperation = 'lighter';
 

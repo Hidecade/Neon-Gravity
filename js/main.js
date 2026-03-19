@@ -339,15 +339,7 @@ function detectResolution(screenW, screenH) {
     const ratio = screenW / screenH;
     const isPortrait = screenH > screenW;
 
-    // FHD以上の横長画面は最大FHDで打ち止め
-    if (!isPortrait && screenW >= 1600 && ratio > 1.6 && ratio < 1.95) {
-        return {
-            key: "FHD",
-            width: 1920,
-            height: 1080,
-            uiScale: 1.0
-        };
-    }
+
 
     // VGA横固定
     if (!isPortrait && ratio >= 1.2 && ratio <= 1.5 && screenW < 900) {
@@ -369,11 +361,24 @@ function detectResolution(screenW, screenH) {
         };
     }
 
-    // それ以外は実解像度
+        // FHD以上の横長画面は最大FHDで打ち止め
+    if (!isPortrait && screenW >= 1280 && ratio > 1.5) {
+        return {
+            key: "HD",
+            width: 1280,  
+            height: 720,  
+            uiScale: 1.0
+        };
+    }
+
+    // スマホ等の場合も、内部解像度に少しリミッターをかける（例: 最大幅を制限）
+    const maxMobileW = 1000;
+    const mobileScale = screenW > maxMobileW ? (maxMobileW / screenW) : 1.0;
+
     return {
         key: isPortrait ? "MOBILE_P" : "MOBILE_L",
-        width: screenW,
-        height: screenH,
+        width: Math.floor(screenW * mobileScale),
+        height: Math.floor(screenH * mobileScale),
         uiScale: isPortrait ? 0.82 : 0.78
     };
 }

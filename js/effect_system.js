@@ -430,7 +430,8 @@ function drawWormholes() {
             ctx.save();
             ctx.translate(w.x, w.y);
             ctx.scale(scale, scale);
-            ctx.shadowBlur = 30; ctx.shadowColor = '#20f';
+            if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 30;
+            ctx.shadowColor = '#209';
             const grad = ctx.createRadialGradient(-5, -5, 2, 0, 0, 25);
             grad.addColorStop(0, '#333'); grad.addColorStop(0.2, '#000'); grad.addColorStop(0.8, '#000'); grad.addColorStop(1, '#0ff');
             ctx.fillStyle = grad;
@@ -631,7 +632,7 @@ function drawVisualEffects() {
             ctx.lineWidth = lw;
 
             // 遠くでは光（ぼかし）を弱く、近くで強く
-            ctx.shadowBlur = 15 * sizeFactor;
+            if (currentGraphicsQuality === 'HIGH')  ctx.shadowBlur = 15 * sizeFactor;
             ctx.shadowColor = r.color;
 
             ctx.beginPath();

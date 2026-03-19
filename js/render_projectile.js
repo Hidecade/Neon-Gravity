@@ -62,7 +62,7 @@ function drawLasers() {
         ctx.translate(l.x, l.y);
         ctx.rotate(l.angle);
         ctx.globalCompositeOperation = 'lighter';
-        ctx.shadowBlur = 15;
+        if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = 15;
         ctx.shadowColor = '#0ff';
         ctx.strokeStyle = '#0ff';
         ctx.lineWidth = 1.5;
@@ -288,7 +288,7 @@ function drawShockwave(ctx, eb) {
     ctx.strokeStyle = waveColor; // ★修正
     ctx.lineWidth = 4 + (currentScale);
     ctx.lineCap = 'round';
-    ctx.shadowBlur = 15;
+    if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = 15;
     ctx.shadowColor = waveColor; // ★修正
 
     // 元の設計より少しだけ alpha を底上げ
@@ -323,7 +323,7 @@ function drawItems() {
         ctx.scale(scale, scale);
 
         // クリスタルも少し光らせる
-        ctx.shadowBlur = 5;
+        if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = 5;
         ctx.shadowColor = '#0f0';
 
         ctx.beginPath();
@@ -355,7 +355,7 @@ function drawItems() {
         ctx.strokeStyle = color;   // 枠線をアイテム色にする
         ctx.lineWidth = 2;
 
-        ctx.shadowBlur = 10;       // ネオン発光
+        if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 10;       // ネオン発光
         ctx.shadowColor = color;
 
         ctx.strokeRect(-8, -8, 16, 16);

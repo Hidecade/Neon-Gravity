@@ -223,7 +223,7 @@ function drawWorldBounds() {
     ctx.strokeStyle = color;
     ctx.lineWidth = 3;
 
-    ctx.shadowBlur = 20;
+    if (currentGraphicsQuality === 'HIGH')  ctx.shadowBlur = 20;
     ctx.shadowColor = color;
 
     // 枠線を描画
