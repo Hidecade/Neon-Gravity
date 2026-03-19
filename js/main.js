@@ -331,6 +331,31 @@ function setQuality(quality) {
     if(quality === 'LOW' && btnLow) btnLow.classList.add('active-setting');
 }
 
+// グラフィックス品質を順番に切り替える関数
+function toggleGraphicsQuality() {
+    const qualities = ['HIGH', 'MEDIUM', 'LOW'];
+    let currentIndex = qualities.indexOf(currentGraphicsQuality);
+    let nextIndex = (currentIndex + 1) % qualities.length;
+    
+    currentGraphicsQuality = qualities[nextIndex];
+    
+    // 設定を適用 (config.js の GRAPHICS_SETTINGS 参照)
+    const settings = GRAPHICS_SETTINGS[currentGraphicsQuality];
+    GRID_SPACING = settings.gridSpacing;
+    EXPLOSION_COUNT_MAG = settings.explosionMag;
+    
+    // UIメッセージを表示してプレイヤーに知らせる
+    if (typeof showGameMessage === 'function') {
+        showGameMessage({
+            main: `QUALITY: ${currentGraphicsQuality}`,
+            type: 'compact',
+            duration: 1000
+        });
+    }
+    
+    console.log(`Graphics quality changed to: ${currentGraphicsQuality}`);
+}
+
 let currentResolution = {
     key: "FHD",
     width: 1920,

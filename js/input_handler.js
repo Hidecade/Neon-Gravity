@@ -628,19 +628,49 @@ function initInputHandlers() {
         };
     }
 
-    // ▼ ここから追加: FPSタップ表示の切り替え処理
+// ▼ ここから追加: FPSタップ表示の切り替え＆ポーズ中の画質切り替え処理
     const fpsZone = document.getElementById('simple-fps-zone');
     const fpsText = document.getElementById('simple-fps-text');
     if (fpsZone && fpsText) {
         let isFpsVisible = false;
-        const toggleFps = (e) => {
+        const handleFpsZoneClick = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            isFpsVisible = !isFpsVisible;
-            fpsText.style.opacity = isFpsVisible ? '1' : '0';
+
+            if (gameState === 'PAUSED') {
+                // --- ポーズ中の場合：グラフィック品質をローテーションで切り替える ---
+                const qualities = ['HIGH', 'MEDIUM', 'LOW'];
+                let currentIndex = qualities.indexOf(currentGraphicsQuality);
+                let nextIndex = (currentIndex + 1) % qualities.length;
+                let nextQuality = qualities[nextIndex];
+                
+                // すでに定義されている applyGraphicsQuality 関数があれば呼び出す
+                if (typeof applyGraphicsQuality === 'function') {
+                    applyGraphicsQuality(nextQuality);
+                } else {
+                    // フォールバック（念のため直接設定を更新）
+                    currentGraphicsQuality = nextQuality;
+                    const settings = GRAPHICS_SETTINGS[currentGraphicsQuality];
+                    GRID_SPACING = settings.gridSpacing;
+                    EXPLOSION_COUNT_MAG = settings.explosionMag;
+                }
+
+                // 画面中央に現在の品質を短時間表示してフィードバック
+                if (typeof showGameMessage === 'function') {
+                    showGameMessage({
+                        main: `QUALITY: ${nextQuality}`,
+                        type: 'compact',
+                        duration: 1000
+                    });
+                }
+            } else {
+                // --- ポーズ中以外の場合：従来のFPS表示/非表示切り替え ---
+                isFpsVisible = !isFpsVisible;
+                fpsText.style.opacity = isFpsVisible ? '1' : '0';
+            }
         };
-        fpsZone.addEventListener('mousedown', toggleFps);
-        fpsZone.addEventListener('touchstart', toggleFps, { passive: false });
+        fpsZone.addEventListener('mousedown', handleFpsZoneClick);
+        fpsZone.addEventListener('touchstart', handleFpsZoneClick, { passive: false });
     }
 
     // その他汎用ボタンの一括バインド用ヘルパー
