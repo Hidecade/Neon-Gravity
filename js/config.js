@@ -56,7 +56,7 @@ const GRAPHICS_SETTINGS = {
         resScale: 0.75
     }
 };
-let currentGraphicsQuality = 'HIGH'; // 現在の品質
+let currentGraphicsQuality = 'MEDIUM'; // 現在の品質
 
 // --- ステージ・難易度設定 ---
 const START_STAGE = 1;        // 開始ステージ
