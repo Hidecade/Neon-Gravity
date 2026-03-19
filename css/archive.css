@@ -1,7 +1,7 @@
 /* ---------- 9.8 STORY 画面 ---------- */
 #story-overlay {
     display: none;
-    opacity: 1; /* ★修正：フェードインさせるため初期値は0にする */
+    opacity: 0; /* フェードインさせるため初期値は0にする */
     transition: opacity 0.5s ease;
 
     position: absolute;
@@ -16,7 +16,7 @@
 #story-panel {
     position: relative;
     z-index: 2;
-    width: min(92vw, 720px); /* ★修正：長文が読みやすいように少し幅を広げました */
+    width: min(92vw, 720px);
     padding: 18px 16px 16px;
     border-radius: 3px;
     border: 1px solid rgba(120,255,255,0.18);
@@ -26,12 +26,22 @@
         inset 0 0 24px rgba(120,255,255,0.04);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
+    
+    /* 上下中央寄せ */
+    margin-top: auto;
+    margin-bottom: auto;
+
+    /* ★修正：高さを自動計算にし、はみ出しを完全に防ぐ最強の設定 */
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box; /* 内側の余白（padding）を高さに含める */
+    flex: 0 1 auto;         /* 画面が狭いときは自動的に縮む */
+    min-height: 0;          /* 縮んだ状態でスクロールさせるためのおまじない */
 }
 
 /* 本文パネル */
 #story-scroll-container {
     width: 100%;
-    max-height: 55vh; /* ★修正：高さを制限して内部スクロールを有効化 */
     overflow-y: auto;
     overflow-x: hidden;
     margin: 0;
@@ -40,6 +50,11 @@
 
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
+
+    /* ★追加：親(story-panel)の空きスペースをすべて埋める */
+    flex: 1;
+    min-height: 0;
+    height: 100%;
 }
 
 /* スクロールバー */
@@ -163,6 +178,8 @@
 
 #btn-story-back {
     margin-top: 20px;
+    margin-bottom: 20px;
+    flex-shrink: 0; /* 画面が狭くてもボタンが潰れないように保護 */
 }
 
 /* =========================================
@@ -172,7 +189,7 @@
 /* スマホ縦画面 (Portrait) */
 @media (orientation: portrait) {
     #story-overlay {
-        padding-top: 5vh; /* ★OST・ランキングに合わせて上から10%下げる */
+        padding-top: 5vh;
     }
 
     #story-panel {
@@ -182,7 +199,6 @@
 
     #story-scroll-container {
         width: 100%;
-        max-height: 65vh; /* ★高さを制限して内部スクロール可能に */
         padding-right: 6px;
     }
 
@@ -206,22 +222,19 @@
     }
 }
 
-/* スマホ横画面 (Landscape) ★追記: 横画面で崩れないようにする設定 */
+/* スマホ横画面 (Landscape) */
 @media (orientation: landscape) {
     #story-overlay {
-        padding-top: 4vh; /* ★OST・ランキングに合わせて上から4%下げる */
+        padding-top: 4vh;
     }
 
     #story-panel {
         width: min(86vw, 720px);
         padding: 12px;
     }
-
-    #story-scroll-container {
-        max-height: 50vh; /* ★横画面時のスクロール高さを制限 */
-    }
     
     #btn-story-back {
         margin-top: 12px;
+        margin-bottom: 12px;
     }
 }

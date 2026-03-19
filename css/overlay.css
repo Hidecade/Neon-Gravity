@@ -152,19 +152,24 @@
     position: absolute;
     top: 52%;
     left: 50%;
-    width: min(76vw, 660px);
-    height: 2px;
+    width: min(78vw, 630px);
+    /* ★厚みを少し増して存在感を出す */
+    height: 3px; 
     transform: translate(-50%, -50%);
     background: linear-gradient(
         to right,
-        rgba(0,0,0,0),
-        rgba(120,255,255,0.0),
-        rgba(120,255,255,0.65),
-        rgba(120,255,255,0.0),
-        rgba(0,0,0,0)
+        rgba(0,0,0,0) 0%,
+        rgba(0,255,255,0) 10%,
+        rgba(180,255,255,0.9) 50%, /* ★中央を白に近いシアンにして輝度アップ */
+        rgba(0,255,255,0) 90%,
+        rgba(0,0,0,0) 100%
     );
-    box-shadow: 0 0 16px rgba(0,255,255,0.24);
-    opacity: 0.8;
+    /* ★光彩を二重（鋭い光 + 広い光）にして「強く」見せる */
+    box-shadow: 
+        0 0 12px rgba(0, 255, 255, 0.6),  /* 芯のある光 */
+        0 0 24px rgba(0, 255, 255, 0.3);  /* 周囲への広がり */
+    
+    opacity: 0.9; /* ★少しだけ不透明度を上げる */
     pointer-events: none;
     z-index: 1;
     animation: overlayScanSweep 4.6s ease-in-out infinite;
@@ -233,9 +238,7 @@
         height: min(62vw, 380px);
     }
 
-    .overlay-scanline {
-        width: min(82vw, 620px);
-    }
+
 }
 
 @media (orientation: landscape) {
@@ -269,7 +272,4 @@
         height: min(46vw, 360px);
     }
 
-    .overlay-scanline {
-        width: min(72vw, 620px);
-    }
 }

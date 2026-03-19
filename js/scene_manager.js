@@ -588,7 +588,6 @@ function returnToTitle() {
     ui.titleOverlay.style.display = 'flex';
 
     ui.ostOverlay.style.display = 'none';
-    ui.titleOverlay.style.display = 'flex';
     ui.controls.style.display = 'none';
     hideGameMessage(true); 
 
@@ -721,7 +720,16 @@ function openStory() {
     gameState = 'STORY';
     ui.titleOverlay.style.display = 'none';
     const storyOverlay = document.getElementById('story-overlay');
-    if (storyOverlay) storyOverlay.style.display = 'flex';
+    if (storyOverlay) {
+        // 初期状態を透明にしてから表示開始
+        storyOverlay.style.opacity = '0'; 
+        storyOverlay.style.display = 'flex';
+        
+        // 次の描画タイミングで不透明度を1にする
+        requestAnimationFrame(() => {
+            storyOverlay.style.opacity = '1';
+        });
+    }
 
     const container = document.getElementById('story-scroll-container');
     if (container) {
@@ -738,8 +746,18 @@ function openStory() {
 
 function closeStory() {
     const storyOverlay = document.getElementById('story-overlay');
-    if (storyOverlay) storyOverlay.style.display = 'none';
-    returnToTitle();
+    if (storyOverlay) {
+        // 1. まず透明にする（CSSのtransitionが効く）
+        storyOverlay.style.opacity = '0';
+
+        // 2. フェード時間（0.5秒）待ってから完全に消す
+        setTimeout(() => {
+            storyOverlay.style.display = 'none';
+            returnToTitle(); // フェード後にタイトルへ戻る
+        }, 500); // CSSの transition 0.5s に合わせる
+    } else {
+        returnToTitle();
+    }
 }
 
 /**

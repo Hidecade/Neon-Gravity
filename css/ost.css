@@ -1,39 +1,62 @@
 /* ---------- 9.6 OST画面 ---------- */
 #ost-overlay {
     display: none;
-    z-index: 110;
-    padding: 18px;
-    justify-content: flex-start; /* ▼ 画面の上部に寄せる設定 */
-    box-sizing: border-box;
     opacity: 0;
     transition: opacity 0.5s ease;
+    
+    position: absolute;
+    inset: 0;
+    z-index: 110;
+
+    display: flex; /* JSで制御するがCSSでも基本構造を定義 */
+    flex-direction: column;
+    align-items: center;
+    /* ★重要：中身を「ヘッダー・パネル・ボタン」の順で等間隔に配置 */
+    justify-content: space-between; 
+    box-sizing: border-box;
+    padding: 2vh 0;
 }
 
 #ost-panel {
     position: relative;
     z-index: 2;
     width: min(92vw, 560px);
-    padding: 18px 16px 16px;
+    padding: 16px;
     border-radius: 3px;
     border: 1px solid rgba(120,255,255,0.18);
     background: rgba(0,0,0,0.5);
-    box-shadow:
-        0 0 30px rgba(0,255,255,0.08),
-        inset 0 0 24px rgba(120,255,255,0.04);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
+
+    /* ★重要設定：はみ出し防止の核 */
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    /* 画面中央付近に配置しつつ、最大高さを厳しく制限 */
+    margin: auto 0;
+    max-height: calc(100vh - 200px); 
+    overflow: hidden; /* パネル自体からは絶対にはみ出させない */
 }
 
 #ost-scroll-container {
     width: 100%;
-    max-height: 48vh;
     overflow-y: auto;
     overflow-x: hidden;
+    /* ★重要：他の要素（コントロール）が表示されたら、ここを縮ませる */
+    flex: 1 1 auto; 
+    min-height: 100px; /* 最低限のリスト表示領域を確保 */
     margin: 0;
     padding-right: 4px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
+}
+
+
+
+#btn-back {
+    /* ★重要：オーバーレイ(親)の justify-content: space-between により、
+       パネルのすぐ下に配置される。余白はここで調整 */
+    margin-top: 10px;
+    margin-bottom: 5px;
+    flex-shrink: 0; 
 }
 
 #ost-scroll-container::-webkit-scrollbar {
@@ -138,96 +161,30 @@
 }
 
 #btn-back {
-    margin-top: 18px;
-    position: relative;
-    z-index: 2;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    /* ★追加：ボタンが押し出されないように保護 */
+    flex-shrink: 0; 
 }
 
-/* ---------- portrait ---------- */
-@media (orientation: portrait) {
-    #ost-overlay {
-        padding-top: 5vh; /* ▼ 縦画面時は画面上部から10%下げる */
-    }
+/* =========================================
+   レスポンシブ (メディアクエリ)
+========================================= */
 
+@media (orientation: portrait) {
     #ost-panel {
         width: 90vw;
-        padding: 14px 12px 12px;
-        border-radius: 3px;
-    }
-
-    #ost-scroll-container {
-        max-height: 55vh;
-    }
-
-    .track-item {
-        font-size: calc(14px * var(--ui-scale, 1));
-        padding: calc(12px * var(--ui-scale, 1)) calc(10px * var(--ui-scale, 1));
-    }
-
-    #ost-now-playing {
-        font-size: calc(13px * var(--ui-scale, 1));
-    }
-
-    #ost-progress-bar {
-        height: 9px;
-    }
-
-    #btn-back {
-        margin-top: 14px;
+        max-height: calc(100vh - 220px);
     }
 }
 
-/* ---------- landscape ---------- */
 @media (orientation: landscape) {
-    #ost-overlay {
-        padding-top: 4vh; /* ▼ 横画面時は画面上部から4%下げる（隙間が少ないため控えめ） */
-    }
-    #ost-shell {
-        margin-bottom: 10px;
-        padding: 6px 14px 6px;
-        min-width: min(86vw, 680px);
-    }
-
     #ost-panel {
-        width: min(66vw, 480px);
-        padding: 10px 10px 10px;
-        border-radius: 3px;
+        width: min(70vw, 480px);
+        max-height: calc(100vh - 140px);
     }
-
-    #ost-scroll-container {
-        max-height: 45vh;
-    }
-
-.track-item {
-        padding: calc(8px * var(--ui-scale, 1)) calc(10px * var(--ui-scale, 1));
-        font-size: calc(15px * var(--ui-scale, 1));
-        line-height: 1.2;
-    }
-
-    #ost-controls {
-        margin-top: 8px;
-    }
-
-    #ost-now-playing {
-        font-size: calc(12px * var(--ui-scale, 1));
-        margin-bottom: 6px;
-    }
-
-    #ost-time-current,
-    #ost-time-total {
-        font-size: calc(11px * var(--ui-scale, 1));
-        width: 36px;
-    }
-
-    #ost-progress-row {
-        gap: 8px;
-    }
-
-    #ost-progress-bar {
-        height: 8px;
-    }
-
     #btn-back {
-        margin-top: 10px;
+        margin-top: 5px;
+        margin-bottom: 5px;
     }
 }

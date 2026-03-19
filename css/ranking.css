@@ -12,11 +12,13 @@
     flex-direction: column;
     align-items: center;
 
+    /* コンテンツを上から並べる（余白はパネル側で自動調整する） */
     justify-content: flex-start; 
 }
 
 /* panel */
 
+/* panel */
 #ranking-panel {
     position: relative;
     z-index: 2;
@@ -30,6 +32,19 @@
         inset 0 0 24px rgba(120,255,255,0.04);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
+    
+    /* 上下中央寄せ */
+    margin-top: auto;
+    margin-bottom: auto;
+
+    /* ★修正：高さを自動計算にし、はみ出しを完全に防ぐ最強の設定 */
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box; /* 内側の余白（padding）を高さに含める */
+    flex: 0 1 auto;         /* 画面が狭いときは自動的に縮む */
+    min-height: 0;          /* 縮んだ状態でスクロールさせるためのおまじない */
+    
+    /* ※ max-height: calc(...); は削除します */
 }
 
 /* loading */
@@ -57,6 +72,11 @@
 
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
+
+    /* 親(ranking-panel)の空きスペースをすべて埋める */
+    flex: 1;
+    min-height: 0;
+    height: 100%;
 }
 
 #ranking-scroll-container::-webkit-scrollbar {
@@ -168,11 +188,27 @@
     text-shadow: 0 0 8px rgba(255,215,0,0.45);
 }
 
+/* --- ランキング画面のボタン行 --- */
+#ranking-overlay .btn-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    
+    /* 上下の余白を設定 */
+    margin-top: 20px;
+    margin-bottom: 20px;
+
+    /* ★追加：画面が狭くてもボタン自体は押し潰されないように保護する */
+    flex-shrink: 0; 
+}
+
 
 /* ---------- portrait ---------- */
 @media (orientation: portrait) {
     #ranking-overlay {
-        padding-top: 5vh; /
+        padding-top: 5vh;
     }
 
     #ranking-shell {
@@ -184,10 +220,6 @@
         width: 90vw;
         padding: 14px 12px 12px;
         border-radius: 3px;
-    }
-
-    #ranking-scroll-container {
-        max-height: 65vh;
     }
 
     #loading-ranking {
@@ -219,13 +251,12 @@
     #ranking-table td.col-score {
         width: 94px;
     }
-
 }
 
 /* ---------- landscape ---------- */
 @media (orientation: landscape) {
     #ranking-overlay {
-        padding-top: 4vh; /
+        padding-top: 4vh;
     }
 
     #ranking-shell {
@@ -238,10 +269,6 @@
         width: min(70vw, 480px);
         padding: 10px 10px 10px;
         border-radius: 3px;
-    }
-
-    #ranking-scroll-container {
-        max-height: 50vh;
     }
 
     #loading-ranking {
@@ -276,6 +303,4 @@
     #ranking-table td.col-score {
         width: 92px;
     }
-
-
 }

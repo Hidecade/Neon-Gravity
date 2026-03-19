@@ -253,6 +253,7 @@ window.updateMenuSelectionUI = function () {
  */
 function init() {
 
+
     // 1. 【最優先】最初に解像度・画面サイズを設定する！
     resize();
 
@@ -901,5 +902,6 @@ window.closeInstallPrompt = function () {
 
 checkIOSInstallPrompt();
 init();
+returnToTitle();
 window.refreshMenuButtons();
 loop();
