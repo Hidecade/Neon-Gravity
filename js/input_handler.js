@@ -665,7 +665,6 @@ function initInputHandlers() {
     // -----------------------------------------------------
 
     bindBtn('btn-settings', () => {
-        if (typeof AudioSys !== 'undefined') AudioSys.playSE('click');
         gameState = 'SETTINGS';
         ui.titleOverlay.style.display = 'none';
         document.getElementById('settings-overlay').style.display = 'flex';
@@ -673,7 +672,6 @@ function initInputHandlers() {
     });
 
     bindBtn('btn-settings-back', () => {
-        if (typeof AudioSys !== 'undefined') AudioSys.playSE('click');
         gameState = 'TITLE';
         document.getElementById('settings-overlay').style.display = 'none';
         ui.titleOverlay.style.display = 'flex';
@@ -681,17 +679,14 @@ function initInputHandlers() {
     });
 
     bindBtn('btn-gfx-high', () => {
-        if (typeof AudioSys !== 'undefined') AudioSys.playSE('click');
         if (typeof applyGraphicsQuality === 'function') applyGraphicsQuality('HIGH');
     });
 
     bindBtn('btn-gfx-medium', () => {
-        if (typeof AudioSys !== 'undefined') AudioSys.playSE('click');
         if (typeof applyGraphicsQuality === 'function') applyGraphicsQuality('MEDIUM');
     });
 
     bindBtn('btn-gfx-low', () => {
-        if (typeof AudioSys !== 'undefined') AudioSys.playSE('click');
         if (typeof applyGraphicsQuality === 'function') applyGraphicsQuality('LOW');
     });
 

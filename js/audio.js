@@ -76,6 +76,7 @@ const SE_LIBRARY = {
 
         return { osc: null, duration: dur };
     },
+
     shoot: (ctx, t, g) => {
         const o = ctx.createOscillator();
         o.type = 'triangle';
@@ -405,6 +406,7 @@ const AudioSys = {
     isPageHidden: false,
     lastResumeAt: 0,
     _lifecycleHooksInstalled: false,
+    keepAliveNode: null, // ★追加: CarPlay用セッション維持ノード
 
     reset() {
         this.stopBgmInterval();
@@ -430,7 +432,8 @@ const AudioSys = {
             try {
                 const AC = window.AudioContext || window.webkitAudioContext;
                 if (AC) {
-                    this.ctx = new AC();
+                    // ★修正: CarPlayの標準に合わせてサンプリングレートを44.1kHzに固定（リサンプリングによる途切れを防止）
+                    this.ctx = new AC({ sampleRate: 44100 });
                     this.createNoise();
                     this._unlockAudio();
                 }
@@ -441,6 +444,8 @@ const AudioSys = {
 
         if (!this.bgmEl) {
             this.bgmEl = new Audio();
+            // ★追加: ネットワークバッファリングを最適化
+            this.bgmEl.preload = "auto";
             this.bgmEl.loop = true;
             this.bgmEl.volume = 0.4;
             this.bgmEl.setAttribute("playsinline", "");
@@ -484,11 +489,24 @@ const AudioSys = {
 
     _unlockAudio() {
         if (!this.ctx || this.isUnlocking) return;
-        if (this.ctx.state === "running") return;
+        if (this.ctx.state === "running" && this.keepAliveNode) return;
 
         this.isUnlocking = true;
 
         try {
+            // ★追加: 無音のループ再生を開始し、iOS/CarPlayにオーディオセッションを強制作り付けさせる
+            if (!this.keepAliveNode) {
+                const silentBuffer = this.ctx.createBuffer(1, 44100, 44100);
+                this.keepAliveNode = this.ctx.createBufferSource();
+                this.keepAliveNode.buffer = silentBuffer;
+                this.keepAliveNode.loop = true;
+                const lowGain = this.ctx.createGain();
+                lowGain.gain.value = 0.01; // ほぼ無音
+                this.keepAliveNode.connect(lowGain);
+                lowGain.connect(this.ctx.destination);
+                this.keepAliveNode.start(0);
+            }
+
             const buffer = this.ctx.createBuffer(1, 1, 22050);
             const source = this.ctx.createBufferSource();
             source.buffer = buffer;
@@ -524,6 +542,15 @@ const AudioSys = {
     installLifecycleHooks() {
         if (this._lifecycleHooksInstalled) return;
         this._lifecycleHooksInstalled = true;
+
+        // ★追加: CarPlayのナビ音声などによる割り込み（Interruption）を検知し自動復帰させる
+        if (this.ctx) {
+            this.ctx.onstatechange = () => {
+                if (this.ctx.state === "interrupted" || this.ctx.state === "suspended") {
+                    this.ensureAudioReady(false).catch(() => {});
+                }
+            };
+        }
 
         document.addEventListener("visibilitychange", () => {
             this.isPageHidden = document.hidden;
@@ -586,11 +613,7 @@ const AudioSys = {
         if (this.lastPlayed[type] && now - this.lastPlayed[type] < 0.05) return;
         this.lastPlayed[type] = now;
 
-        // ==========================================
-        // ★ 修正：ベース音量の引き上げと減衰バランスの調整
-        // ==========================================
         const masterGain = this.ctx.createGain();
-        // 全体のSE音量を強力にブースト（1.0 -> 2.5）
         masterGain.gain.value = 2.5; 
 
         if (x !== null && y !== null && typeof player !== 'undefined' && typeof width !== 'undefined') {
@@ -601,21 +624,15 @@ const AudioSys = {
             const camScale = (typeof cameraScale !== 'undefined') ? cameraScale : 1.0;
             const screenDiag = Math.hypot(width / camScale, height / camScale);
             
-            // 音が届く範囲を広く設定
             const maxDist = screenDiag * 1.2; 
 
-            // ★ 修正：最低音量を 0.4 に引き上げ
-            // これにより、左右に振り切れても「音が小さすぎて聞こえない」状態を防ぎます
             let volMult = 1.0 - (dist / maxDist);
             volMult = Math.max(0.4, Math.min(1.0, volMult));
             
-            // ★ 修正：カーブを緩やかに（0.6乗）
-            // 近くの音を最大音量にしつつ、少し離れても急激に小さくならないようにします
             masterGain.gain.value *= Math.pow(volMult, 0.6); 
 
             if (this.ctx.createStereoPanner) {
                 const panner = this.ctx.createStereoPanner();
-                // 左右のパンニングを適切に反映
                 const panLimit = (width / camScale) * 0.45; 
                 panner.pan.value = Math.max(-1.0, Math.min(1.0, dx / panLimit));
                 
@@ -627,7 +644,6 @@ const AudioSys = {
         } else {
             masterGain.connect(this.ctx.destination);
         }
-        // ==========================================
 
         const t = this.ctx.currentTime;
         const g = this.ctx.createGain();
@@ -703,10 +719,8 @@ const AudioSys = {
         const noLoopKeys = ["ending", "clear", "all_clear", "name"];
         const shouldLoop = !(isOST || noLoopKeys.includes(key));
 
-        // 先に loop を確定
         this.bgmEl.loop = shouldLoop;
 
-        // 同一曲再生中なら loop だけ合わせて終了
         if (this.currentSrc === nextFull && !this.bgmEl.paused) {
             if (this.bgmEl.loop !== shouldLoop) {
                 this.bgmEl.loop = shouldLoop;
@@ -772,25 +786,14 @@ const AudioSys = {
     },
 
     pauseBGM() {
-        // BGM停止
         if (this.bgmEl && !this.bgmEl.paused) {
             this.bgmEl.pause();
         }
-
-        // ==========================================
-        // ★不具合の原因だった以下の処理を削除（コメントアウト）しました
-        // これで他との連携が壊れず、安全にSEが再開されます！
-        // ==========================================
-        // if (this.ctx && this.ctx.state === "running") {
-        //     this.ctx.suspend().catch(() => { });
-        // }
     },
 
     async resumeBGM(fromUserGesture = false) {
-        // 先に AudioContext を確実に復帰
         await this.ensureAudioReady(fromUserGesture);
 
-        // その後 BGM を再開
         if (this.bgmEl && this.bgmEl.paused && this.currentSrc != null && this.bgmEl.src) {
             this.bgmEl.play().catch(() => { });
         }
