@@ -35,7 +35,7 @@ canvas {
 
 
 /* =========================================================
-   2. メインUIコンテナ & HUD (TRON: Legacy Style)
+   2. メインUIコンテナ & HUD (Clean Sci-Fi Style)
    ========================================================= */
 #ui {
     position: absolute;
@@ -48,12 +48,12 @@ canvas {
     flex-direction: column;
     padding: 16px 18px;
     box-sizing: border-box;
-    /* TRON特有の薄いスキャンラインエフェクト（任意） */
-    /* background: linear-gradient(rgba(0, 221, 255, 0.03) 1px, transparent 1px) 0 0 / 100% 4px; */
+    /* 画面端にうっすらと暗いシャドウを落とし、HUDの立体感を出す */
+    background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(0, 10, 20, 0.4) 100%);
 }
 
 .hud-row {
-    display: none; /* JSでflexに変更される想定 */
+    display: none; 
     justify-content: space-between;
     align-items: flex-start;
     width: min(100%, 1600px);
@@ -70,27 +70,27 @@ canvas {
 }
 
 #score-display {
-    font-size: calc(22px * var(--hud-scale)); /* 26pxから22pxへ縮小 */
-    color: #e0ffff;
-    text-shadow: 
-        0 0 calc(5px * var(--hud-scale)) #0df, 
-        0 0 calc(15px * var(--hud-scale)) #0df, 
-        0 0 calc(30px * var(--hud-scale)) #0df;
+    font-size: calc(22px * var(--hud-scale)); 
+    color: #ffffff; /* 白ベースにシアンの光 */
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.8);
     letter-spacing: calc(2px * var(--hud-scale));
     margin-bottom: 0;
     line-height: 1;
+    /* 下に細いホログラム風のラインを引く */
+    border-bottom: 1px solid rgba(0, 255, 255, 0.4);
+    padding-bottom: 4px;
 }
 
 .sub-text {
-    font-size: calc(10px * var(--hud-scale)); /* 12pxから10pxへ縮小 */
-    color: rgba(0, 221, 255, 0.7);
-    font-weight: bold;
+    font-size: calc(10px * var(--hud-scale)); 
+    color: rgba(180, 230, 255, 0.8);
+    font-weight: normal;
     letter-spacing: 1px;
 }
 
 .hud-label {
-    font-size: calc(10px * var(--hud-scale)); /* 12pxから10pxへ縮小 */
-    color: rgba(0, 221, 255, 0.6);
+    font-size: calc(10px * var(--hud-scale)); 
+    color: rgba(180, 230, 255, 0.6);
     display: block;
     margin-bottom: calc(-2px * var(--hud-scale));
     line-height: 1.1;
@@ -98,17 +98,15 @@ canvas {
 }
 
 #stage-num {
-    font-size: calc(24px * var(--hud-scale)); /* 28pxから24pxへ縮小 */
+    font-size: calc(24px * var(--hud-scale)); 
     color: #fff;
     font-weight: bold;
     line-height: 1;
-    text-shadow: 
-        0 0 calc(5px * var(--hud-scale)) #0df,
-        0 0 calc(15px * var(--hud-scale)) #0df;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
 }
 
 /* =========================================================
-   3. ゲージ・バーコンポーネント (TRON: Legacy Style)
+   3. ゲージ・バーコンポーネント (Clean Sci-Fi Style)
    ========================================================= */
 #gauge-box,
 #info-box > div {
@@ -116,110 +114,94 @@ canvas {
 }
 
 #gauge-box {
-    width: calc(120px * var(--hud-scale)); /* 少しワイドに */
+    width: calc(120px * var(--hud-scale)); 
     text-align: right;
 }
 
 .bar-label {
-    font-size: calc(10px * var(--hud-scale)); /* 12pxから10pxへ縮小 */
+    font-size: calc(10px * var(--hud-scale)); 
     letter-spacing: calc(2px * var(--hud-scale));
     margin-bottom: calc(4px * var(--hud-scale));
     display: block;
-    color: #0df;
-    text-shadow: 0 0 5px rgba(0, 221, 255, 0.8);
+    color: rgba(200, 240, 255, 0.9);
     line-height: 1.1;
     text-transform: uppercase;
+    padding-right: 6px;
 }
 
-/* 敵勢力は「クルー（Clu）」軍のアンバー/オレンジ */
 .bar-label.enemy,
 #boss-name-label {
-    color: #ff6600; 
-    text-shadow: 0 0 5px rgba(255, 102, 0, 0.8);
+    color: rgba(255, 200, 200, 0.9);
 }
 
 .bar-frame,
 .laser-bar-frame {
     width: 100%;
-    height: calc(10px * var(--hud-scale));
-    /* ガラスパネルのような透過ブラックと光るフチ */
-    border: 1.5px solid rgba(0, 221, 255, 0.6);
-    background: rgba(0, 5, 10, 0.6); 
-    backdrop-filter: blur(4px); /* 背景のぼかし効果 */
-    box-shadow: 
-        0 0 8px rgba(0, 221, 255, 0.2), 
-        inset 0 0 8px rgba(0, 221, 255, 0.3);
+    height: calc(8px * var(--hud-scale)); /* スマートに細く */
+    background: rgba(0, 15, 30, 0.6); 
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    border-radius: 2px; /* 少しだけ丸みを持たせて洗練させる */
+    backdrop-filter: blur(4px);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
     margin-bottom: calc(10px * var(--hud-scale));
     overflow: hidden;
     box-sizing: border-box;
-    transform: skewX(-15deg); /* スタイリッシュな斜めカット */
 }
 
 .laser-bar-frame {
     margin-bottom: 0;
 }
 
-/* 敵用フレームはオレンジ発光 */
 .bar-frame.enemy,
 .bar-frame.boss {
-    border-color: rgba(255, 102, 0, 0.6);
-    box-shadow: 
-        0 0 8px rgba(255, 102, 0, 0.2), 
-        inset 0 0 8px rgba(255, 102, 0, 0.3);
-}
-
-.bar-frame.boss {
-    border-color: #ff3300;
+    border-color: rgba(255, 51, 51, 0.3);
 }
 
 #shield-bar {
     width: 100%;
     height: 100%;
-    background: #0df;
-    transition: width 0.1s;
-    /* コアが白く光り、周囲にシアンのオーラが出る表現 */
-    box-shadow: 
-        0 0 calc(10px * var(--hud-scale)) #0df, 
-        0 0 calc(20px * var(--hud-scale)) #0df,
-        inset 0 0 calc(5px * var(--hud-scale)) #fff;
+    /* 先端に向かってエネルギーが強くなるグラデーション */
+    background: linear-gradient(90deg, rgba(0, 255, 180, 0.4), rgb(0, 255, 180));
+    transition: width 0.15s ease-out;
+    box-shadow: 0 0 calc(8px * var(--hud-scale)) rgb(0, 255, 180);
 }
 
 .shield-critical {
-    animation: blink 0.2s infinite;
-    background: #ff0044 !important; /* 危険時は赤 */
-    box-shadow: 0 0 15px #ff0044, inset 0 0 5px #fff !important;
+    /* スムーズなフェード点滅（エラーのようなチカチカではなく、警告の脈打ち） */
+    animation: smooth-pulse 0.8s infinite alternate;
+    background: linear-gradient(90deg, rgba(255, 51, 51, 0.4), #ff3333) !important;
+}
+
+@keyframes smooth-pulse {
+    from { opacity: 1; box-shadow: 0 0 10px #ff3333; }
+    to { opacity: 0.4; box-shadow: 0 0 2px #ff3333; }
 }
 
 #enemy-bar {
     width: 100%;
     height: 100%;
-    background: #ff6600; /* TRONオレンジ */
-    transition: width 0.5s;
-    box-shadow: 
-        0 0 calc(10px * var(--hud-scale)) #ff6600, 
-        0 0 calc(20px * var(--hud-scale)) #ff6600,
-        inset 0 0 calc(5px * var(--hud-scale)) #fff;
+    background: linear-gradient(90deg, rgba(255, 51, 51, 0.4), #ff3333);
+    transition: width 0.5s ease-out;
+    box-shadow: 0 0 calc(8px * var(--hud-scale)) #ff3333;
 }
 
 #boss-hp-bar-inline {
     width: 100%;
     height: 100%;
-    background: #ff3300;
-    box-shadow: 
-        0 0 calc(15px * var(--hud-scale)) #ff3300,
-        inset 0 0 calc(5px * var(--hud-scale)) #fff;
-    transition: width 0.2s, background-color 0.3s, box-shadow 0.3s;
+    background: linear-gradient(90deg, rgba(255, 51, 51, 0.4), #ff3333);
+    box-shadow: 0 0 calc(12px * var(--hud-scale)) #ff3333;
+    transition: width 0.2s ease-out, background-color 0.3s;
 }
 
 .laser-bar-fill {
     height: 100%;
-    background: #0df;
-    box-shadow: 0 0 calc(12px * var(--hud-scale)) #0df, inset 0 0 calc(4px * var(--hud-scale)) #fff;
+    background: linear-gradient(90deg, rgba(0, 255, 255, 0.4), #0ff);
+    box-shadow: 0 0 calc(8px * var(--hud-scale)) #0ff;
 }
 
 #weapon-display {
-    width: calc(120px * var(--hud-scale)); /* gauge-boxに合わせる */
-    height: calc(10px * var(--hud-scale));
+    width: calc(120px * var(--hud-scale)); 
+    height: calc(8px * var(--hud-scale));
     display: flex;
     justify-content: space-between;
     margin-top: calc(4px * var(--hud-scale));
@@ -228,12 +210,11 @@ canvas {
 .w-block {
     flex: 1;
     height: 100%;
-    margin-right: calc(4px * var(--hud-scale));
-    background: transparent;
-    border: 1px solid rgba(0, 221, 255, 0.3);
+    margin-right: calc(3px * var(--hud-scale));
+    border: 1px solid rgba(0, 255, 180, 0.2);
+    border-radius: 1px;
     box-sizing: border-box;
-    transform: skewX(-15deg); /* ひし形に傾ける */
-    transition: all 0.2s ease-out;
+    transition: all 0.2s ease;
 }
 
 .w-block:last-child {
@@ -241,16 +222,9 @@ canvas {
 }
 
 .w-block.active {
-    /* 弾のベースカラー（RGB: 0, 255, 180） */
     background: rgb(0, 255, 180); 
-    
-    /* 弾の芯の色（#cffff5）を枠線にして鋭さを出す */
-    border-color: #cffff5; 
-    
-    /* 弾の発光と同じエメラルドグリーンのグロー効果 */
-    box-shadow: 
-        0 0 calc(8px * var(--hud-scale)) rgb(0, 255, 180), 
-        0 0 calc(16px * var(--hud-scale)) rgb(0, 255, 180);
+    border-color: #ffffff; 
+    box-shadow: 0 0 calc(6px * var(--hud-scale)) rgb(0, 255, 180);
 }
 
 #boss-ui-container {
