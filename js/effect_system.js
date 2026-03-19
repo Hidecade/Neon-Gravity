@@ -82,18 +82,13 @@ function initNebulae(forcedColor = null) {
     const spaceDeep = { r: 20, g: 0, b: 60 };
 
     // --- 2. 配置基準となる星団（クラスター）の決定 ---
-    // 星団（starClusters）が生成されていればそれを利用し、なければ画面中央を基準とする
-    // これにより、星が集まっている場所に星雲も発生しやすくなり、自然な見た目になる
     const clusters = (starClusters.length > 0) ? starClusters : [{ x: width / 2, y: height / 2 }];
 
     // --- 3. 星雲生成ループ ---
-    // ★修正2：生成する星雲の数を 12 から 20 に増やして密度を上げる
-    //const count = 20;
     const count = window.currentNebulaeCount !== undefined ? window.currentNebulaeCount : 20;
 
     for (let i = 0; i < count; i++) {
         // --- A. 星雲の個体差（サイズ・透明度）の設定 ---
-        // 半径を 200px 〜 500px の範囲でランダムに決定
         const radius = 200 + Math.random() * 150;
 
         // 透明度（アルファ値）を 0.04 〜 0.10 の範囲でランダムに決定
@@ -271,8 +266,6 @@ function distortGrid(x, y, force, radius) {
                 const d = Math.sqrt(distSq);
 
                 // 三角関数を使わずベクトルで力を加える
-                // cos(a) = dx / d, sin(a) = dy / d
-                // 力 f = force * (1 - d / radius)
                 const f = force * (1 - d / radius);
 
                 p.vx += (dx / d) * f;
@@ -355,8 +348,10 @@ function updateGrid() {
     }
 }
 
+
+
 function updateParticlesAndRings() {
-    // ▼ ループ外で摩擦係数を事前計算（CPU負荷軽減）
+    // 摩擦係数を事前計算
     const friction = Math.pow(0.92, gameSpeed);
 
     // --- パーティクルの更新 ---
@@ -364,7 +359,7 @@ function updateParticlesAndRings() {
         const p = particles[i];
         p.x += p.vx * gameSpeed;
         p.y += p.vy * gameSpeed;
-        p.vx *= friction; // 事前計算した定数を乗算
+        p.vx *= friction;
         p.vy *= friction;
 
         if (p.isBubble) {
@@ -378,12 +373,9 @@ function updateParticlesAndRings() {
         
         if (p.rotV) p.angle += p.rotV * gameSpeed;
         
-        // ▼ O(1) での要素削除 (Swap & Pop)
+        // Swap & Pop で削除
         if (p.life <= 0) {
-            const lastIdx = particles.length - 1;
-            if (i !== lastIdx) {
-                particles[i] = particles[lastIdx];
-            }
+            particles[i] = particles[particles.length - 1];
             particles.pop();
         }
     }
@@ -393,31 +385,24 @@ function updateParticlesAndRings() {
         const r = rings[i];
 
         if (r.followPlayer) {
-            const vY = player.visualYOffset || 0;
             r.x = player.x;
-            r.y = player.y + vY;
+            r.y = player.y + (player.visualYOffset || 0);
         }
 
         if (r.isBomb) {
             r.r += (r.targetR - r.r) * 0.15 * gameSpeed;
             r.life -= 0.02 * gameSpeed;
         } else {
-            const speed = (r.vr !== undefined ? r.vr : 8) * SPEED_SCALE;
-            r.r += speed * gameSpeed;
-            const decay = (r.decay !== undefined ? r.decay : 0.08) * SPEED_SCALE;
-            r.life -= decay * gameSpeed;
+            r.r += (r.vr !== undefined ? r.vr : 8) * SPEED_SCALE * gameSpeed;
+            r.life -= (r.decay !== undefined ? r.decay : 0.08) * SPEED_SCALE * gameSpeed;
         }
 
-        // ▼ O(1) での要素削除 (Swap & Pop)
+        // Swap & Pop で削除
         if (r.life <= 0) {
-            const lastIdx = rings.length - 1;
-            if (i !== lastIdx) {
-                rings[i] = rings[lastIdx];
-            }
+            rings[i] = rings[rings.length - 1];
             rings.pop();
         }
     }
-
 }
 
 
@@ -450,21 +435,28 @@ function drawWormholes() {
 
 
 function drawVisualEffects() {
-
-    // 1. 特殊ミサイル（プレイヤー側など）
+    // 1. 特殊ミサイル（パスをまとめてから1回で塗りつぶす）
     ctx.fillStyle = '#fd0';
+    ctx.beginPath();
     missiles.forEach(m => {
-        ctx.beginPath();
-        ctx.arc(m.x, m.y, 4 * G_SCALE, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(m.x, m.y);
+        ctx.arc(m.x, m.y, 4 * G_SCALE, 0, PI2);
     });
+    ctx.fill();
 
-    // --- パーティクルの描画（最適化） ---
+    // =========================================================
+    // 2 & 3. パーティクルの描画 (ループ統合版)
+    // =========================================================
+    const batches = {};
+
     particles.forEach(p => {
         if (!isOnScreen(p, 50)) return;
+
+        // A. 特殊パーティクル（破片、泡）の個別描画
         if (p.isShard || p.isBubble) {
             ctx.save();
             ctx.globalAlpha = Math.min(1, p.life);
+            
             if (p.isShard) {
                 ctx.translate(p.x, p.y);
                 ctx.rotate(p.angle || 0);
@@ -479,19 +471,18 @@ function drawVisualEffects() {
                 if (p.shardType === 'eclipseBit') {
                     const pts = [{ x: 14, y: 0, z: 0 }, { x: -7, y: 7, z: 4 }, { x: -7, y: -7, z: 4 }, { x: -7, y: 0, z: -8 }];
                     const lines = [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]];
-                    const project = (pt) => {
-                        const tilt = 0.4;
-                        const finalY = pt.y * Math.cos(tilt) - pt.z * Math.sin(tilt);
-                        return { x: pt.x, y: finalY };
-                    };
-                    const pProj = pts.map(pt => project(pt));
                     ctx.beginPath();
-                    lines.forEach(l => { ctx.moveTo(pProj[l[0]].x, pProj[l[0]].y); ctx.lineTo(pProj[l[1]].x, pProj[l[1]].y); });
+                    lines.forEach(l => {
+                        const tilt = 0.4;
+                        const p1y = pts[l[0]].y * Math.cos(tilt) - pts[l[0]].z * Math.sin(tilt);
+                        const p2y = pts[l[1]].y * Math.cos(tilt) - pts[l[1]].z * Math.sin(tilt);
+                        ctx.moveTo(pts[l[0]].x, p1y); ctx.lineTo(pts[l[1]].x, p2y);
+                    });
                     ctx.globalAlpha = smoothAlpha; ctx.stroke();
                     ctx.fillStyle = p.color; ctx.globalAlpha = smoothAlpha * 0.2; ctx.fill();
                     ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5; ctx.globalAlpha = smoothAlpha * 0.5; ctx.stroke();
                 } else if (p.shardType === 'dragonSeg') {
-                    const w = 12; const h = 18;
+                    const w = 12, h = 18;
                     ctx.beginPath(); ctx.moveTo(w, -h / 2); ctx.lineTo(w, h / 2); ctx.lineTo(-w * 0.9, h * 0.35); ctx.lineTo(-w * 0.9, -h * 0.35); ctx.closePath();
                     ctx.fillStyle = p.color; ctx.globalAlpha = smoothAlpha * 0.3; ctx.fill();
                     ctx.globalAlpha = smoothAlpha; ctx.stroke();
@@ -501,72 +492,44 @@ function drawVisualEffects() {
                     if (p.vertices) { ctx.moveTo(p.vertices[0].x, p.vertices[0].y); ctx.lineTo(p.vertices[1].x, p.vertices[1].y); ctx.lineTo(p.vertices[2].x, p.vertices[2].y); }
                     else { ctx.moveTo(0, -10); ctx.lineTo(8, 8); ctx.lineTo(-8, 8); }
                     ctx.closePath(); ctx.stroke();
-                    ctx.fillStyle = p.color; ctx.globalAlpha = Math.min(1, p.life) * 0.3; ctx.fill();
+                    ctx.fillStyle = p.color; ctx.globalAlpha = opacity * 0.3; ctx.fill();
                 } else if (p.shardType === 'rock') {
                     ctx.lineWidth = 1.0 / s;
-
-                    ctx.beginPath();
-                    ctx.moveTo(-8, -6);
-                    ctx.lineTo( 6, -4);
-                    ctx.lineTo( 8,  5);
-                    ctx.lineTo(-5,  7);
-                    ctx.closePath();
-
-                    ctx.fillStyle = p.color || '#777';
-                    ctx.globalAlpha = smoothAlpha * 0.55;
-                    ctx.fill();
-
-                    ctx.globalAlpha = smoothAlpha;
-                    ctx.stroke();
-                } else {
-                    ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-5, 5); ctx.lineTo(-5, -5); ctx.closePath(); ctx.stroke();
-                    ctx.fillStyle = p.color; ctx.globalAlpha = Math.min(1, p.life) * 0.4; ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(-8, -6); ctx.lineTo(6, -4); ctx.lineTo(8, 5); ctx.lineTo(-5, 7); ctx.closePath();
+                    ctx.fillStyle = p.color || '#777'; ctx.globalAlpha = smoothAlpha * 0.55; ctx.fill();
+                    ctx.globalAlpha = smoothAlpha; ctx.stroke();
                 }
             } else if (p.isBubble) {
                 ctx.translate(p.x, p.y);
                 const fade = Math.min(1.0, p.life) * 0.6;
                 ctx.globalAlpha = fade;
                 const r = p.size * G_SCALE;
-                ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fillStyle = `rgba(255, 255, 255, 0.2)`; ctx.fill();
+                ctx.beginPath(); ctx.arc(0, 0, r, 0, PI2); 
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.fill();
                 ctx.strokeStyle = p.color; ctx.lineWidth = 1.5; ctx.stroke();
-                ctx.fillStyle = `rgba(255, 255, 255, 0.9)`; ctx.beginPath(); ctx.arc(-r * 0.4, -r * 0.4, r * 0.25, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; 
+                ctx.beginPath(); ctx.arc(-r * 0.4, -r * 0.4, r * 0.25, 0, PI2); ctx.fill();
             }
             ctx.restore();
+
+        } else {
+            // B. 通常火花のバッチ分類処理
+            const alpha = p.life > 1 ? 1 : Math.max(0.1, Math.round(p.life * 10) / 10);
+            const lw = p.size ? Math.round(p.size) : 2;
+            const key = `${p.color}_${lw}_${alpha}`;
+
+            if (!batches[key]) {
+                batches[key] = { color: p.color, lineWidth: lw, alpha: alpha, lines: [] };
+            }
+            batches[key].lines.push(p);
         }
     });
 
-    // 3. 単純なパーティクル（通常の火花）のバッチ描画処理
+    // 分類した通常火花を一括描画
     ctx.save();
     ctx.lineCap = 'round';
-
-    // 描画プロパティごとのグループ化用ハッシュ
-    const batches = {};
-
-    // a. パーティクルをスタイルごとに分類して座標を蓄積
-    particles.forEach(p => {
-        if (!isOnScreen(p, 50)) return;
-        if (p.isShard || p.isBubble) return;
-
-        // 透過度は小数第1位レベルで丸め、キーの種類（グループ数）を抑える
-        const alpha = p.life > 1 ? 1 : Math.max(0.1, Math.round(p.life * 10) / 10);
-        const lw = p.size ? Math.round(p.size) : 2;
-        const key = `${p.color}_${lw}_${alpha}`;
-
-        if (!batches[key]) {
-            batches[key] = {
-                color: p.color,
-                lineWidth: lw,
-                alpha: alpha,
-                lines: []
-            };
-        }
-        batches[key].lines.push(p);
-    });
-
-    // b. グループごとに1回のドローコールでまとめて描画
     for (const key in batches) {
         const batch = batches[key];
-        
         ctx.strokeStyle = batch.color;
         ctx.lineWidth = batch.lineWidth;
         ctx.globalAlpha = batch.alpha;
@@ -577,14 +540,12 @@ function drawVisualEffects() {
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
         });
-        ctx.stroke(); // グループにつき1回だけ呼び出す
+        ctx.stroke(); 
     }
-
     ctx.restore();
 
-
     // =========================================================
-    // 4. リングエフェクト (★ここが重要：ボム描画の分岐)
+    // 4. リングエフェクト
     // =========================================================
     ctx.globalAlpha = 1.0;
 
@@ -595,66 +556,43 @@ function drawVisualEffects() {
         ctx.globalCompositeOperation = 'lighter';
 
         if (r.isBomb) {
-            // (ボムの描画はそのまま省略)
-            ctx.fillStyle = r.color; ctx.globalAlpha = Math.max(0, r.life * 0.25); ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = r.color; ctx.lineWidth = 20 * r.life * G_SCALE; ctx.globalAlpha = Math.max(0, r.life * 0.8); ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2); ctx.stroke();
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 4 * G_SCALE; ctx.globalAlpha = Math.max(0, r.life); ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, Math.PI * 2); ctx.stroke();
-
+            ctx.fillStyle = r.color; ctx.globalAlpha = Math.max(0, r.life * 0.25); ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, PI2); ctx.fill();
+            ctx.strokeStyle = r.color; ctx.lineWidth = 20 * r.life * G_SCALE; ctx.globalAlpha = Math.max(0, r.life * 0.8); ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, PI2); ctx.stroke();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 4 * G_SCALE; ctx.globalAlpha = Math.max(0, r.life); ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, PI2); ctx.stroke();
         } else {
             const lw = (r.lineWidth !== undefined ? r.lineWidth : 4) * G_SCALE;
             const currentR = Math.max(0, r.r * G_SCALE);
-
-            // ▼▼▼ 修正：イントロ用リングは透明度計算をスキップして強制表示 ▼▼▼
             let sizeFactor = 1.0;
 
-            // 収束リング(vr < 0) かつ イントロ用でない場合のみ、フェードイン計算をする
             if (r.vr < 0 && !r.isIntroRing) {
                 const progress = Math.max(0, Math.min(1.0, 1.0 - (r.r / 500)));
                 sizeFactor = Math.pow(progress, 3);
             }
 
-            // 基本透明度
             const baseAlpha = Math.min(1.0, r.life) * sizeFactor;
 
-            // 1. 内部の塗りつぶし
             if (r.fill) {
                 ctx.fillStyle = r.color;
-                // 塗りはさらに薄くして上品に
                 ctx.globalAlpha = baseAlpha * 0.15;
-                ctx.beginPath();
-                ctx.arc(r.x, r.y, currentR, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(r.x, r.y, currentR, 0, PI2); ctx.fill();
             }
 
-            // 2. メインの色の輪
             ctx.globalAlpha = baseAlpha;
             ctx.strokeStyle = r.color;
             ctx.lineWidth = lw;
-
-            // 遠くでは光（ぼかし）を弱く、近くで強く
-            if (currentGraphicsQuality === 'HIGH')  ctx.shadowBlur = 15 * sizeFactor;
+            if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 15 * sizeFactor;
             ctx.shadowColor = r.color;
 
-            ctx.beginPath();
-            ctx.arc(r.x, r.y, currentR, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.beginPath(); ctx.arc(r.x, r.y, currentR, 0, PI2); ctx.stroke();
 
-            // 3. 芯の白い輪
             if (lw > 2) {
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = lw * 0.3;
                 ctx.shadowBlur = 0;
-                // 芯も透明度に従う
                 ctx.globalAlpha = Math.min(1.0, baseAlpha * 1.5);
-
-                ctx.beginPath();
-                ctx.arc(r.x, r.y, currentR, 0, Math.PI * 2);
-                ctx.stroke();
+                ctx.beginPath(); ctx.arc(r.x, r.y, currentR, 0, PI2); ctx.stroke();
             }
-            // ▲▲▲ 修正ここまで ▲▲▲
         }
-
         ctx.restore();
     });
-
 }
