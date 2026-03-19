@@ -1578,14 +1578,30 @@ function destroyEnemy(e) {
         isBoss: isBossClass // 描画側で色を変えるためのフラグ
     });
 
-    // ドロップ処理
+    // --- ドロップ処理 ---
     if (e.noDrop || e.drop === 'none') return;
     const itemProps = { x: e.x, y: e.y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4 };
-    if (e.drop === 'level') powerups.push({ ...itemProps, type: 'level', life: 999999 });
-    else if (e.drop === 'laser') powerups.push({ ...itemProps, type: 'laser', life: ITEM_LIFE });
-    else if (e.drop === 'invincible') powerups.push({ ...itemProps, type: 'invincible', life: ITEM_LIFE });
-    else if (e.drop === 'crystal') crystals.push({ ...itemProps, life: ITEM_LIFE });
-    else if (e.drop === 'shield') powerups.push({ ...itemProps, type: 'shield', life: ITEM_LIFE });
+
+    // ★追加: 実際のドロップ内容を判定する
+    let finalDropType = e.drop;
+
+    if (finalDropType === 'level') {
+        // もし同時に複数の「Wアイテム持ち敵」が画面にいて、
+        // すでにノルマ(2個)達成済みか、武器レベルがMAXならクリスタルに降格させる
+        if (levelItemsDroppedInStage >= 2 || player.weaponLevel >= MAX_WEAPON_LEVEL) {
+            finalDropType = 'crystal';
+        } else {
+            // ここで初めて「実際にドロップした数」をカウントする
+            levelItemsDroppedInStage++; 
+        }
+    }
+
+    // ★変更: e.drop ではなく finalDropType で判定するように書き換える
+    if (finalDropType === 'level') powerups.push({ ...itemProps, type: 'level', life: 999999 });
+    else if (finalDropType === 'laser') powerups.push({ ...itemProps, type: 'laser', life: ITEM_LIFE });
+    else if (finalDropType === 'invincible') powerups.push({ ...itemProps, type: 'invincible', life: ITEM_LIFE });
+    else if (finalDropType === 'crystal') crystals.push({ ...itemProps, life: ITEM_LIFE });
+    else if (finalDropType === 'shield') powerups.push({ ...itemProps, type: 'shield', life: ITEM_LIFE });
 }
 
 function applySeparation(e) {
@@ -1721,35 +1737,35 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     const vx = Math.cos(angle) * bSpd;
     const vy = Math.sin(angle) * bSpd;
 
-    // -----------------------------------------------------
+// -----------------------------------------------------
     // アイテムドロップ決定ロジック
     // -----------------------------------------------------
     let dropType = 'crystal'; // デフォルト
     const rnd = Math.random();
 
-    // 1. 【最優先】レベルアップアイテム (条件付き)
-    if (levelItemsDroppedInStage < 2 && player.weaponLevel < MAX_WEAPON_LEVEL && rnd < DROP_RATES.LEVEL) {
-        dropType = 'level';
-        levelItemsDroppedInStage++; // 出現したらカウントを増やす
-    }
-    // 2. その他のアイテム抽選 (レベルアップが出なかった場合)
-    else {
-        const subRnd = Math.random();
-        // ピンチかどうかで回復率を変える
-        const shieldChance = (player.shield < 30) ? DROP_RATES.SHIELD_LOW : DROP_RATES.SHIELD_NORM;
+    // ピンチかどうかでシールドの回復率を変える
+    const shieldChance = (player.shield < 30) ? DROP_RATES.SHIELD_LOW : DROP_RATES.SHIELD_NORM;
 
-        // 確率の積み上げ判定
-        if (subRnd < DROP_RATES.LASER) {
-            dropType = 'laser';
-        }
-        else if (subRnd < DROP_RATES.LASER + DROP_RATES.INVINCIBLE) {
-            dropType = 'invincible';
-        }
-        else if (subRnd < DROP_RATES.LASER + DROP_RATES.INVINCIBLE + shieldChance) {
-            dropType = 'shield';
-        }
-        // それ以外は 'crystal' のまま
+    // レベルアップアイテムが出る条件を満たしているか判定
+    const canDropLevel = (levelItemsDroppedInStage < 2 && player.weaponLevel < MAX_WEAPON_LEVEL);
+    
+    // 条件を満たしていれば設定された確率を使い、満たしていなければ 0%（出ない）にする
+    const levelChance = canDropLevel ? DROP_RATES.LEVEL : 0;
+
+    // 確率の積み上げ判定（ひとつの rnd で全てのアイテムを抽選する）
+    if (rnd < levelChance) {
+        dropType = 'level';
     }
+    else if (rnd < levelChance + DROP_RATES.LASER) {
+        dropType = 'laser';
+    }
+    else if (rnd < levelChance + DROP_RATES.LASER + DROP_RATES.INVINCIBLE) {
+        dropType = 'invincible';
+    }
+    else if (rnd < levelChance + DROP_RATES.LASER + DROP_RATES.INVINCIBLE + shieldChance) {
+        dropType = 'shield';
+    }
+    // それ以外（どの確率の枠にも入らなかった場合）は 'crystal' のまま
 
     if (type === 'dragon') {
         enemies.push({

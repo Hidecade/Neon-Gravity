@@ -13,7 +13,15 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const SCORES_COLLECTION = "neon_gravity_scores";
+
+// config.jsからバージョンを取得 (例: "1.4.5")
+const fullVersion = window.GAME_VERSION || "1.0.0";
+
+// ドットで区切って最初の数字(メジャーバージョン)だけを取り出す (例: "1")
+const majorVersion = fullVersion.split('.')[0];
+
+// コレクション名にメジャーバージョンを結合 (例: "neon_gravity_scores_v1")
+const SCORES_COLLECTION = `neon_gravity_scores_v${majorVersion}`;
 
 // HTML要素の取得
 const rankingOverlay = document.getElementById("ranking-overlay");
@@ -40,6 +48,13 @@ window.firebaseOps = {
     // ランキング取得（表示用）
     getRanking: async () => {
         const q = query(collection(db, SCORES_COLLECTION), orderBy("score", "desc"), limit(RANKING_LIMIT));
+        return await getDocs(q);
+    },
+    
+    // 旧ランキング取得（表示専用）
+    getOldRanking: async () => {
+        // 古いコレクション名（neon_gravity_scores）を直接指定して読み込む
+        const q = query(collection(db, "neon_gravity_scores"), orderBy("score", "desc"), limit(RANKING_LIMIT));
         return await getDocs(q);
     },
 
@@ -71,7 +86,7 @@ window.firebaseOps = {
     }
 };
 
-window.showRanking = async function (onClose = null) {
+window.showRanking = async function (onClose = null, isOld = false) {
     if (!rankingOverlay) return;
 
     // 他のオーバーレイを閉じる
@@ -83,6 +98,22 @@ window.showRanking = async function (onClose = null) {
     // 初期状態
     rankingOverlay.style.display = "flex";
     rankingOverlay.style.opacity = "0";
+
+    // タイトルと切り替えボタンのテキストを変更
+    const titleMain = document.querySelector("#ranking-overlay .overlay-title-main");
+    const toggleBtn = document.getElementById("toggle-ranking-btn");
+    
+    if (titleMain) {
+        // 古い方を見ている時はタイトルを変える
+        titleMain.innerText = isOld ? "OLD RECORDS" : "TOP COMMANDERS";
+    }
+    
+    if (toggleBtn) {
+        // ボタンのテキストを反転させる
+        toggleBtn.innerText = isOld ? "CURRENT" : "OLD";
+        // ボタンを押したら、現在とは逆（!isOld）のランキングを再読み込みする
+        toggleBtn.onclick = () => window.showRanking(onClose, !isOld);
+    }
 
     if (loadingEl) {
         loadingEl.style.display = "block";
@@ -100,7 +131,9 @@ window.showRanking = async function (onClose = null) {
     onRankingCloseAction = onClose;
 
     try {
-        const snapshot = await window.firebaseOps.getRanking();
+        const snapshot = isOld 
+            ? await window.firebaseOps.getOldRanking() 
+            : await window.firebaseOps.getRanking();
 
         if (rankingBody) {
             if (!snapshot || snapshot.empty) {

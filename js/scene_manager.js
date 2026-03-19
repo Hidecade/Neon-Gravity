@@ -851,36 +851,25 @@ function updateIntro() {
         return;
     }
 
-    // --- Phase 1: タイトル表示 ---
+// --- Phase 1: タイトル表示 ---
     if (introPhase === 1) {
-        if (introTimer === 60) {
-            const skipContainer = document.getElementById('story-typing-container');
-            const typingMsg = document.getElementById('story-typing-msg');
+        /* --- 722行目あたりの introTimer === 60 のブロックを丸ごと削除 --- */
 
-            if (skipContainer && typingMsg) {
-                typingMsg.innerHTML = '';
-                typingMsg.style.display = 'none';
-                skipContainer.style.display = 'flex';
-                requestAnimationFrame(() => {
-                    skipContainer.style.opacity = '1';
-                });
-            }
-        }
-
-        if (introTimer > 180) {
+        if (introTimer > 180) { // タイトル表示終了(約3秒後)
             introPhase = 2;
             introTimer = 0;
 
-            hideGameMessage();
+            hideGameMessage(); // ステージタイトルを消す
 
             const storyText = STAGE_STORY_TEXTS[stage];
             if (storyText) {
                 resetStoryTypingState();
 
+                // ここでストーリー開始と同時にSKIPボタンが出るようになります
                 storyTypingStartTimeout = setTimeout(() => {
                     storyTypingStartTimeout = null;
-                    playStoryTyping(storyText);
-                }, 500);
+                    playStoryTyping(storyText); // この中でボタンが表示されます
+                }, 500); 
             } else {
                 isSkippingStory = true;
             }
@@ -1076,8 +1065,14 @@ async function playStoryTyping(text, options = {}) {
 
     isSkippingStory = false;
 
+    // ==========================================
+    // ★修正部分：コンテナをフェードインさせる
+    // ==========================================
     container.style.display = 'flex';
-    container.style.opacity = '1';
+    // 次の描画フレームで不透明度を1にすることで、CSSのtransition（フェードイン）を効かせる
+    requestAnimationFrame(() => {
+        container.style.opacity = '1';
+    });
 
     el.style.display = 'block';
     el.style.opacity = '1';
@@ -1880,4 +1875,22 @@ function updateTraining() {
         player.satellites.push({ x: player.x, y: player.y, angle: Math.random() * Math.PI * 2 });
     }
 
+}
+
+/**
+ * 指定された要素をフェードインさせる
+ * @param {HTMLElement} element - フェードインさせる要素
+ * @param {string} display - 表示時のdisplayスタイル（デフォルト: 'flex'）
+ */
+function fadeInElement(element, display = 'flex') {
+    if (!element) return;
+
+    // 1. まず表示状態にして（display: noneを解除）、CSS Transitionを有効にする
+    element.style.display = display;
+    
+    // 2. 次の描画フレームを待ってから opacity を 1 にする
+    // これにより、opacity: 0 -> 1 へのアニメーションが走る
+    requestAnimationFrame(() => {
+        element.style.opacity = '1';
+    });
 }

@@ -2,7 +2,8 @@
    5. ストーリー表示用オーバーレイ
    ========================================================= */
 #story-typing-container {
-    display: none;
+    display: none;    /* 初期状態は非表示 */
+    opacity: 0;        /* 初期状態は透明 */
     position: fixed;
     inset: 0;
     width: 100%;
@@ -14,6 +15,7 @@
     align-items: center;
     pointer-events: auto;
     box-sizing: border-box;
+    transition: opacity 0.5s ease-in-out;
 }
 
 #story-typing-msg {
