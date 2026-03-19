@@ -1395,7 +1395,7 @@ function destroyEnemy(e) {
     else if (e.type === 'triangle') {
         AudioSys.playSE('explode_small', e.x, e.y);
 
-        const shardCount = 3 + Math.floor(Math.random() * 2);
+        const shardCount = 3 + (currentGraphicsQuality === 'HIGH' ? Math.floor(Math.random() * 2) : 0);
         for (let i = 0; i < shardCount; i++) {
             const angle = (Math.PI * 2 / shardCount) * i + e.angle + (Math.random() - 0.5);
             const speed = 4 + Math.random() * 4;
@@ -1412,7 +1412,7 @@ function destroyEnemy(e) {
                 x: e.x, y: e.y,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
-                color: e.color || '#0f8',
+                color: e.color || '#0ff',
                 life: 1.2,
                 // ★全体の描画スケールを適正サイズに (1.5 -> 1.1)
                 size: e.scale ? e.scale * 1.1 : 1.1,

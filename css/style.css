@@ -310,12 +310,13 @@ canvas {
 }
 
 #game-message-overlay.warning #game-message-main {
-    color: #ff1f1f;   /* 少し強い赤 */
+    color: #ff1f1f;
     text-shadow:
-        0 0 14px rgba(255,0,0,0.95),
-        0 0 32px rgba(255,0,0,0.65),
-        0 0 60px rgba(255,40,40,0.35);
+        0 0 5px rgba(255,0,0,1),      /* 1層目：ごく近くを強く光らせて輪郭を出す */
+        0 0 15px rgba(255,0,0,0.7),   /* 2層目：少し広げる */
+        0 0 30px rgba(255,40,40,0.4); /* 3層目：薄く遠くに配置 */
     animation: blink 1.0s infinite;
+    font-weight: bold;                /* 文字自体を太くするのも効果的 */
 }
 
 #game-message-overlay.warning #game-message-kicker,

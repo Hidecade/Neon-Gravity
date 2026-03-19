@@ -297,6 +297,8 @@ function applyGraphicsQuality(quality) {
     window.currentStarCount = config.starCount;
     window.currentNebulaeCount = config.nebulaeCount;
 
+    resize();
+    
     // 背景システムの再初期化（画面サイズ変更時と同じ処理）
     if (typeof initGrid === 'function') initGrid();
     if (typeof initStars === 'function') initStars();
@@ -392,17 +394,21 @@ function resize() {
 
     currentResolution = detectResolution(vw, vh);
 
-    // 内部解像度を設定
-    width = canvas.width = currentResolution.width;
-    height = canvas.height = currentResolution.height;
+    // 現在の画質設定から解像度倍率を取得（デフォルトは1.0）
+    const qualityScale = GRAPHICS_SETTINGS[currentGraphicsQuality]?.resScale || 1.0;
 
-    // 画面に収まるように表示サイズだけ縮放
-    const scale = Math.min(vw / width, vh / height);
-    const displayW = Math.round(width * scale);
-    const displayH = Math.round(height * scale);
+    // 内部解像度に倍率を適用（ここが実際の描画負荷に直結します）
+    width = canvas.width = Math.floor(currentResolution.width * qualityScale);
+    height = canvas.height = Math.floor(currentResolution.height * qualityScale);
+
+    // 画面上の表示サイズ（CSS）は、実画面の大きさに合わせる（引き伸ばす）
+    const scale = Math.min(vw / currentResolution.width, vh / currentResolution.height);
+    const displayW = Math.round(currentResolution.width * scale);
+    const displayH = Math.round(currentResolution.height * scale);
 
     canvas.style.width = `${displayW}px`;
     canvas.style.height = `${displayH}px`;
+
     canvas.style.position = 'absolute';
     canvas.style.left = `${Math.floor((vw - displayW) / 2)}px`;
     canvas.style.top = `${Math.floor((vh - displayH) / 2)}px`;

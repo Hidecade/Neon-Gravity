@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-const GAME_VERSION = "1.4.4";
+const GAME_VERSION = "1.4.5";
 
 const DEBUG = {
     enabled: true,
@@ -37,19 +37,22 @@ const GRAPHICS_SETTINGS = {
         gridSpacing: 32,      // 細かいグリッド（綺麗だが重い）
         explosionMag: 3.0,    // 大量の火花
         starCount: 300,       // 星の数
-        nebulaeCount: 20      // 星雲の数
+        nebulaeCount: 20,     // 星雲の数
+        resScale: 1.0
     },
     MEDIUM: {
         gridSpacing: 40,      // やや粗いグリッド
         explosionMag: 1.5,    // 中程度の火花
         starCount: 250,
-        nebulaeCount: 10
+        nebulaeCount: 10,
+        resScale: 1.0
     },
     LOW: {
         gridSpacing: 48,      // 粗いグリッド（軽い）
         explosionMag: 1.0,    // 最小限の火花
         starCount: 200,
-        nebulaeCount: 5       // 星雲を描画しない
+        nebulaeCount: 5,       // 星雲を描画しない
+        resScale: 0.75
     }
 };
 let currentGraphicsQuality = 'HIGH'; // 現在の品質
