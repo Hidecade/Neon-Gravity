@@ -120,7 +120,7 @@ function fire() {
         });
         if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
         distortGrid(player.x, spawnY, 20, 60);
-        return; aaaaaaaaaaaaaaaaaa
+        return;
     }
 
     const s = BULLET_CONFIG.PLAYER.SPEED * SPEED_SCALE;
@@ -136,7 +136,7 @@ function fire() {
 
     currentPattern.forEach(offset => {
         const a = player.angle + offset;
-        bullets.push({
+        spawnPlayerBulletObj({
             x: player.x,
             y: spawnY, // ★ player.y ではなく、見えている位置(spawnY)から飛ばす
             vx: Math.cos(a) * s,
@@ -201,19 +201,35 @@ function launchSatellites() {
     // ==========================================
     // 3. 敵の弾も範囲内なら消し去る
     // ==========================================
-    for (let i = enemyBullets.length - 1; i >= 0; i--) {
-        const eb = enemyBullets[i];
-        const dist = Math.hypot(eb.x - player.x, eb.y - player.y);
-        if (dist <= bombRadius) {
+    // ボムによる敵弾消去ロジック
+    const ebPool = enemyBulletPool.pool; // プールを参照
+
+    for (let i = 0; i < ebPool.length; i++) {
+        const eb = ebPool[i];
+        
+        // 使用中（画面に存在している）弾だけが対象
+        if (!eb.active) continue;
+
+        const dx = eb.x - player.x;
+        const dy = eb.y - player.y;
+        // Math.hypot は重いので、距離の2乗で判定するとより高速です
+        const distSq = dx * dx + dy * dy;
+        const bombRadiusSq = bombRadius * bombRadius;
+
+        if (distSq <= bombRadiusSq) {
+            // 爆発エフェクトを発生
             createExplosion(eb.x, eb.y, eb.color || '#fff', 2);
-            enemyBullets.splice(i, 1);
+            
+            // ★重要：削除の代わりに非アクティブにする
+            eb.active = false;
+            eb.life = 0; // 念のため寿命も0にしておく
         }
     }
-
+    
     // ==========================================
     // 4. 巨大な波紋エフェクトを登録する
     // ==========================================
-    rings.push({
+    spawnRingObj({
         x: player.x,
         y: player.y,
         r: 10,                 // 初期半径
@@ -260,7 +276,7 @@ function damage(v) {
         gameSpeed = 0.1;
         dyingTimer = 300;
 
-        bullets = []; lasers = []; missiles = [];
+        playerBulletPool.clearAll(); lasers = []; missiles = [];
         createExplosion(player.x, player.y, '#0f8', 200);
 
         AudioSys.playSE('explode_large');

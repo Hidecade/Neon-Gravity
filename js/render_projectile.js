@@ -8,8 +8,15 @@ function drawPlayerBullets() {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    bullets.forEach(b => {
-        if (!isOnScreen(b, 50)) return;
+    const pPool = playerBulletPool.pool; // ★プールを参照
+    for (let i = 0; i < pPool.length; i++) {
+        const b = pPool[i];
+
+        // ★生存チェック：アクティブでない弾は描画しない
+        if (!b.active) continue;
+
+        // 画面外チェック（最適化のため、これまでの関数を維持）
+        if (!isOnScreen(b, 50)) continue;
 
         // 弾の進行方向から短いレーザー線を作る
         const vx = b.vx ?? 0;
@@ -28,30 +35,29 @@ function drawPlayerBullets() {
         const x2 = b.x - nx * len;
         const y2 = b.y - ny * len;
 
+        // --- 描画処理 ---
+        
         // 外側グロー
         ctx.strokeStyle = 'rgba(0,255,180,0.22)';
         ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
+        ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
         ctx.stroke();
 
         // 中間光
         ctx.strokeStyle = 'rgba(0,255,180,0.55)';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
+        ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
         ctx.stroke();
 
         // 芯
         ctx.strokeStyle = '#cffff5';
         ctx.lineWidth = 1.4;
         ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
+        ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
         ctx.stroke();
-    });
+    }
 
     ctx.restore();
 }
@@ -107,14 +113,27 @@ function drawLasers() {
 }
 
 function drawEnemyProjectiles() {
+    // 描画モードを「加算」に設定（光る演出のため）
     ctx.globalCompositeOperation = 'lighter';
-    enemyBullets.forEach(eb => {
-        if (!isOnScreen(eb, 50)) return;
+
+    const ebPool = enemyBulletPool.pool; // ★プールを参照
+    for (let i = 0; i < ebPool.length; i++) {
+        const eb = ebPool[i];
+
+        // ★生存チェック：アクティブでない弾、または完全に消えた弾は描画しない
+        if (!eb.active) continue;
+
+        // 画面外チェック
+        if (!isOnScreen(eb, 50)) continue;
+
         ctx.save();
         ctx.translate(eb.x, eb.y);
+
+        // フェードアウト演出の適用
         const currentAlpha = eb.isFading ? Math.max(0, eb.alpha) : 1.0;
         ctx.globalAlpha = currentAlpha;
 
+        // 弾の種類に応じた描画関数の呼び出し
         if (eb.isLaserMissile) {
             drawLaserMissile(ctx, eb);
         } else if (eb.isFighter) {
@@ -126,12 +145,14 @@ function drawEnemyProjectiles() {
         } else {
             drawNormalBullet(ctx, eb);
         }
+
         ctx.restore();
-    });
+    }
+
+    // 描画設定を元に戻す
     ctx.globalAlpha = 1.0;
     ctx.globalCompositeOperation = 'source-over';
 }
-
 function drawNormalBullet(ctx, eb) {
     ctx.rotate(frame * 0.15);
 
@@ -300,7 +321,7 @@ function drawShockwave(ctx, eb) {
 
     // --- 3. 背後の余韻粒子 ---
     if (frame % 5 === 0 && Math.random() < Math.max(0.2, scatterAlpha)) {
-        particles.push({
+        spawnParticleObj({
             x: eb.x, y: eb.y,
             vx: -eb.vx * 0.05, vy: -eb.vy * 0.05,
             color: waveColor, // ★修正：パーティクルも同じ色にする

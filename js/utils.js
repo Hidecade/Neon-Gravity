@@ -89,3 +89,50 @@ function isOnScreen(obj, margin = 50) {
     );
 }
 
+// =========================================================
+// オブジェクトプールシステム (Object Pool)
+// =========================================================
+class ObjectPool {
+    constructor(createFn, initialSize) {
+        this.pool = [];
+        this.createFn = createFn;
+        for (let i = 0; i < initialSize; i++) {
+            const obj = this.createFn();
+            obj.active = false;
+            this.pool.push(obj);
+        }
+    }
+
+    // プールから空いているオブジェクトを取得する
+    get() {
+        for (let i = 0; i < this.pool.length; i++) {
+            if (!this.pool[i].active) {
+                this.pool[i].active = true;
+                return this.pool[i];
+            }
+        }
+        // 足りない場合は拡張する
+        const newObj = this.createFn();
+        newObj.active = true;
+        this.pool.push(newObj);
+        return newObj;
+    }
+
+    // ★今回のエラーの原因！シーン切り替え時にプールを空にする機能
+    clearAll() {
+        for (let i = 0; i < this.pool.length; i++) {
+            this.pool[i].active = false;
+        }
+    }
+
+    // ★F12デバッグ表示用：現在アクティブな数を数える機能
+    getActiveCount() {
+        let count = 0;
+        for (let i = 0; i < this.pool.length; i++) {
+            if (this.pool[i].active) {
+                count++;
+            }
+        }
+        return count;
+    }
+}

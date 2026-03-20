@@ -102,20 +102,145 @@ let camera = { x: 0, y: 0 };
 // =========================================================
 
 let enemies = [];         // 敵キャラクター
-let enemyBullets = [];    // 敵の弾
-let bullets = [];         // プレイヤーの弾
+
 let lasers = [];          // プレイヤーのレーザー
 let missiles = [];        // プレイヤーのミサイル
-let particles = [];       // パーティクル（爆発等）
 let crystals = [];        // スコアアイテム
 let powerups = [];        // パワーアップアイテム
 let wormholes = [];       // 敵出現ワームホール
 let scorePopups = [];     // スコア上昇UI
-let rings = [];           // 衝撃波リング
+
 let gridPoints = [];      // 背景グリッド
 let stars = [];           // 背景の星
 let nebulae = [];         // 星雲
 let starClusters = [];    // 星団
+
+const createParticle = () => ({
+    x: 0, y: 0, vx: 0, vy: 0, 
+    color: '#fff', life: 0, size: 1, 
+    isShard: false, shardType: null, angle: 0, rotV: 0,
+    isBubble: false, wobbleOffset: 0,
+    segIndex: 0, vertices: null, // ★この2つを追加！
+    active: false
+});
+
+const createRing = () => ({
+    x: 0, y: 0, r: 0, targetR: 0, vr: 8, decay: 0.08, 
+    color: '#0ff', life: 0, isBomb: false, followPlayer: false,
+    lineWidth: undefined, fill: false, isIntroRing: false, // ★この3つを追加！
+    active: false
+});
+
+const createEnemyBullet = () => ({
+    x: 0, y: 0, vx: 0, vy: 0, life: 0, color: '#f00',
+    isMissile: false, isLaserMissile: false, isShockwave: false,
+    isFading: false, baseAlpha: 1, alpha: 1, // フェード演出用
+    homingTimer: 0, trail: null,             // ミサイル用
+    baseScale: 1, scaleSpeed: 0.02,          // 衝撃波用
+    active: false
+});
+
+const createPlayerBullet = () => ({
+    x: 0, y: 0, vx: 0, vy: 0, life: 0,
+    active: false
+});
+
+const particlePool = new ObjectPool(createParticle, 800);
+const ringPool = new ObjectPool(createRing, 100);
+const enemyBulletPool = new ObjectPool(createEnemyBullet, 500); // 敵弾は多めに確保
+const playerBulletPool = new ObjectPool(createPlayerBullet, 100);
+
+// オブジェクトを受け取るヘルパー関数
+function spawnParticleObj(options) {
+    const p = particlePool.get();
+    
+    // 必須系の値（無い場合はデフォルト値を入れる安全設計）
+    p.x = options.x || 0;
+    p.y = options.y || 0;
+    p.vx = options.vx || 0;
+    p.vy = options.vy || 0;
+    p.color = options.color || '#fff';
+    p.life = options.life || 0.5;
+    p.size = options.size || 1;
+
+    // 特殊フラグ系（渡されていればその値、なければfalseや0でリセット）
+    p.isShard = options.isShard || false;
+    p.shardType = options.shardType || null;
+    p.angle = options.angle || 0;
+    p.rotV = options.rotV || 0;
+    p.segIndex = options.segIndex || 0;
+    p.isBubble = options.isBubble || false;
+    p.wobbleOffset = options.wobbleOffset || 0;
+    p.vertices = options.vertices || null;
+
+    return p;
+}
+
+// 波紋（リング）エフェクト発生用ヘルパー関数
+function spawnRingObj(options) {
+    const r = ringPool.get();
+    
+    r.x = options.x || 0;
+    r.y = options.y || 0;
+    r.r = options.r || 0;
+    r.color = options.color || '#0ff';
+    r.life = options.life || 1.0;
+
+    r.targetR = options.targetR || 0;
+    r.vr = options.vr !== undefined ? options.vr : 8;       
+    r.decay = options.decay !== undefined ? options.decay : 0.08;
+    r.isBomb = options.isBomb || false;
+    r.followPlayer = options.followPlayer || false;
+
+    // ★以下を追加！渡されなかった場合はデフォルト値にリセット
+    r.lineWidth = options.lineWidth !== undefined ? options.lineWidth : undefined;
+    r.fill = options.fill || false;
+    r.isIntroRing = options.isIntroRing || false;
+
+    return r;
+}
+
+// 敵の弾を生成するヘルパー
+function spawnEnemyBulletObj(options) {
+    const eb = enemyBulletPool.get();
+    
+    // 基本パラメータ
+    eb.x = options.x || 0;
+    eb.y = options.y || 0;
+    eb.vx = options.vx || 0;
+    eb.vy = options.vy || 0;
+    eb.life = options.life || 0;
+    eb.color = options.color || '#f00';
+
+    // 特殊フラグ（渡されていない場合は必ずデフォルトに戻す）
+    eb.isMissile = options.isMissile || false;
+    eb.isLaserMissile = options.isLaserMissile || false;
+    eb.isShockwave = options.isShockwave || false;
+    
+    // 演出・状態用パラメータのリセット
+    eb.isFading = false;
+    eb.baseAlpha = 1.0;
+    eb.alpha = 1.0;
+    eb.homingTimer = options.homingTimer || 240;
+    eb.trail = eb.isMissile ? [] : null; // ミサイルなら軌跡配列を初期化
+    eb.baseScale = options.baseScale || 1.0;
+    eb.scaleSpeed = options.scaleSpeed || 0.02;
+
+    return eb;
+}
+
+// プレイヤーの弾を生成するヘルパー
+function spawnPlayerBulletObj(options) {
+    const b = playerBulletPool.get();
+    
+    b.x = options.x || 0;
+    b.y = options.y || 0;
+    b.vx = options.vx || 0;
+    b.vy = options.vy || 0;
+    b.life = options.life || 0;
+
+    return b;
+}
 
 // =========================================================
 // 5. ボス（BOSS）管理変数
@@ -721,13 +846,15 @@ function updateDebugOverlay() {
     el.style.display = "block";
 
     const enemyCount = Array.isArray(enemies) ? enemies.length : 0;
-    const bulletCount = Array.isArray(bullets) ? bullets.length : 0;
-    const enemyBulletCount = Array.isArray(enemyBullets) ? enemyBullets.length : 0;
-    const particleCount = Array.isArray(particles) ? particles.length : 0;
+    const bulletCount = playerBulletPool.getActiveCount();
+    const enemyBulletCount = enemyBulletPool.getActiveCount();
     const crystalCount = Array.isArray(crystals) ? crystals.length : 0;
     const powerupCount = Array.isArray(powerups) ? powerups.length : 0;
     const missileCount = Array.isArray(missiles) ? missiles.length : 0;
-    const ringCount = Array.isArray(rings) ? rings.length : 0;
+
+    const particleCount = typeof particlePool !== 'undefined' ? particlePool.getActiveCount() : 0;
+    const ringCount = typeof ringPool !== 'undefined' ? ringPool.getActiveCount() : 0;
+    
     const wormholeCount = Array.isArray(wormholes) ? wormholes.length : 0;
 
     const totalObjects =

@@ -5,7 +5,16 @@ const CACHE_NAME = 'neon-gravity-v1.5.2';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
-    './scc/style.css',
+    
+    './css/style.css',
+    './css/overlay.css',
+    './css/title.css',
+    './css/ranking.css',
+    './css/ost.css',
+    './css/howto.css',
+    './css/story.css',
+    './css/settings.css',
+    './css/archive.css',
 
     './js/audio.js',
     './js/config.js',

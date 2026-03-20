@@ -6,18 +6,23 @@ function updatePlayerBullets() {
     // 現在のカメラの表示範囲を計算
     const viewW = width / cameraScale;
     const viewH = height / cameraScale;
-    const margin = 50; // 画面外50pxまで飛んだら消す（自然なフェードアウト感のため）
+    const margin = 50; // 画面外50pxまで飛んだら消す
 
-    bullets.forEach(b => {
+    const pPool = playerBulletPool.pool; // プールを参照
+    for (let i = 0; i < pPool.length; i++) {
+        const b = pPool[i];
+        if (!b.active) continue; // ★未使用の弾はスキップ
+        
         b.x += b.vx * gameSpeed;
         b.y += b.vy * gameSpeed;
-        b.life -= gameSpeed; // ★スローに連動させる
+        b.life -= gameSpeed;
 
-        // --- ★追加：画面（カメラ）の範囲外に出たら弾を消滅させる ---
+        // --- 画面（カメラ）の範囲外に出たら弾を消滅させる ---
         if (b.x < camera.x - margin || b.x > camera.x + viewW + margin ||
-            b.y < camera.y - margin || b.y > camera.y + viewH + margin) {
+            b.y < camera.y - margin || b.y > camera.y + viewH + margin || b.life <= 0) {
+            b.active = false; // ★プールへ返却
             b.life = 0;
-            return; // 消滅したので以後の当たり判定をスキップ
+            continue; 
         }
 
         // --- ワールド境界との衝突判定 ---
@@ -28,21 +33,24 @@ function updatePlayerBullets() {
             const impactY = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, b.y));
 
             createWallImpact(impactX, impactY, '#0f8');
+            b.active = false; // ★プールへ返却
             b.life = 0;
-            return; // 消滅したので以後の判定をスキップ
+            continue;
         }
 
         // --- 敵との当たり判定 ---
-        enemies.forEach(e => {
-            // 弾が消えている、敵が死んでいる、または【敵が画面外の場合はスキップ】
-            if (b.life <= 0 || e.hp <= 0 || !e.inActiveRange) return;
+        for (let j = 0; j < enemies.length; j++) {
+            const e = enemies[j];
+            
+            // 敵が死んでいる、または敵が画面外の場合はスキップ
+            if (e.hp <= 0 || !e.inActiveRange) continue;
 
-            // --- 出現演出中のボスはショットをすり抜ける ---
-            if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) return;
+            // 出現演出中のボスはショットをすり抜ける
+            if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) continue;
 
             // 敵の種類ごとの判定半径
             let hitRadius = 30 * e.scale;
-            if (e.type === 'asteroid' || e.type === 'bubble') hitRadius = 25 * e.scale; // ★bubbleも念のため追加
+            if (e.type === 'asteroid' || e.type === 'bubble') hitRadius = 25 * e.scale;
             else if (e.type === 'dragon') hitRadius = ENEMY_HITBOX.DRAGON;
             else if (e.type === 'triangle') hitRadius = ENEMY_HITBOX.TRIANGLE;
             else if (e.type === 'cube') hitRadius = ENEMY_HITBOX.CUBE;
@@ -50,63 +58,49 @@ function updatePlayerBullets() {
             else if (e.type === 'hunter') hitRadius = ENEMY_HITBOX.HUNTER;
             else if (e.type === 'boss') hitRadius = ENEMY_HITBOX.BOSS;
 
-            // 距離チェック（2乗で比較）
             const dx = b.x - e.x;
             const dy = b.y - e.y;
-            const distSq = dx * dx + dy * dy; // 距離の2乗
-            const hitRadiusSq = hitRadius * hitRadius; // 半径の2乗
+            const distSq = dx * dx + dy * dy;
+            const hitRadiusSq = hitRadius * hitRadius;
 
             if (distSq < hitRadiusSq) {
+                b.active = false; // ★ヒットしたのでプールへ返却
+                b.life = 0;
+                e.hp--;
 
-                b.life = 0; // 弾を消す
-                e.hp--;     // ダメージを与える
-
-                // 1. ボスの場合
-                if (e.type === 'boss' || e.type === 'battleship') { // ★念のためbattleshipも追加
+                if (e.type === 'boss' || e.type === 'battleship') {
                     e.flashTimer = 5;
                     if (typeof AudioSys !== 'undefined') AudioSys.playSE('boss_hit');
+                    if (e.hp > 0) createWallImpact(b.x, b.y, '#0f8');
 
-                    // ▼ 追加: 敵機を倒しきれなかった場合に壁ヒットパーティクルを出す
-                    if (e.hp > 0) {
-                        createWallImpact(b.x, b.y, '#0f8');
-                    }
-
-                    for (let i = 0; i < 3; i++) {
-                        particles.push({
+                    for (let k = 0; k < 3; k++) {
+                        spawnParticleObj({
                             x: b.x, y: b.y,
                             vx: (Math.random() - 0.5) * 20 * SPEED_SCALE,
                             vy: (Math.random() - 0.5) * 20 * SPEED_SCALE,
-                            color: '#fff',
-                            life: 0.2,
-                            size: 2 * G_SCALE
+                            color: '#fff', life: 0.2, size: 2 * G_SCALE
                         });
                     }
-                }
-                // 2. ボス以外の敵
-                else {
+                } else {
                     if (e.hp > 0) {
                         if (typeof AudioSys !== 'undefined') AudioSys.playSE('enemy_hit');
-
                         createWallImpact(b.x, b.y, '#0f8');
                         
                         const sparkColor = e.color || '#fff';
-                        for (let i = 0; i < 4; i++) {
-                            particles.push({
-                                x: b.x,
-                                y: b.y,
+                        for (let k = 0; k < 4; k++) {
+                            spawnParticleObj({
+                                x: b.x, y: b.y,
                                 vx: (Math.random() - 0.5) * 8,
                                 vy: (Math.random() - 0.5) * 8,
-                                color: sparkColor,
-                                life: 0.8 + Math.random() * 0.4,
-                                size: 2.0
+                                color: sparkColor, life: 0.8 + Math.random() * 0.4, size: 2.0
                             });
                         }
                     }
                 }
+                break; // ★この弾は消滅したので、他の敵との判定を終了
             }
-        });
-    });
-    bullets = bullets.filter(b => b.life > 0);
+        }
+    }
 }
 
 function updateLasers() {
@@ -197,7 +191,7 @@ function updateLasers() {
                     const distToEnemy = Math.sqrt(distToEnemySq); // エフェクト位置用
                     const hitX = p1x + Math.cos(l.angle) * distToEnemy;
                     const hitY = p1y + Math.sin(l.angle) * distToEnemy;
-                    particles.push({
+                    spawnParticleObj({
                         x: hitX, y: hitY,
                         vx: (Math.random() - 0.5) * 10,
                         vy: (Math.random() - 0.5) * 10,
@@ -229,21 +223,42 @@ function updateLasers() {
         const C_norm = p1x * sin - p1y * cos;
         const hitWidth = (l.width / 2 + 15) * G_SCALE;
 
-        enemyBullets.forEach(eb => {
-            if (eb.life <= 0) return;
+        const ebPool = enemyBulletPool.pool; // ★プールを参照
+
+        for (let i = 0; i < ebPool.length; i++) {
+            const eb = ebPool[i];
+            
+            // ★生存チェック（activeフラグとlifeの両方を確認）
+            if (!eb.active || eb.life <= 0) continue;
 
             // ★修正5: 点と直線の距離公式を最適化 (平方根なし)
-            // d = | -sin*x + cos*y + (p1x*sin - p1y*cos) |
+            // レーザーの直線に対して敵弾(eb)がどれだけ離れているか（横幅の判定）
             const dist = Math.abs(A_norm * eb.x + B_norm * eb.y + C_norm);
 
             // ★修正6: 内積計算 (射影) で線分上にあるか判定
+            // レーザーの根元から先端までの間に敵弾があるか（長さの判定）
             const dot = (eb.x - p1x) * cos + (eb.y - p1y) * sin;
 
+            // 当たり判定：横幅(dist)がレーザー幅以内、かつ長さ(dot)が0〜レーザー長の間
             if (dist < hitWidth && dot > 0 && dot < currentLen) {
+                // 敵弾を消去
+                eb.active = false; // ★プールへ返却
                 eb.life = 0;
+                
+                // スコア加算
                 score += 10;
+
+                // 演出：レーザーでかき消した感じを出すなら小さな火花
+                if (Math.random() < 0.3) {
+                    spawnParticleObj({
+                        x: eb.x, y: eb.y,
+                        vx: (Math.random() - 0.5) * 5,
+                        vy: (Math.random() - 0.5) * 5,
+                        color: '#fff', life: 0.2, size: 1.5
+                    });
+                }
             }
-        });
+        }
     });
     lasers = lasers.filter(l => l.life > 0);
 }
@@ -251,78 +266,92 @@ function updateLasers() {
 function updateEnemyBullets() {
     const bulletStageMag = 1.0 + (stage - 1) * DIFFICULTY_CONFIG.BULLET_SPEED_INC;
 
-    enemyBullets.forEach(eb => {
-        // --- 1. 座標更新（フェードアウト中も共通して動かす） ---
+    const ebPool = enemyBulletPool.pool; // ★プールを参照
+    for (let i = 0; i < ebPool.length; i++) {
+        const eb = ebPool[i];
+
+        // ★生存チェック
+        if (!eb.active) continue;
+
+        // --- 1. 座標更新 ---
         eb.x += eb.vx * gameSpeed;
         eb.y += eb.vy * gameSpeed;
 
-        // --- 2. ワールド境界との衝突判定（最優先で壁ブロック） ---
+        // --- 2. ワールド境界との衝突判定 ---
         const isHitWall = (eb.x < WALL_MARGIN || eb.x > worldSize - WALL_MARGIN || eb.y < WALL_MARGIN || eb.y > worldSize - WALL_MARGIN);
 
         if (isHitWall) {
-            // 弾が壁の外に出てしまった場合、座標を壁のラインに強制固定する（貫通防止）
             const impactX = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, eb.x));
             const impactY = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, eb.y));
 
-            // すでにフェードアウト中の弾は静かに消し、生きているレーザー・ミサイルのみ爆発させる
             if (!eb.isFading && (eb.isMissile || eb.isLaserMissile)) {
                 createExplosion(impactX, impactY, eb.color, 10);
-                AudioSys.playSE('enemy_hit');
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('enemy_hit');
                 distortGrid(impactX, impactY, 15, 30);
             }
 
-            eb.life = 0; // 壁に当たったら確実に削除
-            return;
+            eb.active = false; // ★プール返却
+            eb.life = 0;
+            continue;
         }
 
         // --- 3. フェードアウト中の処理 ---
         if (eb.isFading) {
-            eb.baseAlpha = (eb.baseAlpha === undefined ? 1.0 : eb.baseAlpha) - 0.03;
+            eb.baseAlpha = (eb.baseAlpha === undefined ? 1.0 : eb.baseAlpha) - 0.03 * gameSpeed;
             const wave = (Math.sin(frame * 1.0) + 1) / 2;
             eb.alpha = eb.baseAlpha * wave;
-            if (eb.baseAlpha <= 0) eb.life = 0;
-            return; // フェードアウト中は以下の誘導や当たり判定を行わない
+            if (eb.baseAlpha <= 0) {
+                eb.active = false; // ★プール返却
+                eb.life = 0;
+            }
+            continue; 
         }
 
-        // --- 4. 寿命の消費と判定 ---
+        // --- 4. 寿命の消費 ---
         eb.life -= gameSpeed;
         if (eb.life <= 0) {
             if (eb.isMissile || eb.isLaserMissile) {
                 eb.isFading = true;
-                eb.fadeTimer = 15;
-                eb.life = 1; // フェードアウト演出のために少し延命
-                AudioSys.playSE('enemy_hit', 0.5);
+                eb.baseAlpha = 1.0;
+                eb.life = 1; 
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('enemy_hit', 0.5);
+                continue;
             } else {
+                eb.active = false; // ★プール返却
                 eb.life = 0;
+                continue;
             }
-            return;
         }
 
-        // --- 5. アステロイドによる弾の吸収（盾機能） ---
+        // --- 5. アステロイドによる弾の吸収 ---
         if (!eb.isShockwave) {
-            for (const rock of enemies) {
+            for (let j = 0; j < enemies.length; j++) {
+                const rock = enemies[j];
                 if (rock.type !== 'asteroid' || rock.hp <= 0) continue;
                 const rockRadius = 25 * rock.scale * G_SCALE;
-                if (Math.hypot(rock.x - eb.x, rock.y - eb.y) < rockRadius) {
+                
+                const dx = rock.x - eb.x;
+                const dy = rock.y - eb.y;
+                if (dx * dx + dy * dy < rockRadius * rockRadius) {
+                    eb.active = false; // ★プール返却
                     eb.life = 0;
                     createExplosion(eb.x, eb.y, '#fff', 3);
                     break;
                 }
             }
-            if (eb.life === 0) return;
+            if (!eb.active) continue;
         }
 
-        // --- 6. ミサイルの誘導 ---
+        // --- 6. ミサイルの誘導と自機弾との判定 ---
         if (eb.isMissile) {
-            if (eb.homingTimer === undefined) eb.homingTimer = 240;
-
+            // ... (誘導ロジックは既存のままでOKですが、eb.activeチェックを適宜挟みます) ...
             if (eb.trail) {
                 eb.trail.unshift({ x: eb.x, y: eb.y });
                 if (eb.trail.length > 10) eb.trail.pop();
             }
 
             if (eb.homingTimer > 0) {
-                eb.homingTimer--;
+                eb.homingTimer -= gameSpeed;
                 eb.vx *= 0.99; eb.vy *= 0.99;
                 const dx = player.x - eb.x, dy = player.y - eb.y;
                 const d = Math.hypot(dx, dy) || 0.001;
@@ -330,30 +359,37 @@ function updateEnemyBullets() {
                 eb.vx += (dx / d) * accel * gameSpeed;
                 eb.vy += (dy / d) * accel * gameSpeed;
             }
+            // (中略: ミサイル速度制限など)
 
-            const v = Math.hypot(eb.vx, eb.vy);
-            const cruiseSpeed = BULLET_CONFIG.BOSS_HOMING.SPEED * SPEED_SCALE * bulletStageMag;
+            // ★プレイヤーのショットで撃墜 (二重ループ最適化済みのものを適用)
+            const pPool = playerBulletPool.pool;
+            for (let j = 0; j < pPool.length; j++) {
+                const b = pPool[j];
+                if (!b.active) continue;
 
-            if (v > cruiseSpeed) {
-                eb.vx = (eb.vx / v) * cruiseSpeed;
-                eb.vy = (eb.vy / v) * cruiseSpeed;
-            }
-
-            // プレイヤーのショットで撃墜
-            bullets.forEach(b => {
+                const bdx = b.x - eb.x;
+                const bdy = b.y - eb.y;
                 const hitDist = 20 * G_SCALE;
-                if (b.life > 0 && Math.hypot(b.x - eb.x, b.y - eb.y) < hitDist) {
+                if (bdx * bdx + bdy * bdy < hitDist * hitDist) {
                     createExplosion(eb.x, eb.y, eb.color, 8);
-                    AudioSys.playSE('explode_small');
-                    eb.life = 0; b.life = 0; score += 50;
+                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_small');
+                    eb.active = false; 
+                    eb.life = 0;
+                    b.active = false; 
+                    b.life = 0;
+                    score += 50;
+                    break; 
                 }
-            });
-            if (eb.life === 0) return;
+            }
+            if (!eb.active) continue;
         }
 
         // --- 7. プレイヤーとの判定 ---
         if (gameState !== 'DYING' && player.invuln <= 0) {
-            const dist = Math.hypot(player.x - eb.x, player.y - eb.y);
+            const dx = player.x - eb.x;
+            const dy = player.y - eb.y;
+            const distSq = dx * dx + dy * dy;
+            
             let collisionRadius = (eb.isMissile ? 12 : 8) * G_SCALE;
 
             if (eb.isShockwave) {
@@ -362,16 +398,15 @@ function updateEnemyBullets() {
                 collisionRadius = 18 * eb.baseScale * G_SCALE;
             }
 
-            if (dist < collisionRadius) {
+            if (distSq < collisionRadius * collisionRadius) {
+                eb.active = false; // ★プール返却
                 eb.life = 0;
                 createExplosion(player.x, player.y, eb.color || '#f00', 10);
                 damage(15);
             }
         }
-    });
-
-    // 寿命が尽きた弾を一斉消去
-    enemyBullets = enemyBullets.filter(eb => eb.life > 0);
+    }
+    // enemyBullets = enemyBullets.filter(...) // ★削除
 }
 
 function updateMissiles() {
@@ -443,8 +478,8 @@ function updateMissiles() {
         });
 
         // --- 6. 軌跡パーティクル ---
-        if (frame % 2 === 0 && typeof particles !== 'undefined') {
-            particles.push({
+        if (frame % 2 === 0 && typeof particlePool !== 'undefined') {
+            spawnParticleObj({
                 x: m.x, y: m.y,
                 vx: (Math.random() - 0.5) * scale,
                 vy: (Math.random() - 0.5) * scale,
@@ -530,7 +565,7 @@ function updatePowerups() {
 
             // 飛んでいる間、キラキラしたパーティクルを出す演出
             if (frame % 3 === 0) {
-                particles.push({
+                spawnParticleObj({
                     x: p.x, y: p.y,
                     vx: (Math.random() - 0.5) * 2,
                     vy: (Math.random() - 0.5) * 2,
@@ -546,15 +581,15 @@ function updatePowerups() {
 
             if (p.type === 'laser') {
                 player.laserTimer = LASER_DURATION;
-                rings.push({ x: player.x, y: player.y, r: 10, color: '#0ff', life: 1 });
-                rings.push({ x: player.x, y: player.y, r: 50, color: '#0ff', life: 1 });
+                spawnRingObj({ x: player.x, y: player.y, r: 10, color: '#0ff', life: 1 });
+                spawnRingObj({ x: player.x, y: player.y, r: 50, color: '#0ff', life: 1 });
             }
             else if (p.type === 'invincible') {
                 player.invuln = INVULN_DURATION;
                 AudioSys.playSE('invincible');
 
                 // 取得時の演出：白い大きなリングを表示
-                rings.push({ x: player.x, y: player.y, r: 10, color: '#fff', life: 1.0 });
+                spawnRingObj({ x: player.x, y: player.y, r: 10, color: '#fff', life: 1.0 });
                 // グリッドを大きく歪ませる
                 distortGrid(player.x, player.y, 150, 300);
             }

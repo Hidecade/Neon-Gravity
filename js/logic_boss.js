@@ -53,7 +53,7 @@ function updateBossAI(e) {
                 // 回転に合わせて発射角度をずらす（スパイラル状に広がる）
                 const a = e.angle + (Math.PI * 2 / sides) * i;
 
-                enemyBullets.push({
+                spawnEnemyBulletObj({
                     x: e.x, y: e.y,
                     vx: Math.cos(a) * spd,
                     vy: Math.sin(a) * spd,
@@ -160,7 +160,7 @@ function updateBossAI(e) {
                 const bulletSpd = 9 * SPEED_SCALE;
                 for (let i = 0; i < sides; i++) {
                     const a = e.angle + (Math.PI * 2 / sides) * i;
-                    enemyBullets.push({
+                    spawnEnemyBulletObj({
                         x: e.x + Math.cos(a) * 45, y: e.y + Math.sin(a) * 45,
                         vx: Math.cos(a) * bulletSpd, vy: Math.sin(a) * bulletSpd,
                         life: BULLET_CONFIG.BOSS_LASER.LIFE, isLaserMissile: true, color: e.color
@@ -182,7 +182,7 @@ function updateBossAI(e) {
                 const bulletSpd = 15 * SPEED_SCALE;
                 for (let i = -1; i <= 1; i++) {
                     const a = e.angle + i * 0.15;
-                    enemyBullets.push({
+                    spawnEnemyBulletObj({
                         x: e.x + Math.cos(a) * 50, y: e.y + Math.sin(a) * 50,
                         vx: Math.cos(a) * bulletSpd, vy: Math.sin(a) * bulletSpd,
                         life: 300, color: '#ffaa00'
@@ -198,7 +198,7 @@ function updateBossAI(e) {
                 const bulletSpd = 10 * SPEED_SCALE;
                 for (let i = 0; i < 4; i++) {
                     const a = e.angle + (Math.PI / 2) * i;
-                    enemyBullets.push({
+                    spawnEnemyBulletObj({
                         x: e.x + Math.cos(a) * 40, y: e.y + Math.sin(a) * 40,
                         vx: Math.cos(a) * bulletSpd, vy: Math.sin(a) * bulletSpd,
                         life: 180, color: '#ff00ff', isLaserMissile: true
@@ -220,7 +220,7 @@ function updateBossAI(e) {
         if (frame % 3 === 0) {
             const ang = Math.random() * Math.PI * 2;
             const distP = 80 + Math.random() * 20;
-            particles.push({
+            spawnParticleObj({
                 x: e.x + Math.cos(ang) * distP, y: e.y + Math.sin(ang) * distP,
                 vx: -Math.cos(ang) * 4, vy: -Math.sin(ang) * 4,
                 color: '#fff', life: 0.2, size: 1.5
@@ -238,7 +238,7 @@ function updateBossAI(e) {
                 const sides = e.variant.sides;
                 for (let i = 0; i < sides; i++) {
                     const a = e.angle + (Math.PI * 2 / sides) * i;
-                    enemyBullets.push({
+                    spawnEnemyBulletObj({
                         x: e.x + Math.cos(a) * 60, y: e.y + Math.sin(a) * 60,
                         vx: Math.cos(a) * (BULLET_CONFIG.BOSS_HOMING.SPEED * SPEED_SCALE),
                         vy: Math.sin(a) * (BULLET_CONFIG.BOSS_HOMING.SPEED * SPEED_SCALE),
@@ -253,7 +253,7 @@ function updateBossAI(e) {
                 for (let i = 0; i < ringCount; i++) {
                     const a = (Math.PI * 2 / ringCount) * i;
                     const spd = 12 * SPEED_SCALE;
-                    enemyBullets.push({
+                    spawnEnemyBulletObj({
                         x: e.x, y: e.y,
                         vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
                         life: 250, color: e.color,
@@ -262,8 +262,8 @@ function updateBossAI(e) {
                 }
             }
             if (isOnScreen(e)) AudioSys.playSE('launch');
-            rings.push({ x: e.x, y: e.y, r: 20, color: '#fff', life: 1.0 });
-            rings.push({ x: e.x, y: e.y, r: 100, color: e.color, life: 0.8 });
+            spawnRingObj({ x: e.x, y: e.y, r: 20, color: '#fff', life: 1.0 });
+            spawnRingObj({ x: e.x, y: e.y, r: 100, color: e.color, life: 0.8 });
             distortGrid(e.x, e.y, 150, 300);
         }
     }
@@ -366,7 +366,7 @@ function updateBossSpecialAI(e) {
         const a = Math.atan2(dy, dx);
         // カウンター弾も怒り時は速くする
         const counterSpd = 12 * SPEED_SCALE * Math.min(1.5, angerFactor);
-        enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * counterSpd, vy: Math.sin(a) * counterSpd, life: 180, color: '#fff' });
+        spawnEnemyBulletObj({ x: e.x, y: e.y, vx: Math.cos(a) * counterSpd, vy: Math.sin(a) * counterSpd, life: 180, color: '#fff' });
         AudioSys.playSE('shoot');
     }
     e.prevHp = e.hp;
@@ -389,7 +389,7 @@ function updateBossSpecialAI(e) {
                 const sides = e.variant.sides;
                 for (let i = 0; i < sides; i++) {
                     const a = e.angle + (Math.PI * 2 / sides) * i;
-                    enemyBullets.push({
+                    spawnEnemyBulletObj({
                         x: e.x + Math.cos(a) * 45, y: e.y + Math.sin(a) * 45,
                         vx: Math.cos(a) * 11 * SPEED_SCALE, vy: Math.sin(a) * 11 * SPEED_SCALE,
                         life: 200, isLaserMissile: true, color: e.color
@@ -410,7 +410,7 @@ function updateBossSpecialAI(e) {
                 const bulletSpd = 15 * SPEED_SCALE;
                 for (let i = -1; i <= 1; i++) {
                     const a = e.angle + i * 0.18;
-                    enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * bulletSpd, vy: Math.sin(a) * bulletSpd, life: 250, color: '#ff8800' });
+                    spawnEnemyBulletObj({ x: e.x, y: e.y, vx: Math.cos(a) * bulletSpd, vy: Math.sin(a) * bulletSpd, life: 250, color: '#ff8800' });
                 }
                 if (isOnScreen(e)) AudioSys.playSE('shoot');
             }
@@ -421,7 +421,7 @@ function updateBossSpecialAI(e) {
             if (e.fireTimer % 6 === 0) {
                 for (let i = 0; i < 4; i++) {
                     const a = e.angle + (Math.PI / 2) * i;
-                    enemyBullets.push({
+                    spawnEnemyBulletObj({
                         x: e.x, y: e.y, vx: Math.cos(a) * 12 * SPEED_SCALE, vy: Math.sin(a) * 12 * SPEED_SCALE,
                         life: 180, color: '#ff00ff', isLaserMissile: true
                     });
@@ -437,7 +437,7 @@ function updateBossSpecialAI(e) {
         if (frame % 3 === 0) {
             const ang = Math.random() * Math.PI * 2;
             const dist = 70 + Math.random() * 30;
-            particles.push({ x: e.x + Math.cos(ang) * dist, y: e.y + Math.sin(ang) * dist, vx: -Math.cos(ang) * 5, vy: -Math.sin(ang) * 5, color: '#fff', life: 0.2, size: 2.5 });
+            spawnParticleObj({ x: e.x + Math.cos(ang) * dist, y: e.y + Math.sin(ang) * dist, vx: -Math.cos(ang) * 5, vy: -Math.sin(ang) * 5, color: '#fff', life: 0.2, size: 2.5 });
         }
     }
     // --- フェーズ3: 必殺技 (Indexに準拠) ---
@@ -448,7 +448,7 @@ function updateBossSpecialAI(e) {
             const ringCount = 12;
             for (let i = 0; i < ringCount; i++) {
                 const a = (Math.PI * 2 / ringCount) * i;
-                enemyBullets.push({
+                spawnEnemyBulletObj({
                     x: e.x, y: e.y,
                     vx: Math.cos(a) * 10 * SPEED_SCALE, vy: Math.sin(a) * 10 * SPEED_SCALE,
                     life: 300, color: e.color, isShockwave: true,
@@ -462,7 +462,7 @@ function updateBossSpecialAI(e) {
             const count = 24;
             for (let i = 0; i < count; i++) {
                 const a = (Math.PI * 2 / count) * i;
-                enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * 10 * SPEED_SCALE, vy: Math.sin(a) * 10 * SPEED_SCALE, life: 300, color: '#fff' });
+                spawnEnemyBulletObj({ x: e.x, y: e.y, vx: Math.cos(a) * 10 * SPEED_SCALE, vy: Math.sin(a) * 10 * SPEED_SCALE, life: 300, color: '#fff' });
             }
         }
         // Index 0-1: ホーミングミサイル斉射
@@ -470,7 +470,7 @@ function updateBossSpecialAI(e) {
             const sides = e.variant.sides;
             for (let i = 0; i < sides; i++) {
                 const a = e.angle + (Math.PI * 2 / sides) * i;
-                enemyBullets.push({
+                spawnEnemyBulletObj({
                     x: e.x + Math.cos(a) * 60, y: e.y + Math.sin(a) * 60,
                     vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
                     life: 300, isMissile: true, color: e.color, trail: []
@@ -628,7 +628,7 @@ function updateBattleshipAI(e) {
                 const sx = e.x + Math.cos(baseA) * 100, sy = e.y + Math.sin(baseA) * 100;
                 for (let i = -1; i <= 1; i++) {
                     const a = baseA + (i * 0.2);
-                    enemyBullets.push({
+                    spawnEnemyBulletObj({
                         x: sx, y: sy, vx: Math.cos(a) * 24 * SPEED_SCALE, vy: Math.sin(a) * 24 * SPEED_SCALE,
                         life: 200, color: '#0ff', isLaserMissile: true
                     });
@@ -719,7 +719,7 @@ function updateBattleshipAI(e) {
         if (cycle % 10 === 0) {
             for (let i = 0; i < 8; i++) {
                 const a = e.angle + (Math.PI * 2 / 8) * i;
-                enemyBullets.push({
+                spawnEnemyBulletObj({
                     x: e.x + Math.cos(a) * 80, y: e.y + Math.sin(a) * 80,
                     vx: Math.cos(a) * 4, vy: Math.sin(a) * 4,
                     life: 200, color: '#0ff', isLaserMissile: true

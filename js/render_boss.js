@@ -284,7 +284,7 @@ function drawBossEnemy(ctx, e) {
         for (let i = 0; i < 4; i++) {
             const ang = Math.random() * Math.PI * 2;
             const spd = 4 + Math.random() * 10;
-            particles.push({
+            spawnParticleObj({
                 x: e.x + (Math.random() - 0.5) * 40, y: e.y + (Math.random() - 0.5) * 40,
                 vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
                 color: Math.random() > 0.4 ? '#fff' : baseColor, life: 0.5, size: 2 + Math.random() * 2
@@ -561,7 +561,7 @@ function drawBattleshipBoss(ctx, e) {
         for (let i = 0; i < 4; i++) {
             const ang = Math.random() * Math.PI * 2;
             const spd = 4 + Math.random() * 10;
-            particles.push({
+            spawnParticleObj({
                 x: e.x + (Math.random() - 0.5) * 40, y: e.y + (Math.random() - 0.5) * 40,
                 vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
                 color: Math.random() > 0.4 ? '#fff' : colorRedNeon, life: 0.5, size: 2 + Math.random() * 2

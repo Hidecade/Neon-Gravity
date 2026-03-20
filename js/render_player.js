@@ -266,7 +266,7 @@ function drawInvulnBarrier(ctx, p) {
         for (let i = 0; i < particleCount; i++) {
             const ang = Math.random() * Math.PI * 2;
             const dist = r;
-            particles.push({
+            spawnParticleObj({
                 x: p.x + Math.cos(ang) * dist,
                 y: p.y + Math.sin(ang) * dist,
                 vx: Math.cos(ang) * 2,
@@ -368,7 +368,7 @@ function drawEmeraldPhoenix(ctx, p) {
     if (!isIntro && frame % 2 === 0 && vScale > 0.5) {
         const pAngle = p.angle + Math.PI + (Math.random() - 0.5);
         const pSpeed = 2 + Math.random() * 4;
-        particles.push({
+        spawnParticleObj({
             x: drawX,
             y: drawY,
             vx: Math.cos(pAngle) * pSpeed,

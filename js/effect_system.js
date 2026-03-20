@@ -177,7 +177,7 @@ function createWallImpact(x, y, color) {
     for (let i = 0; i < 6; i++) {
         const angle = Math.random() * Math.PI * 2;
         const speed = (Math.random() * 5 + 2) * SPEED_SCALE * 15; // 弾の勢いを表現
-        particles.push({
+        spawnParticleObj({
             x: x, y: y,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
@@ -187,7 +187,7 @@ function createWallImpact(x, y, color) {
         });
     }
     // 小さな光のリング
-    rings.push({ x: x, y: y, r: 2, color: color, life: 0.3 });
+    spawnRingObj({ x: x, y: y, r: 2, color: color, life: 0.3 });
 }
 
 
@@ -209,7 +209,7 @@ function createExplosion(x, y, baseColor, n) {
             color = Math.random() > 0.5 ? '#ffffff' : '#ffff00';
         }
 
-        particles.push({
+        spawnParticleObj({
             x: x,
             y: y,
             vx: Math.cos(angle) * speed,
@@ -355,8 +355,16 @@ function updateParticlesAndRings() {
     const friction = Math.pow(0.92, gameSpeed);
 
     // --- パーティクルの更新 ---
-    for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
+    // プールの配列を直接参照します
+    const pPoolArray = particlePool.pool;
+    
+    // Swap & Pop をやめるため、配列の後ろから回す必要がなくなり、普通の順方向ループでOKになります
+    for (let i = 0; i < pPoolArray.length; i++) {
+        const p = pPoolArray[i];
+        
+        // ★ 休んでいる（未使用の）オブジェクトは計算をスキップ
+        if (!p.active) continue;
+
         p.x += p.vx * gameSpeed;
         p.y += p.vy * gameSpeed;
         p.vx *= friction;
@@ -373,16 +381,20 @@ function updateParticlesAndRings() {
         
         if (p.rotV) p.angle += p.rotV * gameSpeed;
         
-        // Swap & Pop で削除
+        // ★ 削除（Pop）の代わりに、非アクティブ状態にしてプールへ返却するだけ
         if (p.life <= 0) {
-            particles[i] = particles[particles.length - 1];
-            particles.pop();
+            p.active = false;
         }
     }
 
     // --- リングの更新 ---
-    for (let i = rings.length - 1; i >= 0; i--) {
-        const r = rings[i];
+    const rPoolArray = ringPool.pool;
+    
+    for (let i = 0; i < rPoolArray.length; i++) {
+        const r = rPoolArray[i];
+
+        // ★ 同様に、未使用オブジェクトはスキップ
+        if (!r.active) continue;
 
         if (r.followPlayer) {
             r.x = player.x;
@@ -397,10 +409,9 @@ function updateParticlesAndRings() {
             r.life -= (r.decay !== undefined ? r.decay : 0.08) * SPEED_SCALE * gameSpeed;
         }
 
-        // Swap & Pop で削除
+        // ★ リングも同様に、非アクティブ状態にするだけ
         if (r.life <= 0) {
-            rings[i] = rings[rings.length - 1];
-            rings.pop();
+            r.active = false;
         }
     }
 }
@@ -435,13 +446,14 @@ function drawWormholes() {
 
 
 function drawVisualEffects() {
-    // 1. 特殊ミサイル（パスをまとめてから1回で塗りつぶす）
+    // 1. 特殊ミサイル（これはプールの対象外なので通常のforループで高速化だけします）
     ctx.fillStyle = '#fd0';
     ctx.beginPath();
-    missiles.forEach(m => {
+    for (let i = 0; i < missiles.length; i++) {
+        const m = missiles[i];
         ctx.moveTo(m.x, m.y);
         ctx.arc(m.x, m.y, 4 * G_SCALE, 0, PI2);
-    });
+    }
     ctx.fill();
 
     // =========================================================
@@ -449,8 +461,16 @@ function drawVisualEffects() {
     // =========================================================
     const batches = {};
 
-    particles.forEach(p => {
-        if (!isOnScreen(p, 50)) return;
+    // ★ 変更点1：プールの配列を参照し、通常のforループにする
+    const pPoolArray = particlePool.pool;
+    for (let i = 0; i < pPoolArray.length; i++) {
+        const p = pPoolArray[i];
+
+        // ★ 変更点2：休んでいるオブジェクトは絶対に描画しない！
+        if (!p.active) continue;
+
+        // ★ 変更点3：forEachの return は continue に変える
+        if (!isOnScreen(p, 50)) continue;
 
         // A. 特殊パーティクル（破片、泡）の個別描画
         if (p.isShard || p.isBubble) {
@@ -523,7 +543,7 @@ function drawVisualEffects() {
             }
             batches[key].lines.push(p);
         }
-    });
+    }
 
     // 分類した通常火花を一括描画
     ctx.save();
@@ -535,11 +555,12 @@ function drawVisualEffects() {
         ctx.globalAlpha = batch.alpha;
         
         ctx.beginPath();
-        batch.lines.forEach(p => {
+        for (let j = 0; j < batch.lines.length; j++) {
+            const p = batch.lines[j];
             const length = 4.0;
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
-        });
+        }
         ctx.stroke(); 
     }
     ctx.restore();
@@ -549,8 +570,16 @@ function drawVisualEffects() {
     // =========================================================
     ctx.globalAlpha = 1.0;
 
-    rings.forEach(r => {
-        if (!isOnScreen({ x: r.x, y: r.y }, r.r * G_SCALE + 50)) return;
+    // ★ リングも同様にプールの配列を参照し、forループにする
+    const rPoolArray = ringPool.pool;
+    for (let i = 0; i < rPoolArray.length; i++) {
+        const r = rPoolArray[i];
+
+        // ★ 休んでいる波紋は無視！
+        if (!r.active) continue;
+
+        // ★ forEachの return を continue に変更
+        if (!isOnScreen({ x: r.x, y: r.y }, r.r * G_SCALE + 50)) continue;
 
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
@@ -594,5 +623,5 @@ function drawVisualEffects() {
             }
         }
         ctx.restore();
-    });
+    }
 }

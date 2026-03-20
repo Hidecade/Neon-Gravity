@@ -125,8 +125,12 @@ function startStage() {
     player.visualScale = 0; // イントロ中は透明にする
 
     // 3. エンティティプールのクリア
-    bullets = []; lasers = []; enemies = []; enemyBullets = [];
-    missiles = []; wormholes = []; scorePopups = []; rings = [];
+    playerBulletPool.clearAll(); lasers = []; enemies = []; 
+    enemyBulletPool.clearAll();
+    missiles = []; wormholes = []; scorePopups = []; 
+
+    ringPool.clearAll();
+    particlePool.clearAll();
 
     // カメラリセット
     const viewW = width / cameraScale;
@@ -249,9 +253,13 @@ function resetGame() {
     warningTimer = 0;
     levelItemsDroppedInStage = 0;
 
-    bullets = []; lasers = []; enemies = []; enemyBullets = [];
-    particles = []; crystals = []; missiles = []; powerups = [];
-    wormholes = []; scorePopups = []; rings = [];
+    playerBulletPool.clearAll(); lasers = []; enemies = []; 
+    enemyBulletPool.clearAll();
+    particlePool.clearAll();
+    ringPool.clearAll();     
+    crystals = []; missiles = []; powerups = [];
+    wormholes = []; scorePopups = [];
+
 
     player.x = worldSize / 2; player.y = worldSize / 2;
     player.vx = 0; player.vy = 0;
@@ -554,9 +562,12 @@ function proceedToNextMenu() {
 function returnToTitle() {
     gameState = 'TITLE';
 
-    bullets = []; lasers = []; enemies = []; enemyBullets = [];
-    particles = []; crystals = []; missiles = []; powerups = [];
-    wormholes = []; scorePopups = []; rings = [];
+    playerBulletPool.clearAll(); lasers = []; enemies = []; 
+    enemyBulletPool.clearAll();
+    particlePool.clearAll(); 
+    ringPool.clearAll();     
+    crystals = []; missiles = []; powerups = [];
+    wormholes = []; scorePopups = [];
 
     if (typeof AudioSys !== 'undefined') {
         AudioSys.fadeOutBGM().then(() => {
@@ -1015,7 +1026,7 @@ function updateIntro() {
                 for (let i = 0; i < 5; i++) {
                     const tailOffset = 40 * player.visualScale;
                     const spreadX = 12 * player.visualScale;
-                    particles.push({
+                    spawnParticleObj({
                         x: player.x + (Math.random() - 0.5) * spreadX,
                         y: currentVisualY + tailOffset,
                         vx: (Math.random() - 0.5) * 2,
@@ -1032,7 +1043,7 @@ function updateIntro() {
             if (introTimer === 30) {
                 if (typeof AudioSys !== 'undefined') AudioSys.playSE('warp_in');
                 if (typeof distortGrid === 'function') distortGrid(player.x, currentVisualY, -100, 200);
-                particles.push({
+                spawnParticleObj({
                     x: player.x, y: currentVisualY, vx: 0, vy: 0,
                     color: '#fff', life: 0.2, size: 150, isBubble: true
                 });
@@ -1042,7 +1053,7 @@ function updateIntro() {
             for (let i = 0; i < 20; i++) {
                 const ang = Math.random() * Math.PI * 2;
                 const spd = 5 + Math.random() * 10;
-                particles.push({
+                spawnParticleObj({
                     x: player.x + (Math.random() - 0.5) * spread,
                     y: currentVisualY + (Math.random() - 0.5) * spread,
                     vx: Math.cos(ang) * spd,
@@ -1407,7 +1418,7 @@ function updateDying() {
  * ステージクリア後のワープ演出（次のステージへの離脱）
  */
 function updateWarpProcess() {
-    bullets = []; lasers = []; missiles = []; player.history = [];
+    playerBulletPool.clearAll(); lasers = []; missiles = []; player.history = [];
 
     if (player.warpTimer === undefined) player.warpTimer = 0;
     player.warpTimer++;
@@ -1449,7 +1460,7 @@ function updateWarpProcess() {
     // 彗星の尾エフェクト
     const tailCount = Math.min(15, Math.floor(Math.abs(player.vy) / 2));
     for (let i = 0; i < tailCount; i++) {
-        particles.push({
+        spawnParticleObj({
             x: player.x + (Math.random() - 0.5) * 12,
             y: player.y + 5,
             vx: (Math.random() - 0.5) * 2,
@@ -1503,7 +1514,7 @@ function updateWarpProcess() {
         crystals.forEach(c => c.life = 0);
         powerups.forEach(p => p.life = 0);
         scorePopups.forEach(s => s.life = 0);
-        enemyBullets.forEach(eb => eb.life = 0);
+        enemyBulletPool.clearAll();
 
         // 画面から消えた瞬間に、1度だけフェードアウト開始の命令を出す
         if (!player.hasExitedScreen) {

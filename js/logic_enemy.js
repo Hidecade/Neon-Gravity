@@ -89,7 +89,7 @@ function updateTriangleAI(e) {
 
     const speedBase = 1.8 + Math.random() * 0.4;
 
-    particles.push({
+    spawnParticleObj({
         x: e.x + backX * 16,
         y: e.y + backY * 16,
 
@@ -213,16 +213,18 @@ function updateDragonAI(e) {
     e.fireTimer++;
     if (e.fireTimer > 100) {
         e.fireTimer = 0;
-        // 弾速も怒りで速くしたければここに angerMult を掛けても良いです
-        const currentEnemyBulletSpd = BULLET_CONFIG.ENEMY_NORMAL.SPEED * SPEED_SCALE * (1 + (stage - 1) * DIFFICULTY_CONFIG.BULLET_SPEED_INC);
-        const shootAngle = e.angle;
-        enemyBullets.push({
-            x: e.x, y: e.y,
-            vx: Math.cos(shootAngle) * currentEnemyBulletSpd,
-            vy: Math.sin(shootAngle) * currentEnemyBulletSpd,
-            life: BULLET_CONFIG.ENEMY_NORMAL.LIFE, color: '#c00'
-        });
-        AudioSys.playSE('shoot');
+        if (e.inActiveRange) {
+            // 弾速も怒りで速くしたければここに angerMult を掛けても良いです
+            const currentEnemyBulletSpd = BULLET_CONFIG.ENEMY_NORMAL.SPEED * SPEED_SCALE * (1 + (stage - 1) * DIFFICULTY_CONFIG.BULLET_SPEED_INC);
+            const shootAngle = e.angle;
+            spawnEnemyBulletObj({
+                x: e.x, y: e.y,
+                vx: Math.cos(shootAngle) * currentEnemyBulletSpd,
+                vy: Math.sin(shootAngle) * currentEnemyBulletSpd,
+                life: BULLET_CONFIG.ENEMY_NORMAL.LIFE, color: '#c00'
+            });
+            AudioSys.playSE('shoot');
+        }
     }
 }
 
@@ -291,10 +293,10 @@ function updateHunterAI(e) {
     // --- 状態3: 攻撃 (ATTACK) ---
     else if (e.state === 'attack') {
         // ★変更：15フレーム間隔で、合計3発撃つまで繰り返す
-        if (e.actionTimer % 15 === 1 && e.burstCount < 3) { 
+        if (e.inActiveRange && e.actionTimer % 15 === 1 && e.burstCount < 3) { 
             const bulletSpd = BULLET_CONFIG.ENEMY_NORMAL.SPEED * 1.8 * SPEED_SCALE;
 
-            enemyBullets.push({
+            spawnEnemyBulletObj({
                 x: e.x, y: e.y,
                 vx: Math.cos(e.angle) * bulletSpd,
                 vy: Math.sin(e.angle) * bulletSpd,
@@ -489,27 +491,29 @@ function updatePhantomAI(e) {
 
         if (e.timer >= 30 && e.timer < 30 + gameSpeed) {
             e.isAiming = false;
-            for (let i = 0; i < 4; i++) {
-                const orbitAngle = e.rotAngle + (Math.PI / 2) * i;
-                const orbitDist = 38;
-                const shootX = e.x + Math.cos(orbitAngle) * orbitDist;
-                const shootY = e.y + Math.sin(orbitAngle) * orbitDist;
+            if (e.inActiveRange) {
+                for (let i = 0; i < 4; i++) {
+                    const orbitAngle = e.rotAngle + (Math.PI / 2) * i;
+                    const orbitDist = 38;
+                    const shootX = e.x + Math.cos(orbitAngle) * orbitDist;
+                    const shootY = e.y + Math.sin(orbitAngle) * orbitDist;
 
-                const bulletSpd = 20 * SPEED_SCALE;
-                const aim = Math.atan2(player.y - shootY, player.x - shootX);
+                    const bulletSpd = 20 * SPEED_SCALE;
+                    const aim = Math.atan2(player.y - shootY, player.x - shootX);
 
-                enemyBullets.push({
-                    x: shootX,
-                    y: shootY,
-                    vx: Math.cos(aim) * bulletSpd,
-                    vy: Math.sin(aim) * bulletSpd,
-                    life: 200,
-                    color: e.color,
-                    isLaserMissile: true
-                });
+                    spawnEnemyBulletObj({
+                        x: shootX,
+                        y: shootY,
+                        vx: Math.cos(aim) * bulletSpd,
+                        vy: Math.sin(aim) * bulletSpd,
+                        life: 200,
+                        color: e.color,
+                        isLaserMissile: true
+                    });
+                }
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
+                if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 40, 100);
             }
-            if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
-            if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 40, 100);
         }
 
         // 撃ったらすぐ離脱へ
@@ -583,113 +587,115 @@ function updateEclipseAI(e) {
 
     // ★ 出現直後（最初の60フレーム）の後はすぐに攻撃を許可する
     if (e.actionTimer > 60) {
-        // 攻撃1：全方位ばらまき弾
-        if (cycle === 120) {
-            const ways = 16;
-            const bSpd = 16 * SPEED_SCALE;
-            for (let i = 0; i < ways; i++) {
-                const a = (Math.PI * 2 / ways) * i + e.angle;
-                enemyBullets.push({
-                    x: e.x, y: e.y,
-                    vx: Math.cos(a) * bSpd, vy: Math.sin(a) * bSpd,
-                    life: 300, color: e.color
-                });
+        if (e.inActiveRange) {
+            // 攻撃1：全方位ばらまき弾
+            if (cycle === 120) {
+                const ways = 16;
+                const bSpd = 16 * SPEED_SCALE;
+                for (let i = 0; i < ways; i++) {
+                    const a = (Math.PI * 2 / ways) * i + e.angle;
+                    spawnEnemyBulletObj({
+                        x: e.x, y: e.y,
+                        vx: Math.cos(a) * bSpd, vy: Math.sin(a) * bSpd,
+                        life: 300, color: e.color
+                    });
+                }
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
+                distortGrid(e.x, e.y, 80, 150);
             }
-            if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
-            distortGrid(e.x, e.y, 80, 150);
-        }
-        
-        // ==========================================
-        // ★追加 攻撃3：ブラックホール（重力引き寄せ）
-        // サイクル 150 〜 220 の間、自機を強烈に吸い寄せる
-        // ==========================================
-        else if (cycle > 150 && cycle < 220) {
-
-            if (cycle === 151) {
-                if (typeof AudioSys !== 'undefined') AudioSys.playSE('gravity', e.x, e.y);
-            }
-
-            const pullDx = e.x - player.x;
-            const pullDy = e.y - player.y;
-            const pullDist = Math.hypot(pullDx, pullDy) || 0.001;
-
-            const maxPullDist = 800; // 引力が届く最大距離（画面の大部分）
             
-            if (pullDist < maxPullDist) {
-                // エクリプスに近いほど引力が強くなる計算
-                const pullStrength = 8.0 * SPEED_SCALE * gameSpeed;
-                const force = pullStrength * (1 - pullDist / maxPullDist);
-
-                // プレイヤーの座標をエクリプス側へ直接引き寄せる
-                player.x += (pullDx / pullDist) * force;
-                player.y += (pullDy / pullDist) * force;
-            }
-
-            // --- 視覚演出 ---
-            // グリッドの歪みは処理が重いため4フレームに1回だけ実行
-            if (frame % 4 === 0) {
-                if (typeof distortGrid === 'function') distortGrid(e.x, e.y, -40, 400);
-            }
-
             // ==========================================
-            // ★ 渦を巻いて中心で消滅するブラックホールエフェクト
+            // ★追加 攻撃3：ブラックホール（重力引き寄せ）
+            // サイクル 150 〜 220 の間、自機を強烈に吸い寄せる
             // ==========================================
-            // 光の線が途切れないよう【毎フレーム】発生させる
-            const numParticles = 2 + Math.floor(Math.random() * 2);
-            
-            for (let i = 0; i < numParticles; i++) {
-                const pAngle = Math.random() * Math.PI * 2;
-                
-                // 距離を少し調整し、画面の広範囲から集まるように
-                const pDist = 120 + Math.random() * 250; 
-                
-                const colors = ['#ffaaff', '#880000', '#ffffff', '#00ffff'];
-                const pColor = colors[Math.floor(Math.random() * colors.length)];
-                
-                const speed = (14 + Math.random() * 6) * SPEED_SCALE;
+            else if (cycle > 150 && cycle < 220) {
 
-                // ★ポイント1：直進ではなく、少しだけ角度をずらして「渦（スワール）」を巻くようにする
-                const swirlAngle = pAngle + 0.15; 
+                if (cycle === 151) {
+                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('gravity', e.x, e.y);
+                }
 
-                // ★ポイント2：中心に到達する時間を逆算し、ピッタリ中心で消滅する寿命を設定する
-                // （距離 ÷ 速度）で到達フレーム数を出し、1フレームの減少量(約0.02)を掛ける
-                const exactLife = (pDist / speed) * 0.02;
+                const pullDx = e.x - player.x;
+                const pullDy = e.y - player.y;
+                const pullDist = Math.hypot(pullDx, pullDy) || 0.001;
 
-                particles.push({
-                    x: e.x + Math.cos(pAngle) * pDist,
-                    y: e.y + Math.sin(pAngle) * pDist,
-                    vx: -Math.cos(swirlAngle) * speed, 
-                    vy: -Math.sin(swirlAngle) * speed,
-                    color: pColor,
+                const maxPullDist = 800; // 引力が届く最大距離（画面の大部分）
+                
+                if (pullDist < maxPullDist) {
+                    // エクリプスに近いほど引力が強くなる計算
+                    const pullStrength = 8.0 * SPEED_SCALE * gameSpeed;
+                    const force = pullStrength * (1 - pullDist / maxPullDist);
+
+                    // プレイヤーの座標をエクリプス側へ直接引き寄せる
+                    player.x += (pullDx / pullDist) * force;
+                    player.y += (pullDy / pullDist) * force;
+                }
+
+                // --- 視覚演出 ---
+                // グリッドの歪みは処理が重いため4フレームに1回だけ実行
+                if (frame % 4 === 0) {
+                    if (typeof distortGrid === 'function') distortGrid(e.x, e.y, -40, 400);
+                }
+
+                // ==========================================
+                // ★ 渦を巻いて中心で消滅するブラックホールエフェクト
+                // ==========================================
+                // 光の線が途切れないよう【毎フレーム】発生させる
+                const numParticles = 2 + Math.floor(Math.random() * 2);
+                
+                for (let i = 0; i < numParticles; i++) {
+                    const pAngle = Math.random() * Math.PI * 2;
                     
-                    // ランダムではなく、計算で求めた「ピッタリ中心で消える寿命」を入れる
-                    life: exactLife, 
+                    // 距離を少し調整し、画面の広範囲から集まるように
+                    const pDist = 120 + Math.random() * 250; 
                     
-                    size: 1.5 + Math.random() * 2.5 
-                });
+                    const colors = ['#ffaaff', '#880000', '#ffffff', '#00ffff'];
+                    const pColor = colors[Math.floor(Math.random() * colors.length)];
+                    
+                    const speed = (14 + Math.random() * 6) * SPEED_SCALE;
+
+                    // ★ポイント1：直進ではなく、少しだけ角度をずらして「渦（スワール）」を巻くようにする
+                    const swirlAngle = pAngle + 0.15; 
+
+                    // ★ポイント2：中心に到達する時間を逆算し、ピッタリ中心で消滅する寿命を設定する
+                    // （距離 ÷ 速度）で到達フレーム数を出し、1フレームの減少量(約0.02)を掛ける
+                    const exactLife = (pDist / speed) * 0.02;
+
+                    spawnParticleObj({
+                        x: e.x + Math.cos(pAngle) * pDist,
+                        y: e.y + Math.sin(pAngle) * pDist,
+                        vx: -Math.cos(swirlAngle) * speed, 
+                        vy: -Math.sin(swirlAngle) * speed,
+                        color: pColor,
+                        
+                        // ランダムではなく、計算で求めた「ピッタリ中心で消える寿命」を入れる
+                        life: exactLife, 
+                        
+                        size: 1.5 + Math.random() * 2.5 
+                    });
+                }
             }
-        }
-        // 攻撃2：超高速レーザー
-        else if (cycle === 250 || cycle === 270 || cycle === 290) {
-            const bladeCount = 6;
-            const currentOrbitDist = 50 + Math.sin(frame * 0.05) * 4;
-            const bSpd = 24 * SPEED_SCALE;
+            // 攻撃2：超高速レーザー
+            else if (cycle === 250 || cycle === 270 || cycle === 290) {
+                const bladeCount = 6;
+                const currentOrbitDist = 50 + Math.sin(frame * 0.05) * 4;
+                const bSpd = 24 * SPEED_SCALE;
 
-            for (let i = 0; i < bladeCount; i++) {
-                const orbitAngle = e.angle + (Math.PI * 2 / bladeCount) * i;
-                const shootX = e.x + Math.cos(orbitAngle) * currentOrbitDist;
-                const shootY = e.y + Math.sin(orbitAngle) * currentOrbitDist;
+                for (let i = 0; i < bladeCount; i++) {
+                    const orbitAngle = e.angle + (Math.PI * 2 / bladeCount) * i;
+                    const shootX = e.x + Math.cos(orbitAngle) * currentOrbitDist;
+                    const shootY = e.y + Math.sin(orbitAngle) * currentOrbitDist;
 
-                const aim = Math.atan2(player.y - shootY, player.x - shootX);
+                    const aim = Math.atan2(player.y - shootY, player.x - shootX);
 
-                enemyBullets.push({
-                    x: shootX, y: shootY,
-                    vx: Math.cos(aim) * bSpd, vy: Math.sin(aim) * bSpd,
-                    life: 200, color: '#fff', isLaserMissile: true
-                });
+                    spawnEnemyBulletObj({
+                        x: shootX, y: shootY,
+                        vx: Math.cos(aim) * bSpd, vy: Math.sin(aim) * bSpd,
+                        life: 200, color: '#fff', isLaserMissile: true
+                    });
+                }
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
+                distortGrid(e.x, e.y, 40, 100);
             }
-            if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
-            distortGrid(e.x, e.y, 40, 100);
         }
     }
 }
@@ -752,7 +758,7 @@ function updateJellyfishAI(e) {
             if (Math.random() < e.chargeLevel && frame % 3 === 0) {
                 const r = 20 * e.scale;
                 const a = Math.random() * Math.PI * 2;
-                particles.push({
+                spawnParticleObj({
                     x: e.x + Math.cos(a) * r, y: e.y + Math.sin(a) * r,
                     vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2,
                     color: '#ff4400', life: 0.2, size: 2 // ★変更: 白から赤橙に
@@ -766,15 +772,15 @@ function updateJellyfishAI(e) {
             e.chargeLevel = 0;
 
             // 自身を中心とした放電エフェクト（そのまま残す）
-            //rings.push({ x: e.x, y: e.y, r: 10, color: '#ff0000', life: 1.5 });
-            //rings.push({ x: e.x, y: e.y, r: 40, color: '#ff8800', life: 1.0 });
+            //spawnRingObj({ x: e.x, y: e.y, r: 10, color: '#ff0000', life: 1.5 });
+            //spawnRingObj({ x: e.x, y: e.y, r: 40, color: '#ff8800', life: 1.0 });
 
             if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
             distortGrid(e.x, e.y, 80, 150);
 
             // ★ 変更：自機に向かって飛んでいく衝撃波を生成
             const bSpd = 12 * SPEED_SCALE; // 弾の速度
-            enemyBullets.push({
+            spawnEnemyBulletObj({
                 x: e.x + Math.cos(e.angle) * 20,
                 y: e.y + Math.sin(e.angle) * 20,
                 vx: Math.cos(targetAngle) * bSpd,
@@ -795,7 +801,7 @@ function updateJellyfishAI(e) {
             e.canFire = false;
             if (Math.random() < 0.3) {
                 const bSpd = 8 * SPEED_SCALE;
-                enemyBullets.push({
+                spawnEnemyBulletObj({
                     x: e.x + Math.cos(e.angle) * 10,
                     y: e.y + Math.sin(e.angle) * 10,
                     vx: Math.cos(targetAngle) * bSpd,
@@ -858,7 +864,7 @@ function updateSentinelAI(e) {
             e.state = 'fire';
             // 高速弾を発射
             const bSpd = 22 * SPEED_SCALE;
-            enemyBullets.push({
+            spawnEnemyBulletObj({
                 x: e.x, y: e.y,
                 vx: Math.cos(e.angle) * bSpd, // 現在向いている方向に撃つ
                 vy: Math.sin(e.angle) * bSpd,
@@ -919,7 +925,7 @@ function updateSweeperAI(e) {
         const sideSpread = (Math.random() - 0.5) * 1.4;  // 左右の振れ
         const speedBase = 1.2 + Math.random() * 1.0;
 
-        particles.push({
+        spawnParticleObj({
             x: e.x + backX * 16,
             y: e.y + backY * 16,
 
@@ -1015,7 +1021,7 @@ function updateFighterJetAI(eb) {
 
         if (Math.floor(eb.timer) % 6 === 0 && eb.burstCount < 3) {
             const aimAngle = Math.atan2(player.y - eb.y, player.x - eb.x);
-            enemyBullets.push({
+            spawnEnemyBulletObj({
                 x: eb.x, y: eb.y,
                 vx: Math.cos(aimAngle) * 32 * SPEED_SCALE,
                 vy: Math.sin(aimAngle) * 32 * SPEED_SCALE,
@@ -1055,7 +1061,7 @@ function updateFighterJetAI(eb) {
 
     // パーティクル
     if (frame % 2 === 0 && (eb.state === 'deploy' || eb.state === 'escape')) {
-        particles.push({
+        spawnParticleObj({
             x: eb.x - Math.cos(eb.drawAngle) * 15 * G_SCALE,
             y: eb.y - Math.sin(eb.drawAngle) * 15 * G_SCALE,
             vx: -eb.vx * 0.2,
@@ -1259,10 +1265,21 @@ function destroyEnemy(e) {
             wormholes.forEach(w => w.life = 0);
 
             // ★追加：残っている敵弾をすべて小さな爆発エフェクトにしてから消去
-            enemyBullets.forEach(eb => {
-                createExplosion(eb.x, eb.y, eb.color || '#fff', 3);
-            });
-            enemyBullets = [];
+            const ebPool = enemyBulletPool.pool;
+
+            for (let i = 0; i < ebPool.length; i++) {
+                const eb = ebPool[i];
+                
+                // 生きている弾だけを対象にする
+                if (eb.active) {
+                    // 爆発エフェクトを発生
+                    createExplosion(eb.x, eb.y, eb.color || '#fff', 3);
+                    
+                    // ★重要：オブジェクトプールに返却
+                    eb.active = false;
+                    eb.life = 0;
+                }
+            }
 
             // 派手なグリッドの歪み
             distortGrid(e.x, e.y, 200, 500);
@@ -1276,8 +1293,8 @@ function destroyEnemy(e) {
         // Battleship自体の撃破時は一掃ロジックを入れなくても
         // startStageのクリア判定で次の演出へ移行します
         gameSpeed = 0.05;
-        bullets = [];
-        enemyBullets = [];
+        playerBulletPool.clearAll();
+        enemyBulletPool.clearAll();
 
         // ★追加：ラスボス撃破時も、アステロイドを含めた全ての敵を連鎖爆発させる
         enemies.forEach(other => {
@@ -1336,7 +1353,7 @@ function destroyEnemy(e) {
             const pvy = Math.sin(orbitAngle) * (5 + Math.random() * 5);
 
             // 特殊パーティクルとして追加（isShardフラグで三角錐を描画させる）
-            particles.push({
+            spawnParticleObj({
                 x: partX, y: partY,
                 vx: pvx, vy: pvy,
                 color: e.color,
@@ -1372,7 +1389,7 @@ function destroyEnemy(e) {
             const pvx = Math.cos(orbitAngle) * (3 + Math.random() * 4);
             const pvy = Math.sin(orbitAngle) * (3 + Math.random() * 4);
 
-            particles.push({
+            spawnParticleObj({
                 x: partX, y: partY,
                 vx: pvx, vy: pvy,
                 color: e.color || '#f05',
@@ -1408,7 +1425,7 @@ function destroyEnemy(e) {
                 vertices.push({ x: Math.cos(a) * r, y: Math.sin(a) * r });
             }
 
-            particles.push({
+            spawnParticleObj({
                 x: e.x, y: e.y,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
@@ -1435,7 +1452,7 @@ function destroyEnemy(e) {
             const angle = Math.random() * Math.PI * 2;
             const speed = 2 + Math.random() * 3; // 速度を少し抑える
 
-            particles.push({
+            spawnParticleObj({
                 x: seg.x, y: seg.y,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
@@ -1468,7 +1485,7 @@ function destroyEnemy(e) {
         for (let i = 0; i < bubbleCount; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = 1 + Math.random() * 3; // ふんわり飛び散る速度
-            particles.push({
+            spawnParticleObj({
                 x: e.x + (Math.random() - 0.5) * 20,
                 y: e.y + (Math.random() - 0.5) * 20,
                 vx: Math.cos(angle) * speed,
@@ -1499,7 +1516,7 @@ function destroyEnemy(e) {
             const angle = Math.random() * Math.PI * 2;
             const speed = (1.5 + Math.random() * 3) * scale;
 
-            particles.push({
+            spawnParticleObj({
                 x: e.x,
                 y: e.y,
                 vx: Math.cos(angle) * speed,
@@ -2096,8 +2113,8 @@ function updateEnemies() {
         // ラスボス撃破演出
         if (e.type === 'battleship') {
             gameSpeed = 0.05; // 完全撃破時にさらに超スローにする
-            bullets = [];
-            enemyBullets = [];
+            playerBulletPool.clearAll();
+            enemyBulletPool.clearAll();
             createExplosion(e.x, e.y, '#fff', 200);
 
             // ==========================================
@@ -2114,7 +2131,7 @@ function updateEnemies() {
                 const startX = e.x + Math.cos(shardAngle) * offsetDist;
                 const startY = e.y + Math.sin(shardAngle) * offsetDist;
 
-                particles.push({
+                spawnParticleObj({
                     x: startX,
                     y: startY,
                     vx: Math.cos(shardAngle) * shardSpeed,
@@ -2182,8 +2199,8 @@ function updateEnemies() {
         // ========================================================
         if (e.isDying) {
             e.dyingTimer -= 1;
-            e.scale *= 0.98
-            // 小さくなるエフェクト(e.scale *= 0.98)を削除し、透明度を初期化/減少させる
+            e.scale *= 0.98;
+            
             if (e.opacity === undefined) e.opacity = 1.0;
             // 60フレーム（dyingTimerの初期値）かけて 1.0 から 0 へ
             e.opacity = Math.max(0, e.dyingTimer / 60);
@@ -2203,13 +2220,13 @@ function updateEnemies() {
                 const expSize = 5 + Math.random() * 8;
 
                 createExplosion(e.x + ox, e.y + oy, sparkColor, expSize);
-                rings.push({ x: e.x + ox, y: e.y + oy, r: expSize, color: sparkColor, life: 0.5 });
+                spawnRingObj({ x: e.x + ox, y: e.y + oy, r: expSize, color: sparkColor, life: 0.5 });
 
                 // 三角の破片（デブリ）
                 if (Math.random() < 0.3) {
                     const shardAngle = Math.random() * Math.PI * 2;
                     const shardSpeed = 2 + Math.random() * 4;
-                    particles.push({
+                    spawnParticleObj({
                         x: e.x + ox, y: e.y + oy,
                         vx: Math.cos(shardAngle) * shardSpeed,
                         vy: Math.sin(shardAngle) * shardSpeed,
@@ -2239,9 +2256,6 @@ function updateEnemies() {
             updateFormationMovement(e);
             if (e.type === 'cube') { e.rotX += 0.03; e.rotY += 0.04; }
         } else {
-            // AI実行前の敵弾の数を記録
-            const bulletCountBefore = enemyBullets.length;
-
             // AI（移動と射撃）の実行
             switch (e.type) {
                 case 'dragon': updateDragonAI(e); break;
@@ -2264,11 +2278,6 @@ function updateEnemies() {
                     break;
                 case 'battleship': updateBattleshipAI(e); break;
 
-            }
-
-            // 画面外の敵が弾を撃った場合、無効化する
-            if (!inActiveRange && enemyBullets.length > bulletCountBefore) {
-                enemyBullets.length = bulletCountBefore;
             }
         }
 
@@ -2311,7 +2320,7 @@ function updateEnemies() {
                 }
 
                 // ボスが死にかけたら、安全のために敵弾をすべて消す
-                enemyBullets = [];
+                enemyBulletPool.clearAll();
 
                 // 演出開始時の音と画面揺れ
                 if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_medium');
