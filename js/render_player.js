@@ -42,8 +42,10 @@ function drawPlayerSystems() {
     if (finalThrustScale > 0.05) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        let pColor = player.invuln > 0 ? '255, 230, 0' : (player.laserTimer > 0 ? '0, 255, 255' : '0, 255, 180');
-
+        let pColor = player.hyperTimer > 0 ? '255, 136, 0' : 
+                 (player.invuln > 0 ? '255, 230, 0' : // (無敵も黄金っぽいためそのまま)
+                 (player.laserTimer > 0 ? '0, 255, 255' : '0, 255, 180'));
+                 
         const offsetStart = 8 * G_SCALE * currentScale;
         const particleCount = Math.floor(30 * finalThrustScale);
 
@@ -92,7 +94,9 @@ function drawPlayerSystems() {
         ctx.scale(G_SCALE * currentScale, G_SCALE * currentScale);
 
         ctx.globalAlpha = 0.4 * (1 - i / player.history.length);
-        let trailColor = player.invuln > 0 ? '#ff0' : (player.laserTimer > 0 ? '#0ff' : '#0f8');
+        let trailColor = player.hyperTimer > 0 ? '#ff8800' : 
+                         (player.invuln > 0 ? '#ff0' : 
+                         (player.laserTimer > 0 ? '#0ff' : '#0f8'));
         ctx.strokeStyle = trailColor;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -131,7 +135,8 @@ function drawPlayer(ctx, p) {
 
     // 状態に応じた機体色の決定
     let shipColor = '#0f8';
-    if (p.invuln > 0) shipColor = '#ff0';
+    if (p.hyperTimer > 0) shipColor = '#ff8800';
+    else if (p.invuln > 0) shipColor = '#ff0';
     else if (p.laserTimer > 0) shipColor = '#0ff';
 
     ctx.strokeStyle = shipColor;
@@ -297,10 +302,13 @@ function drawEmeraldPhoenix(ctx, p) {
     ctx.rotate(p.angle);
     ctx.scale(vScale, vScale);
 
-    // --- 2. カラー設定 ---
+    // 2. カラー設定 の部分を書き換え
     let mainColor = '#0f8';
     let accentColor = '#0ff';
-    if (p.invuln > 0) { mainColor = '#ff0'; accentColor = '#fff'; }
+    
+    // ★ハイパー時のメインカラーを黄金(#ffea00)へ、アクセントを薄い黄金に
+    if (p.hyperTimer > 0) { mainColor = '#ff8800'; accentColor = '#ffcc88'; }
+    else if (p.invuln > 0) { mainColor = '#ff0'; accentColor = '#fff'; }
     else if (p.laserTimer > 0) { mainColor = '#0ff'; accentColor = '#fff'; }
 
     if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = 20;

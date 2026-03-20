@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "1.5.4";
+window.GAME_VERSION = "1.5.5";
 
 
 const DEBUG = {
@@ -93,7 +93,7 @@ const DIFFICULTY_CONFIG = {
 const PLAYER_BASE_SPEED = 12;   // 自機の基本移動速度
 const PLAYER_BASE_SHIELD = 100; // シールド最大値
 const MAX_WEAPON_LEVEL = 7;     // ショット最大レベル
-const DEFAULT_WEAPON_LEVEL = 1; // 初期レベル
+const DEFAULT_WEAPON_LEVEL = 7; // 初期レベル
 
 // --- 敵（エネミー）設定 ---
 // 敵の基本移動速度
@@ -236,6 +236,7 @@ const BULLET_CONFIG = {
 
 // --- アイテム・ドロップ設定 ---
 const INVULN_DURATION = 400;  // 無敵状態の持続時間
+const HYPER_DURATION = 400;
 const LASER_DURATION = 400;   // 特殊レーザーの持続時間
 const ITEM_LIFE = 300;        // アイテムが消滅するまでの時間
 

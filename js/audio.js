@@ -97,8 +97,33 @@ const SE_LIBRARY = {
         modGain.gain.value = 500;
         mod.connect(modGain); modGain.connect(o.frequency);
         mod.start(t); mod.stop(t + 0.15);
-        g.gain.setValueAtTime(0.08, t);
+        g.gain.setValueAtTime(0.07, t);
         g.gain.linearRampToValueAtTime(0, t + 0.15);
+        return { osc: o, duration: 0.15 };
+    },
+    homing: (ctx, t, g) => {
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth'; // ノコギリ波で少しエッジの効いた音に
+        
+        // 1800Hzの高音から200Hzへ急降下させ、「シュピュン！」というSFミサイルの軌跡音を作る
+        o.frequency.setValueAtTime(1800, t);
+        o.frequency.exponentialRampToValueAtTime(200, t + 0.15);
+        
+        // 少しピッチモジュレーションをかけてメカニックな質感を出す（お好みで外してもOKです）
+        const mod = ctx.createOscillator();
+        mod.type = 'sine'; 
+        mod.frequency.value = 30; // 揺れの速さ
+        const modGain = ctx.createGain();
+        modGain.gain.value = 100; // 揺れの深さ
+        mod.connect(modGain); 
+        modGain.connect(o.frequency);
+        mod.start(t); 
+        mod.stop(t + 0.15);
+
+        // 音量のフェードアウト（連射されるので少し控えめの音量）
+        g.gain.setValueAtTime(0.06, t);
+        g.gain.linearRampToValueAtTime(0, t + 0.15);
+        
         return { osc: o, duration: 0.15 };
     },
     warning: (ctx, t, g) => {

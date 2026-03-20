@@ -954,6 +954,7 @@ function draw() {
 
     if (typeof drawLasers === 'function') drawLasers();
     if (typeof drawPlayerBullets === 'function') drawPlayerBullets();
+    if (typeof drawPlayerMissiles === 'function') drawPlayerMissiles();
     if (typeof drawItems === 'function') drawItems();
     if (typeof drawVisualEffects === 'function') drawVisualEffects();
 

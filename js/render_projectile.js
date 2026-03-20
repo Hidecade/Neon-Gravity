@@ -68,17 +68,29 @@ function drawLasers() {
         ctx.translate(l.x, l.y);
         ctx.rotate(l.angle);
         ctx.globalCompositeOperation = 'lighter';
-        if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = 15;
-        ctx.shadowColor = '#0ff';
-        ctx.strokeStyle = '#0ff';
-        ctx.lineWidth = 1.5;
+        if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 15;
 
-        // 修正：固定値 2000 ではなく、計算された l.renderLen を使う
+        // ==========================================
+        // ★状態に応じたレーザーの色と太さの設定
+        // ==========================================
+        const isHyper = player.hyperTimer > 0;
+        const mainColor = isHyper ? '#ff8800' : '#0ff';  // オレンジ or シアン
+        const coreColor = isHyper ? '#ffddaa' : '#fff';  // 芯の色（薄いオレンジ or 白）
+        const hitColor  = isHyper ? '#ffcc88' : '#fff';  // ヒット時の光
+
+        ctx.shadowColor = mainColor;
+        ctx.strokeStyle = mainColor;
+        
+        // ハイパー時はメインの光線を少し太くする
+        ctx.lineWidth = isHyper ? 3.0 : 1.5;
+
         const len = l.renderLen || 2000;
 
         const segments = 20;
         const segLen = len / segments;
-        const jitter = 15 * (l.life / 5);
+        
+        // ハイパー時はジグザグ（荒ぶり）も1.5倍にして高エネルギー感を出す
+        const jitter = 15 * (l.life / 5) * (isHyper ? 1.5 : 1.0);
 
         ctx.beginPath();
         ctx.moveTo(0, 0);
@@ -89,21 +101,23 @@ function drawLasers() {
         }
         ctx.stroke();
 
-        // 芯の白い線
+        // 芯の線
         if (Math.random() > 0.2) {
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = coreColor;
+            ctx.lineWidth = isHyper ? 2.0 : 1.0; // 芯も太く
             ctx.beginPath();
             ctx.moveTo(0, 0);
             ctx.lineTo(len, (Math.random() - 0.5) * 5);
             ctx.stroke();
         }
 
-        // ヒット地点の光（BOSSに当たっている時）
+        // ヒット地点の光（BOSSや壁などに当たっている時）
         if (len < 1900) {
-            ctx.fillStyle = '#fff';
+            ctx.fillStyle = hitColor;
             ctx.beginPath();
-            ctx.arc(len, 0, 10 + Math.random() * 10, 0, Math.PI * 2);
+            // ハイパー時はヒット地点の爆発光も少し大きく
+            const hitSize = (isHyper ? 15 : 10) + Math.random() * 10;
+            ctx.arc(len, 0, hitSize, 0, Math.PI * 2);
             ctx.fill();
         }
 
@@ -153,6 +167,7 @@ function drawEnemyProjectiles() {
     ctx.globalAlpha = 1.0;
     ctx.globalCompositeOperation = 'source-over';
 }
+
 function drawNormalBullet(ctx, eb) {
     ctx.rotate(frame * 0.15);
 
@@ -281,6 +296,73 @@ function drawLaserMissile(ctx, eb) {
 
     // source-overに戻すのは全体の最後、または描画マネージャー側で行うとさらに軽くなります
     ctx.globalCompositeOperation = 'source-over';
+}
+
+function drawPlayerMissiles() {
+    if (typeof missiles === 'undefined' || missiles.length === 0) return;
+
+    ctx.save();
+    // 描画モードを「加算」に設定（強く発光させるため）
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    missiles.forEach(m => {
+        if (!isOnScreen(m, 50)) return;
+
+        const color = m.color || (player.hyperTimer > 0 ? '#ff8800' : '#0ff');
+
+        // --- 1. 軌跡（レーザーの尾）の描画 ---
+        if (m.trail && m.trail.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(m.trail[0].x, m.trail[0].y);
+            for (let i = 1; i < m.trail.length; i++) {
+                ctx.lineTo(m.trail[i].x, m.trail[i].y);
+            }
+
+            // 外側の光
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 6 * G_SCALE;
+            ctx.globalAlpha = 0.5;
+            ctx.stroke();
+
+            // ★ 内側の芯を高熱を感じさせる薄いオレンジ(#ffddaa)に
+            ctx.strokeStyle = '#ffddaa';
+            ctx.lineWidth = 2 * G_SCALE;
+            ctx.globalAlpha = 1.0;
+            ctx.stroke();
+        }
+
+        // --- 2. ミサイル先端（レーザーの頭）の描画 ---
+        ctx.save();
+        ctx.translate(m.x, m.y);
+        const angle = Math.atan2(m.vy, m.vx);
+        ctx.rotate(angle);
+        
+        const headLen = 15 * G_SCALE; // 先端の長さ
+        
+        // 外側の光
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 6 * G_SCALE;
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(-headLen * 0.5, 0);
+        ctx.lineTo(headLen * 0.5, 0);
+        ctx.stroke();
+
+        // 内側の白い芯
+        ctx.strokeStyle = '#fff8cc';
+        ctx.lineWidth = 2 * G_SCALE;
+        ctx.globalAlpha = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(-headLen * 0.5, 0);
+        ctx.lineTo(headLen * 0.5, 0);
+        ctx.stroke();
+        
+        ctx.restore();
+    });
+
+    ctx.restore();
 }
 
 function drawShockwave(ctx, eb) {

@@ -1603,14 +1603,8 @@ function destroyEnemy(e) {
     let finalDropType = e.drop;
 
     if (finalDropType === 'level') {
-        // もし同時に複数の「Wアイテム持ち敵」が画面にいて、
-        // すでにノルマ(2個)達成済みか、武器レベルがMAXならクリスタルに降格させる
-        if (levelItemsDroppedInStage >= 2 || player.weaponLevel >= MAX_WEAPON_LEVEL) {
-            finalDropType = 'crystal';
-        } else {
-            // ここで初めて「実際にドロップした数」をカウントする
-            levelItemsDroppedInStage++; 
-        }
+        // ★ 制限撤廃のため降格処理を削除し、そのままWアイテムを落とす
+        levelItemsDroppedInStage++;
     }
 
     // ★変更: e.drop ではなく finalDropType で判定するように書き換える
@@ -1764,7 +1758,9 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     const shieldChance = (player.shield < 30) ? DROP_RATES.SHIELD_LOW : DROP_RATES.SHIELD_NORM;
 
     // レベルアップアイテムが出る条件を満たしているか判定
-    const canDropLevel = (levelItemsDroppedInStage < 2 && player.weaponLevel < MAX_WEAPON_LEVEL);
+    const canDropLevel = true;
+    //const canDropLevel = (levelItemsDroppedInStage < 2);
+    //const canDropLevel = (levelItemsDroppedInStage < 2 && player.weaponLevel < MAX_WEAPON_LEVEL);
     
     // 条件を満たしていれば設定された確率を使い、満たしていなければ 0%（出ない）にする
     const levelChance = canDropLevel ? DROP_RATES.LEVEL : 0;

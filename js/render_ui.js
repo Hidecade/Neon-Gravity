@@ -57,18 +57,77 @@ function updateUI() {
     else ui.shieldBar.classList.remove('shield-critical');
     if (ui.shieldVal) ui.shieldVal.innerText = Math.floor(Math.max(0, player.shield));
 
+
+    // ==========================================
+    // ★追加: 武器ラベルのテキストと色の動的変更
+    // ==========================================
+    const weaponLabel = document.getElementById('weapon-label');
+    if (weaponLabel) {
+        if (player.hyperTimer > 0) {
+            weaponLabel.innerText = "OVERDRIVE";
+            weaponLabel.style.color = "#ff8800"; // ネオンオレンジ
+            weaponLabel.style.textShadow = "0 0 10px #ff5500"; // 燃えるようなグロー
+        } else if (player.laserTimer > 0) {
+            weaponLabel.innerText = "LASER";
+            weaponLabel.style.color = "#0ff"; // シアン
+            weaponLabel.style.textShadow = "0 0 10px #0ff"; // 青いグロー
+        } else {
+            weaponLabel.innerText = "WEAPON";
+            weaponLabel.style.color = "#fff"; // 通常は白
+            weaponLabel.style.textShadow = "none"; // 発光なし
+        }
+    }
+
+
     // Weapon Bar
     ui.weaponDisplay.innerHTML = '';
-    if (player.laserTimer > 0) {
-        const pct = Math.max(0, (player.laserTimer / LASER_DURATION) * 100);
-        const frameDiv = document.createElement('div'); frameDiv.className = 'laser-bar-frame';
-        const fillDiv = document.createElement('div'); fillDiv.className = 'laser-bar-fill';
+    
+    if (player.hyperTimer > 0) {
+        // ==========================================
+        // ★ ハイパーモードのゲージ（オレンジに発光）
+        // ==========================================
+        const pct = Math.min(100, Math.max(0, (player.hyperTimer / player.maxHyperTimer) * 100));
+        const frameDiv = document.createElement('div'); 
+        frameDiv.className = 'laser-bar-frame';
+        // ★ 枠の色を半透明のオレンジに
+        frameDiv.style.borderColor = 'rgba(255, 136, 0, 0.5)';
+        
+        const fillDiv = document.createElement('div'); 
+        fillDiv.className = 'laser-bar-fill';
         fillDiv.style.width = pct + '%';
+        // ★ ゲージ本体を鮮やかなネオンオレンジ(#ff8800)に
+        fillDiv.style.backgroundColor = '#ff8800';
+        fillDiv.style.boxShadow = '0 0 15px #ff5500'; // 少し赤みがかったオレンジのグロー
+        
+        if (player.hyperTimer < 120 && Math.floor(frame / 4) % 2 === 0) fillDiv.style.opacity = 0.3;
+        
+        frameDiv.appendChild(fillDiv); 
+        ui.weaponDisplay.appendChild(frameDiv);
+        
+    } else if (player.laserTimer > 0) {
+        // ==========================================
+        // ★ レーザーのゲージ（通常通りシアン）
+        // ==========================================
+        const pct = Math.min(100, Math.max(0, (player.laserTimer / LASER_DURATION) * 100));
+        const frameDiv = document.createElement('div'); 
+        frameDiv.className = 'laser-bar-frame';
+        
+        const fillDiv = document.createElement('div'); 
+        fillDiv.className = 'laser-bar-fill';
+        fillDiv.style.width = pct + '%';
+        
         if (player.laserTimer < 120 && Math.floor(frame / 4) % 2 === 0) fillDiv.style.opacity = 0.3;
-        frameDiv.appendChild(fillDiv); ui.weaponDisplay.appendChild(frameDiv);
+        
+        frameDiv.appendChild(fillDiv); 
+        ui.weaponDisplay.appendChild(frameDiv);
+        
     } else {
+        // ==========================================
+        // ★ 通常の武器レベルブロック
+        // ==========================================
         for (let i = 1; i <= MAX_WEAPON_LEVEL; i++) {
-            const block = document.createElement('div'); block.className = 'w-block';
+            const block = document.createElement('div'); 
+            block.className = 'w-block';
             if (i <= player.weaponLevel) block.classList.add('active');
             ui.weaponDisplay.appendChild(block);
         }

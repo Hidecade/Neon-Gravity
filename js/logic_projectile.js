@@ -184,6 +184,17 @@ function updateLasers() {
                 e.hp -= 0.5;
                 if (frame % 2 === 0) {
                     createExplosion(e.x, e.y, e.color, 2);
+
+                    // ==========================================
+                    // ★追加: レーザーのヒット音（爆音防止のため4フレームに1回）
+                    // ==========================================
+                    if (frame % 4 === 0 && typeof AudioSys !== 'undefined') {
+                        if (e.type === 'boss' || e.type === 'battleship') {
+                            AudioSys.playSE('boss_hit');
+                        } else {
+                            AudioSys.playSE('enemy_hit');
+                        }
+                    }
                     // ヒット地点のエフェクト
                     // 正確なヒット位置計算には本来 sqrt が必要だが、
                     // エフェクト用なので distToEnemySq の平方根を取らずに簡易計算するか、
@@ -422,78 +433,116 @@ function updateMissiles() {
     if (typeof missiles === 'undefined') return;
 
     missiles.forEach(m => {
-        // --- 1. ターゲット探索 ---
-        if (!m.target || !enemies.includes(m.target)) {
-            let min = 9999;
+        // ★追加: ミサイルが発射されてからのフレーム数をカウント
+        m.age = (m.age || 0) + 1;
+
+        // --- 1. ターゲット探索（発射直後はターゲットを探さず直進する） ---
+        if (m.age > 60 && (!m.target || !enemies.includes(m.target))) {
+            let min = 999999;
             enemies.forEach(e => {
                 if (e.hp > 0) { // 生きている敵だけ対象
-                    const d = Math.hypot(e.x - m.x, e.y - m.y);
-                    if (d < min) { min = d; m.target = e; }
+                    // 高速化のため平方根を使わず2乗で距離比較
+                    const dx = e.x - m.x;
+                    const dy = e.y - m.y;
+                    const distSq = dx * dx + dy * dy;
+                    if (distSq < min) { min = distSq; m.target = e; }
                 }
             });
         }
 
-        // --- 2. 誘導（ホーミング） ---
+    // --- 2. フェーズに応じた誘導と速度制御 ---
         const scale = (typeof SPEED_SCALE !== 'undefined') ? SPEED_SCALE : 0.25;
 
-        if (m.target) {
-            const ta = Math.atan2(m.target.y - m.y, m.target.x - m.x);
-            // 旋回力にも SCALE を適用
-            m.vx += Math.cos(ta) * 0.5 * scale;
-            m.vy += Math.sin(ta) * 0.5 * scale;
+        if (m.age <= 30) {
+            // 【フェーズ1: 射出・拡散】（0〜30フレーム）
+            // ★拡散時間を大幅に延長。減速をほぼ無くし(0.99)、遠くまで大きく広がるようにする
+            m.vx *= 0.99;
+            m.vy *= 0.99;
+
+        } else if (m.age <= 45) {
+            // 【フェーズ2: 減速＆旋回】（31〜45フレーム）
+            // 大きく広がった位置から、滑らかに減速しながらターゲットの方へ弧を描く
+            m.vx *= 0.90; 
+            m.vy *= 0.90;
+            
+            if (m.target) {
+                const ta = Math.atan2(m.target.y - m.y, m.target.x - m.x);
+                m.vx += Math.cos(ta) * 3.5 * scale;
+                m.vy += Math.sin(ta) * 3.5 * scale;
+            }
+
+        } else {
+            // 【フェーズ3: 点火・狙い撃ち】（46フレーム以降）
+            // ターゲットに向かって急加速
+            if (m.target) {
+                const ta = Math.atan2(m.target.y - m.y, m.target.x - m.x);
+                m.vx += Math.cos(ta) * 6.0 * scale;
+                m.vy += Math.sin(ta) * 6.0 * scale;
+            } else {
+                m.vx *= 1.15;
+                m.vy *= 1.15;
+            }
         }
 
-        // --- 3. 速度制限と更新 ---
+        // --- 3. 最高速度の制限 ---
         const s = Math.hypot(m.vx, m.vy);
         if (s > 0.001) {
-            // m.speed は生成時に scale 済みなのでそのまま使う
-            m.vx = (m.vx / s) * m.speed;
-            m.vy = (m.vy / s) * m.speed;
+            let maxSpeed = m.speed;
+            
+            // ★上限のリミッター期間もフェーズ2の終わり(45F)まで延長
+            if (m.age <= 45) {
+                maxSpeed = m.speed * 0.6; 
+            } else {
+                maxSpeed = m.speed * 1.5; 
+            }
+
+            if (s > maxSpeed) {
+                m.vx = (m.vx / s) * maxSpeed;
+                m.vy = (m.vy / s) * maxSpeed;
+            }
         }
 
-        // 移動
+        // --- 4. 移動と軌跡の記録 ---
         m.x += m.vx * gameSpeed;
         m.y += m.vy * gameSpeed;
         m.life -= gameSpeed;
 
-        // --- 4. 壁衝突判定 ---
+        if (!m.trail) m.trail = [];
+        m.trail.unshift({ x: m.x, y: m.y });
+        // 軌跡を少し長め(12フレーム)にすると、よりレーザーらしくなります
+        if (m.trail.length > 12) m.trail.pop(); 
+
+        // --- 5. 壁衝突判定 ---
         if (m.x < WALL_MARGIN || m.x > worldSize - WALL_MARGIN ||
             m.y < WALL_MARGIN || m.y > worldSize - WALL_MARGIN) {
 
-            // 壁に当たったら爆発
             if (typeof createExplosion === 'function') {
                 const impactX = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, m.x));
                 const impactY = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, m.y));
-                createExplosion(impactX, impactY, '#fd0', 10);
+                createExplosion(impactX, impactY, m.color || '#fff', 10);
             }
-            if (AudioSys) AudioSys.playSE('explode_small');
+            if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_small');
             m.life = 0;
             return;
         }
 
-        // --- 5. 敵との衝突判定 ---
+        // --- 6. 敵との衝突判定 ---
         enemies.forEach(e => {
             if (e.hp <= 0) return;
             const hitRadius = (e.type === 'asteroid' ? 25 * e.scale : 30);
-
-            if (Math.hypot(e.x - m.x, e.y - m.y) < hitRadius) {
+            
+            const dx = e.x - m.x;
+            const dy = e.y - m.y;
+            if (dx * dx + dy * dy < hitRadius * hitRadius) {
                 e.hp -= 15;
                 m.life = 0;
-                if (typeof createExplosion === 'function') createExplosion(m.x, m.y, '#fd0', 8);
-                if (AudioSys) AudioSys.playSE('explode_small');
+                if (typeof createExplosion === 'function') createExplosion(m.x, m.y, m.color || '#fff', 8);
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_small');
                 if (typeof distortGrid === 'function') distortGrid(m.x, m.y, 20, 50);
             }
         });
-
-        // --- 6. 軌跡パーティクル ---
-        if (frame % 2 === 0 && typeof particlePool !== 'undefined') {
-            spawnParticleObj({
-                x: m.x, y: m.y,
-                vx: (Math.random() - 0.5) * scale,
-                vy: (Math.random() - 0.5) * scale,
-                color: '#fd0', life: 0.3, size: 2 * G_SCALE
-            });
-        }
+        
+        // （※パーティクルの処理は削除しました）
     });
 
     // 寿命切れを削除
@@ -588,9 +637,21 @@ function updatePowerups() {
             AudioSys.playSE('powerup');
 
             if (p.type === 'laser') {
-                player.laserTimer = LASER_DURATION;
-                spawnRingObj({ x: player.x, y: player.y, r: 10, color: '#0ff', life: 1 });
-                spawnRingObj({ x: player.x, y: player.y, r: 50, color: '#0ff', life: 1 });
+                if (player.hyperTimer > 0) {
+                    player.hyperTimer = HYPER_DURATION;
+                    player.maxHyperTimer = HYPER_DURATION;
+                    if (typeof spawnScorePopupObj === 'function') {
+                        spawnScorePopupObj({ x: player.x, y: player.y - 20, text: "OVERDRIVE MAX!", life: 60, alpha: 1, vy: -1.2 });
+                    }
+                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('powerup');
+                }
+                else {
+                    // 通常のレーザー発動
+                    player.laserTimer = (typeof LASER_DURATION !== 'undefined') ? LASER_DURATION : 240;
+                    spawnRingObj({ x: player.x, y: player.y, r: 10, color: '#0ff', life: 1 });
+                    spawnRingObj({ x: player.x, y: player.y, r: 50, color: '#0ff', life: 1 });
+                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('powerup');
+                }
             }
             else if (p.type === 'invincible') {
                 player.invuln = INVULN_DURATION;
@@ -602,14 +663,32 @@ function updatePowerups() {
                 distortGrid(player.x, player.y, 150, 300);
             }
             else if (p.type === 'level') {
-                player.weaponLevel = Math.min(MAX_WEAPON_LEVEL, player.weaponLevel + 1);
-                // スコアポップアップと同じ仕組みで「LEVEL UP!」と表示
-                spawnScorePopupObj({
-                    x: player.x,
-                    y: player.y - 20,
-                    text: "LEVEL UP!",
-                    life: 60, alpha: 1, vy: -1.2
-                });
+                if (player.weaponLevel >= MAX_WEAPON_LEVEL) {
+                    player.laserTimer = 0; 
+                    
+                    player.hyperTimer = HYPER_DURATION;
+                    player.maxHyperTimer = HYPER_DURATION;
+                    
+                    if (typeof spawnScorePopupObj === 'function') {
+                        spawnScorePopupObj({ x: player.x, y: player.y - 30, text: "OVERDRIVE AWAKENING!", life: 90, alpha: 1, vy: -1.5, isBoss: true });
+                    }
+                    
+                    spawnRingObj({ x: player.x, y: player.y, r: 20, color: '#ff8800', life: 1.5, lineWidth: 8 });
+                    spawnRingObj({ x: player.x, y: player.y, r: 80, color: '#ff5500', life: 1.0 });
+                    if (typeof distortGrid === 'function') distortGrid(player.x, player.y, 100, 200);
+                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('powerup');
+                    
+                }
+                else {
+                    // 通常のレベルアップ
+                    player.weaponLevel = Math.min(MAX_WEAPON_LEVEL, player.weaponLevel + 1);
+                    if (typeof spawnScorePopupObj === 'function') {
+                        spawnScorePopupObj({ x: player.x, y: player.y - 20, text: "LEVEL UP!", life: 60, alpha: 1, vy: -1.2 });
+                    } else {
+                        scorePopups.push({ x: player.x, y: player.y - 20, text: "LEVEL UP!", life: 60, alpha: 1, vy: -1.2 });
+                    }
+                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('powerup');
+                }
             }
             else if (p.type === 'shield') {
                 // 最大値(PLAYER_BASE_SHIELD)を超えないように回復

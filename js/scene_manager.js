@@ -1102,6 +1102,7 @@ function drawIntro() {
         if (typeof drawWormholes === 'function') drawWormholes();
         if (typeof drawLasers === 'function') drawLasers();
         if (typeof drawPlayerBullets === 'function') drawPlayerBullets();
+        if (typeof drawPlayerMissiles === 'function') drawPlayerMissiles();
         if (typeof drawItems === 'function') drawItems();
         if (typeof drawPlayerSystems === 'function') drawPlayerSystems();
         ctx.restore();

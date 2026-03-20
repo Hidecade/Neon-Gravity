@@ -109,18 +109,58 @@ function fire() {
     const vY = player.visualYOffset || 0;
     const spawnY = player.y + vY; // ★ここがポイント
 
-    if (player.laserTimer > 0) {
-        // レーザーの発射位置も spawnY に合わせる
+    if (player.hyperTimer > 0 || player.laserTimer > 0) {
+        const isHyper = player.hyperTimer > 0;
+
+        // 1. レーザーの発射（ハイパー時は少し太くする）
         lasers.push({
             x: player.x,
             y: spawnY,
             angle: player.angle,
             life: 5,
-            width: 40
+            width: 40 
         });
+        
         if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
-        distortGrid(player.x, spawnY, 20, 60);
-        return;
+        distortGrid(player.x, spawnY, isHyper ? 30 : 20, 60);
+
+        // 2. ハイパーモード専用：ホーミングミサイル展開
+        if (isHyper) {
+            // 全体フレームではなく、fire()が呼ばれた回数をカウントする
+            player.hyperMissileTick = (player.hyperMissileTick || 0) + 1;
+
+            // 射撃2回につき1回（安定した間隔で）ミサイルを射出する
+            if (player.hyperMissileTick % 8 === 0) {
+                
+                // 左、右、左斜め後ろ、右斜め後ろ の4方向の角度を計算
+                const missileAngles = [
+                    player.angle - Math.PI / 2,         // 左
+                    player.angle + Math.PI / 2,         // 右
+                    player.angle - Math.PI * 0.75,      // 左後方
+                    player.angle + Math.PI * 0.75       // 右後方
+                ];
+
+                const initialSpeed = 30 * SPEED_SCALE;
+                const cruiseSpeed = 20 * SPEED_SCALE;
+
+                missileAngles.forEach(a => {
+                    missiles.push({
+                        x: player.x,
+                        y: spawnY,
+                        vx: Math.cos(a) * initialSpeed,
+                        vy: Math.sin(a) * initialSpeed,
+                        speed: cruiseSpeed, 
+                        life: 180, 
+                        color: '#ffea00' // 黄金色
+                    });
+                });
+
+                if (typeof AudioSys !== 'undefined') {
+                    AudioSys.playSE('homing');
+                }
+            }
+        }
+        return; // 通常弾は撃たない
     }
 
     const s = BULLET_CONFIG.PLAYER.SPEED * SPEED_SCALE;
@@ -225,7 +265,7 @@ function launchSatellites() {
             eb.life = 0; // 念のため寿命も0にしておく
         }
     }
-    
+
     // ==========================================
     // 4. 巨大な波紋エフェクトを登録する
     // ==========================================
@@ -287,6 +327,7 @@ function damage(v) {
 function updatePlayerStatus() {
     if (player.invuln > 0) player.invuln--;
     if (player.laserTimer > 0) player.laserTimer--;
+    if (player.hyperTimer > 0) player.hyperTimer--;
 }
 
 
