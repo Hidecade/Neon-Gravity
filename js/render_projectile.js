@@ -73,7 +73,7 @@ function drawLasers() {
         // ==========================================
         // ★状態に応じたレーザーの色と太さの設定
         // ==========================================
-        const isHyper = player.hyperTimer > 0;
+        const isHyper = player.overdriveTimer > 0;
         const mainColor = isHyper ? '#ff8800' : '#0ff';  // オレンジ or シアン
         const coreColor = isHyper ? '#ffddaa' : '#fff';  // 芯の色（薄いオレンジ or 白）
         const hitColor  = isHyper ? '#ffcc88' : '#fff';  // ヒット時の光
@@ -298,8 +298,8 @@ function drawLaserMissile(ctx, eb) {
     ctx.globalCompositeOperation = 'source-over';
 }
 
-function drawPlayerMissiles() {
-    if (typeof missiles === 'undefined' || missiles.length === 0) return;
+function drawHomingLasers() {
+    if (typeof homingLasers === 'undefined' || homingLasers.length === 0) return;
 
     ctx.save();
     // 描画モードを「加算」に設定（強く発光させるため）
@@ -307,10 +307,10 @@ function drawPlayerMissiles() {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    missiles.forEach(m => {
+    homingLasers.forEach(m => {
         if (!isOnScreen(m, 50)) return;
 
-        const color = m.color || (player.hyperTimer > 0 ? '#ff8800' : '#0ff');
+        const color = m.color || (player.overdriveTimer > 0 ? '#ff8800' : '#0ff');
 
         // --- 1. 軌跡（レーザーの尾）の描画 ---
         if (m.trail && m.trail.length > 1) {

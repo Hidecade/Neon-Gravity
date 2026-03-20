@@ -108,22 +108,24 @@ canvas {
 /* =========================================================
    3. ゲージ・バーコンポーネント (Clean Sci-Fi Style)
    ========================================================= */
+/* --- コンテナと基本設定 --- */
 #gauge-box,
 #info-box > div {
-    pointer-events: none;
+    pointer-events: none; /* クリック判定を無効化し、ゲームプレイを邪魔しない */
 }
 
 #gauge-box {
-    width: calc(120px * var(--hud-scale)); 
+    width: calc(120px * var(--hud-scale, 1)); 
     text-align: right;
 }
 
+/* --- ラベル（テキスト） --- */
 .bar-label {
-    font-size: calc(10px * var(--hud-scale)); 
-    letter-spacing: calc(2px * var(--hud-scale));
-    margin-bottom: calc(4px * var(--hud-scale));
+    font-size: calc(10px * var(--hud-scale, 1)); 
+    letter-spacing: calc(2px * var(--hud-scale, 1));
+    margin-bottom: calc(4px * var(--hud-scale, 1));
     display: block;
-    color: rgba(200, 240, 255, 0.9);
+    color: rgba(200, 240, 255, 0.9); /* デフォルトのクリーンな白青 */
     line-height: 1.1;
     text-transform: uppercase;
     padding-right: 6px;
@@ -131,19 +133,20 @@ canvas {
 
 .bar-label.enemy,
 #boss-name-label {
-    color: rgba(255, 200, 200, 0.9);
+    color: rgba(255, 200, 200, 0.9); /* 敵対を示す薄い赤 */
 }
 
+/* --- フレーム（ゲージの外枠） --- */
 .bar-frame,
 .laser-bar-frame {
     width: 100%;
-    height: calc(8px * var(--hud-scale)); /* スマートに細く */
+    height: calc(8px * var(--hud-scale, 1)); /* スマートに細く */
     background: rgba(0, 15, 30, 0.6); 
     border: 1px solid rgba(0, 255, 255, 0.2);
     border-radius: 2px; /* 少しだけ丸みを持たせて洗練させる */
     backdrop-filter: blur(4px);
     box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
-    margin-bottom: calc(10px * var(--hud-scale));
+    margin-bottom: calc(10px * var(--hud-scale, 1));
     overflow: hidden;
     box-sizing: border-box;
 }
@@ -157,60 +160,76 @@ canvas {
     border-color: rgba(255, 51, 51, 0.3);
 }
 
-#shield-bar {
-    width: 100%;
+#boss-ui-container {
+    display: none;
+    margin-top: calc(12px * var(--hud-scale, 1));
+}
+
+/* --- フィル（ゲージの中身） --- */
+/* 全ゲージ共通のベース設定（.laser-bar-fill は外す） */
+#shield-bar,
+#enemy-bar,
+#boss-hp-bar-inline,
+#invuln-bar {
     height: 100%;
-    /* 先端に向かってエネルギーが強くなるグラデーション */
-    background: linear-gradient(90deg, rgba(0, 255, 180, 0.4), rgb(0, 255, 180));
-    transition: width 0.15s ease-out;
-    box-shadow: 0 0 calc(8px * var(--hud-scale)) rgb(0, 255, 180);
+    transition: width 0.15s ease-out, background 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 
-.shield-critical {
-    /* スムーズなフェード点滅（エラーのようなチカチカではなく、警告の脈打ち） */
-    animation: smooth-pulse 0.8s infinite alternate;
-    background: linear-gradient(90deg, rgba(255, 51, 51, 0.4), #ff3333) !important;
-}
-
-@keyframes smooth-pulse {
-    from { opacity: 1; box-shadow: 0 0 10px #ff3333; }
-    to { opacity: 0.4; box-shadow: 0 0 2px #ff3333; }
-}
-
-#enemy-bar {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, rgba(255, 51, 51, 0.4), #ff3333);
-    transition: width 0.5s ease-out;
-    box-shadow: 0 0 calc(8px * var(--hud-scale)) #ff3333;
-}
-
-#boss-hp-bar-inline {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, rgba(255, 51, 51, 0.4), #ff3333);
-    box-shadow: 0 0 calc(12px * var(--hud-scale)) #ff3333;
-    transition: width 0.2s ease-out, background-color 0.3s;
-}
-
+/* レーザー/OVERDRIVEゲージ（毎フレーム再生成されるためアニメーションはオフにする） */
 .laser-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, rgba(0, 255, 255, 0.4), #0ff);
-    box-shadow: 0 0 calc(8px * var(--hud-scale)) #0ff;
+    /* transition を削除 */
+    background: linear-gradient(90deg, rgba(0, 255, 255, 0.4), rgb(0, 255, 255));
+    box-shadow: 0 0 calc(8px * var(--hud-scale, 1)) rgb(0, 255, 255);
 }
 
+/* シールドゲージ（通常時のエメラルドグリーン） */
+#shield-bar {
+    width: 100%;
+    background: linear-gradient(90deg, rgba(0, 255, 180, 0.4), rgb(0, 255, 180));
+    box-shadow: 0 0 calc(8px * var(--hud-scale, 1)) rgb(0, 255, 180);
+}
+
+/* 敵ゲージ（ネオンレッド） */
+#enemy-bar {
+    width: 100%;
+    background: linear-gradient(90deg, rgba(255, 51, 51, 0.4), rgb(255, 51, 51));
+    transition: width 0.5s ease-out; /* 敵の減りは少しゆっくり見せる */
+    box-shadow: 0 0 calc(8px * var(--hud-scale, 1)) rgb(255, 51, 51);
+}
+
+/* ボスゲージ（ベースの赤。JSでボスの色に上書きされる） */
+#boss-hp-bar-inline {
+    width: 100%;
+    background: linear-gradient(90deg, rgba(255, 51, 51, 0.4), rgb(255, 51, 51));
+    box-shadow: 0 0 calc(12px * var(--hud-scale, 1)) rgb(255, 51, 51);
+    transition: width 0.2s ease-out; /* ボス被弾時のスピード */
+}
+
+/* 無敵ゲージ（ベース設定のみ。色はJSがイエローを注入） */
+#invuln-bar {
+    width: 0%;
+}
+
+/* レーザーゲージ（シアン） */
+.laser-bar-fill {
+    background: linear-gradient(90deg, rgba(0, 255, 255, 0.4), rgb(0, 255, 255));
+    box-shadow: 0 0 calc(8px * var(--hud-scale, 1)) rgb(0, 255, 255);
+}
+
+/* --- 武器レベルブロック（通常状態） --- */
 #weapon-display {
-    width: calc(120px * var(--hud-scale)); 
-    height: calc(8px * var(--hud-scale));
+    width: calc(120px * var(--hud-scale, 1)); 
+    height: calc(8px * var(--hud-scale, 1));
     display: flex;
     justify-content: space-between;
-    margin-top: calc(4px * var(--hud-scale));
+    margin-top: calc(4px * var(--hud-scale, 1));
 }
 
 .w-block {
     flex: 1;
     height: 100%;
-    margin-right: calc(3px * var(--hud-scale));
+    margin-right: calc(3px * var(--hud-scale, 1));
     border: 1px solid rgba(0, 255, 180, 0.2);
     border-radius: 1px;
     box-sizing: border-box;
@@ -224,12 +243,25 @@ canvas {
 .w-block.active {
     background: rgb(0, 255, 180); 
     border-color: #ffffff; 
-    box-shadow: 0 0 calc(6px * var(--hud-scale)) rgb(0, 255, 180);
+    box-shadow: 0 0 calc(6px * var(--hud-scale, 1)) rgb(0, 255, 180);
 }
 
-#boss-ui-container {
-    display: none;
-    margin-top: calc(12px * var(--hud-scale));
+/* --- アニメーションと状態変化 --- */
+/* シールドピンチ時（JSからクラスが付与される） */
+.shield-critical {
+    animation: smooth-pulse 0.8s infinite alternate;
+    background: linear-gradient(90deg, rgba(255, 51, 51, 0.4), rgb(255, 51, 51)) !important;
+}
+
+@keyframes smooth-pulse {
+    from { 
+        opacity: 1; 
+        box-shadow: 0 0 calc(10px * var(--hud-scale, 1)) rgb(255, 51, 51); 
+    }
+    to { 
+        opacity: 0.4; 
+        box-shadow: 0 0 calc(2px * var(--hud-scale, 1)) rgb(255, 51, 51); 
+    }
 }
 
 /* =========================================================

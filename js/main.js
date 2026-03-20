@@ -104,7 +104,7 @@ let camera = { x: 0, y: 0 };
 let enemies = [];         // 敵キャラクター
 
 let lasers = [];          // プレイヤーのレーザー
-let missiles = [];        // プレイヤーのホーミングミサイル　現在使用していない
+let homingLasers = [];        // プレイヤーのホーミングミサイル
 let crystals = [];        // スコアアイテム
 let powerups = [];        // パワーアップアイテム
 let wormholes = [];       // 敵出現ワームホール
@@ -823,7 +823,7 @@ function updateEntities() {
     if (typeof updateEnemyBullets === 'function') updateEnemyBullets();
     if (typeof updateCrystals === 'function') updateCrystals();
     if (typeof updatePowerups === 'function') updatePowerups();
-    if (typeof updateMissiles === 'function') updateMissiles();
+    if (typeof updateHomingLasers === 'function') updateHomingLasers();
     if (typeof updateParticlesAndRings === 'function') updateParticlesAndRings();
     if (typeof updatePlayerStatus === 'function') updatePlayerStatus();
 }
@@ -869,7 +869,7 @@ function updateDebugOverlay() {
     const enemyBulletCount = enemyBulletPool.getActiveCount();
     const crystalCount = Array.isArray(crystals) ? crystals.length : 0;
     const powerupCount = Array.isArray(powerups) ? powerups.length : 0;
-    const missileCount = Array.isArray(missiles) ? missiles.length : 0;
+    const missileCount = Array.isArray(homingLasers) ? homingLasers.length : 0;
 
     const particleCount = typeof particlePool !== 'undefined' ? particlePool.getActiveCount() : 0;
     const ringCount = typeof ringPool !== 'undefined' ? ringPool.getActiveCount() : 0;
@@ -954,7 +954,7 @@ function draw() {
 
     if (typeof drawLasers === 'function') drawLasers();
     if (typeof drawPlayerBullets === 'function') drawPlayerBullets();
-    if (typeof drawPlayerMissiles === 'function') drawPlayerMissiles();
+    if (typeof drawHomingLasers === 'function') drawHomingLasers();
     if (typeof drawItems === 'function') drawItems();
     if (typeof drawVisualEffects === 'function') drawVisualEffects();
 

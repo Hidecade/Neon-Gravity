@@ -428,11 +428,11 @@ function updateEnemyBullets() {
     // enemyBullets = enemyBullets.filter(...) // ★削除
 }
 
-function updateMissiles() {
+function updateHomingLasers() {
     // missiles配列がない場合は何もしない
-    if (typeof missiles === 'undefined') return;
+    if (typeof homingLasers === 'undefined') return;
 
-    missiles.forEach(m => {
+    homingLasers.forEach(m => {
         // ★追加: ミサイルが発射されてからのフレーム数をカウント
         m.age = (m.age || 0) + 1;
 
@@ -546,7 +546,7 @@ function updateMissiles() {
     });
 
     // 寿命切れを削除
-    missiles = missiles.filter(m => m.life > 0);
+    homingLasers = homingLasers.filter(m => m.life > 0);
 }
 
 function updateCrystals() {
@@ -637,9 +637,9 @@ function updatePowerups() {
             AudioSys.playSE('powerup');
 
             if (p.type === 'laser') {
-                if (player.hyperTimer > 0) {
-                    player.hyperTimer = HYPER_DURATION;
-                    player.maxHyperTimer = HYPER_DURATION;
+                if (player.overdriveTimer > 0) {
+                    player.overdriveTimer = OVERDRIVE_DURATION;
+                    player.maxHyperTimer = OVERDRIVE_DURATION;
                     if (typeof spawnScorePopupObj === 'function') {
                         spawnScorePopupObj({ x: player.x, y: player.y - 20, text: "OVERDRIVE MAX!", life: 60, alpha: 1, vy: -1.2 });
                     }
@@ -666,8 +666,8 @@ function updatePowerups() {
                 if (player.weaponLevel >= MAX_WEAPON_LEVEL) {
                     player.laserTimer = 0; 
                     
-                    player.hyperTimer = HYPER_DURATION;
-                    player.maxHyperTimer = HYPER_DURATION;
+                    player.overdriveTimer = OVERDRIVE_DURATION;
+                    player.maxHyperTimer = OVERDRIVE_DURATION;
                     
                     if (typeof spawnScorePopupObj === 'function') {
                         spawnScorePopupObj({ x: player.x, y: player.y - 30, text: "OVERDRIVE AWAKENING!", life: 90, alpha: 1, vy: -1.5, isBoss: true });

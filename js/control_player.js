@@ -109,8 +109,8 @@ function fire() {
     const vY = player.visualYOffset || 0;
     const spawnY = player.y + vY; // ★ここがポイント
 
-    if (player.hyperTimer > 0 || player.laserTimer > 0) {
-        const isHyper = player.hyperTimer > 0;
+    if (player.overdriveTimer > 0 || player.laserTimer > 0) {
+        const isHyper = player.overdriveTimer > 0;
 
         // 1. レーザーの発射（ハイパー時は少し太くする）
         lasers.push({
@@ -127,10 +127,10 @@ function fire() {
         // 2. ハイパーモード専用：ホーミングミサイル展開
         if (isHyper) {
             // 全体フレームではなく、fire()が呼ばれた回数をカウントする
-            player.hyperMissileTick = (player.hyperMissileTick || 0) + 1;
+            player.homingLaserTick = (player.homingLaserTick || 0) + 1;
 
             // 射撃2回につき1回（安定した間隔で）ミサイルを射出する
-            if (player.hyperMissileTick % 8 === 0) {
+            if (player.homingLaserTick % 8 === 0) {
                 
                 // 左、右、左斜め後ろ、右斜め後ろ の4方向の角度を計算
                 const missileAngles = [
@@ -144,7 +144,7 @@ function fire() {
                 const cruiseSpeed = 20 * SPEED_SCALE;
 
                 missileAngles.forEach(a => {
-                    missiles.push({
+                    homingLasers.push({
                         x: player.x,
                         y: spawnY,
                         vx: Math.cos(a) * initialSpeed,
@@ -316,7 +316,7 @@ function damage(v) {
         gameSpeed = 0.1;
         dyingTimer = 300;
 
-        playerBulletPool.clearAll(); lasers = []; missiles = [];
+        playerBulletPool.clearAll(); lasers = []; homingLasers = [];
         createExplosion(player.x, player.y, '#0f8', 200);
 
         AudioSys.playSE('explode_large');
@@ -327,7 +327,7 @@ function damage(v) {
 function updatePlayerStatus() {
     if (player.invuln > 0) player.invuln--;
     if (player.laserTimer > 0) player.laserTimer--;
-    if (player.hyperTimer > 0) player.hyperTimer--;
+    if (player.overdriveTimer > 0) player.overdriveTimer--;
 }
 
 

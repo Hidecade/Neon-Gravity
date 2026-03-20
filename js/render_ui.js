@@ -1,7 +1,9 @@
 ﻿
 
 function updateUI() {
-    // --- ★修正: 'boss' だけでなく 'battleship' (ラスボス) も対象にする ---
+    // ==========================================
+    // 1. BOSS & BATTLESHIP ゲージ
+    // ==========================================
     const currentBoss = enemies.find(e => e.type === 'boss' || e.type === 'battleship');
 
     if (currentBoss) {
@@ -10,39 +12,43 @@ function updateUI() {
         const bColor = currentBoss.color;
 
         ui.bossHpBarInline.style.width = hpPct + "%";
-        ui.bossHpBarInline.style.backgroundColor = bColor;
-        ui.bossHpBarInline.style.boxShadow = `0 0 10px ${bColor}`;
-        ui.bossBarFrame.style.borderColor = bColor;
-        ui.bossNameLabel.style.color = bColor;
 
-        // ★追加: Battleshipの場合は、専用の名前と色を強制的に適用する
         if (currentBoss.type === 'battleship') {
             ui.bossNameLabel.innerText = "GENESIS-ARK";
-            ui.bossNameLabel.style.color = "#0ff"; // シアン
-            ui.bossHpBarInline.style.backgroundColor = "#0ff";
-            ui.bossHpBarInline.style.boxShadow = "0 0 10px #0ff";
-            ui.bossBarFrame.style.borderColor = "#0ff";
+            ui.bossNameLabel.style.color = "rgb(0, 255, 255)"; // シアン
+            // CSSの形式に合わせてJSから色を注入
+            ui.bossHpBarInline.style.background = "linear-gradient(90deg, rgba(0, 255, 255, 0.4), rgb(0, 255, 255))";
+            ui.bossHpBarInline.style.boxShadow = "0 0 calc(12px * var(--hud-scale, 1)) rgb(0, 255, 255)";
+            ui.bossBarFrame.style.borderColor = "rgba(0, 255, 255, 0.4)";
         } else {
             ui.bossNameLabel.innerText = currentBoss.variant.name;
+            ui.bossNameLabel.style.color = bColor;
+            // 通常ボスはベースの赤グラデーションを活かしつつ右側だけボスの色に
+            ui.bossHpBarInline.style.background = `linear-gradient(90deg, transparent, ${bColor})`;
+            ui.bossHpBarInline.style.boxShadow = `0 0 calc(12px * var(--hud-scale, 1)) ${bColor}`;
+            ui.bossBarFrame.style.borderColor = "rgba(255, 51, 51, 0.3)";
         }
 
-        // ピンチ時の点滅演出
-        if (hpPct < 25 && frame % 10 < 5) ui.bossHpBarInline.style.backgroundColor = '#fff';
+        if (hpPct < 25 && frame % 10 < 5) ui.bossHpBarInline.style.background = '#fff';
     } else {
         ui.bossContainer.style.display = 'none';
     }
 
-    // ★変更: ステージ9はボス進行度を表示
+
+    // ==========================================
+    // 2. ENEMY ゲージ
+    // ==========================================
+    // ★JSでの強制上書きを解除し、CSSの美しい赤グラデーション設定を100%優先！
+    ui.enemyBar.style.background = '';
+    ui.enemyBar.style.boxShadow = '';
+
     if (stage === 9) {
         const progress = rushBossIndex / 8;
         ui.enemyBar.style.width = `${(1 - progress) * 100}%`;
         document.querySelector('.bar-label.enemy').innerText = `BOSS RUSH: ${rushBossIndex}/8`;
     } else if (stage === 10) {
-        // ==========================================
-        // ★追加: ラスボス戦は無限湧きなので「∞」と表示する
         ui.enemyBar.style.width = "100%";
         document.querySelector('.bar-label.enemy').innerText = `ENEMY: ∞`;
-        // ==========================================
     } else {
         const rawRemains = enemiesToSpawn - enemiesKilled;
         const enemyRemains = Math.max(0, Math.ceil(rawRemains));
@@ -50,94 +56,116 @@ function updateUI() {
         document.querySelector('.bar-label.enemy').innerText = `ENEMY: ${enemyRemains}`;
     }
 
-    // Shield Bar
+
+    // ==========================================
+    // 3. SHIELD ゲージ
+    // ==========================================
     const shieldPercent = Math.max(0, (player.shield / PLAYER_BASE_SHIELD) * 100);
     ui.shieldBar.style.width = shieldPercent + "%";
-    if (player.shield < PLAYER_BASE_SHIELD * 0.3) ui.shieldBar.classList.add('shield-critical');
-    else ui.shieldBar.classList.remove('shield-critical');
+
+    if (player.shield < PLAYER_BASE_SHIELD * 0.3) {
+        // ピンチ時はCSSの .shield-critical とアニメーションに完全に任せる
+        ui.shieldBar.classList.add('shield-critical');
+        ui.shieldBar.style.background = '';
+        ui.shieldBar.style.boxShadow = '';
+    } else {
+        ui.shieldBar.classList.remove('shield-critical');
+        
+        // 通常時：機体の状態に合わせて、CSSと同じ rgba 形式で色を生成
+        let r = 0, g = 255, b = 180; // デフォルトのエメラルドグリーン
+
+        ui.shieldBar.style.background = `linear-gradient(90deg, rgba(${r}, ${g}, ${b}, 0.4), rgb(${r}, ${g}, ${b}))`;
+        ui.shieldBar.style.boxShadow = `0 0 calc(8px * var(--hud-scale, 1)) rgb(${r}, ${g}, ${b})`;
+    }
+    
     if (ui.shieldVal) ui.shieldVal.innerText = Math.floor(Math.max(0, player.shield));
 
 
     // ==========================================
-    // ★追加: 武器ラベルのテキストと色の動的変更
+    // 4. WEAPON / OVERDRIVE ゲージ
     // ==========================================
     const weaponLabel = document.getElementById('weapon-label');
-    if (weaponLabel) {
-        if (player.hyperTimer > 0) {
-            weaponLabel.innerText = "OVERDRIVE";
-            weaponLabel.style.color = "#ff8800"; // ネオンオレンジ
-            weaponLabel.style.textShadow = "0 0 10px #ff5500"; // 燃えるようなグロー
-        } else if (player.laserTimer > 0) {
-            weaponLabel.innerText = "LASER";
-            weaponLabel.style.color = "#0ff"; // シアン
-            weaponLabel.style.textShadow = "0 0 10px #0ff"; // 青いグロー
-        } else {
-            weaponLabel.innerText = "WEAPON";
-            weaponLabel.style.color = "#fff"; // 通常は白
-            weaponLabel.style.textShadow = "none"; // 発光なし
-        }
-    }
-
-
-    // Weapon Bar
     ui.weaponDisplay.innerHTML = '';
-    
-    if (player.hyperTimer > 0) {
+
+    if (player.overdriveTimer > 0) {
+        if (weaponLabel) {
+            weaponLabel.innerText = "OVERDRIVE";
+            weaponLabel.style.color = "rgb(255, 136, 0)";
+            weaponLabel.style.textShadow = "0 0 10px rgb(255, 136, 0)";
+        }
+        
         // ==========================================
-        // ★ ハイパーモードのゲージ（オレンジに発光）
+        // ★修正: 計算エラー(NaN)を防ぐ鉄壁のガード！
         // ==========================================
-        const pct = Math.min(100, Math.max(0, (player.hyperTimer / player.maxHyperTimer) * 100));
-        const frameDiv = document.createElement('div'); 
+        const maxTime = player.maxOverdriveTimer ? player.maxOverdriveTimer : 400;
+        let pct = (player.overdriveTimer / maxTime) * 100;
+        if (isNaN(pct)) pct = 100; // 万が一計算エラーになっても100%で表示させる
+        pct = Math.min(100, Math.max(0, pct)); // 0〜100の間に収める
+        
+        const frameDiv = document.createElement('div');
         frameDiv.className = 'laser-bar-frame';
-        // ★ 枠の色を半透明のオレンジに
-        frameDiv.style.borderColor = 'rgba(255, 136, 0, 0.5)';
-        
-        const fillDiv = document.createElement('div'); 
+        frameDiv.style.borderColor = 'rgba(255, 136, 0, 0.4)';
+
+        const fillDiv = document.createElement('div');
         fillDiv.className = 'laser-bar-fill';
-        fillDiv.style.width = pct + '%';
-        // ★ ゲージ本体を鮮やかなネオンオレンジ(#ff8800)に
-        fillDiv.style.backgroundColor = '#ff8800';
-        fillDiv.style.boxShadow = '0 0 15px #ff5500'; // 少し赤みがかったオレンジのグロー
-        
-        if (player.hyperTimer < 120 && Math.floor(frame / 4) % 2 === 0) fillDiv.style.opacity = 0.3;
-        
-        frameDiv.appendChild(fillDiv); 
+        fillDiv.style.width = pct + '%'; // ここに計算結果が入る
+        fillDiv.style.background = "linear-gradient(90deg, rgba(255, 136, 0, 0.4), rgb(255, 136, 0))";
+        fillDiv.style.boxShadow = "0 0 calc(8px * var(--hud-scale, 1)) rgb(255, 136, 0)";
+
+        if (player.overdriveTimer < 120 && Math.floor(frame / 4) % 2 === 0) fillDiv.style.opacity = 0.3;
+        frameDiv.appendChild(fillDiv);
         ui.weaponDisplay.appendChild(frameDiv);
-        
+
     } else if (player.laserTimer > 0) {
-        // ==========================================
-        // ★ レーザーのゲージ（通常通りシアン）
-        // ==========================================
+        if (weaponLabel) {
+            weaponLabel.innerText = "LASER";
+            weaponLabel.style.color = "rgb(0, 255, 255)";
+            weaponLabel.style.textShadow = "0 0 10px rgb(0, 255, 255)";
+        }
         const pct = Math.min(100, Math.max(0, (player.laserTimer / LASER_DURATION) * 100));
-        const frameDiv = document.createElement('div'); 
-        frameDiv.className = 'laser-bar-frame';
         
-        const fillDiv = document.createElement('div'); 
+        const frameDiv = document.createElement('div');
+        frameDiv.className = 'laser-bar-frame';
+        frameDiv.style.borderColor = 'rgba(0, 255, 255, 0.4)';
+
+        const fillDiv = document.createElement('div');
         fillDiv.className = 'laser-bar-fill';
         fillDiv.style.width = pct + '%';
-        
+        // ★ LASERのシアン色はCSS側に .laser-bar-fill として定義済みなのでJSは手出ししない！
+        fillDiv.style.background = '';
+        fillDiv.style.boxShadow = '';
+
         if (player.laserTimer < 120 && Math.floor(frame / 4) % 2 === 0) fillDiv.style.opacity = 0.3;
-        
-        frameDiv.appendChild(fillDiv); 
+        frameDiv.appendChild(fillDiv);
         ui.weaponDisplay.appendChild(frameDiv);
-        
+
     } else {
-        // ==========================================
-        // ★ 通常の武器レベルブロック
-        // ==========================================
+        if (weaponLabel) {
+            weaponLabel.innerText = "WEAPON";
+            weaponLabel.style.color = "rgba(200, 240, 255, 0.9)"; // CSSのデフォルト色に戻す
+            weaponLabel.style.textShadow = "none";
+        }
         for (let i = 1; i <= MAX_WEAPON_LEVEL; i++) {
-            const block = document.createElement('div'); 
+            const block = document.createElement('div');
             block.className = 'w-block';
             if (i <= player.weaponLevel) block.classList.add('active');
             ui.weaponDisplay.appendChild(block);
         }
     }
 
-    // Invuln Bar
+
+    // ==========================================
+    // 5. INVINCIBLE ゲージ
+    // ==========================================
     if (player.invuln > 20) {
         ui.invulnWrapper.style.display = 'block';
         const pct = Math.min(100, (player.invuln / INVULN_DURATION) * 100);
         ui.invulnBar.style.width = pct + "%";
+        
+        // CSSフォーマットに合わせてイエローを注入
+        ui.invulnBar.style.background = "linear-gradient(90deg, rgba(255, 255, 0, 0.4), rgb(255, 255, 0))";
+        ui.invulnBar.style.boxShadow = "0 0 calc(8px * var(--hud-scale, 1)) rgb(255, 255, 0)";
+
         if (player.invuln < 120 && Math.floor(frame / 4) % 2 === 0) ui.invulnBar.style.opacity = 0.3;
         else ui.invulnBar.style.opacity = 1.0;
     } else {

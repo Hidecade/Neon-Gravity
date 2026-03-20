@@ -127,7 +127,7 @@ function startStage() {
     // 3. エンティティプールのクリア
     playerBulletPool.clearAll(); lasers = []; enemies = []; 
     enemyBulletPool.clearAll();
-    missiles = []; wormholes = []; 
+    homingLasers = []; wormholes = []; 
     scorePopupPool.clearAll();
 
     ringPool.clearAll();
@@ -258,7 +258,7 @@ function resetGame() {
     enemyBulletPool.clearAll();
     particlePool.clearAll();
     ringPool.clearAll();     
-    crystals = []; missiles = []; powerups = [];
+    crystals = []; homingLasers = []; powerups = [];
     wormholes = []; 
     scorePopupPool.clearAll();
 
@@ -568,7 +568,7 @@ function returnToTitle() {
     enemyBulletPool.clearAll();
     particlePool.clearAll(); 
     ringPool.clearAll();     
-    crystals = []; missiles = []; powerups = [];
+    crystals = []; homingLasers = []; powerups = [];
     wormholes = []; 
     scorePopupPool.clearAll();
 
@@ -1102,7 +1102,7 @@ function drawIntro() {
         if (typeof drawWormholes === 'function') drawWormholes();
         if (typeof drawLasers === 'function') drawLasers();
         if (typeof drawPlayerBullets === 'function') drawPlayerBullets();
-        if (typeof drawPlayerMissiles === 'function') drawPlayerMissiles();
+        if (typeof drawHomingLasers === 'function') drawHomingLasers();
         if (typeof drawItems === 'function') drawItems();
         if (typeof drawPlayerSystems === 'function') drawPlayerSystems();
         ctx.restore();
@@ -1422,7 +1422,7 @@ function updateDying() {
  * ステージクリア後のワープ演出（次のステージへの離脱）
  */
 function updateWarpProcess() {
-    playerBulletPool.clearAll(); lasers = []; missiles = []; player.history = [];
+    playerBulletPool.clearAll(); lasers = []; homingLasers = []; player.history = [];
 
     if (player.warpTimer === undefined) player.warpTimer = 0;
     player.warpTimer++;

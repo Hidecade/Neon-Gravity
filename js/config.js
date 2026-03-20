@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "1.5.5";
+window.GAME_VERSION = "1.5.6";
 
 
 const DEBUG = {
@@ -236,7 +236,7 @@ const BULLET_CONFIG = {
 
 // --- アイテム・ドロップ設定 ---
 const INVULN_DURATION = 400;  // 無敵状態の持続時間
-const HYPER_DURATION = 400;
+const OVERDRIVE_DURATION = 400;
 const LASER_DURATION = 400;   // 特殊レーザーの持続時間
 const ITEM_LIFE = 300;        // アイテムが消滅するまでの時間
 

@@ -42,7 +42,7 @@ function drawPlayerSystems() {
     if (finalThrustScale > 0.05) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        let pColor = player.hyperTimer > 0 ? '255, 136, 0' : 
+        let pColor = player.overdriveTimer > 0 ? '255, 136, 0' : 
                  (player.invuln > 0 ? '255, 230, 0' : // (無敵も黄金っぽいためそのまま)
                  (player.laserTimer > 0 ? '0, 255, 255' : '0, 255, 180'));
                  
@@ -94,7 +94,7 @@ function drawPlayerSystems() {
         ctx.scale(G_SCALE * currentScale, G_SCALE * currentScale);
 
         ctx.globalAlpha = 0.4 * (1 - i / player.history.length);
-        let trailColor = player.hyperTimer > 0 ? '#ff8800' : 
+        let trailColor = player.overdriveTimer > 0 ? '#ff8800' : 
                          (player.invuln > 0 ? '#ff0' : 
                          (player.laserTimer > 0 ? '#0ff' : '#0f8'));
         ctx.strokeStyle = trailColor;
@@ -135,7 +135,7 @@ function drawPlayer(ctx, p) {
 
     // 状態に応じた機体色の決定
     let shipColor = '#0f8';
-    if (p.hyperTimer > 0) shipColor = '#ff8800';
+    if (p.overdriveTimer > 0) shipColor = '#ff8800';
     else if (p.invuln > 0) shipColor = '#ff0';
     else if (p.laserTimer > 0) shipColor = '#0ff';
 
@@ -307,7 +307,7 @@ function drawEmeraldPhoenix(ctx, p) {
     let accentColor = '#0ff';
     
     // ★ハイパー時のメインカラーを黄金(#ffea00)へ、アクセントを薄い黄金に
-    if (p.hyperTimer > 0) { mainColor = '#ff8800'; accentColor = '#ffcc88'; }
+    if (p.overdriveTimer > 0) { mainColor = '#ff8800'; accentColor = '#ffcc88'; }
     else if (p.invuln > 0) { mainColor = '#ff0'; accentColor = '#fff'; }
     else if (p.laserTimer > 0) { mainColor = '#0ff'; accentColor = '#fff'; }
 

@@ -449,8 +449,8 @@ function drawVisualEffects() {
     // 1. 特殊ミサイル（これはプールの対象外なので通常のforループで高速化だけします）
     ctx.fillStyle = '#fd0';
     ctx.beginPath();
-    for (let i = 0; i < missiles.length; i++) {
-        const m = missiles[i];
+    for (let i = 0; i < homingLasers.length; i++) {
+        const m = homingLasers[i];
         ctx.moveTo(m.x, m.y);
         ctx.arc(m.x, m.y, 4 * G_SCALE, 0, PI2);
     }
