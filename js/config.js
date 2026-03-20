@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "1.5.6";
+window.GAME_VERSION = "1.5.7";
 
 
 const DEBUG = {
@@ -242,7 +242,7 @@ const ITEM_LIFE = 300;        // アイテムが消滅するまでの時間
 
 // アイテムドロップ率設定
 const DROP_RATES = {
-    LEVEL: 0.05,       // レベルアップ (30%)
+    LEVEL: 0.03,       // レベルアップ (3%)
     LASER: 0.10,       // レーザー (10%)
     INVINCIBLE: 0.05,  // 無敵 (5%)
     SHIELD_LOW: 0.20,  // ピンチ時シールド回復 (20%)
