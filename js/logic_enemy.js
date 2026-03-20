@@ -1586,7 +1586,7 @@ function destroyEnemy(e) {
     const popLife = isBossClass ? 120 : 40;
     const popVy = isBossClass ? -0.5 : -1;
     
-    scorePopups.push({ 
+    spawnScorePopupObj({ 
         x: e.x, y: e.y, 
         text: pts, 
         life: popLife, 

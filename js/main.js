@@ -104,11 +104,10 @@ let camera = { x: 0, y: 0 };
 let enemies = [];         // 敵キャラクター
 
 let lasers = [];          // プレイヤーのレーザー
-let missiles = [];        // プレイヤーのミサイル
+let missiles = [];        // プレイヤーのホーミングミサイル　現在使用していない
 let crystals = [];        // スコアアイテム
 let powerups = [];        // パワーアップアイテム
 let wormholes = [];       // 敵出現ワームホール
-let scorePopups = [];     // スコア上昇UI
 
 let gridPoints = [];      // 背景グリッド
 let stars = [];           // 背景の星
@@ -145,10 +144,16 @@ const createPlayerBullet = () => ({
     active: false
 });
 
+const createScorePopup = () => ({
+    x: 0, y: 0, vy: 0, text: '', life: 0, alpha: 1, 
+    isBoss: false, active: false
+});
+
 const particlePool = new ObjectPool(createParticle, 800);
 const ringPool = new ObjectPool(createRing, 100);
 const enemyBulletPool = new ObjectPool(createEnemyBullet, 500); // 敵弾は多めに確保
 const playerBulletPool = new ObjectPool(createPlayerBullet, 100);
+const scorePopupPool = new ObjectPool(createScorePopup, 50);
 
 // オブジェクトを受け取るヘルパー関数
 function spawnParticleObj(options) {
@@ -176,7 +181,6 @@ function spawnParticleObj(options) {
     return p;
 }
 
-// 波紋（リング）エフェクト発生用ヘルパー関数
 function spawnRingObj(options) {
     const r = ringPool.get();
     
@@ -200,7 +204,6 @@ function spawnRingObj(options) {
     return r;
 }
 
-// 敵の弾を生成するヘルパー
 function spawnEnemyBulletObj(options) {
     const eb = enemyBulletPool.get();
     
@@ -234,7 +237,6 @@ function spawnEnemyBulletObj(options) {
     return eb;
 }
 
-// プレイヤーの弾を生成するヘルパー
 function spawnPlayerBulletObj(options) {
     const b = playerBulletPool.get();
     
@@ -245,6 +247,18 @@ function spawnPlayerBulletObj(options) {
     b.life = options.life || 0;
 
     return b;
+}
+
+function spawnScorePopupObj(options) {
+    const s = scorePopupPool.get();
+    s.x = options.x || 0;
+    s.y = options.y || 0;
+    s.vy = options.vy !== undefined ? options.vy : -1;
+    s.text = options.text || '';
+    s.life = options.life || 60;
+    s.alpha = options.alpha !== undefined ? options.alpha : 1;
+    s.isBoss = options.isBoss || false;
+    return s;
 }
 
 // =========================================================

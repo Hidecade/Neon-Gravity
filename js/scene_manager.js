@@ -127,7 +127,8 @@ function startStage() {
     // 3. エンティティプールのクリア
     playerBulletPool.clearAll(); lasers = []; enemies = []; 
     enemyBulletPool.clearAll();
-    missiles = []; wormholes = []; scorePopups = []; 
+    missiles = []; wormholes = []; 
+    scorePopupPool.clearAll();
 
     ringPool.clearAll();
     particlePool.clearAll();
@@ -258,7 +259,8 @@ function resetGame() {
     particlePool.clearAll();
     ringPool.clearAll();     
     crystals = []; missiles = []; powerups = [];
-    wormholes = []; scorePopups = [];
+    wormholes = []; 
+    scorePopupPool.clearAll();
 
 
     player.x = worldSize / 2; player.y = worldSize / 2;
@@ -567,7 +569,8 @@ function returnToTitle() {
     particlePool.clearAll(); 
     ringPool.clearAll();     
     crystals = []; missiles = []; powerups = [];
-    wormholes = []; scorePopups = [];
+    wormholes = []; 
+    scorePopupPool.clearAll();
 
     if (typeof AudioSys !== 'undefined') {
         AudioSys.fadeOutBGM().then(() => {
@@ -1513,7 +1516,7 @@ function updateWarpProcess() {
         player.visualScale *= 0.85;
         crystals.forEach(c => c.life = 0);
         powerups.forEach(p => p.life = 0);
-        scorePopups.forEach(s => s.life = 0);
+        scorePopupPool.clearAll();
         enemyBulletPool.clearAll();
 
         // 画面から消えた瞬間に、1度だけフェードアウト開始の命令を出す

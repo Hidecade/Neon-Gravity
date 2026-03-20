@@ -393,7 +393,26 @@ function drawItems() {
 }
 
 function drawScorePopups() {
-    ctx.fillStyle = '#fff'; ctx.font = '16px Orbitron'; ctx.textAlign = 'center';
-    scorePopups.forEach(s => { ctx.globalAlpha = s.alpha; ctx.fillText(s.text, s.x, s.y); });
-    ctx.globalAlpha = 1.0;
+    ctx.save();
+    ctx.textAlign = 'center';
+
+    const sPool = scorePopupPool.pool; // ★ プールを参照
+    for (let i = 0; i < sPool.length; i++) {
+        const s = sPool[i];
+        
+        // ★ 生存チェック（休んでいるオブジェクトは描画しない）
+        if (!s.active) continue;
+
+        // ボス撃破時はフォントと色を強調する（少しリッチな演出！）
+        ctx.fillStyle = s.isBoss ? '#ffea00' : '#fff';
+        ctx.font = s.isBoss ? 'bold 20px Orbitron' : '16px Orbitron';
+        
+        // 透明度を安全な範囲（0.0〜1.0）に収めて適用
+        ctx.globalAlpha = Math.max(0, Math.min(1, s.alpha));
+        
+        // テキストを描画
+        ctx.fillText(s.text, s.x, s.y);
+    }
+
+    ctx.restore();
 }

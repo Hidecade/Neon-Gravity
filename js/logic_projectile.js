@@ -604,7 +604,7 @@ function updatePowerups() {
             else if (p.type === 'level') {
                 player.weaponLevel = Math.min(MAX_WEAPON_LEVEL, player.weaponLevel + 1);
                 // スコアポップアップと同じ仕組みで「LEVEL UP!」と表示
-                scorePopups.push({
+                spawnScorePopupObj({
                     x: player.x,
                     y: player.y - 20,
                     text: "LEVEL UP!",
@@ -622,7 +622,7 @@ function updatePowerups() {
                 if (ui.shieldVal) ui.shieldVal.innerText = Math.floor(player.shield);
 
                 // ポップアップ表示
-                scorePopups.push({
+                spawnScorePopupObj({
                     x: player.x,
                     y: player.y - 20,
                     text: "SHIELD +10",
@@ -641,16 +641,24 @@ function updateScorePopups() {
     const viewH = height / cameraScale;
     const margin = 100; // 画面外のマージン
 
-    scorePopups.forEach(s => {
+    const sPool = scorePopupPool.pool; // ★プールを参照
+    for (let i = 0; i < sPool.length; i++) {
+        const s = sPool[i];
+        
+        // ★未使用のオブジェクトは計算をスキップ
+        if (!s.active) continue;
+
         s.y += s.vy;
         s.life--;
         s.alpha = s.life / 30;
 
-        if (s.x < camera.x - margin || s.x > camera.x + viewW + margin ||
+        // ★寿命切れ、または画面外に出たら非アクティブ化してプールへ返却
+        if (s.life <= 0 ||
+            s.x < camera.x - margin || s.x > camera.x + viewW + margin ||
             s.y < camera.y - margin || s.y > camera.y + viewH + margin) {
+            
+            s.active = false;
             s.life = 0;
         }
-    });
-
-    scorePopups = scorePopups.filter(s => s.life > 0);
+    }
 }
