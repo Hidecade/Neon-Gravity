@@ -346,8 +346,16 @@ function updateEnemyBullets() {
         if (eb.isMissile) {
             // ... (誘導ロジックは既存のままでOKですが、eb.activeチェックを適宜挟みます) ...
             if (eb.trail) {
-                eb.trail.unshift({ x: eb.x, y: eb.y });
-                if (eb.trail.length > 10) eb.trail.pop();
+                if (eb.trail.length >= 10) {
+                    // 一番古いオブジェクトを取り出して、今の座標に書き換えて先頭に戻す
+                    const oldPos = eb.trail.pop();
+                    oldPos.x = eb.x;
+                    oldPos.y = eb.y;
+                    eb.trail.unshift(oldPos);
+                } else {
+                    // 10個溜まるまでは仕方ないので作る
+                    eb.trail.unshift({ x: eb.x, y: eb.y });
+                }
             }
 
             if (eb.homingTimer > 0) {

@@ -222,7 +222,12 @@ function spawnEnemyBulletObj(options) {
     eb.baseAlpha = 1.0;
     eb.alpha = 1.0;
     eb.homingTimer = options.homingTimer || 240;
-    eb.trail = eb.isMissile ? [] : null; // ミサイルなら軌跡配列を初期化
+    if (eb.isMissile) {
+        if (!eb.trail) eb.trail = []; // 最初だけ作る
+        eb.trail.length = 0;          // 中身だけリセットして再利用！
+    } else {
+        eb.trail = null;
+    }
     eb.baseScale = options.baseScale || 1.0;
     eb.scaleSpeed = options.scaleSpeed || 0.02;
 
