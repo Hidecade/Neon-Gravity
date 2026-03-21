@@ -191,12 +191,36 @@ const resumeAction = async (e) => {
  * ゲームパッドの入力を監視 (毎フレーム main.js の loop から呼ばれる)
  */
 function handleGamepadInput() {
+
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
     let activeGp = null;
+
     for (let i = 0; i < gamepads.length; i++) {
         const gp = gamepads[i];
-        if (gp && gp.connected) { activeGp = gp; break; }
+        // 接続されている有効なパッドを探す
+        if (gp && gp.connected) { 
+            activeGp = gp; 
+            
+            // --- フォーカス改善ロジック ---
+            // いずれかのボタンが押されているか、スティックが一定以上動かされているか判定
+            const isActivelyOperating = 
+                gp.buttons.some(b => b.pressed) || 
+                gp.axes.some(a => Math.abs(a) > 0.2);
+
+            if (isActivelyOperating) {
+                // 現在のフォーカスが名前入力欄などの INPUT 要素にない場合のみ実行
+                if (document.activeElement !== canvas && document.activeElement.tagName !== 'INPUT') {
+                    canvas.focus();
+                    // デバッグ用（必要に応じて）
+                    // console.log("Gamepad activity detected: Focusing canvas");
+                }
+            }
+            // ------------------------------
+            
+            break; 
+        }
     }
+
     if (!activeGp) return;
 
     // ゲームパッド接続時はタッチUIを隠す

@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "1.5.7";
+window.GAME_VERSION = "1.5.8";
 
 
 const DEBUG = {
@@ -60,6 +60,7 @@ let currentGraphicsQuality = 'MEDIUM'; // 現在の品質
 
 // --- ステージ・難易度設定 ---
 const START_STAGE = 1;        // 開始ステージ
+const BOSS_RUSH_STAGE = 9;         // 最大ステージ
 const MAX_STAGE = 10;         // 最大ステージ
 
 

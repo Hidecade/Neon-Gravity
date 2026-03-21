@@ -399,7 +399,7 @@ function init() {
 
 
     // 1. 【最優先】最初に解像度・画面サイズを設定する！
-    resize();
+    //resize();
 
     // 2. その後で、保存された画質設定を読み込んで星などを生成する
     const savedQuality = localStorage.getItem('neonGravity_graphics') || 'HIGH';
