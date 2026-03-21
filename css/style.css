@@ -206,9 +206,30 @@ canvas {
     transition: width 0.2s ease-out; /* ボス被弾時のスピード */
 }
 
-/* 無敵ゲージ（ベース設定のみ。色はJSがイエローを注入） */
+/* --- 無敵ゲージ (INVINCIBLE) --- */
+#invuln-wrapper {
+    display: none;
+    margin-top: calc(2px * var(--hud-scale, 1));
+}
+
+#invuln-wrapper .bar-label {
+    color: #ff0;
+    text-shadow: 0 0 5px rgba(255, 255, 0, 0.5); /* お好みで光らせる */
+}
+
+#invuln-wrapper .bar-frame {
+    border-color: rgba(255, 255, 0, 0.5);
+    background: rgba(40, 40, 0, 0.5);
+    /* 親要素に合わせて幅を可変スケール対応にする */
+    width: calc(120px * var(--hud-scale, 1)); 
+}
+
+/* ※既存の #invuln-bar { width: 0%; } の部分を以下に上書き */
 #invuln-bar {
-    width: 0%;
+    width: 0%; 
+    /* 共通設定で height: 100% は既に適用されています */
+    background: linear-gradient(90deg, rgba(255, 255, 0, 0.6), #ff0);
+    box-shadow: 0 0 calc(8px * var(--hud-scale, 1)) #ff0;
 }
 
 /* レーザーゲージ（シアン） */
@@ -219,7 +240,7 @@ canvas {
 
 /* --- 武器レベルブロック（通常状態） --- */
 #weapon-display {
-    width: calc(120px * var(--hud-scale, 1)); 
+    width: calc(100px * var(--hud-scale, 1)); 
     height: calc(8px * var(--hud-scale, 1));
     display: flex;
     justify-content: space-between;
