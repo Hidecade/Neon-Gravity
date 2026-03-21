@@ -6,34 +6,52 @@ function updateUI() {
     // ==========================================
     const currentBoss = enemies.find(e => e.type === 'boss' || e.type === 'battleship');
 
-    if (currentBoss) {
+    if (currentBoss && !currentBoss.isDead) {
         ui.bossContainer.style.display = 'block';
         const hpPct = Math.max(0, (currentBoss.hp / currentBoss.maxHp) * 100);
-        const bColor = currentBoss.color;
+        const bColor = currentBoss.color || '#ff0000';
 
         ui.bossHpBarInline.style.width = hpPct + "%";
 
+        // ==========================================
+        // ★ ここで「黒に近いボスの色」と「半透明のボスの色」を動的に生成
+        // ==========================================
+        // darkColor: ボスの色を40%、黒を60%混ぜた「指定色帯びた暗黒色」
+        const darkColor = `color-mix(in srgb, ${bColor} 40%, black)`;
+        
+        // semiTransColor: ボスの色を40%、透明色を60%混ぜた「指定色の半透明」
+        const semiTransColor = `color-mix(in srgb, ${bColor} 40%, transparent)`;
+
         if (currentBoss.type === 'battleship') {
             ui.bossNameLabel.innerText = "GENESIS-ARK";
-            ui.bossNameLabel.style.color = "rgb(0, 255, 255)"; // シアン
-            // CSSの形式に合わせてJSから色を注入
-            ui.bossHpBarInline.style.background = "linear-gradient(90deg, rgba(0, 255, 255, 0.4), rgb(0, 255, 255))";
-            ui.bossHpBarInline.style.boxShadow = "0 0 calc(12px * var(--hud-scale, 1)) rgb(0, 255, 255)";
-            ui.bossBarFrame.style.borderColor = "rgba(0, 255, 255, 0.4)";
-        } else {
-            ui.bossNameLabel.innerText = currentBoss.variant.name;
             ui.bossNameLabel.style.color = bColor;
-            // 通常ボスはベースの赤グラデーションを活かしつつ右側だけボスの色に
-            ui.bossHpBarInline.style.background = `linear-gradient(90deg, transparent, ${bColor})`;
+            
+            // 元の rgba(0, 255, 255, 0.4) の代わりに、動的生成した半透明色を使用
+            ui.bossHpBarInline.style.background = `linear-gradient(90deg, ${semiTransColor}, ${bColor})`;
             ui.bossHpBarInline.style.boxShadow = `0 0 calc(12px * var(--hud-scale, 1)) ${bColor}`;
-            ui.bossBarFrame.style.borderColor = "rgba(255, 51, 51, 0.3)";
+            ui.bossBarFrame.style.borderColor = bColor;
+            
+        } else {
+            ui.bossNameLabel.innerText = currentBoss.variant ? currentBoss.variant.name : 'UNKNOWN';
+            ui.bossNameLabel.style.color = bColor;
+            
+            // ★ transparent（完全な透明＝下地の黒）ではなく、指定色を帯びた黒（darkColor）を指定
+            ui.bossHpBarInline.style.background = `linear-gradient(90deg, ${darkColor}, ${bColor})`;
+            ui.bossHpBarInline.style.boxShadow = `0 0 calc(12px * var(--hud-scale, 1)) ${bColor}`;
+            ui.bossBarFrame.style.borderColor = darkColor; 
         }
 
-        if (hpPct < 25 && frame % 10 < 5) ui.bossHpBarInline.style.background = '#fff';
-    } else {
-        ui.bossContainer.style.display = 'none';
-    }
+        // --- (お好みで追加) ゲージの減った部分（背景）もうっすらボスの色にする場合 ---
+        // ui.bossBarFrame.style.backgroundColor = `color-mix(in srgb, ${bColor} 10%, black)`;
 
+        // ピンチ時の点滅演出
+        if (hpPct < 25 && frame % 10 < 5) {
+            ui.bossHpBarInline.style.background = '#fff';
+            ui.bossHpBarInline.style.boxShadow = `0 0 calc(15px * var(--hud-scale, 1)) #fff`;
+        }
+    } else {
+        if (ui.bossContainer) ui.bossContainer.style.display = 'none';
+    }
 
     // ==========================================
     // 2. ENEMY ゲージ

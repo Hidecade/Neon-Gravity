@@ -142,7 +142,7 @@ canvas {
     width: 100%;
     height: calc(8px * var(--hud-scale, 1)); /* スマートに細く */
     background: rgba(0, 15, 30, 0.6); 
-    border: 1px solid rgba(0, 255, 255, 0.2);
+    border: 2px solid rgba(0, 255, 255, 0.2);
     border-radius: 2px; /* 少しだけ丸みを持たせて洗練させる */
     backdrop-filter: blur(4px);
     box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
