@@ -183,6 +183,7 @@ function updateUI() {
         // CSSフォーマットに合わせてイエローを注入
         ui.invulnBar.style.background = "linear-gradient(90deg, rgba(255, 255, 0, 0.4), rgb(255, 255, 0))";
         ui.invulnBar.style.boxShadow = "0 0 calc(8px * var(--hud-scale, 1)) rgb(255, 255, 0)";
+        ui.invulnBar.style.borderColor = "rgba(255, 255, 0, 0.4)";
 
         if (player.invuln < 120 && Math.floor(frame / 4) % 2 === 0) ui.invulnBar.style.opacity = 0.3;
         else ui.invulnBar.style.opacity = 1.0;
