@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "1.5.8";
+window.GAME_VERSION = "1.5.9";
 
 
 const DEBUG = {

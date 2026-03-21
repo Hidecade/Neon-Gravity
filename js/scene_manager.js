@@ -18,7 +18,7 @@ function startGame() {
     ui.titleOverlay.style.transition = 'opacity 0.2s';
     ui.titleOverlay.style.opacity = '0';
     ui.titleOverlay.style.pointerEvents = 'none';
-    
+
     canvas.setAttribute('tabindex', '0'); // キャンバスがフォーカスを受け取れるようにする
     canvas.focus();
     setTimeout(() => canvas.focus(), 10);
@@ -51,6 +51,7 @@ function startGame() {
     player.invuln = 0;
     player.laserTimer = 0;
     player.history = [];
+    player.homingLaserTick = 0;
     player.hasExitedScreen = false;
     player.exitTimer = 0;
     player.warpTimer = 0;
@@ -168,7 +169,7 @@ function startStage() {
         // BGM制御
         if (typeof AudioSys !== 'undefined') {
             if (stage === MAX_STAGE) AudioSys.playBGM('last');
-            else if (stage ===BOSS_RUSH_STAGE) AudioSys.playBGM('boss');
+            else if (stage === MAX_STAGE - 1) AudioSys.playBGM('boss');
             else {
                 const bgmIndex = (stage - 1) % BGM_FILES.stages.length;
                 AudioSys.playBGM('stage', bgmIndex);

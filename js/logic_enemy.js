@@ -2046,28 +2046,28 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
 
         // ★追加：4方向ごとの初期座標・速度・並べ方の計算
         if (dir === 0) { // 上から下へ
-            startY = camera.y - 60;
+            startY = camera.y - 100;
             startX = camera.x + (viewW - totalSpan) / 2; // 中央に揃える
             offsetX = spacing; // 横に並べる
             moveVx = 0;
             moveVy = speed;
             baseAngle = Math.PI / 2; // 下向き
         } else if (dir === 1) { // 下から上へ
-            startY = camera.y + viewH + 60;
+            startY = camera.y + viewH + 61000;
             startX = camera.x + (viewW - totalSpan) / 2;
             offsetX = spacing;
             moveVx = 0;
             moveVy = -speed;
             baseAngle = -Math.PI / 2; // 上向き
         } else if (dir === 2) { // 左から右へ
-            startX = camera.x - 60;
+            startX = camera.x - 100;
             startY = camera.y + (viewH - totalSpan) / 2; // 中央に揃える
             offsetY = spacing; // 縦に並べる
             moveVx = speed;
             moveVy = 0;
             baseAngle = 0; // 右向き
         } else if (dir === 3) { // 右から左へ
-            startX = camera.x + viewW + 60;
+            startX = camera.x + viewW + 100;
             startY = camera.y + (viewH - totalSpan) / 2;
             offsetY = spacing;
             moveVx = -speed;
@@ -2292,7 +2292,13 @@ function updateEnemies() {
             applyWorldBoundary(e);
         }
 
-        applyWorldBoundary(e);
+        // --- 画面外にはるか遠くへ行った敵のクリンナップ（メモリリーク対策） ---
+        // ワールドサイズからさらに1000px以上離れた場合は、不要なオブジェクトとして強制削除する
+        if (e.x < -1000 || e.x > worldSize + 1000 || e.y < -1000 || e.y > worldSize + 1000) {
+            e.hp = 0;
+            e.isDead = true; // 次のフレームで配列から削除される
+            return; // これ以上の判定は行わずスキップ
+        }
 
         // プレイヤーとの体当たり判定などは「画面付近」のみ
         if (inActiveRange) {
