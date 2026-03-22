@@ -101,7 +101,8 @@ function updatePlayerMovement() {
     player.history.unshift({ x: player.x, y: player.y, angle: player.angle });
     if (player.history.length > 10) player.history.pop();
 
-    const fireInterval = player.laserTimer > 0 ? 4 : 6;
+    //const fireInterval = player.laserTimer > 0 ? 4 : 6;
+    const fireInterval = (player.laserTimer > 0 || player.overdriveTimer > 0) ? 4 : 6;
     let isFiring = input.aim.active || isArrowAiming || input.keys['Space'] || input.keys['KeyZ'] || input.padAPressed;
 
     if (player.fireTimer === undefined) player.fireTimer = fireInterval; // タイマー初期化
@@ -142,7 +143,8 @@ function updatePlayerRotationAndFiring(mx, my) {
         player.angle = Math.atan2(my, mx);
     }
 
-    const fireInterval = player.laserTimer > 0 ? 4 : 6;
+    //const fireInterval = player.laserTimer > 0 ? 4 : 6;
+    const fireInterval = (player.laserTimer > 0 || player.overdriveTimer > 0) ? 4 : 6;
     let isFiring = input.aim.active || isArrowAiming || input.keys['Space'] || input.keys['KeyZ'] || input.padAPressed;
 
     if (player.fireTimer === undefined) player.fireTimer = fireInterval; // タイマー初期化
