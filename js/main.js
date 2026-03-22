@@ -114,6 +114,70 @@ let stars = [];           // 背景の星
 let nebulae = [];         // 星雲
 let starClusters = [];    // 星団
 
+const createEnemy = () => ({
+    active: false,
+
+    x: 0, y: 0, vx: 0, vy: 0,
+    hp: 0, maxHp: 0,
+    speed: 0,
+    color: '#fff',
+    type: '',
+    variant: null,
+    angle: 0,
+    scale: 1,
+    drop: 'none',
+
+    isDead: false,
+    isDying: false,
+    dyingTimer: 0,
+    inActiveRange: false,
+
+    isWarping: false,
+    warpPercent: 0,
+    isSpawning: false,
+    spawnTimer: 0,
+    spawnMax: 0,
+    spawnX: 0,
+    spawnY: 0,
+
+    fireTimer: 0,
+    flashTimer: 0,
+    actionTimer: 0,
+    timer: 0,
+    aliveTimer: 0,
+
+    rotX: 0,
+    rotY: 0,
+    rotZ: 0,
+    rotSpeed: 0,
+    rotSpd: 0,
+    drawAngle: 0,
+
+    alpha: 1,
+    opacity: 1,
+    bend: 0,
+    aimRate: 0,
+    chargeLevel: 0,
+    canFire: true,
+    burstCount: 0,
+    state: '',
+    orbitDist: 0,
+    orbitDir: 1,
+    trackingStart: 0,
+    isTracking: false,
+    hasEntered: false,
+
+    cameraLerpTimer: 0,
+
+    leader: null,
+    followers: [],
+    formOffset: { x: 0, y: 0 },
+
+    segments: [],
+    history: [],
+    trail: []
+});
+
 const createParticle = () => ({
     x: 0, y: 0, vx: 0, vy: 0, 
     color: '#fff', life: 0, size: 1, 
@@ -149,6 +213,7 @@ const createScorePopup = () => ({
     isBoss: false, active: false
 });
 
+const enemyPool = new ObjectPool(createEnemy, 240);
 const particlePool = new ObjectPool(createParticle, 800);
 const ringPool = new ObjectPool(createRing, 100);
 const enemyBulletPool = new ObjectPool(createEnemyBullet, 500); // 敵弾は多めに確保
