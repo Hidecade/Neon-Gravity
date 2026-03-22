@@ -2221,6 +2221,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             history: [{ x: rx, y: ry }], // 履歴の初期化
             isWarping: true, 
             warpPercent: 0,
+            drop: dropType,
             inActiveRange: true // 出現直後は判定を有効にする
         });
         spawnedCount++;

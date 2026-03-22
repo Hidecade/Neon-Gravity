@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.6.0";
+window.GAME_VERSION = "0.6.1";
 
 
 const DEBUG = {
@@ -174,7 +174,7 @@ const EXPLOSION_PARTICLE_COUNT = {
 // --- 出現パターン設定 ---
 const STAGE_ENEMIES = {
     1: ['triangle', 'triangle', 'tadpole', 'dragon'],
-    2: ['lightcycle', 'tadpole', 'tadpole', 'lightcycle'],
+    2: ['lightcycle', 'triangle', 'tadpole', 'lightcycle'],
     3: ['bubble', 'bubble', 'bubble', 'jellyfish', 'spark_jelly'],
     4: ['phantom', 'phantom', 'tadpole', 'tadpole', 'tadpole', 'tadpole', 'asteroid'],
     5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'sweeper'],
