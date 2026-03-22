@@ -30,6 +30,61 @@ function updatePlayerMovement() {
     player.x = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, player.x));
     player.y = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, player.y));
 
+   // ==========================================
+    // ★追加：Lightcycleの光の壁でプレイヤーを物理的に弾き、ダメージを与える
+    // ==========================================
+    const LIGHT_WALL_RADIUS = 14; // 壁の厚み判定 + 自機の当たり判定余裕
+    
+    // ★変更：無敵状態かどうかに関わらず、壁の判定を行うように条件を変更
+    if (typeof enemies !== 'undefined') {
+        enemies.forEach(e => {
+            if (e.type === 'lightcycle' && e.history && e.history.length > 1) {
+                for (let i = 0; i < e.history.length - 1; i++) {
+                    const p1 = e.history[i];
+                    const p2 = e.history[i + 1];
+                    
+                    const l2 = (p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y);
+                    if (l2 === 0) continue;
+
+                    let t = ((player.x - p1.x) * (p2.x - p1.x) + (player.y - p1.y) * (p2.y - p1.y)) / l2;
+                    t = Math.max(0, Math.min(1, t));
+                    
+                    const projX = p1.x + t * (p2.x - p1.x);
+                    const projY = p1.y + t * (p2.y - p1.y);
+                    
+                    const dx = player.x - projX;
+                    const dy = player.y - projY;
+                    const distSq = dx * dx + dy * dy;
+
+                    // 壁にめり込んだ場合の処理
+                    if (distSq < LIGHT_WALL_RADIUS * LIGHT_WALL_RADIUS) {
+                        const dist = Math.sqrt(distSq) || 0.001;
+                        const pushDist = LIGHT_WALL_RADIUS - dist;
+                        
+                        // 1. 弾き飛ばす（無敵状態でも問答無用で弾かれる）
+                        player.x += (dx / dist) * pushDist * 2.5;
+                        player.y += (dy / dist) * pushDist * 2.5;
+
+                        // 2. 衝突地点に火花を散らす
+                        const wallColor = e.variant ? (e.variant.trailColor || '#00ffff') : '#00ffff';
+                        if (typeof createWallImpact === 'function') {
+                            createWallImpact(player.x, player.y, wallColor);
+                        }
+
+                        // 3. ダメージ判定（★無敵じゃない時だけダメージを受ける）
+                        if (player.invuln <= 0) {
+                            if (typeof damage === 'function') {
+                                damage(10); // シールドに10ダメージ
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    // ==========================================
+
+    // --- 既存のコード ---
     // 向きと射撃の計算
     let aimX = input.keys['ArrowLeft'] ? -1 : input.keys['ArrowRight'] ? 1 : 0;
     let aimY = input.keys['ArrowUp'] ? -1 : input.keys['ArrowDown'] ? 1 : 0;

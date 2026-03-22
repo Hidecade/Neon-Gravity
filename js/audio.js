@@ -102,29 +102,53 @@ const SE_LIBRARY = {
         return { osc: o, duration: 0.15 };
     },
     homing: (ctx, t, g) => {
-        const o = ctx.createOscillator();
-        o.type = 'sawtooth'; // ノコギリ波で少しエッジの効いた音に
-        
-        // 1800Hzの高音から200Hzへ急降下させ、「シュピュン！」というSFミサイルの軌跡音を作る
-        o.frequency.setValueAtTime(1800, t);
-        o.frequency.exponentialRampToValueAtTime(200, t + 0.15);
-        
-        // 少しピッチモジュレーションをかけてメカニックな質感を出す（お好みで外してもOKです）
-        const mod = ctx.createOscillator();
-        mod.type = 'sine'; 
-        mod.frequency.value = 30; // 揺れの速さ
-        const modGain = ctx.createGain();
-        modGain.gain.value = 100; // 揺れの深さ
-        mod.connect(modGain); 
-        modGain.connect(o.frequency);
-        mod.start(t); 
-        mod.stop(t + 0.15);
+        const duration = 0.15; // ノイズの余韻のためにわずかに延長
 
-        // 音量のフェードアウト（連射されるので少し控えめの音量）
-        g.gain.setValueAtTime(0.06, t);
-        g.gain.linearRampToValueAtTime(0, t + 0.15);
+        // --- 1. 低音の芯 (サイン波：さらに音量を下げて下支えに徹する) ---
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(250, t);
+        o.frequency.exponentialRampToValueAtTime(40, t + duration);
+
+        const oGain = ctx.createGain();
+        // サイン波はノイズの邪魔をしないよう極小に (0.05 -> 0.005)
+        oGain.gain.setValueAtTime(0.05, t); 
+        oGain.gain.linearRampToValueAtTime(0, t + duration);
+        o.connect(oGain); oGain.connect(g);
+
+        // --- 2. メインのノイズ（ここを強化） ---
+        const bufferSize = ctx.sampleRate * duration;
+        const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
         
-        return { osc: o, duration: 0.15 };
+        for (let i = 0; i < bufferSize; i++) {
+            // 乱数の振幅を 0.1 から 0.5 へ引き上げ（バッファ自体の密度を上げる）
+            output[i] = (Math.random() * 2 - 1) * 0.5; 
+        }
+        
+        const noise = ctx.createBufferSource();
+        noise.buffer = noiseBuffer;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        // ★ フィルターを 2000Hz から開始して、ノイズの「ザラつき」を残す
+        filter.frequency.setValueAtTime(2000, t); 
+        filter.frequency.exponentialRampToValueAtTime(100, t + duration);
+        // Q値を上げて、少し「シュピッ」というSF的な鋭さを出す
+        filter.Q.value = 2.0; 
+
+        const nGain = ctx.createGain();
+        // ★ ノイズのゲインを 0.02 から 0.08 へ引き上げ
+        // これで masterGain (2.5) が掛かっても 0.2 なので、爆音にならずにハッキリ聞こえます
+        nGain.gain.setValueAtTime(0.2, t); 
+        nGain.gain.linearRampToValueAtTime(0, t + duration);
+
+        noise.connect(filter); filter.connect(nGain); nGain.connect(g);
+
+        o.start(t); o.stop(t + duration);
+        noise.start(t); noise.stop(t + duration);
+
+        return { osc: null, duration: duration };
     },
     warning: (ctx, t, g) => {
         const repeatCount = 6;
@@ -334,6 +358,38 @@ const SE_LIBRARY = {
         n.connect(f); f.connect(g);
         n.start(t); n.stop(t + duration);
         return { osc: null, duration: duration };
+    },
+    lc_engine: (ctx, t, g) => {
+        const dur = 0.4;
+        
+        // --- 1. 低域のモーター音（うねり） ---
+        const o1 = ctx.createOscillator();
+        o1.type = 'sawtooth';
+        o1.frequency.setValueAtTime(60, t);
+        o1.frequency.exponentialRampToValueAtTime(120, t + dur);
+
+        const g1 = ctx.createGain();
+        g1.gain.setValueAtTime(0, t);
+        g1.gain.linearRampToValueAtTime(0.03, t + dur * 0.5);
+        g1.gain.linearRampToValueAtTime(0, t + dur);
+        
+        // --- 2. 高域のキーンという電子音（トロンらしさ） ---
+        const o2 = ctx.createOscillator();
+        o2.type = 'sine';
+        o2.frequency.setValueAtTime(800, t);
+        o2.frequency.exponentialRampToValueAtTime(1200, t + dur);
+
+        const g2 = ctx.createGain();
+        g2.gain.setValueAtTime(0, t);
+        g2.gain.linearRampToValueAtTime(0.015, t + dur * 0.5);
+        g2.gain.linearRampToValueAtTime(0, t + dur);
+
+        o1.connect(g1); g1.connect(g);
+        o2.connect(g2); g2.connect(g);
+        o1.start(t); o1.stop(t + dur);
+        o2.start(t); o2.stop(t + dur);
+
+        return { osc: null, duration: dur };
     },
     select: (ctx, t, g) => {
         const o = ctx.createOscillator();

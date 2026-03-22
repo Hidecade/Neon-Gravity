@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "1.5.10";
+window.GAME_VERSION = "1.5.11";
 
 
 const DEBUG = {
@@ -112,11 +112,15 @@ const ENEMY_SPEEDS = {
     JELLYFISH: 2.5,
     SENTINEL: 4.0,
     SWEEPER: 10.0,
+    LIGHTCYCLE: 15,
     BOSS_MISSILE: 10.0 // ボスミサイル用
 };
 
 const ENEMY_LIMITS = {
-    TADPOLE_MAX: 30.0, // これ以上は速くならない絶対上限
+    TADPOLE_MAX: 30.0,              // これ以上は速くならない絶対上限
+    LIGHTCYCLE_MAX: 30.0,           // ライトサイクルの最高速度の絶対上限
+    LIGHTCYCLE_TAIL_LENGTH: 120,    // ライトサイクルの光の壁（尾）の最大長
+    LIGHTCYCLE_FADE_LENGTH: 30,     // 尾がパーティクル化して消えゆく部分の長さ
 };
 
 const DRAGON_ACCELERATION = 0.2; // ドラゴンの追尾加速力
@@ -135,6 +139,7 @@ const ENEMY_HITBOX = {
     BOSS: 45,
     SENTINEL: 15,
     SWEEPER: 15,
+    LIGHTCYCLE: 14
 };
 
 
@@ -153,6 +158,7 @@ const ENEMY_SCORES = {
     jellyfish: 180,
     sentinel: 150,
     sweeper: 150,
+    lightcycle: 300,
     default: 100
 };
 
@@ -170,8 +176,8 @@ const EXPLOSION_PARTICLE_COUNT = {
 
 // --- 出現パターン設定 ---
 const STAGE_ENEMIES = {
-    1: ['triangle', 'triangle', 'triangle', 'dragon'],
-    2: ['triangle', 'tadpole', 'tadpole', 'dragon'],
+    1: ['triangle', 'triangle', 'tadpole', 'dragon'],
+    2: ['lightcycle', 'tadpole', 'tadpole', 'lightcycle'],
     3: ['bubble', 'bubble', 'bubble', 'jellyfish', 'spark_jelly'],
     4: ['phantom', 'phantom', 'tadpole', 'tadpole', 'tadpole', 'tadpole', 'asteroid'],
     5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'sweeper'],

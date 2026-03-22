@@ -959,6 +959,82 @@ function updateSweeperAI(e) {
     }
 }
 
+function updateLightcycleAI(e) {
+// --- ライトサイクルのワープ（出現）更新ロジック ---
+    if (e.isWarping) {
+        e.warpPercent += 0.02; // 出現スピード
+        
+        // ★追加：ワープ中も少しずつ前進させて、履歴（尾）を生成する
+        // warpPercentに応じて、本来の速度(e.speed)の 20% 程度で微速前進させる
+        const moveStep = e.speed * 0.2; 
+        e.x += Math.cos(e.angle) * moveStep;
+        e.y += Math.sin(e.angle) * moveStep;
+
+        // 履歴を更新（これにより、出現しながら尾が伸びる）
+        if (typeof frame !== 'undefined' && frame % 2 === 0) {
+            e.history.unshift({ x: e.x, y: e.y });
+            if (e.history.length > ENEMY_LIMITS.LIGHTCYCLE_TAIL_LENGTH) e.history.pop();
+        }
+
+        if (e.warpPercent >= 1.0) {
+            e.isWarping = false;
+            e.warpPercent = 1.0;
+        }
+        return; // ワープ中はAI処理（旋回など）をスキップ
+    }
+
+    // 2. 初速の設定とタイマー初期化
+    if (e.turnTimer === undefined) {
+        e.turnTimer = 40;
+        e.history = [];
+        // 初期方向を縦か横に固定
+        if (Math.abs(e.vx) > Math.abs(e.vy)) {
+            e.vx = (e.vx > 0 ? 1 : -1) * e.speed;
+            e.vy = 0;
+        } else {
+            e.vx = 0;
+            e.vy = (e.vy > 0 ? 1 : -1) * e.speed;
+        }
+    }
+
+    e.turnTimer -= gameSpeed;
+
+    // 3. 90度ターンの実行
+    if (e.turnTimer <= 0) {
+        e.turnTimer = 30 + Math.random() * 50;
+        const speed = e.speed;
+
+        if (Math.abs(e.vx) > 0) {
+            // 横移動中 → 縦移動へ
+            e.vx = 0;
+            e.vy = (player.y > e.y) ? speed : -speed;
+        } else {
+            // 縦移動中 → 横移動へ
+            e.vy = 0;
+            e.vx = (player.x > e.x) ? speed : -speed;
+        }
+
+        // ターン時に火花（パーティクル）を散らす
+        if (typeof spawnParticleObj === 'function') {
+            spawnParticleObj({
+                x: e.x, y: e.y,
+                vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
+                color: e.variant ? (e.variant.trailColor || '#00ffff') : '#00ffff',
+                life: 0.3, size: 2
+            });
+        }
+    }
+
+    // 4. 座標と向きの更新
+    e.x += e.vx * gameSpeed;
+    e.y += e.vy * gameSpeed;
+    e.angle = Math.atan2(e.vy, e.vx);
+
+    // 5. 光の壁の履歴（Tadpoleと同じ unshift 方式に適合）
+    e.history.unshift({ x: e.x, y: e.y });
+    if (e.history.length > ENEMY_LIMITS.LIGHTCYCLE_TAIL_LENGTH) e.history.pop();
+}
+
 function updateFighterJetAI(eb) {
     eb.timer += gameSpeed;
 
@@ -1669,6 +1745,11 @@ function updateEnemiesForDying() {
             e.history.unshift({ x: e.x, y: e.y });
             if (e.history.length > 60) e.history.pop();
         }
+        if (e.type === 'lightcycle') {
+            if (!e.history) e.history = [];
+            e.history.unshift({ x: e.x, y: e.y });
+            if (e.history.length > ENEMY_LIMITS.LIGHTCYCLE_TAIL_LENGTH) e.history.pop();
+        }
         if (e.type === 'triangle' || e.type === 'cube') {
             e.rotX += 0.1; e.rotY += 0.1;
         }
@@ -2091,6 +2172,27 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
                 isWarping: true, warpPercent: 0
             });
         }
+    } else if (type === 'lightcycle') {
+        const lcSpd = Math.min(ENEMY_SPEEDS.LIGHTCYCLE * spd * stageMag, ENEMY_LIMITS.LIGHTCYCLE_MAX);
+        const initialHistory = [];
+        for(let i = 0; i < 5; i++) {
+            initialHistory.push({ x: x, y: y });
+        }
+
+        enemies.push({
+            x: x, y: y, 
+            vx: vx, vy: vy,
+            hp: 3 + Math.floor(hpMag * 1.5),
+            speed: lcSpd,
+            color: '#e0e0e0',
+            type: 'lightcycle',
+            angle: 0,
+            drop: dropType,
+            scale: 0.9,
+            history: initialHistory, // ★初期化された履歴を入れる
+            isWarping: true, warpPercent: 0
+        });
+        spawnedCount++;
     }
 }
 
@@ -2266,6 +2368,7 @@ function updateEnemies() {
                 case 'jellyfish': updateJellyfishAI(e); break;
                 case 'sentinel': updateSentinelAI(e); break;
                 case 'sweeper': updateSweeperAI(e); break;
+                case 'lightcycle' : updateLightcycleAI(e); break;
 
                 case 'fighter': updateFighterJetAI(e); break;
                 case 'boss':

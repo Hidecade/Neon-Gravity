@@ -22,7 +22,7 @@ function drawEnemies() {
         else if (e.type === 'jellyfish') drawJellyfishEnemy(ctx, e);
         else if (e.type === 'sentinel') drawSentinelEnemy(ctx, e);
         else if (e.type === 'sweeper') drawSweeperEnemy(ctx, e);
-
+        else if (e.type === 'lightcycle') drawLightcycle(ctx, e);
         else if (e.type === 'fighter') drawFighterJet(ctx, e);
 
         else if (e.type === 'boss') drawBossEnemy(ctx, e);
@@ -1387,6 +1387,179 @@ function drawSweeperEnemy(ctx, e) {
     ctx.fillStyle = '#f90';
     ctx.beginPath();
     ctx.arc(coreX, 0, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function drawLightcycle(ctx, e) {
+    if (!e || typeof e.x !== 'number' || isNaN(e.x)) return;
+
+    ctx.save();
+
+    let currentScale = (e.scale || 1.0) * G_SCALE;
+    let visualAlpha = 1.0;
+
+    // --- ワープ（出現・離脱）時の演出計算 ---
+    if (e.isWarping) {
+        const wp = Math.max(0, Math.min(1, e.warpPercent || 0));
+        const scaleFactor = 0.1 + wp * 0.9;
+        currentScale *= scaleFactor;
+        visualAlpha = wp; 
+    } else {
+        visualAlpha = 1.0;
+        // ★トロン走行音のトリガー（20フレームに1回：AudioSysにlc_engineがある前提）
+        if (typeof frame !== 'undefined' && frame % 20 === 0 && typeof AudioSys !== 'undefined') {
+            AudioSys.playSE('lc_engine', e.x, e.y);
+        }
+    }
+
+    const trailColor = e.variant ? (e.variant.trailColor || '#00ffff') : '#00ffff';
+    const mainColor = e.color || '#e0e0e0';
+    const neonOrange = '#ff6600'; // コア用ネオンオレンジ
+
+  // ==========================================
+    // 1. 光の壁（軌跡）の描画
+    // ==========================================
+    if (e.history && e.history.length > 1) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter'; 
+        
+        const tailLen = e.history.length;
+        const fadeLength = ENEMY_LIMITS.LIGHTCYCLE_FADE_LENGTH; 
+        
+        // ★ 変更点：出現中(isWarping)は実線を描画しないように設定
+        // 通常時は後ろから30個（fadeLength）を除いた分を実線にする
+        const lineEndIndex = e.isWarping ? 0 : Math.max(0, tailLen - fadeLength); 
+
+        // --- A. 実線レイヤー（アウター＆インナー） ---
+        // lineEndIndex が 0 より大きい時（＝出現が終わった後）だけ描画
+        if (lineEndIndex > 0) {
+            ctx.strokeStyle = trailColor;
+            ctx.lineWidth = 3.5 * currentScale;
+            ctx.globalAlpha = visualAlpha * 0.9;
+            
+            ctx.beginPath();
+            ctx.moveTo(e.history[0].x, e.history[0].y);
+            for (let i = 1; i < lineEndIndex; i++) {
+                // ...（中略：既存の LineTo ロジック）...
+                ctx.lineTo(e.history[i].x, e.history[i].y); 
+            }
+            ctx.stroke();
+
+            // 白い芯の描画
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.2 * currentScale;
+            ctx.globalAlpha = visualAlpha * 0.8;
+            ctx.stroke();
+        }
+
+        // --- B. パーティクルレイヤー（出現中、または最後尾） ---
+        ctx.fillStyle = trailColor;
+        
+        // 出現中は「全履歴」をパーティクルにする
+        // 出現後は「最後尾の fadeLength 分」をパーティクルにする
+        const pStartIndex = e.isWarping ? 0 : lineEndIndex;
+        const pEndIndex = tailLen;
+
+        for (let i = pStartIndex; i < pEndIndex; i++) {
+            const p = e.history[i];
+            
+            // 出現中か、最後尾かでフェード率を変える
+            const fadeRatio = e.isWarping ? (i / tailLen) : (i - lineEndIndex) / fadeLength;
+            
+            // 出現中は粒子を多めにして「転送中」っぽさを出す
+            const particleCount = e.isWarping ? 3 : (1 + Math.floor(fadeRatio * 3));
+            
+            for (let k = 0; k < particleCount; k++) {
+                // 出現中は少し広めに散らす
+                const spread = (e.isWarping ? 12 : (5 + 15 * fadeRatio)) * G_SCALE; 
+                const px = p.x + (Math.random() - 0.5) * spread;
+                const py = p.y + (Math.random() - 0.5) * spread;
+                
+                const alpha = visualAlpha * (0.8 - fadeRatio * 0.6) * (0.4 + Math.random() * 0.6);
+                ctx.globalAlpha = Math.max(0.1, alpha);
+                
+                const pSize = (1.2 + Math.random() * 2.5) * G_SCALE;
+                
+                ctx.beginPath();
+                ctx.arc(px, py, pSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        ctx.restore();
+    }
+
+    // ---------------------------------
+    // 2. バイク本体の描画
+    // ---------------------------------
+    ctx.translate(e.x, e.y);
+    ctx.rotate(e.angle);
+    ctx.scale(currentScale, currentScale);
+
+    ctx.globalAlpha = visualAlpha;
+    ctx.globalCompositeOperation = 'lighter';
+
+    const size = 12;
+    const pts = [
+        { x:  2.0, y:  0.0, z:  0.0 }, // 0: 先端
+        { x: -1.5, y:  0.0, z:  1.0 }, // 1: キャノピー
+        { x: -1.5, y:  0.0, z: -0.5 }, // 2: 底面
+        { x: -1.5, y: -0.8, z:  0.2 }, // 3: 左ハブ
+        { x: -1.5, y:  0.8, z:  0.2 }, // 4: 右ハブ
+        { x:  0.0, y:  0.0, z:  0.2 }, // 5: 内部コア
+        { x: -1.5, y:  0.0, z:  0.2 }  // 6: 後部エンジン
+    ];
+
+    const rotX = Math.sin(frame * 0.1) * 0.1; 
+    const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+    const proj = pts.map(p => {
+        let y2 = p.y * cosX - p.z * sinX;
+        let z2 = p.y * sinX + p.z * cosX;
+        const persp = 1 / (1 + z2 * 0.22);
+        return { x: p.x * size * persp, y: y2 * size * persp, z: z2 };
+    });
+
+    const lines = [[0,1],[0,2],[0,3],[0,4],[1,3],[3,2],[2,4],[4,1]];
+    ctx.beginPath();
+    for (const [a, b] of lines) {
+        ctx.moveTo(proj[a].x, proj[a].y);
+        ctx.lineTo(proj[b].x, proj[b].y);
+    }
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 4; ctx.globalAlpha = visualAlpha * 0.3; ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.globalAlpha = visualAlpha * 0.8; ctx.stroke();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.6; ctx.globalAlpha = visualAlpha; ctx.stroke();
+
+    // ---------------------------------
+    // 3. コアの描画（3D投影された座標を使う）
+    // ---------------------------------
+    const pulse = 0.8 + Math.sin(frame * 0.3) * 0.3;
+
+    // ★ 3-A. 内部コア（車体の中央で鼓動するエネルギー）
+    ctx.globalAlpha = visualAlpha * 0.6;
+    ctx.fillStyle = mainColor; // 本体カラーで発光
+    ctx.beginPath();
+    ctx.arc(proj[5].x, proj[5].y, 4 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.globalAlpha = visualAlpha;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(proj[5].x, proj[5].y, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ★ 3-B. 後部エンジンコア (軌跡と同じ色で発光)
+    ctx.globalAlpha = visualAlpha * 0.5;
+    ctx.fillStyle = trailColor;
+    ctx.beginPath();
+    ctx.arc(proj[6].x, proj[6].y, 10 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = visualAlpha;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(proj[6].x, proj[6].y, 7, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();

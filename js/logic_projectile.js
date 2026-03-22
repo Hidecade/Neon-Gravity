@@ -38,6 +38,48 @@ function updatePlayerBullets() {
             continue;
         }
 
+        // Lightcycleの壁で「プレイヤーの弾」を遮断する
+        let hitLightWall = false;
+        for (let j = 0; j < enemies.length; j++) {
+            const e = enemies[j];
+            if (e.type === 'lightcycle' && e.history && e.history.length > 1) {
+                // 壁を構成する各線分に対して、弾との距離を判定
+                for (let k = 0; k < e.history.length - 1; k++) {
+                    const p1 = e.history[k];
+                    const p2 = e.history[k + 1];
+                    
+                    const l2 = (p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y);
+                    let distSq;
+                    if (l2 === 0) {
+                        distSq = (b.x - p1.x) * (b.x - p1.x) + (b.y - p1.y) * (b.y - p1.y);
+                    } else {
+                        let t = ((b.x - p1.x) * (p2.x - p1.x) + (b.y - p1.y) * (p2.y - p1.y)) / l2;
+                        t = Math.max(0, Math.min(1, t));
+                        const projX = p1.x + t * (p2.x - p1.x);
+                        const projY = p1.y + t * (p2.y - p1.y);
+                        distSq = (b.x - projX) * (b.x - projX) + (b.y - projY) * (b.y - projY);
+                    }
+
+                    // レーザーの太さに合わせた当たり判定（距離5px以内 = 25）
+                    if (distSq < 25) {
+                        hitLightWall = true;
+                        // 当たった場所に火花を散らす
+                        const wallColor = e.variant ? (e.variant.trailColor || '#00ffff') : '#00ffff';
+                        if (typeof createWallImpact === 'function') createWallImpact(b.x, b.y, wallColor);
+                        break;
+                    }
+                }
+            }
+            if (hitLightWall) break;
+        }
+
+        // 壁に当たっていたら弾を消去して次の処理をスキップ
+        if (hitLightWall) {
+            b.active = false;
+            b.life = 0;
+            continue;
+        }
+
         // --- 敵との当たり判定 ---
         for (let j = 0; j < enemies.length; j++) {
             const e = enemies[j];
