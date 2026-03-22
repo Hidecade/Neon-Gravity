@@ -691,12 +691,12 @@ const AudioSys = {
         if (!this.ctx) this.init();
         if (!this.ctx || !SE_LIBRARY[type]) return;
 
-        if (this.ctx.state !== 'running') {
-            this.ctx.resume();
-        }
-
         if (document.hidden) return;
-        if (this.ctx.state !== "running") return;
+
+        if (this.ctx.state !== "running") {
+            this.ensureAudioReady(true).catch(() => {});
+            return;
+        }
 
         const now = this.ctx.currentTime;
         if (this.lastPlayed[type] && now - this.lastPlayed[type] < 0.05) return;
@@ -892,28 +892,4 @@ const AudioSys = {
 window.AudioSys = AudioSys;
 
 
-async function forceResumeAudio() {
-    try {
-        if (AudioSys.ctx && AudioSys.ctx.state !== 'running') {
-            await AudioSys.ctx.resume();
-        }
-    } catch (e) {}
-}
 
-// フォーカス復帰
-window.addEventListener('focus', forceResumeAudio);
-
-// タブ復帰
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-        forceResumeAudio();
-    }
-});
-
-// iOS対策（重要）
-window.addEventListener('pageshow', forceResumeAudio);
-
-// ★最重要：ユーザー操作で復帰
-window.addEventListener('touchstart', forceResumeAudio);
-window.addEventListener('pointerdown', forceResumeAudio);
-window.addEventListener('click', forceResumeAudio);
