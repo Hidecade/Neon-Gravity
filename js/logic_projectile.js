@@ -70,7 +70,7 @@ function updatePlayerBullets() {
                         if (tdx * tdx + tdy * tdy < 400) { 
                             hitTail = true;
                             // 1発で10個分（大幅に）削る
-                            for(let n = 0; n < 10; n++) {
+                            for(let n = 0; n < 2; n++) {
                                 if (e.history.length > 2) e.history.pop();
                             }
                             break;

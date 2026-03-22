@@ -2214,7 +2214,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             vx: Math.cos(ra) * lcSpd, // 初速をセット
             vy: Math.sin(ra) * lcSpd,
             speed: lcSpd,
-            hp: 2 + Math.floor(hpMag * 1.5),
+            hp: 3 + Math.floor(hpMag * 1.5),
             color: '#e0e0e0', 
             type: 'lightcycle',
             angle: ra,
