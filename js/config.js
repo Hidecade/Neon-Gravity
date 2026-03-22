@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.6.4";
+window.GAME_VERSION = "0.6.5";
 
 
 const DEBUG = {
@@ -69,14 +69,14 @@ const STAGE_ENEMY_COUNTS = [
     70,  // Stage 3
     120, // Stage 4
     180, // Stage 5
-    220, // Stage 6
+    200, // Stage 6
     250, // Stage 7
     360  // Stage 8 (Final)
 ];
 
 // 画面内に同時に存在できる敵の最大数
 const STAGE_MAX_ON_SCREEN = [
-    15, 20, 25, 30, 35, 40, 45, 60
+    20, 25, 30, 35, 40, 45, 50, 60
 ];
 
 // 難易度上昇パラメータ

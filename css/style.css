@@ -270,7 +270,6 @@ canvas {
 /* --- アニメーションと状態変化 --- */
 /* シールドピンチ時（JSからクラスが付与される） */
 .shield-critical {
-    animation: smooth-pulse 0.8s infinite alternate;
     background: linear-gradient(90deg, rgba(255, 51, 51, 0.4), rgb(255, 51, 51)) !important;
 }
 

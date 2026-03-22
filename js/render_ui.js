@@ -75,23 +75,34 @@ function updateUI() {
     }
 
 
-    // ==========================================
+// ==========================================
     // 3. SHIELD ゲージ
     // ==========================================
     const shieldPercent = Math.max(0, (player.shield / PLAYER_BASE_SHIELD) * 100);
     ui.shieldBar.style.width = shieldPercent + "%";
 
     if (player.shield < PLAYER_BASE_SHIELD * 0.3) {
-        // ピンチ時はCSSの .shield-critical とアニメーションに完全に任せる
         ui.shieldBar.classList.add('shield-critical');
-        ui.shieldBar.style.background = 'transparent'; // または 'none'
-        ui.shieldBar.style.boxShadow = 'none';         // 影も明示的に消す
+        
+        // ①確実な赤色指定（青色が出ないように完全上書き）
+        ui.shieldBar.style.background = 'linear-gradient(90deg, rgba(255, 51, 51, 0.4), rgb(255, 51, 51))';
+        
+        // ②フレーム数を利用した確実な点滅アニメーション
+        if (frame % 30 < 15) {
+            // 光る状態
+            ui.shieldBar.style.opacity = '1';
+            ui.shieldBar.style.boxShadow = '0 0 calc(10px * var(--hud-scale, 1)) rgb(255, 51, 51)';
+        } else {
+            // 暗くなる状態
+            ui.shieldBar.style.opacity = '0.4';
+            ui.shieldBar.style.boxShadow = '0 0 calc(2px * var(--hud-scale, 1)) rgb(255, 51, 51)';
+        }
     } else {
         ui.shieldBar.classList.remove('shield-critical');
+        ui.shieldBar.style.opacity = '1'; // 通常時は不透明に戻す
         
-        // 通常時：機体の状態に合わせて、CSSと同じ rgba 形式で色を生成
-        let r = 0, g = 255, b = 180; // デフォルトのエメラルドグリーン
-
+        // 通常時：エメラルドグリーン
+        let r = 0, g = 255, b = 180; 
         ui.shieldBar.style.background = `linear-gradient(90deg, rgba(${r}, ${g}, ${b}, 0.4), rgb(${r}, ${g}, ${b}))`;
         ui.shieldBar.style.boxShadow = `0 0 calc(8px * var(--hud-scale, 1)) rgb(${r}, ${g}, ${b})`;
     }
