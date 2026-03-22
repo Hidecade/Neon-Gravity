@@ -1531,37 +1531,6 @@ function drawLightcycle(ctx, e) {
     ctx.lineWidth = 1.5; ctx.globalAlpha = visualAlpha * 0.8; ctx.stroke();
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.6; ctx.globalAlpha = visualAlpha; ctx.stroke();
 
-    // ---------------------------------
-    // 3. コアの描画（3D投影された座標を使う）
-    // ---------------------------------
-    const pulse = 0.8 + Math.sin(frame * 0.3) * 0.3;
-
-    // ★ 3-A. 内部コア（車体の中央で鼓動するエネルギー）
-    ctx.globalAlpha = visualAlpha * 0.6;
-    ctx.fillStyle = mainColor; // 本体カラーで発光
-    ctx.beginPath();
-    ctx.arc(proj[5].x, proj[5].y, 4 * pulse, 0, Math.PI * 2);
-    ctx.fill();
-    
-    ctx.globalAlpha = visualAlpha;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(proj[5].x, proj[5].y, 1.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // ★ 3-B. 後部エンジンコア (軌跡と同じ色で発光)
-    ctx.globalAlpha = visualAlpha * 0.5;
-    ctx.fillStyle = trailColor;
-    ctx.beginPath();
-    ctx.arc(proj[6].x, proj[6].y, 10 * pulse, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.globalAlpha = visualAlpha;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(proj[6].x, proj[6].y, 7, 0, Math.PI * 2);
-    ctx.fill();
-
     ctx.restore();
 }
 
