@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.6.3";
+window.GAME_VERSION = "0.6.4";
 
 
 const DEBUG = {
@@ -116,8 +116,8 @@ const ENEMY_SPEEDS = {
 const ENEMY_LIMITS = {
     TADPOLE_MAX: 30.0,              // これ以上は速くならない絶対上限
     LIGHTCYCLE_MAX: 30.0,           // ライトサイクルの最高速度の絶対上限
-    LIGHTCYCLE_TAIL_LENGTH: 120,    // ライトサイクルの光の壁（尾）の最大長
-    LIGHTCYCLE_FADE_LENGTH: 30,     // 尾がパーティクル化して消えゆく部分の長さ
+    LIGHTCYCLE_TAIL_LENGTH: 150,    // ライトサイクルの光の壁（尾）の最大長
+    LIGHTCYCLE_FADE_LENGTH: 10,     // 尾がパーティクル化して消えゆく部分の長さ
 };
 
 const DRAGON_ACCELERATION = 0.2; // ドラゴンの追尾加速力
@@ -136,7 +136,7 @@ const ENEMY_HITBOX = {
     BOSS: 45,
     SENTINEL: 15,
     SWEEPER: 15,
-    LIGHTCYCLE: 14
+    LIGHTCYCLE: 18
 };
 
 

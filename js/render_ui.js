@@ -84,8 +84,8 @@ function updateUI() {
     if (player.shield < PLAYER_BASE_SHIELD * 0.3) {
         // ピンチ時はCSSの .shield-critical とアニメーションに完全に任せる
         ui.shieldBar.classList.add('shield-critical');
-        ui.shieldBar.style.background = '';
-        ui.shieldBar.style.boxShadow = '';
+        ui.shieldBar.style.background = 'transparent'; // または 'none'
+        ui.shieldBar.style.boxShadow = 'none';         // 影も明示的に消す
     } else {
         ui.shieldBar.classList.remove('shield-critical');
         
