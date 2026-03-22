@@ -1147,9 +1147,6 @@ function updateFighterJetAI(eb) {
     }
 }
 
-
-
-
 function applyWorldBoundary(e) {
 
     if (e.x < WALL_MARGIN) {
@@ -1172,7 +1169,6 @@ function applyWorldBoundary(e) {
         e.vy = -Math.abs(e.vy);
     }
 }
-
 
 function applyAsteroidCollisions(e) {
     if (e.type !== 'asteroid' && e.type !== 'bubble') return;
@@ -1306,8 +1302,6 @@ function applyJellyfishAsteroidCollisions(e) {
         }
     });
 }
-
-
 
 function destroyEnemy(e) {
 
@@ -2173,24 +2167,61 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             });
         }
     } else if (type === 'lightcycle') {
-        const lcSpd = Math.min(ENEMY_SPEEDS.LIGHTCYCLE * spd * stageMag, ENEMY_LIMITS.LIGHTCYCLE_MAX);
-        const initialHistory = [];
-        for(let i = 0; i < 5; i++) {
-            initialHistory.push({ x: x, y: y });
+        let rx, ry, ra;
+        
+        // カメラの表示範囲（ワールド座標における画面の幅と高さ）を取得
+        const viewW = width / cameraScale;
+        const viewH = height / cameraScale;
+
+        // ボス戦中（Stage 9/10）かどうかの判定
+        if (stage === 9 || stage === 10 || isBossSpawned) {
+            // 画面の上下左右の端（画面外 100px）から出現させる
+            const edge = Math.floor(Math.random() * 4);
+            const margin = 100;
+
+            if (edge === 0) { // 上から下へ
+                rx = camera.x + Math.random() * viewW;
+                ry = camera.y - margin;
+                ra = Math.PI / 2;
+            } else if (edge === 1) { // 右から左へ
+                rx = camera.x + viewW + margin;
+                ry = camera.y + Math.random() * viewH;
+                ra = Math.PI;
+            } else if (edge === 2) { // 下から上へ
+                rx = camera.x + Math.random() * viewW;
+                ry = camera.y + viewH + margin;
+                ra = -Math.PI / 2;
+            } else { // 左から右へ
+                rx = camera.x - margin;
+                ry = camera.y + Math.random() * viewH;
+                ra = 0;
+            }
+        } else {
+            // 通常面：ワームホールの位置から出現
+            rx = x; 
+            ry = y; 
+            ra = Math.atan2(player.y - y, player.x - x);
         }
 
+        // ワールド境界の外に出すぎないようにクランプ（安全策）
+        rx = Math.max(0, Math.min(worldSize, rx));
+        ry = Math.max(0, Math.min(worldSize, ry));
+
+        const lcSpd = Math.min(ENEMY_SPEEDS.LIGHTCYCLE * spd * stageMag, ENEMY_LIMITS.LIGHTCYCLE_MAX);
+
         enemies.push({
-            x: x, y: y, 
-            vx: vx, vy: vy,
-            hp: 3 + Math.floor(hpMag * 1.5),
+            x: rx, y: ry,
+            vx: Math.cos(ra) * lcSpd, // 初速をセット
+            vy: Math.sin(ra) * lcSpd,
             speed: lcSpd,
-            color: '#e0e0e0',
+            hp: 2 + Math.floor(hpMag * 1.5),
+            color: '#e0e0e0', 
             type: 'lightcycle',
-            angle: 0,
-            drop: dropType,
-            scale: 0.9,
-            history: initialHistory, // ★初期化された履歴を入れる
-            isWarping: true, warpPercent: 0
+            angle: ra,
+            history: [{ x: rx, y: ry }], // 履歴の初期化
+            isWarping: true, 
+            warpPercent: 0,
+            inActiveRange: true // 出現直後は判定を有効にする
         });
         spawnedCount++;
     }
@@ -2490,13 +2521,28 @@ function updateSpawnLogic() {
                 AudioSys.playSE('warning');
             }
         }
-        // 2. 援護雑魚のスポーン（定数を使用して制御）
+        // 2. 援護雑魚のスポーン
         if (bossExists &&
             enemies.length < BOSS_RUSH_SPAWN_CONFIG.MAX_ENEMIES &&
             frame % BOSS_RUSH_SPAWN_CONFIG.INTERVAL === 0) {
 
             const currentPool = STAGE_ENEMIES[rushBossIndex + 1] || STAGE_ENEMIES[1];
-            const randomType = currentPool[Math.floor(Math.random() * currentPool.length)];
+            let randomType = currentPool[Math.floor(Math.random() * currentPool.length)];
+
+            // --- ★追加：lightcycleの出現制限ロジック ---
+            const LC_LIMIT = 2; // 最大生存数
+            // 現在画面にいる lightcycle の数をカウント
+            const currentLCCount = enemies.filter(e => e.type === 'lightcycle' && e.hp > 0).length;
+
+            // 30%の確率で lightcycle を抽選するが、すでに3機以上いる場合は別の敵にする
+            if (Math.random() < 0.3) {
+                if (currentLCCount < LC_LIMIT) {
+                    randomType = 'lightcycle';
+                } else {
+                    // 3機以上なら PHANTOM など別の敵に差し替える（またはそのままの randomType を使う）
+                    randomType = 'phantom'; 
+                }
+            }
 
             const angle = Math.random() * Math.PI * 2;
             const dist = 600;
@@ -2509,7 +2555,11 @@ function updateSpawnLogic() {
             // 指定した数だけ敵を生成
             setTimeout(() => {
                 if (gameState === 'PLAYING' && stage === 9) {
-                    for (let i = 0; i < BOSS_RUSH_SPAWN_CONFIG.SPAWN_COUNT; i++) {
+                    // ★修正：敵のタイプによってループ回数（出現数）を決める
+                    // randomType が 'lightcycle' なら 1回、それ以外なら元の設定（SPAWN_COUNT）回ループする
+                    const spawnCount = (randomType === 'lightcycle') ? 1 : BOSS_RUSH_SPAWN_CONFIG.SPAWN_COUNT;
+
+                    for (let i = 0; i < spawnCount; i++) {
                         // 少し位置をずらして生成
                         const ox = (Math.random() - 0.5) * 20;
                         const oy = (Math.random() - 0.5) * 20;

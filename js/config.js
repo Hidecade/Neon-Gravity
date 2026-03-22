@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "1.5.11";
+window.GAME_VERSION = "0.6.0";
 
 
 const DEBUG = {
@@ -60,9 +60,7 @@ let currentGraphicsQuality = 'MEDIUM'; // 現在の品質
 
 // --- ステージ・難易度設定 ---
 const START_STAGE = 1;        // 開始ステージ
-const BOSS_RUSH_STAGE = 9;         // 最大ステージ
 const MAX_STAGE = 10;         // 最大ステージ
-
 
 // ステージごとの敵総出現数
 const STAGE_ENEMY_COUNTS = [
@@ -75,7 +73,6 @@ const STAGE_ENEMY_COUNTS = [
     250, // Stage 7
     360  // Stage 8 (Final)
 ];
-
 
 // 画面内に同時に存在できる敵の最大数
 const STAGE_MAX_ON_SCREEN = [
@@ -183,7 +180,7 @@ const STAGE_ENEMIES = {
     5: ['triangle', 'tadpole', 'dragon', 'hunter', 'hunter', 'sweeper'],
     6: ['asteroid', 'asteroid', 'asteroid', 'phantom', 'tadpole', 'tadpole'],
     7: ['triangle', 'tadpole', 'dragon', 'triangle', 'eclipse', 'triangle', 'asteroid'],
-    8: ['triangle', 'hunter', 'phantom', 'tadpole', 'eclipse', 'dragon', 'jellyfish', 'asteroid', 'sweeper']
+    8: ['triangle', 'hunter', 'phantom', 'tadpole', 'eclipse', 'dragon', 'jellyfish', 'asteroid', 'sweeper', 'lightcycle']
 };
 
 // Stage 9 (ボスラッシュ) 専用の雑魚スポーン設定

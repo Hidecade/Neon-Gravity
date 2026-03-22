@@ -17,130 +17,125 @@ function updatePlayerBullets() {
         b.y += b.vy * gameSpeed;
         b.life -= gameSpeed;
 
-        // --- 画面（カメラ）の範囲外に出たら弾を消滅させる ---
+        // --- 1. 画面外または寿命による消滅 ---
         if (b.x < camera.x - margin || b.x > camera.x + viewW + margin ||
             b.y < camera.y - margin || b.y > camera.y + viewH + margin || b.life <= 0) {
-            b.active = false; // ★プールへ返却
+            b.active = false;
             b.life = 0;
             continue; 
         }
 
-        // --- ワールド境界との衝突判定 ---
+        // --- 2. ワールド境界との衝突判定 ---
         if (b.x < WALL_MARGIN || b.x > worldSize - WALL_MARGIN ||
             b.y < WALL_MARGIN || b.y > worldSize - WALL_MARGIN) {
-
             const impactX = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, b.x));
             const impactY = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, b.y));
-
             createWallImpact(impactX, impactY, '#0f8');
-            b.active = false; // ★プールへ返却
-            b.life = 0;
-            continue;
-        }
-
-        // Lightcycleの壁で「プレイヤーの弾」を遮断する
-        let hitLightWall = false;
-        for (let j = 0; j < enemies.length; j++) {
-            const e = enemies[j];
-            if (e.type === 'lightcycle' && e.history && e.history.length > 1) {
-                // 壁を構成する各線分に対して、弾との距離を判定
-                for (let k = 0; k < e.history.length - 1; k++) {
-                    const p1 = e.history[k];
-                    const p2 = e.history[k + 1];
-                    
-                    const l2 = (p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y);
-                    let distSq;
-                    if (l2 === 0) {
-                        distSq = (b.x - p1.x) * (b.x - p1.x) + (b.y - p1.y) * (b.y - p1.y);
-                    } else {
-                        let t = ((b.x - p1.x) * (p2.x - p1.x) + (b.y - p1.y) * (p2.y - p1.y)) / l2;
-                        t = Math.max(0, Math.min(1, t));
-                        const projX = p1.x + t * (p2.x - p1.x);
-                        const projY = p1.y + t * (p2.y - p1.y);
-                        distSq = (b.x - projX) * (b.x - projX) + (b.y - projY) * (b.y - projY);
-                    }
-
-                    // レーザーの太さに合わせた当たり判定（距離5px以内 = 25）
-                    if (distSq < 25) {
-                        hitLightWall = true;
-                        // 当たった場所に火花を散らす
-                        const wallColor = e.variant ? (e.variant.trailColor || '#00ffff') : '#00ffff';
-                        if (typeof createWallImpact === 'function') createWallImpact(b.x, b.y, wallColor);
-                        break;
-                    }
-                }
-            }
-            if (hitLightWall) break;
-        }
-
-        // 壁に当たっていたら弾を消去して次の処理をスキップ
-        if (hitLightWall) {
             b.active = false;
             b.life = 0;
             continue;
         }
 
-        // --- 敵との当たり判定 ---
+        let hitSomething = false;
+
+        // --- 3. 敵との当たり判定 (Lightcycle特殊判定を含む) ---
         for (let j = 0; j < enemies.length; j++) {
             const e = enemies[j];
-            
-            // 敵が死んでいる、または敵が画面外の場合はスキップ
             if (e.hp <= 0 || !e.inActiveRange) continue;
-
-            // 出現演出中のボスはショットをすり抜ける
             if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) continue;
 
-            // 敵の種類ごとの判定半径
-            let hitRadius = 30 * e.scale;
-            if (e.type === 'asteroid' || e.type === 'bubble') hitRadius = 25 * e.scale;
-            else if (e.type === 'dragon') hitRadius = ENEMY_HITBOX.DRAGON;
-            else if (e.type === 'triangle') hitRadius = ENEMY_HITBOX.TRIANGLE;
-            else if (e.type === 'cube') hitRadius = ENEMY_HITBOX.CUBE;
-            else if (e.type === 'tadpole') hitRadius = ENEMY_HITBOX.TADPOLE;
-            else if (e.type === 'hunter') hitRadius = ENEMY_HITBOX.HUNTER;
-            else if (e.type === 'boss') hitRadius = ENEMY_HITBOX.BOSS;
+            // --- A. Lightcycle の特殊判定 ---
+           if (e.type === 'lightcycle') {
+                const dx = b.x - e.x;
+                const dy = b.y - e.y;
+                const headDistSq = dx * dx + dy * dy;
+                
+                // 【頭部】判定サイズを固定値で大きく設定 (40px) して確実に当たるようにする
+                if (headDistSq < 1600) { // 40 * 40
+                    e.hp -= 1;
+                    hitSomething = true;
+                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('enemy_hit');
+                    createWallImpact(b.x, b.y, '#fff');
+                    break; 
+                }
 
-            const dx = b.x - e.x;
-            const dy = b.y - e.y;
-            const distSq = dx * dx + dy * dy;
-            const hitRadiusSq = hitRadius * hitRadius;
-
-            if (distSq < hitRadiusSq) {
-                b.active = false; // ★ヒットしたのでプールへ返却
-                b.life = 0;
-                e.hp--;
-
-                if (e.type === 'boss' || e.type === 'battleship') {
-                    e.flashTimer = 5;
-                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('boss_hit');
-                    if (e.hp > 0) createWallImpact(b.x, b.y, '#0f8');
-
-                    for (let k = 0; k < 3; k++) {
-                        spawnParticleObj({
-                            x: b.x, y: b.y,
-                            vx: (Math.random() - 0.5) * 20 * SPEED_SCALE,
-                            vy: (Math.random() - 0.5) * 20 * SPEED_SCALE,
-                            color: '#fff', life: 0.2, size: 2 * G_SCALE
-                        });
-                    }
-                } else {
-                    if (e.hp > 0) {
-                        if (typeof AudioSys !== 'undefined') AudioSys.playSE('enemy_hit');
-                        createWallImpact(b.x, b.y, '#0f8');
-                        
-                        const sparkColor = e.color || '#fff';
-                        for (let k = 0; k < 4; k++) {
-                            spawnParticleObj({
-                                x: b.x, y: b.y,
-                                vx: (Math.random() - 0.5) * 8,
-                                vy: (Math.random() - 0.5) * 8,
-                                color: sparkColor, life: 0.8 + Math.random() * 0.4, size: 2.0
-                            });
+                // 【尾】
+                if (e.history && e.history.length > 2) {
+                    let hitTail = false;
+                    for (let k = 0; k < e.history.length; k++) {
+                        const p = e.history[k];
+                        const tdx = b.x - p.x;
+                        const tdy = b.y - p.y;
+                        // 判定を広めに (20px)
+                        if (tdx * tdx + tdy * tdy < 400) { 
+                            hitTail = true;
+                            // 1発で10個分（大幅に）削る
+                            for(let n = 0; n < 10; n++) {
+                                if (e.history.length > 2) e.history.pop();
+                            }
+                            break;
                         }
                     }
+                    if (hitTail) {
+                        hitSomething = true;
+                        const wallColor = e.color || '#e0e0e0';
+                        createWallImpact(b.x, b.y, wallColor);
+                        break;
+                    }
                 }
-                break; // ★この弾は消滅したので、他の敵との判定を終了
             }
+            // --- B. その他の敵の通常判定 ---
+            else {
+                let hitRadius = 30 * e.scale;
+                if (e.type === 'asteroid' || e.type === 'bubble') hitRadius = 25 * e.scale;
+                else if (e.type === 'dragon') hitRadius = ENEMY_HITBOX.DRAGON;
+                else if (e.type === 'triangle') hitRadius = ENEMY_HITBOX.TRIANGLE;
+                else if (e.type === 'cube') hitRadius = ENEMY_HITBOX.CUBE;
+                else if (e.type === 'tadpole') hitRadius = ENEMY_HITBOX.TADPOLE;
+                else if (e.type === 'hunter') hitRadius = ENEMY_HITBOX.HUNTER;
+                else if (e.type === 'boss') hitRadius = ENEMY_HITBOX.BOSS;
+
+                const dx = b.x - e.x;
+                const dy = b.y - e.y;
+                if (dx * dx + dy * dy < hitRadius * hitRadius) {
+                    e.hp--;
+                    hitSomething = true;
+
+                    if (e.type === 'boss' || e.type === 'battleship') {
+                        e.flashTimer = 5;
+                        if (typeof AudioSys !== 'undefined') AudioSys.playSE('boss_hit');
+                        if (e.hp > 0) createWallImpact(b.x, b.y, '#0f8');
+                        for (let k = 0; k < 3; k++) {
+                            spawnParticleObj({
+                                x: b.x, y: b.y,
+                                vx: (Math.random() - 0.5) * 20 * SPEED_SCALE,
+                                vy: (Math.random() - 0.5) * 20 * SPEED_SCALE,
+                                color: '#fff', life: 0.2, size: 2 * G_SCALE
+                            });
+                        }
+                    } else {
+                        if (e.hp > 0) {
+                            if (typeof AudioSys !== 'undefined') AudioSys.playSE('enemy_hit');
+                            createWallImpact(b.x, b.y, '#0f8');
+                            const sparkColor = e.color || '#fff';
+                            for (let k = 0; k < 4; k++) {
+                                spawnParticleObj({
+                                    x: b.x, y: b.y,
+                                    vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8,
+                                    color: sparkColor, life: 0.8 + Math.random() * 0.4, size: 2.0
+                                });
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        // 何かに当たった場合は弾を消去
+        if (hitSomething) {
+            b.active = false;
+            b.life = 0;
         }
     }
 }
