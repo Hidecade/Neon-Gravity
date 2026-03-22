@@ -51,7 +51,7 @@ function updatePlayerBullets() {
                 const headDistSq = dx * dx + dy * dy;
                 
                 // 【頭部】判定サイズを固定値で大きく設定 (40px) して確実に当たるようにする
-                if (headDistSq < 1600) { // 40 * 40
+                if (headDistSq < 900) { // 30 * 30
                     e.hp -= 1;
                     hitSomething = true;
                     if (typeof AudioSys !== 'undefined') AudioSys.playSE('enemy_hit');
@@ -66,11 +66,11 @@ function updatePlayerBullets() {
                         const p = e.history[k];
                         const tdx = b.x - p.x;
                         const tdy = b.y - p.y;
-                        // 判定を広めに (20px)
-                        if (tdx * tdx + tdy * tdy < 400) { 
+                        // 判定を広めに (10px)
+                        if (tdx * tdx + tdy * tdy < 100) { 
                             hitTail = true;
-                            // 1発で10個分（大幅に）削る
-                            for(let n = 0; n < 2; n++) {
+                            // 1発で5個分削る
+                            for(let n = 0; n < 5; n++) {
                                 if (e.history.length > 2) e.history.pop();
                             }
                             break;
@@ -571,15 +571,13 @@ function updateHomingLasers() {
             const dx = e.x - m.x;
             const dy = e.y - m.y;
             if (dx * dx + dy * dy < hitRadius * hitRadius) {
-                e.hp -= 15;
+                e.hp -= 5;
                 m.life = 0;
                 if (typeof createExplosion === 'function') createExplosion(m.x, m.y, m.color || '#fff', 8);
                 if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_small');
                 if (typeof distortGrid === 'function') distortGrid(m.x, m.y, 20, 50);
             }
         });
-        
-        // （※パーティクルの処理は削除しました）
     });
 
     // 寿命切れを削除

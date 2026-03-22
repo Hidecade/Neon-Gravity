@@ -2166,6 +2166,8 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
                 isWarping: true, warpPercent: 0
             });
         }
+        if (typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
+
     } else if (type === 'lightcycle') {
         let rx, ry, ra;
         
@@ -2225,6 +2227,11 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             inActiveRange: true // 出現直後は判定を有効にする
         });
         spawnedCount++;
+
+        if (typeof AudioSys !== 'undefined') {
+            AudioSys.stopSE('lc_engine'); 
+            AudioSys.playSE('lc_engine', rx, ry); 
+        }
     }
 }
 
@@ -2413,7 +2420,7 @@ function updateEnemies() {
         }
 
         // ボスや巨大戦艦は質量が大きいため、雑魚敵との重なり反発処理を受けないように除外する
-        if (e.type !== 'boss' && e.type !== 'battleship') {
+        if (e.type !== 'boss' && e.type !== 'battleship' && e.type !== 'lightcycle') {
             applySeparation(e);
         }
 

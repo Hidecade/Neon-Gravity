@@ -360,7 +360,7 @@ const SE_LIBRARY = {
         return { osc: null, duration: duration };
     },
     lc_engine: (ctx, t, g) => {
-        const dur = 0.4;
+        const dur = 2.0; // 全体の長さは2秒
         
         // --- 1. 低域のモーター音（うねり） ---
         const o1 = ctx.createOscillator();
@@ -370,7 +370,9 @@ const SE_LIBRARY = {
 
         const g1 = ctx.createGain();
         g1.gain.setValueAtTime(0, t);
-        g1.gain.linearRampToValueAtTime(0.03, t + dur * 0.5);
+        // ★ 0.5秒で最大音量(0.02)にする（素早いフェードイン）
+        g1.gain.linearRampToValueAtTime(0.02, t + 0.5);
+        // ★ 残り1.5秒（2.0秒地点）にかけて0にフェードアウトする（ゆっくり消える）
         g1.gain.linearRampToValueAtTime(0, t + dur);
         
         // --- 2. 高域のキーンという電子音（トロンらしさ） ---
@@ -381,7 +383,9 @@ const SE_LIBRARY = {
 
         const g2 = ctx.createGain();
         g2.gain.setValueAtTime(0, t);
-        g2.gain.linearRampToValueAtTime(0.015, t + dur * 0.5);
+        // ★ 0.5秒で最大音量(0.010)にする
+        g2.gain.linearRampToValueAtTime(0.010, t + 0.5);
+        // ★ 残り1.5秒（2.0秒地点）にかけて0にフェードアウトする
         g2.gain.linearRampToValueAtTime(0, t + dur);
 
         o1.connect(g1); g1.connect(g);
