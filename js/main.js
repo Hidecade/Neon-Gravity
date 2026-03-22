@@ -390,6 +390,7 @@ const ui = {
     btnHowto: document.getElementById('btn-howto'),
     btnStory: document.getElementById('btn-story'),
     btnRanking: document.getElementById('btn-ranking'),
+    btnSettings: document.getElementById('btn-settings'),
 };
 
 let currentMenuButtons = [];
