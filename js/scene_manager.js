@@ -559,6 +559,7 @@ function proceedToNextMenu() {
     if (ui.btnRanking) ui.btnRanking.style.display = 'none';
     if (ui.btnOst) ui.btnOst.style.display = 'none';
     if (ui.btnStory) ui.btnStory.style.display = 'none';
+    if (ui.btnSettings) ui.btnSettings.style.display = 'none';
 
     if (window.refreshMenuButtons) window.refreshMenuButtons();
 }
@@ -650,6 +651,14 @@ function returnToTitle() {
         ui.btnTitle.style.color = '';
         ui.btnTitle.style.background = '';
         ui.btnTitle.style.transform = '';
+    }
+
+    if (ui.btnSettings) {
+        ui.btnSettings.style.display = 'block';
+        ui.btnSettings.style.borderColor = '';
+        ui.btnSettings.style.color = '';
+        ui.btnSettings.style.background = '';
+        ui.btnSettings.style.transform = '';
     }
 
     if (ui.btnOst) {
