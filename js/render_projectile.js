@@ -26,8 +26,12 @@ function drawPlayerBullets() {
         const nx = vx / speed;
         const ny = vy / speed;
 
-        // 線の長さ
-        const len = 10;
+        // ==========================================
+        // ★修正: 線の長さを寿命に応じて計算し、徐々に短くする
+        // ==========================================
+        const maxLife = (typeof BULLET_CONFIG !== 'undefined') ? BULLET_CONFIG.PLAYER.LIFE : 120;
+        const lifeRatio = Math.max(0, b.life / maxLife);
+        const len = 12 * lifeRatio; // 元の長さ(12) × 寿命の割合(1.0〜0.0)
 
         // 先端が現在位置、後端が少し後ろ
         const x1 = b.x;
@@ -333,13 +337,18 @@ function drawHomingLasers() {
             ctx.stroke();
         }
 
-        // --- 2. ミサイル先端（レーザーの頭）の描画 ---
+     // --- 2. ミサイル先端（レーザーの頭）の描画 ---
         ctx.save();
         ctx.translate(m.x, m.y);
         const angle = Math.atan2(m.vy, m.vx);
         ctx.rotate(angle);
         
-        const headLen = 15 * G_SCALE; // 先端の長さ
+        // ==========================================
+        // ★修正: 先端の長さも寿命の割合に応じて短くする
+        // ==========================================
+        const maxLife = 180;
+        const lifeRatio = Math.max(0, m.life / maxLife);
+        const headLen = Math.max(2, 15 * G_SCALE * lifeRatio); // 最低2pxの長さは残す
         
         // 外側の光
         ctx.strokeStyle = color;

@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.6.8";
+window.GAME_VERSION = "0.6.9";
 
 
 const DEBUG = {
@@ -113,6 +113,26 @@ const ENEMY_SPEEDS = {
     BOSS_MISSILE: 10.0 // ボスミサイル用
 };
 
+
+// 敵キャラクターのHP設定 (ソースコード準拠)
+const ENEMY_HP = {
+    tadpole: 1,
+    triangle: 1,       // リーダー・フォロワー共通の基本値
+    cube: 2,
+    sweeper: 2,
+    jellyfish: 2,      // 通常クラゲ
+    spark_jelly: 4,    // 帯電クラゲ（variant: spark）
+    hunter: 3,
+    lightcycle: 3,
+    sentinel: 3,
+    fighter: 3,        // Battleshipから射出される機体
+    phantom: 4,
+    asteroid: 4,       // サイズ大(size: 1)の時の基本値
+    bubble: 4,         // サイズ大(size: 1)の時の基本値
+    dragon: 8,
+    eclipse: 24,
+};
+
 const ENEMY_LIMITS = {
     TADPOLE_MAX: 30.0,              // これ以上は速くならない絶対上限
     LIGHTCYCLE_MAX: 30.0,           // ライトサイクルの最高速度の絶対上限
@@ -221,8 +241,9 @@ const BOSS_VARIANTS = [
 // --- 弾丸設定 ---
 const BULLET_CONFIG = {
     PLAYER: {
-        SPEED: 32.0,   // 自機の弾の速さ
-        LIFE: 120      // 自機の弾の射程（寿命）
+        SPEED: 32.0,    // 自機の弾の速さ
+        LIFE: 60,      // 自機の弾の射程（寿命）
+        POWER: 1.5      // 自機の弾の基本威力
     },
     ENEMY_NORMAL: {
         SPEED: 10.0,   // 雑魚敵の弾の速さ

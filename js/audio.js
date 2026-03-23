@@ -360,32 +360,36 @@ const SE_LIBRARY = {
         return { osc: null, duration: duration };
     },
     lc_engine: (ctx, t, g) => {
-        const dur = 2.0; // 全体の長さは2秒
+        const dur = 1.5; // 全体の長さは2秒
         
         // --- 1. 低域のモーター音（うねり） ---
         const o1 = ctx.createOscillator();
         o1.type = 'sawtooth';
+        // ★ 変更: 周波数を 60 -> 40 に下げて重低音を強化
         o1.frequency.setValueAtTime(60, t);
+        // ★ 変更: 到達周波数を 120 -> 80 に下げる
         o1.frequency.exponentialRampToValueAtTime(120, t + dur);
 
         const g1 = ctx.createGain();
         g1.gain.setValueAtTime(0, t);
-        // ★ 0.5秒で最大音量(0.02)にする（素早いフェードイン）
-        g1.gain.linearRampToValueAtTime(0.03, t + 0.5);
-        // ★ 残り1.5秒（2.0秒地点）にかけて0にフェードアウトする（ゆっくり消える）
+        // 0.5秒で最大音量(0.04)にする（素早いフェードイン）
+        g1.gain.linearRampToValueAtTime(0.04, t + 0.5);
+        // 残り1.5秒（2.0秒地点）にかけて0にフェードアウトする（ゆっくり消える）
         g1.gain.linearRampToValueAtTime(0, t + dur);
         
         // --- 2. 高域のキーンという電子音（トロンらしさ） ---
         const o2 = ctx.createOscillator();
         o2.type = 'sine';
-        o2.frequency.setValueAtTime(800, t);
-        o2.frequency.exponentialRampToValueAtTime(1200, t + dur);
+        // ★ 変更: 周波数を 800 -> 400 に下げて落ち着いた音色に
+        o2.frequency.setValueAtTime(400, t);
+        // ★ 変更: 到達周波数を 1200 -> 600 に下げる
+        o2.frequency.exponentialRampToValueAtTime(600, t + dur);
 
         const g2 = ctx.createGain();
         g2.gain.setValueAtTime(0, t);
-        // ★ 0.5秒で最大音量(0.010)にする
-        g2.gain.linearRampToValueAtTime(0.015, t + 0.5);
-        // ★ 残り1.5秒（2.0秒地点）にかけて0にフェードアウトする
+        // 0.5秒で最大音量(0.02)にする
+        g2.gain.linearRampToValueAtTime(0.02, t + 0.5);
+        // 残り1.5秒（2.0秒地点）にかけて0にフェードアウトする
         g2.gain.linearRampToValueAtTime(0, t + dur);
 
         o1.connect(g1); g1.connect(g);
@@ -628,7 +632,6 @@ const AudioSys = {
         if (this._lifecycleHooksInstalled) return;
         this._lifecycleHooksInstalled = true;
 
-        // ★追加: CarPlayのナビ音声などによる割り込み（Interruption）を検知し自動復帰させる
         if (this.ctx) {
             this.ctx.onstatechange = () => {
                 if (this.ctx.state === "interrupted" || this.ctx.state === "suspended") {
@@ -642,6 +645,13 @@ const AudioSys = {
 
             if (document.hidden) {
                 this.wasBgmPlayingBeforeHide = !!(this.bgmEl && !this.bgmEl.paused);
+                // ★追加: OS側のメモリ解放やクラッシュを防ぐため、明示的にBGMをポーズする
+                if (this.bgmEl && !this.bgmEl.paused) {
+                    this.bgmEl.pause();
+                }
+            } else {
+                // ★追加: アプリに画面が戻った際、AudioContextの再開を試みる
+                this.ensureAudioReady(false).catch(() => {});
             }
         });
 
@@ -653,6 +663,7 @@ const AudioSys = {
             await this.ensureAudioReady(true);
 
             if (
+                !this.isPageHidden &&
                 this.wasBgmPlayingBeforeHide &&
                 this.bgmEl &&
                 this.bgmEl.paused &&
@@ -665,6 +676,8 @@ const AudioSys = {
         window.addEventListener("touchstart", resumeFromGesture, { passive: true });
         window.addEventListener("pointerdown", resumeFromGesture, { passive: true });
         window.addEventListener("mousedown", resumeFromGesture, { passive: true });
+        // ★追加: キーボード操作時（SpaceやEscでのポーズ解除時）にもオーディオの復帰処理を走らせる
+        window.addEventListener("keydown", resumeFromGesture, { passive: true });
     },
 
     registerNode(type, node, durationMs) {
@@ -688,22 +701,21 @@ const AudioSys = {
     },
 
     playSE(type, x = null, y = null) {
-        if (!this.ctx) this.init();
+if (!this.ctx) this.init();
         if (!this.ctx || !SE_LIBRARY[type]) return;
 
         if (document.hidden) return;
 
         if (this.ctx.state !== "running") {
             this.ensureAudioReady(true).catch(() => {});
-            return;
         }
 
-        const now = this.ctx.currentTime;
-        if (this.lastPlayed[type] && now - this.lastPlayed[type] < 0.05) return;
-        this.lastPlayed[type] = now;
+        const realNow = performance.now();
+        if (this.lastPlayed[type] && realNow - this.lastPlayed[type] < 50) return; // 50ms = 0.05秒
+        this.lastPlayed[type] = realNow;
 
         const masterGain = this.ctx.createGain();
-        masterGain.gain.value = 2.5; 
+        masterGain.gain.value = 2.5;
 
         if (x !== null && y !== null && typeof player !== 'undefined' && typeof width !== 'undefined') {
             const dx = x - player.x;

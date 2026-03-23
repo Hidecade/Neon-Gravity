@@ -1881,42 +1881,42 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     const vx = Math.cos(angle) * bSpd;
     const vy = Math.sin(angle) * bSpd;
 
-// -----------------------------------------------------
+    // -----------------------------------------------------
     // アイテムドロップ決定ロジック
     // -----------------------------------------------------
     let dropType = 'crystal'; // デフォルト
-    const rnd = Math.random();
-
-    // ピンチかどうかでシールドの回復率を変える
-    const shieldChance = (player.shield < 30) ? DROP_RATES.SHIELD_LOW : DROP_RATES.SHIELD_NORM;
-
-    // レベルアップアイテムが出る条件を満たしているか判定
-    const canDropLevel = true;
-    //const canDropLevel = (levelItemsDroppedInStage < 2);
-    //const canDropLevel = (levelItemsDroppedInStage < 2 && player.weaponLevel < MAX_WEAPON_LEVEL);
     
-    // 条件を満たしていれば設定された確率を使い、満たしていなければ 0%（出ない）にする
+    const shieldChance = (player.shield < 30) ? DROP_RATES.SHIELD_LOW : DROP_RATES.SHIELD_NORM;
+    const canDropLevel = true;
     const levelChance = canDropLevel ? DROP_RATES.LEVEL : 0;
 
-    // 確率の積み上げ判定（ひとつの rnd で全てのアイテムを抽選する）
-    if (rnd < levelChance) {
+    // 1. 設定された確率の合計値を計算
+    const totalRate = levelChance + DROP_RATES.LASER + DROP_RATES.INVINCIBLE + shieldChance;
+    
+    // 2. 合計が1.0を超える場合は、比率を保ったまま1.0に収める（スケールダウン）
+    const scale = totalRate > 1.0 ? 1.0 / totalRate : 1.0;
+
+    const rnd = Math.random();
+
+    // 3. スケールを掛けた値で累積判定を行う
+    if (rnd < levelChance * scale) {
         dropType = 'level';
     }
-    else if (rnd < levelChance + DROP_RATES.LASER) {
+    else if (rnd < (levelChance + DROP_RATES.LASER) * scale) {
         dropType = 'laser';
     }
-    else if (rnd < levelChance + DROP_RATES.LASER + DROP_RATES.INVINCIBLE) {
+    else if (rnd < (levelChance + DROP_RATES.LASER + DROP_RATES.INVINCIBLE) * scale) {
         dropType = 'invincible';
     }
-    else if (rnd < levelChance + DROP_RATES.LASER + DROP_RATES.INVINCIBLE + shieldChance) {
+    else if (rnd < (levelChance + DROP_RATES.LASER + DROP_RATES.INVINCIBLE + shieldChance) * scale) {
         dropType = 'shield';
     }
-    // それ以外（どの確率の枠にも入らなかった場合）は 'crystal' のまま
+    // 上記のどれにも当てはまらない場合（rnd が totalRate * scale 以上の場合）は初期値の 'crystal' になる
 
     if (type === 'dragon') {
         enemies.push({
             x: x, y: y, vx: vx, vy: vy,
-            hp: 8 + hpMag * 2,
+            hp: ENEMY_HP.dragon + hpMag * 2,
             speed: ENEMY_SPEEDS.DRAGON * spd * stageMag,
             color: '#c00', type: 'dragon',
             angle: Math.atan2(vy, vx),
@@ -1937,7 +1937,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     } else if (type === 'cube') {
         enemies.push({
             x, y, vx, vy,
-            hp: 2 + Math.floor(hpMag),
+            hp: ENEMY_HP.cube + Math.floor(hpMag),
             speed: ENEMY_SPEEDS.CUBE * spd * stageMag,
             color: '#0f0', type: 'cube', angle: 0,
             drop: dropType,
@@ -1949,7 +1949,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     } else if (type === 'tadpole') {
         enemies.push({
             x: x, y: y, vx: vx, vy: vy,
-            hp: 1,
+            hp: ENEMY_HP.tadpole,
             speed: ENEMY_SPEEDS.TADPOLE * spd * stageMag,
             color: '#0ff', type: 'tadpole', angle: 0,
             drop: 'none',
@@ -1979,7 +1979,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
 
         const leader = {
             x: x, y: y, vx: vx, vy: vy,
-            hp: 1 + Math.floor(hpMag * 0.5),
+            hp: ENEMY_HP.triangle + Math.floor(hpMag * 0.5),
             speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
             color: selectedColor,
             type: 'triangle',
@@ -2011,7 +2011,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
 
             enemies.push({
                 x: x, y: y, vx: vx, vy: vy,
-                hp: 1,
+                hp: ENEMY_HP.triangle,
                 speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
                 color: selectedColor,
                 type: 'triangle',
@@ -2078,7 +2078,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     } else if (type === 'hunter') {
         enemies.push({
             x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
-            hp: 3 + Math.floor(hpMag * 1.5),
+            hp: ENEMY_HP.hunter + Math.floor(hpMag * 1.5),
             speed: ENEMY_SPEEDS.HUNTER * spd * stageMag,
             color: '#fa4', type: 'hunter', angle: 0,
             drop: dropType, scale: 1.2,
@@ -2103,7 +2103,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     } else if (type === 'phantom') {
         enemies.push({
             x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
-            hp: 4 + Math.floor(hpMag),
+            hp: ENEMY_HP.phantom + Math.floor(hpMag),
             speed: ENEMY_SPEEDS.PHANTOM * spd * stageMag,
             color: '#0ff', type: 'phantom', angle: 0,
             drop: dropType, scale: 1.0,
@@ -2124,7 +2124,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
 
         enemies.push({
             x: x, y: y, vx: vx * 0.2, vy: vy * 0.2,
-            hp: 24 + hpMag * 5,
+            hp: ENEMY_HP.eclipse + hpMag * 5,
             speed: ENEMY_SPEEDS.ECLIPSE * spd * stageMag,
             color: '#0ff', type: 'eclipse', angle: 0,
             rotSpeed: 0.02, drop: dropType, scale: 1.5, actionTimer: 0
@@ -2135,7 +2135,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
         const isSpark = (type === 'spark_jelly');
         enemies.push({
             x: x, y: y, vx: vx * 0.1, vy: vy * 0.1,
-            hp: (isSpark ? 4 : 2) + Math.floor(hpMag * 1.5),
+            hp: (isSpark ? ENEMY_HP.spark_jelly : ENEMY_HP.jellyfish) + Math.floor(hpMag * 1.5),
             speed: ENEMY_SPEEDS.JELLYFISH * spd * stageMag * (isSpark ? 1.2 : 1.0),
             color: '#0ff', type: 'jellyfish', variant: isSpark ? 'spark' : 'normal',
             angle: angle, prevAngle: angle, bend: 0,
@@ -2148,7 +2148,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     } else if (type === 'sentinel') {
         enemies.push({
             x: x, y: y, vx: 0, vy: 0,
-            hp: 3 + Math.floor(hpMag),
+            hp: ENEMY_HP.sentinel + Math.floor(hpMag),
             speed: ENEMY_SPEEDS.SENTINEL * spd * stageMag,
             color: '#ff3366', type: 'sentinel', angle: 0,
             drop: dropType, scale: 1.1,
@@ -2213,7 +2213,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
                 x: startX + offsetX * i,
                 y: startY + offsetY * i,
                 vx: moveVx, vy: moveVy,
-                hp: 2 + Math.floor(hpMag),
+                hp: ENEMY_HP.sweeper + Math.floor(hpMag),
                 speed: ENEMY_SPEEDS.SWEEPER * spd * stageMag,
                 color: '#bbbbbb', 
                 type: 'sweeper',
@@ -2274,7 +2274,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             vx: Math.cos(ra) * lcSpd, // 初速をセット
             vy: Math.sin(ra) * lcSpd,
             speed: lcSpd,
-            hp: 3 + Math.floor(hpMag * 1.5),
+            hp: ENEMY_HP.lightcycle + Math.floor(hpMag * 1.5),
             color: '#e0e0e0', 
             type: 'lightcycle',
             angle: ra,

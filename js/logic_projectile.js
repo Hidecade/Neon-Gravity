@@ -38,6 +38,15 @@ function updatePlayerBullets() {
 
         let hitSomething = false;
 
+        // ==========================================
+        // ★追加: 寿命に応じた威力減衰率（1.0 〜 0.0）とダメージの計算
+        // ==========================================
+        const maxLife = (typeof BULLET_CONFIG !== 'undefined') ? BULLET_CONFIG.PLAYER.LIFE : 120;
+        const basePower = (typeof BULLET_CONFIG !== 'undefined') ? BULLET_CONFIG.PLAYER.POWER : 1.0; // ★追加: 定数から基本威力を取得
+        
+        const powerRatio = Math.max(0, b.life / maxLife);
+        const damage = basePower * powerRatio; // 基本威力 × 減衰率
+
         // --- 3. 敵との当たり判定 (Lightcycle特殊判定を含む) ---
         for (let j = 0; j < enemies.length; j++) {
             const e = enemies[j];
@@ -50,9 +59,8 @@ function updatePlayerBullets() {
                 const dy = b.y - e.y;
                 const headDistSq = dx * dx + dy * dy;
                 
-                // 【頭部】判定サイズを固定値で大きく設定 (40px) して確実に当たるようにする
                 if (headDistSq < 900) { // 30 * 30
-                    e.hp -= 1;
+                    e.hp -= damage; // ★修正: 1固定から減衰ダメージに変更
                     hitSomething = true;
                     if (typeof AudioSys !== 'undefined') AudioSys.playSE('enemy_hit');
                     createWallImpact(b.x, b.y, '#fff');
@@ -66,11 +74,11 @@ function updatePlayerBullets() {
                         const p = e.history[k];
                         const tdx = b.x - p.x;
                         const tdy = b.y - p.y;
-                        // 判定を広めに (10px)
                         if (tdx * tdx + tdy * tdy < 100) { 
                             hitTail = true;
-                            // 1発で5個分削る
-                            for(let n = 0; n < 5; n++) {
+                            // ★修正: 減衰率に応じて削るブロック数を変動（最低1個）
+                            const removeCount = Math.max(1, Math.floor(5 * powerRatio));
+                            for(let n = 0; n < removeCount; n++) {
                                 if (e.history.length > 2) e.history.pop();
                             }
                             break;
@@ -98,7 +106,7 @@ function updatePlayerBullets() {
                 const dx = b.x - e.x;
                 const dy = b.y - e.y;
                 if (dx * dx + dy * dy < hitRadius * hitRadius) {
-                    e.hp--;
+                    e.hp -= damage; 
                     hitSomething = true;
 
                     if (e.type === 'boss' || e.type === 'battleship') {
@@ -539,15 +547,26 @@ function updateHomingLasers() {
             }
         }
 
-        // --- 4. 移動と軌跡の記録 ---
+// --- 4. 移動と軌跡の記録 ---
         m.x += m.vx * gameSpeed;
         m.y += m.vy * gameSpeed;
         m.life -= gameSpeed;
 
+        // ==========================================
+        // ★追加: 寿命に応じた減衰率（1.0 〜 0.0）を計算
+        // （発射時のlife初期値は180として計算）
+        // ==========================================
+        const maxLife = 180;
+        const lifeRatio = Math.max(0, m.life / maxLife);
+
         if (!m.trail) m.trail = [];
         m.trail.unshift({ x: m.x, y: m.y });
-        // 軌跡を少し長め(12フレーム)にすると、よりレーザーらしくなります
-        if (m.trail.length > 12) m.trail.pop(); 
+        
+        // ★修正: 軌跡の長さを寿命の割合に応じて短くする（最大12、最小2）
+        const maxTrail = Math.max(2, Math.floor(12 * lifeRatio));
+        while (m.trail.length > maxTrail) {
+            m.trail.pop();
+        }
 
         // --- 5. 壁衝突判定 ---
         if (m.x < WALL_MARGIN || m.x > worldSize - WALL_MARGIN ||
@@ -571,7 +590,11 @@ function updateHomingLasers() {
             const dx = e.x - m.x;
             const dy = e.y - m.y;
             if (dx * dx + dy * dy < hitRadius * hitRadius) {
-                e.hp -= 5;
+                
+                // ★修正: ダメージを寿命に応じて減衰させる（基本ダメージ5）
+                const damage = 5 * lifeRatio;
+                e.hp -= damage;
+                
                 m.life = 0;
                 if (typeof createExplosion === 'function') createExplosion(m.x, m.y, m.color || '#fff', 8);
                 if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_small');

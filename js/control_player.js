@@ -30,12 +30,12 @@ function updatePlayerMovement() {
     player.x = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, player.x));
     player.y = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, player.y));
 
-   // ==========================================
-    // ★追加：Lightcycleの光の壁でプレイヤーを物理的に弾き、ダメージを与える
+    // ==========================================
+    // Lightcycleの光の壁でプレイヤーを物理的に弾き、ダメージを与える
     // ==========================================
     const LIGHT_WALL_RADIUS = 14; // 壁の厚み判定 + 自機の当たり判定余裕
     
-    // ★変更：無敵状態かどうかに関わらず、壁の判定を行うように条件を変更
+    // 無敵状態かどうかに関わらず、壁の判定を行うように条件を変更
     if (typeof enemies !== 'undefined') {
         enemies.forEach(e => {
             if (e.type === 'lightcycle' && e.history && e.history.length > 1) {
@@ -82,9 +82,7 @@ function updatePlayerMovement() {
             }
         });
     }
-    // ==========================================
 
-    // --- 既存のコード ---
     // 向きと射撃の計算
     let aimX = input.keys['ArrowLeft'] ? -1 : input.keys['ArrowRight'] ? 1 : 0;
     let aimY = input.keys['ArrowUp'] ? -1 : input.keys['ArrowDown'] ? 1 : 0;
@@ -116,6 +114,34 @@ function updatePlayerMovement() {
     } else {
         // 撃っていない間はタイマーを満タンにしておき、次にボタンを押した瞬間にすぐ発射されるようにする
         player.fireTimer = fireInterval;
+    }
+
+    // ==========================================
+    // 前面磁界バリアの展開判定
+    // ==========================================
+    const vMag = Math.hypot(player.vx, player.vy);
+    if (vMag > 0.5) {
+        // 自機の向きベクトル
+        const dirX = Math.cos(player.angle);
+        const dirY = Math.sin(player.angle);
+        // 移動の正規化ベクトル
+        const nvx = player.vx / vMag;
+        const nvy = player.vy / vMag;
+        
+        // 内積計算 (1.0 = 完全に一致, 0.0 = 直角, -1.0 = 真逆)
+        const dot = dirX * nvx + dirY * nvy;
+        
+        // 向いている方向への移動成分が高い（前進している）場合
+        if (dot > 0.6) {
+            // バリア強度を徐々に上げる (最大1.0)
+            player.frontalBarrier = Math.min(1.0, (player.frontalBarrier || 0) + 0.1);
+        } else {
+            // 前進していない場合は徐々に下げる
+            player.frontalBarrier = Math.max(0.0, (player.frontalBarrier || 0) - 0.1);
+        }
+    } else {
+        // 停止中も下げる
+        player.frontalBarrier = Math.max(0.0, (player.frontalBarrier || 0) - 0.1);
     }
 
     // サテライト更新
@@ -169,7 +195,7 @@ function fire() {
     if (player.overdriveTimer > 0 || player.laserTimer > 0) {
         const isHyper = player.overdriveTimer > 0;
 
-        // 1. レーザーの発射（ハイパー時は少し太くする）
+        // 1. レーザーの発射
         lasers.push({
             x: player.x,
             y: spawnY,
@@ -230,15 +256,25 @@ function fire() {
     };
 
     const currentPattern = shotPatterns[player.weaponLevel] || shotPatterns[1];
+    const baseLife = BULLET_CONFIG.PLAYER.LIFE;
+
+    // 自機の純粋な移動量ベクトルを算出（二重のgameSpeed乗算を防止）
+    const pVx = (typeof gameSpeed !== 'undefined' && gameSpeed > 0) ? player.vx / gameSpeed : 0;
+    const pVy = (typeof gameSpeed !== 'undefined' && gameSpeed > 0) ? player.vy / gameSpeed : 0;
 
     currentPattern.forEach(offset => {
         const a = player.angle + offset;
+        
+        // オフセットの絶対値が45度(Math.PI/4)より大きければ横・後ろと判定し、寿命を半分(0.5)にする
+        const bulletLife = Math.abs(offset) > (Math.PI / 4) ? baseLife * 0.5 : baseLife;
+
         spawnPlayerBulletObj({
             x: player.x,
-            y: spawnY, // ★ player.y ではなく、見えている位置(spawnY)から飛ばす
-            vx: Math.cos(a) * s,
-            vy: Math.sin(a) * s,
-            life: BULLET_CONFIG.PLAYER.LIFE
+            y: spawnY,
+            // 弾の基本速度ベクトルに、自機の移動量ベクトルをそのまま加算
+            vx: Math.cos(a) * s + pVx,
+            vy: Math.sin(a) * s + pVy,
+            life: bulletLife
         });
     });
 
@@ -456,14 +492,40 @@ function checkPlayerCollision(e) {
             return;
         }
 
+        // --- (中略) 無敵ではない場合の通常ダメージ処理 ---
         player.shield -= 0.5;
         if (player.invuln <= 0) {
-            player.shield -= 10;
+            
+            // ==========================================
+            // ★追加: 前面バリア展開中のダメージ軽減処理
+            // ==========================================
+            let damageAmount = 10; // 基本ダメージ
+             
+            // バリアが一定以上展開されているか
+            if (player.frontalBarrier && player.frontalBarrier > 0.5) {
+                // 敵が自機の前方にいるか判定する
+                const edx = e.x - player.x;
+                const edy = e.y - player.y;
+                const eDist = Math.sqrt(edx * edx + edy * edy) || 1;
+                const dotEnemy = Math.cos(player.angle) * (edx / eDist) + Math.sin(player.angle) * (edy / eDist);
+                
+                // 敵が前方（約60度の範囲内）にいる場合
+                if (dotEnemy > 0.5) {
+                    damageAmount = 2; // ダメージを大幅に軽減
+                    
+                    // バリアで弾いたことを示すエフェクト（シアン色の火花）
+                    if (typeof createExplosion === 'function') createExplosion(player.x, player.y, '#0ff', 5);
+                }
+            }
+
+            player.shield -= damageAmount; // 計算したダメージを適用
             player.invuln = 10;
             createExplosion(player.x, player.y, '#f00', 5);
             if (typeof AudioSys !== 'undefined') AudioSys.playSE('damage');
         }
         ui.shieldBar.style.width = Math.max(0, player.shield) + "%";
+
+
         if (player.shield <= 0) damage(0);
     }
 }

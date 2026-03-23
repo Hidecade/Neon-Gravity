@@ -114,6 +114,86 @@ function drawPlayerSystems() {
     // drawPlayer 内での重複 translate を防ぐため、必要なら drawPlayer の中身も確認してください
     drawPlayer(ctx, player);
 
+    // ==========================================
+    // 前面磁界バリアの描画（前から後ろに伸びる流線パーティクル）
+    // ==========================================
+    if (player.frontalBarrier && player.frontalBarrier > 0) {
+        ctx.save();
+        
+        ctx.translate(player.x, player.y);
+        ctx.rotate(player.angle);
+        
+        // ==========================================
+        // ★修正: 透明度の最大値を大幅に下げる（0.25倍にする）
+        // 加算合成(lighter)で重なると明るくなるため、これくらい薄くします
+        // ==========================================
+        ctx.globalAlpha = player.frontalBarrier * 0.25; 
+        
+        ctx.globalCompositeOperation = 'lighter';
+        
+        // (以降のコードはそのまま)
+        const barrierRadius = 30 * (typeof G_SCALE !== 'undefined' ? G_SCALE : 1);
+        
+        // グラフィック品質に応じたグロー効果
+        if (typeof currentGraphicsQuality !== 'undefined' && currentGraphicsQuality === 'HIGH') {
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 10;
+        }
+
+        // 線の両端を丸くしてパーティクル感を出す
+        ctx.lineCap = 'round';
+
+        // バリア強度に応じて描画する線の数を計算
+        const particleCount = Math.floor(10 * player.frontalBarrier);
+
+        for (let i = 0; i < particleCount; i++) {
+            // 前方の円弧上に起点をランダムに決める（約120度の範囲）
+            const angle = (Math.random() - 0.5) * (Math.PI / 1.5); 
+            // 半径に揺らぎを持たせる
+            const r = barrierRadius + (Math.random() - 0.5) * 5;
+
+            // 起点座標
+            const px = Math.cos(angle) * r;
+            const py = Math.sin(angle) * r;
+
+            // 前から後ろ（X軸のマイナス方向）に伸ばす長さをランダムに設定
+            const length = 5 + Math.random() * 10; 
+            // 線の太さ
+            const size = 1.0 + Math.random() * 0.5;
+
+            // --------------------------------------------------
+            // シアン色のベース線（前方から後方へフェードアウト）
+            // --------------------------------------------------
+            const baseGrad = ctx.createLinearGradient(px, py, px - length, py);
+            baseGrad.addColorStop(0, 'rgba(0, 255, 255, 1)'); // 先は濃く
+            baseGrad.addColorStop(1, 'rgba(0, 255, 255, 0)'); // 後方は透明
+
+            ctx.strokeStyle = baseGrad;
+            ctx.lineWidth = size;
+            ctx.beginPath();
+            ctx.moveTo(px, py);            // 前方の起点
+            ctx.lineTo(px - length, py);   // 後方へ伸ばす
+            ctx.stroke();
+            
+            // --------------------------------------------------
+            // 一部の線の起点を白く発光させる（高エネルギーの表現）
+            // --------------------------------------------------
+            if (Math.random() > 0.7) {
+                const coreGrad = ctx.createLinearGradient(px, py, px - length * 0.5, py);
+                coreGrad.addColorStop(0, 'rgba(255, 255, 255, 1)'); // 先は濃く
+                coreGrad.addColorStop(1, 'rgba(255, 255, 255, 0)'); // 後方は透明
+
+                ctx.strokeStyle = coreGrad;
+                ctx.lineWidth = size * 0.5;
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(px - length * 0.5, py); // 白い芯は少し短め
+                ctx.stroke();
+            }
+        }
+
+        ctx.restore();
+    }
     ctx.restore(); // 全体のオフセット(vY)を終了
 }
 
