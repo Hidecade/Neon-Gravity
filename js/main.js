@@ -81,6 +81,7 @@ const player = {
     weaponLevel: 1,             // 武器レベル
     invuln: 0,                  // 無敵時間タイマー
     laserTimer: 0,              // 特殊レーザー残り時間
+    overdriveTimer: 0,          // オーバードライブ残り時間
     history: [],                // 軌跡（トレイル）用履歴
     visualScale: 1.0            // 描画スケール
 };

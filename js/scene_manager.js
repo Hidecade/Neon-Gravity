@@ -50,6 +50,8 @@ function startGame() {
     player.satellites = [];
     player.invuln = 0;
     player.laserTimer = 0;
+    player.overdriveTimer = 0;
+  
     player.history = [];
     player.homingLaserTick = 0;
     player.hasExitedScreen = false;
