@@ -2,105 +2,67 @@
 // 個別敵機AI (Specific Enemy AIs)
 // =========================================================
 function updateTriangleAI(e) {
-    // --- 1. 出現・展開アニメーション (全員共通) ---
+    // ★ 削除: ここにあった e.scale を変更する処理（if (e.isWarping) { ... }）を丸ごと消します。
+    // 描画側の drawTriangleEnemy がワープアニメーションを自動でやってくれるため不要です。
+
+    // 2. 座標と移動の計算 (リーダー機・独立機専用)
+    const dx = player.x - e.x;
+    const dy = player.y - e.y;
+
     if (e.isWarping) {
-        e.warpPercent = (e.warpPercent || 0) + 0.015;
-        if (e.warpPercent >= 1) {
-            e.warpPercent = 1;
-            e.isWarping = false;
-            e.scale = 0.7;
-        } else {
-            e.scale = 0.1 + 0.6 * e.warpPercent;
-        }
-    }
+        // --- 出現中の挙動 ---
+        e.vx *= 0.5;
+        e.vy *= 0.5;
 
-    // --- 2. 座標と移動の計算 ---
-    if (!e.isLeader && e.leader && e.leader.hp > 0) {
-        // 【副機】
-        // リーダーの角度がNaNなら0扱いにする（安全対策）
-        const angle = Number.isFinite(e.leader.angle) ? e.leader.angle : 0;
-
-        const targetRx = e.formOffset.x * Math.cos(angle) - e.formOffset.y * Math.sin(angle);
-        const targetRy = e.formOffset.x * Math.sin(angle) + e.formOffset.y * Math.cos(angle);
-
-        const ratio = e.isWarping ? e.warpPercent : 1.0;
-
-        e.x = e.leader.x + targetRx * ratio;
-        e.y = e.leader.y + targetRy * ratio;
-        e.angle = angle;
-        e.vx = e.leader.vx || 0;
-        e.vy = e.leader.vy || 0;
+        // その場でプレイヤーの方へ旋回（ロックオン）する
+        const targetAngle = Math.atan2(dy, dx);
+        let diff = targetAngle - e.angle;
+        while (diff <= -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        e.angle += diff * 0.1; 
 
     } else {
-        // 【リーダー機】
-        const dx = player.x - e.x;
-        const dy = player.y - e.y;
+        // --- 通常時の挙動 ---
+        const d = Math.hypot(dx, dy) || 0.001;
 
-        if (e.isWarping) {
-            // --- 出現中の挙動 ---
+        // プレイヤーへ向かって加速
+        e.vx += (dx / d) * 0.2 * SPEED_SCALE * gameSpeed;
+        e.vy += (dy / d) * 0.2 * SPEED_SCALE * gameSpeed;
 
-            // 1. 移動にはブレーキをかけ、穴の中心付近に留める
-            e.vx *= 0.5;
-            e.vy *= 0.5;
-
-            // 2. ★追加：その場でプレイヤーの方へ旋回（ロックオン）する
-            const targetAngle = Math.atan2(dy, dx);
-
-            // 現在の角度との差分を計算してスムーズに回す
-            let diff = targetAngle - e.angle;
-            // -PI ~ PI の範囲に正規化（最短距離で回るため）
-            while (diff <= -Math.PI) diff += Math.PI * 2;
-            while (diff > Math.PI) diff -= Math.PI * 2;
-
-            e.angle += diff * 0.1; // 0.1 は旋回速度（お好みで調整）
-
-        } else {
-            // --- 通常時の挙動 ---
-            const d = Math.hypot(dx, dy) || 0.001;
-
-            // プレイヤーへ向かって加速
-            e.vx += (dx / d) * 0.2 * SPEED_SCALE * gameSpeed;
-            e.vy += (dy / d) * 0.2 * SPEED_SCALE * gameSpeed;
-
-            // 速度制限
-            const cv = Math.hypot(e.vx, e.vy);
-            if (cv > 0.0001 && cv > e.speed) {
-                e.vx = (e.vx / cv) * e.speed;
-                e.vy = (e.vy / cv) * e.speed;
-            }
-
-            // 通常時は「進行方向」を向く
-            e.angle = Math.atan2(e.vy, e.vx);
+        // 速度制限
+        const cv = Math.hypot(e.vx, e.vy);
+        if (cv > 0.0001 && cv > e.speed) {
+            e.vx = (e.vx / cv) * e.speed;
+            e.vy = (e.vy / cv) * e.speed;
         }
 
-        // 座標更新
-        e.x += e.vx * gameSpeed;
-        e.y += e.vy * gameSpeed;
+        e.angle = Math.atan2(e.vy, e.vx);
     }
 
-    // --- 3. 演出更新 ---
+    e.x += e.vx * gameSpeed;
+    e.y += e.vy * gameSpeed;
+
+    // 3. 演出更新
     e.rotX += 0.08;
     e.rotY += 0.12;
     e.rotZ += 0.05;
 
- if (!e.isWarping && Math.random() < 0.35) {
-    const backX = Math.cos(e.angle + Math.PI);
-    const backY = Math.sin(e.angle + Math.PI);
+    // リーダーのジェット噴射エフェクト
+    if (!e.isWarping && Math.random() < 0.35) {
+        const backX = Math.cos(e.angle + Math.PI);
+        const backY = Math.sin(e.angle + Math.PI);
+        const speedBase = 1.8 + Math.random() * 0.4;
 
-    const speedBase = 1.8 + Math.random() * 0.4;
-
-    spawnParticleObj({
-        x: e.x + backX * 16,
-        y: e.y + backY * 16,
-
-        vx: backX * speedBase,
-        vy: backY * speedBase,
-
-        color: e.color,
-        size: 3,
-        life: 0.45 + Math.random() * 0.08
-    });
-}
+        spawnParticleObj({
+            x: e.x + backX * 16,
+            y: e.y + backY * 16,
+            vx: backX * speedBase,
+            vy: backY * speedBase,
+            color: e.color,
+            size: 3,
+            life: 0.45 + Math.random() * 0.08
+        });
+    }
 }
 
 function updateTadpoleAI(e) {
@@ -1753,18 +1715,22 @@ function destroyEnemy(e) {
 
 function applySeparation(e) {
     enemyPool.pool.forEach(other => {
-        // ★追加: 非アクティブ（プール内待機中）のオブジェクトは無視する
-        if (!other.active) return;
-        
-        // 自分自身、または既に死んでいる（演出中など）敵とは反発しない
-        if (e === other || other.hp <= 0) return;
+        // 非アクティブ、自分自身、死亡している敵は無視
+        if (!other.active || e === other || other.hp <= 0) return;
+
+        // ★追加: 同じ編隊グループ（リーダー・フォロワーの関係）なら反発処理をキャンセル
+        const isSameFormation = 
+            (e.leader && e.leader === other) || 
+            (other.leader && other.leader === e) || 
+            (e.leader && other.leader && e.leader === other.leader);
+
+        if (isSameFormation) return;
 
         const odx = e.x - other.x;
         const ody = e.y - other.y;
         const od = Math.hypot(odx, ody);
 
         // 距離が30未満の場合、お互いを押し離す
-        // (odが0の場合のゼロ除算を防ぐため、安全策として od > 0 を条件に含めるとより安全です)
         if (od > 0 && od < 30) {
             const push = (30 - od) * 0.05;
             e.x += (odx / od) * push;
@@ -2005,7 +1971,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             formationType: selectedFormationType,
             angle: initialAngle,
             drop: dropType,
-            scale: 0.1,
+            scale: 0.7,
             isLeader: true, // ※1
             rotX: Math.random() * Math.PI,
             rotY: Math.random() * Math.PI,
@@ -2037,7 +2003,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
                 formationType: selectedFormationType,
                 angle: initialAngle,
                 drop: 'none',
-                scale: 0.1,
+                scale: 0.7,
                 leader: leader, // 生成したリーダーを割り当て
                 formOffset: { x: offX, y: offY },
                 rotX: Math.random() * Math.PI,
@@ -2489,11 +2455,30 @@ function updateEnemies() {
             return;
         }
 
-        const isTriangle = (e.type === 'triangle');
-
-        if (!isTriangle && e.leader && e.leader.hp > 0) {
+        // ==========================================
+        // ★修正: 全ての編隊が共通の追従ロジックを使うようにする
+        // ==========================================
+        if (e.leader) {
+            // 共通の安全な追従ロジック
             updateFormationMovement(e);
-            if (e.type === 'cube') { e.rotX += 0.03; e.rotY += 0.04; }
+            
+            // 追従中の個別の見た目アニメーション
+            if (e.type === 'cube') { 
+                e.rotX += 0.03; e.rotY += 0.04; 
+            } else if (e.type === 'triangle') {
+                e.rotX += 0.08; e.rotY += 0.12; e.rotZ += 0.05;
+                // 副機のジェット噴射
+                if (!e.isWarping && Math.random() < 0.35) {
+                    const backX = Math.cos(e.angle + Math.PI);
+                    const backY = Math.sin(e.angle + Math.PI);
+                    const speedBase = 1.8 + Math.random() * 0.4;
+                    spawnParticleObj({
+                        x: e.x + backX * 16, y: e.y + backY * 16,
+                        vx: backX * speedBase, vy: backY * speedBase,
+                        color: e.color, size: 3, life: 0.45 + Math.random() * 0.08
+                    });
+                }
+            }
         } else {
             // AI（移動と射撃）の実行
             switch (e.type) {
@@ -2587,53 +2572,39 @@ function updateEnemies() {
 }
 
 function updateFormationMovement(e) {
-    // ==========================================
-    // ★ 鉄壁の照合ロジック ★
-    // ==========================================
-    // 1. リーダーへの参照があるか
-    // 2. そのリーダーが現在アクティブ（生存）か
-    // 3. リーダーの「今の背番号(spawnId)」が、自分が覚えている「隊長の背番号(leaderSpawnId)」と一致するか
     const isLeaderValid = e.leader && 
                          e.leader.active && 
                          e.leader.spawnId === e.leaderSpawnId;
 
     if (!isLeaderValid) {
         // --- 解散処理 ---
-        e.leader = null;       // 参照を切る
-        e.leaderSpawnId = -1;  // IDもリセット
+        e.leader = null;
+        e.leaderSpawnId = -1;
 
-        // リーダーがいなくなった後の「自律移動」へ切り替え
-        // その時の角度を維持して、自身のスピードで直進させる
         const la = e.angle || 0;
         e.vx = Math.cos(la) * e.speed;
         e.vy = Math.sin(la) * e.speed;
-        
-        // これ以降の追従計算は行わない
         return;
     }
 
-    // ==========================================
-    // --- 以下、本物のリーダーだと確認できた場合のみ実行 ---
-    // ==========================================
-    
-    // リーダーの現在の向きを取得
+    // --- 本物のリーダーへの追従処理 ---
     const la = e.leader.angle;
 
-    // リーダーの向きに合わせて「相対的な並び位置(formOffset)」を回転計算
-    // これにより、リーダーが右を向けば部下も右側の相対位置に移動する
-    const rotatedOffX = e.formOffset.x * Math.cos(la) - e.formOffset.y * Math.sin(la);
-    const rotatedOffY = e.formOffset.x * Math.sin(la) + e.formOffset.y * Math.cos(la);
+    // ★追加: ワープ中は中心から徐々に所定のフォーメーション位置へ展開する演出
+    const ratio = e.isWarping ? (e.warpPercent !== undefined ? e.warpPercent : 1.0) : 1.0;
+
+    const rotatedOffX = (e.formOffset.x * Math.cos(la) - e.formOffset.y * Math.sin(la)) * ratio;
+    const rotatedOffY = (e.formOffset.x * Math.sin(la) + e.formOffset.y * Math.cos(la)) * ratio;
     
     const targetX = e.leader.x + rotatedOffX; 
     const targetY = e.leader.y + rotatedOffY;
 
-    // 0.3 の強さでターゲット位置へ吸い寄せる（gameSpeedを考慮）
-    // 1.0 に近づけるほどガチガチに固定され、小さいほどゆったり追従する
-    const lerpFactor = 0.3 * gameSpeed;
+    // ★修正: ワープ中はズレないようにガッチリ固定(1.0)、通常時は滑らかに追従(0.3)
+    const lerpFactor = e.isWarping ? 1.0 : 0.3 * gameSpeed;
+    
     e.x += (targetX - e.x) * lerpFactor;
     e.y += (targetY - e.y) * lerpFactor;
 
-    // 速度と角度もリーダーと同期させる（編隊としての統一感）
     e.vx = e.leader.vx; 
     e.vy = e.leader.vy; 
     e.angle = la;
