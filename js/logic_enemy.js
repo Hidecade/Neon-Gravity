@@ -2186,7 +2186,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             moveVy = speed;
             baseAngle = Math.PI / 2; // 下向き
         } else if (dir === 1) { // 下から上へ
-            startY = camera.y + viewH + 61000;
+            startY = camera.y + viewH + 100;
             startX = camera.x + (viewW - totalSpan) / 2;
             offsetX = spacing;
             moveVx = 0;
