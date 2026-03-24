@@ -22,6 +22,7 @@ let width, height;              // 現在のキャンバスサイズ
 let worldSize = 1500;           // ワールドサイズ
 
 let globalSpawnEnemyId = 0;     // 生成されるたびに増やす
+let globalEnemySpawnCounter = 0;
 
 // --- ゲーム状態管理 ---
 let gameState = 'TITLE';        // 現在の状態 ('TITLE', 'PLAYING', 'PAUSED' 等)
