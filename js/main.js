@@ -21,6 +21,8 @@ let debugLastFpsTime = performance.now();
 let width, height;              // 現在のキャンバスサイズ
 let worldSize = 1500;           // ワールドサイズ
 
+let globalSpawnEnemyId = 0;     // 生成されるたびに増やす
+
 // --- ゲーム状態管理 ---
 let gameState = 'TITLE';        // 現在の状態 ('TITLE', 'PLAYING', 'PAUSED' 等)
 let previousGameState = '';     // ポーズ前の状態保存用
@@ -102,8 +104,6 @@ let camera = { x: 0, y: 0 };
 // 4. エンティティ配列 (オブジェクトプール)
 // =========================================================
 
-let enemies = [];         // 敵キャラクター
-
 let lasers = [];          // プレイヤーのレーザー
 let homingLasers = [];        // プレイヤーのホーミングミサイル
 let crystals = [];        // スコアアイテム
@@ -118,21 +118,31 @@ let starClusters = [];    // 星団
 const createEnemy = () => ({
     active: false,
 
+    spawnId: -1,        // このオブジェクト自身の現在のID
+    leaderSpawnId: -1,  // 追従しているリーダーのID
+
+    // 基本パラメータ
     x: 0, y: 0, vx: 0, vy: 0,
     hp: 0, maxHp: 0,
     speed: 0,
     color: '#fff',
     type: '',
     variant: null,
+    size: 1,      // ★追加: asteroid/bubbleの大中小
     angle: 0,
     scale: 1,
     drop: 'none',
 
+    // 状態フラグ
     isDead: false,
     isDying: false,
     dyingTimer: 0,
     inActiveRange: false,
+    isLeader: false,  // ★追加: 編隊のリーダー判定
+    noDrop: false,    // ★追加: アイテムドロップ禁止フラグ
+    noSplit: false,   // ★追加: 分裂禁止フラグ
 
+    // スポーン・ワープ関連
     isWarping: false,
     warpPercent: 0,
     isSpawning: false,
@@ -141,12 +151,15 @@ const createEnemy = () => ({
     spawnX: 0,
     spawnY: 0,
 
+    // タイマー・カウンター
     fireTimer: 0,
     flashTimer: 0,
     actionTimer: 0,
     timer: 0,
     aliveTimer: 0,
+    burstCount: 0,
 
+    // 回転・描画
     rotX: 0,
     rotY: 0,
     rotZ: 0,
@@ -154,26 +167,30 @@ const createEnemy = () => ({
     rotSpd: 0,
     drawAngle: 0,
 
+    // 演出・AI
     alpha: 1,
     opacity: 1,
     bend: 0,
     aimRate: 0,
     chargeLevel: 0,
     canFire: true,
-    burstCount: 0,
     state: '',
     orbitDist: 0,
     orbitDir: 1,
     trackingStart: 0,
     isTracking: false,
     hasEntered: false,
+    target: null,      // ★追加: ロックオン対象の保持
 
     cameraLerpTimer: 0,
 
+    // 編隊・親子関係
     leader: null,
     followers: [],
     formOffset: { x: 0, y: 0 },
+    formationType: null, // ★追加
 
+    // 特殊な描画用配列
     segments: [],
     history: [],
     trail: []
@@ -325,6 +342,104 @@ function spawnScorePopupObj(options) {
     s.alpha = options.alpha !== undefined ? options.alpha : 1;
     s.isBoss = options.isBoss || false;
     return s;
+}
+
+function spawnEnemyObj(options) {
+    const e = enemyPool.get();
+    if (!e) return null; // プールが空の場合の安全策
+    
+    e.spawnId = globalEnemySpawnCounter++; 
+    
+    // --- リーダー情報の同期 ---
+    e.leader = options.leader || null;
+    // リーダーがいるなら、そのリーダーの「現在のID」をメモしておく
+    e.leaderSpawnId = e.leader ? e.leader.spawnId : -1;
+
+    // --- 1. 生存・状態フラグの完全リセット ---
+    e.active = true;
+    e.isDead = false;
+    e.isDying = false;
+    e.dyingTimer = 0;
+    e.isWarping = options.isWarping !== undefined ? options.isWarping : false;
+    e.warpPercent = 0;
+    e.isSpawning = options.isSpawning !== undefined ? options.isSpawning : false;
+    
+    // --- 2. 特殊判定フラグのリセット（★重要） ---
+    // 前回の敵がリーダーだったり、アイテムドロップ禁止だったりした情報を消去する
+    e.isLeader = options.isLeader || false; 
+    e.noDrop = options.noDrop || false;
+    e.noSplit = options.noSplit || false;
+
+    // --- 3. 基本パラメータ ---
+    e.x = options.x || 0;
+    e.y = options.y || 0;
+    e.vx = options.vx || 0;
+    e.vy = options.vy || 0;
+    e.hp = options.hp || 1;
+    e.maxHp = options.maxHp || e.hp;
+    e.speed = options.speed || 0;
+    e.color = options.color || '#fff';
+    e.type = options.type || '';
+    e.variant = options.variant || null;
+    
+    // ★サイズのリセット：指定がなければ 1 (大) をデフォルトにする
+    e.size = options.size !== undefined ? options.size : 1; 
+    
+    e.angle = options.angle || 0;
+    e.scale = options.scale !== undefined ? options.scale : 1;
+    e.drop = options.drop || 'none';
+
+    // --- 4. タイマー・ステート系 ---
+    e.fireTimer = 0;
+    e.flashTimer = 0;
+    e.actionTimer = options.actionTimer || 0;
+    e.timer = options.timer || 0;
+    e.aliveTimer = 0;
+    e.spawnTimer = options.spawnTimer || 0;
+    e.spawnMax = options.spawnMax || 0;
+    e.state = options.state || '';
+    e.burstCount = options.burstCount || 0;
+    e.aimRate = 0;
+    e.chargeLevel = options.chargeLevel || 0;
+    e.canFire = options.canFire !== undefined ? options.canFire : true;
+    e.alpha = options.alpha !== undefined ? options.alpha : 1;
+    e.opacity = 1;
+    e.bend = options.bend || 0;
+    
+    // ボス用カメラタイマーもリセット
+    e.cameraLerpTimer = 0;
+
+    // --- 5. 演出・回転系 ---
+    e.rotX = options.rotX || 0;
+    e.rotY = options.rotY || 0;
+    e.rotZ = options.rotZ || 0;
+    e.rotSpeed = options.rotSpeed || 0;
+    e.rotSpd = options.rotSpd || 0;
+
+    // --- 6. AI・ターゲット系 ---
+    e.orbitDist = options.orbitDist || 0;
+    e.orbitDir = options.orbitDir || 1;
+    e.trackingStart = options.trackingStart || 0;
+    e.isTracking = options.isTracking || false;
+    e.target = null; // ★前回のロックオン対象をリセット
+    e.hasEntered = false;
+    e.inActiveRange = false;
+    
+    // --- 7. 編隊用 ---
+    e.leader = options.leader || null;
+    e.followers = options.followers || [];
+    e.formOffset = options.formOffset || { x: 0, y: 0 };
+    e.formationType = options.formationType || null;
+
+    // --- 8. 配列のリセット（メモリ節約のため長さを0にする） ---
+    if (!e.segments) e.segments = [];
+    e.segments.length = 0;
+    if (!e.history) e.history = [];
+    e.history.length = 0;
+    if (!e.trail) e.trail = [];
+    e.trail.length = 0;
+
+    return e;
 }
 
 // =========================================================
@@ -931,7 +1046,7 @@ function updateDebugOverlay() {
 
     el.style.display = "block";
 
-    const enemyCount = Array.isArray(enemies) ? enemies.length : 0;
+    const enemyCount = enemyPool.getActiveCount();
     const bulletCount = playerBulletPool.getActiveCount();
     const enemyBulletCount = enemyBulletPool.getActiveCount();
     const crystalCount = Array.isArray(crystals) ? crystals.length : 0;

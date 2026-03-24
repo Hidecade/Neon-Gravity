@@ -36,8 +36,11 @@ function updatePlayerMovement() {
     const LIGHT_WALL_RADIUS = 14; // 壁の厚み判定 + 自機の当たり判定余裕
     
     // 無敵状態かどうかに関わらず、壁の判定を行うように条件を変更
-    if (typeof enemies !== 'undefined') {
-        enemies.forEach(e => {
+    if (typeof enemyPool !== 'undefined') {
+        enemyPool.pool.forEach(e => {
+            // ★追加: 非アクティブ（プール内待機中）のオブジェクトは無視する
+            if (!e.active) return;
+
             if (e.type === 'lightcycle' && e.history && e.history.length > 1) {
                 for (let i = 0; i < e.history.length - 1; i++) {
                     const p1 = e.history[i];
@@ -310,10 +313,13 @@ function launchSatellites() {
     // ==========================================
     // 2. 敵を一掃する
     // ==========================================
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        const e = enemies[i];
+    enemyPool.pool.forEach(e => {
+        // ★追加: 非アクティブ（プール内待機中）のオブジェクトは無視する
+        if (!e.active) return;
+
         // 出現中のボス・戦艦はすり抜ける（無敵）
-        if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) continue;
+        // ★修正: forループの continue ではなく、forEach なので return でスキップします
+        if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) return;
 
         const dist = Math.hypot(e.x - player.x, e.y - player.y);
         if (dist <= bombRadius) {
@@ -329,7 +335,7 @@ function launchSatellites() {
                 createExplosion(e.x, e.y, e.color, 10);
             }
         }
-    }
+    });
 
     // ==========================================
     // 3. 敵の弾も範囲内なら消し去る

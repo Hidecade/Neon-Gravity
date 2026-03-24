@@ -4,7 +4,7 @@ function updateUI() {
     // ==========================================
     // 1. BOSS & BATTLESHIP ゲージ
     // ==========================================
-    const currentBoss = enemies.find(e => e.type === 'boss' || e.type === 'battleship');
+    const currentBoss = enemyPool.pool.find(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
 
     if (currentBoss && !currentBoss.isDead) {
         ui.bossContainer.style.display = 'block';
@@ -75,7 +75,7 @@ function updateUI() {
     }
 
 
-// ==========================================
+    // ==========================================
     // 3. SHIELD ゲージ
     // ==========================================
     const shieldPercent = Math.max(0, (player.shield / PLAYER_BASE_SHIELD) * 100);
@@ -235,7 +235,10 @@ function drawMiniMap() {
     });
 
     // 3. 敵の位置
-    enemies.forEach(e => {
+    enemyPool.pool.forEach(e => {
+        // ★追加: 非アクティブ（プール内待機中）のオブジェクトはミニマップに描画しない
+        if (!e.active) return;
+
         if (e.type === 'boss') {
             // ボス：大きな赤点（点滅）
             miniMapCtx.fillStyle = (frame % 30 < 15) ? '#f00' : '#fff';
@@ -321,10 +324,11 @@ function drawDebugWorldOverlay() {
     // -------------------------
     // 2) Enemy hitboxes
     // -------------------------
-    if (DEBUG.showHitboxes && Array.isArray(enemies)) {
+    if (DEBUG.showHitboxes && typeof enemyPool !== 'undefined' && Array.isArray(enemyPool.pool)) {
         ctx.strokeStyle = "rgba(255,80,80,0.95)";
-        for (const e of enemies) {
-            if (!e) continue;
+        for (const e of enemyPool.pool) {
+            // ★追加: 非アクティブ（プール内待機中）のオブジェクトはスキップ
+            if (!e || !e.active) continue;
             const r = e.hitRadius || e.radius || e.size || 16;
 
             ctx.beginPath();
@@ -336,10 +340,11 @@ function drawDebugWorldOverlay() {
     // -------------------------
     // 3) Enemy target lines
     // -------------------------
-    if (DEBUG.showEnemyTargetLines && player && Array.isArray(enemies)) {
+    if (DEBUG.showEnemyTargetLines && player && typeof enemyPool !== 'undefined' && Array.isArray(enemyPool.pool)) {
         ctx.strokeStyle = "rgba(255,255,0,0.8)";
-        for (const e of enemies) {
-            if (!e) continue;
+        for (const e of enemyPool.pool) {
+            // ★追加: 待機中データを除外
+            if (!e || !e.active) continue;
 
             ctx.beginPath();
             ctx.moveTo(e.x, e.y);
@@ -351,10 +356,11 @@ function drawDebugWorldOverlay() {
     // -------------------------
     // 4) Spawn points
     // -------------------------
-    if (DEBUG.showSpawnPoints && Array.isArray(enemies)) {
+    if (DEBUG.showSpawnPoints && typeof enemyPool !== 'undefined' && Array.isArray(enemyPool.pool)) {
         ctx.strokeStyle = "rgba(0,255,120,0.9)";
-        for (const e of enemies) {
-            if (!e) continue;
+        for (const e of enemyPool.pool) {
+            // ★追加: 待機中データを除外
+            if (!e || !e.active) continue;
             if (typeof e.spawnX !== "number" || typeof e.spawnY !== "number") continue;
 
             ctx.beginPath();

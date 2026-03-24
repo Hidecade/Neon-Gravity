@@ -2,9 +2,11 @@
 // renderer.js - 描画専門
 // =========================================================
 
-
 function drawEnemies() {
-    enemies.forEach(e => {
+    enemyPool.pool.forEach(e => {
+        // ★追加: 非アクティブ（プール内待機中）のオブジェクトは描画しない
+        if (!e.active) return;
+
         const margin = (e.type === 'boss' || e.type === 'dragon' || e.type === 'battleship') ? 350 : 100;
         if (!isOnScreen(e, margin)) return;
 

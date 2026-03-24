@@ -132,7 +132,8 @@ function startStage() {
     player.visualScale = 0; // イントロ中は透明にする
 
     // 3. エンティティプールのクリア
-    playerBulletPool.clearAll(); lasers = []; enemies = []; 
+    playerBulletPool.clearAll(); lasers = []; 
+    enemyPool.clearAll();
     enemyBulletPool.clearAll();
     homingLasers = []; wormholes = []; 
     scorePopupPool.clearAll();
@@ -261,7 +262,8 @@ function resetGame() {
     warningTimer = 0;
     levelItemsDroppedInStage = 0;
 
-    playerBulletPool.clearAll(); lasers = []; enemies = []; 
+    playerBulletPool.clearAll(); lasers = []; 
+    enemyPool.clearAll();
     enemyBulletPool.clearAll();
     particlePool.clearAll();
     ringPool.clearAll();     
@@ -329,9 +331,9 @@ function checkStageClear() {
     if (stage === 9) {
         if (rushBossIndex >= 8) isClearCondition = true;
     } else if (stage === 10) {
-        if (enemies.length === 0 && isBossSpawned) isClearCondition = true;
+        if (enemyPool.getActiveCount() === 0 && isBossSpawned) isClearCondition = true;
     } else {
-        const noEnemies = enemies.length === 0;
+        const noEnemies = enemyPool.getActiveCount() === 0;
         const noWormholes = wormholes.filter(w => w.active).length === 0;
         if (noEnemies && noWormholes && isBossSpawned) isClearCondition = true;
     }
@@ -572,7 +574,8 @@ function proceedToNextMenu() {
 function returnToTitle() {
     gameState = 'TITLE';
 
-    playerBulletPool.clearAll(); lasers = []; enemies = []; 
+    playerBulletPool.clearAll(); lasers = []; 
+    enemyPool.clearAll();
     enemyBulletPool.clearAll();
     particlePool.clearAll(); 
     ringPool.clearAll();     
@@ -1823,7 +1826,7 @@ function handleGlobalStateUpdates() {
     frame++;
 
     bossAngerMinionSpeedMag = 1.0;
-    const currentBoss = enemies.find(e => e.type === 'boss' || e.type === 'battleship');
+    const currentBoss = enemyPool.pool.find(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
 
     // ボス発狂警告
     if (currentBoss && currentBoss.aliveTimer > 1800) {
@@ -1860,7 +1863,7 @@ function handleGlobalStateUpdates() {
         stage10Timer++;
         const PSEUDO_BEAT_INTERVAL = 110;
         if (stage10BeatCount < 5 && stage10Timer % PSEUDO_BEAT_INTERVAL === 20) {
-            const boss = enemies.find(e => e.type === 'battleship');
+            const boss = enemyPool.pool.find(e => e.active && e.type === 'battleship');
             if (typeof distortGrid === 'function') distortGrid(boss ? boss.x : worldSize / 2, boss ? boss.y : worldSize / 2, 250, 500);
             stage10BeatCount++;
         }
@@ -1875,7 +1878,7 @@ function updateCamera() {
     let focusX = player.x;
     let focusY = player.y;
 
-    const boss = enemies.find(e => e.type === 'boss' || e.type === 'battleship');
+    const boss = enemyPool.pool.find(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
 
     if (boss && Number.isFinite(boss.x) && Number.isFinite(boss.y)) {
         const smoothMax = (boss.spawnMax || 100) + 20;

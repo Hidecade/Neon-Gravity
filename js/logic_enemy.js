@@ -1231,7 +1231,10 @@ function applyWorldBoundary(e) {
 function applyAsteroidCollisions(e) {
     if (e.type !== 'asteroid' && e.type !== 'bubble') return;
 
-    enemies.forEach(other => {
+    enemyPool.pool.forEach(other => {
+        // 非アクティブ（プール内待機中）のオブジェクトは無視する
+        if (!other.active) return;
+        
         if (e === other || other.hp <= 0 || (other.type !== 'asteroid' && other.type !== 'bubble')) return;
 
         const dx = other.x - e.x;
@@ -1300,7 +1303,10 @@ function applyJellyfishAsteroidCollisions(e) {
     // クラゲ以外はこの処理を行わない
     if (e.type !== 'jellyfish') return;
 
-    enemies.forEach(other => {
+    enemyPool.pool.forEach(other => {
+        // ★追加: 非アクティブ（プール内待機中）のオブジェクトは無視する
+        if (!other.active) return;
+
         // 死んでいる敵や、アステロイド以外の敵は無視
         if (other.hp <= 0 || other.type !== 'asteroid') return;
 
@@ -1382,7 +1388,8 @@ function destroyEnemy(e) {
 
         // --- 雑魚一掃ロジックの実行 ---
         if (shouldClearMinions) {
-            enemies.forEach(other => {
+            enemyPool.pool.forEach(other => {
+                if (!other.active) return; // ★追加
                 if (other !== e && other.hp > 0) {
                     other.hp = 0;
                     other.noSplit = true; // ★アステロイドが分裂しないようにする
@@ -1424,8 +1431,9 @@ function destroyEnemy(e) {
         playerBulletPool.clearAll();
         enemyBulletPool.clearAll();
 
-        // ★追加：ラスボス撃破時も、アステロイドを含めた全ての敵を連鎖爆発させる
-        enemies.forEach(other => {
+        // ★修正: ラスボス撃破時も同様に enemyPool を使って一掃
+        enemyPool.pool.forEach(other => {
+            if (!other.active) return; // ★追加
             if (other !== e && other.hp > 0) {
                 other.hp = 0;
                 other.noSplit = true; // ★アステロイド分裂防止
@@ -1744,14 +1752,20 @@ function destroyEnemy(e) {
 }
 
 function applySeparation(e) {
-    enemies.forEach(other => {
-        if (e === other) return;
+    enemyPool.pool.forEach(other => {
+        // ★追加: 非アクティブ（プール内待機中）のオブジェクトは無視する
+        if (!other.active) return;
+        
+        // 自分自身、または既に死んでいる（演出中など）敵とは反発しない
+        if (e === other || other.hp <= 0) return;
+
         const odx = e.x - other.x;
         const ody = e.y - other.y;
         const od = Math.hypot(odx, ody);
 
         // 距離が30未満の場合、お互いを押し離す
-        if (od < 30) {
+        // (odが0の場合のゼロ除算を防ぐため、安全策として od > 0 を条件に含めるとより安全です)
+        if (od > 0 && od < 30) {
             const push = (30 - od) * 0.05;
             e.x += (odx / od) * push;
             e.y += (ody / od) * push;
@@ -1760,7 +1774,10 @@ function applySeparation(e) {
 }
 
 function updateEnemiesForDying() {
-    enemies.forEach(e => {
+    enemyPool.pool.forEach(e => {
+        // ★追加: 非アクティブ（プール内待機中）のオブジェクトは無視する
+        if (!e.active) return;
+
         // 自機から敵機へのベクトル（逃げる方向）
         const dx = e.x - player.x;
         const dy = e.y - player.y;
@@ -1818,7 +1835,7 @@ function updateWormholes() {
                     triggerBossEncounter();
                     isBossSpawned = true;
                 } else {
-                    const bossEx = enemies.some(e => e.type === 'boss');
+                    const bossEx = enemyPool.pool.some(e => e.active && e.type === 'boss');
                     if (spawnedCount < enemiesToSpawn || bossEx) {
                         const pool = STAGE_ENEMIES[stage] || STAGE_ENEMIES[7];
                         const type = Math.random() < 0.15 ? 'cube' : pool[Math.floor(Math.random() * pool.length)];
@@ -1849,17 +1866,20 @@ function updateWormholes() {
 // 7. 敵機生成と共通AI (Enemy Spawning & Common AI)
 // =========================================================
 function spawnWormhole() {
-
     if (isStageClear) return;
     if (stage === 9 && rushBossIndex >= 8) return;
-    if (stage !== 9 && isBossSpawned && !enemies.some(e => e.type === 'boss' || e.type === 'battleship')) return;
+    
+    if (stage !== 9 && isBossSpawned && !enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'))) return;
 
-    wormholes.push({
+    // 変数に作ってからpushする形に修正（配列末尾への直接アクセス撲滅）
+    const newWormhole = {
         x: WALL_MARGIN + 100 + Math.random() * (worldSize - WALL_MARGIN * 2 - 200),
         y: WALL_MARGIN + 100 + Math.random() * (worldSize - WALL_MARGIN * 2 - 200),
         life: 400, maxLife: 400, active: true
-    });
-    distortGrid(wormholes[wormholes.length - 1].x, wormholes[wormholes.length - 1].y, 50, 150);
+    };
+    
+    wormholes.push(newWormhole);
+    distortGrid(newWormhole.x, newWormhole.y, 50, 150);
 }
 
 function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
@@ -1867,7 +1887,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     if (isStageClear) return;
     if (stage === 9 && rushBossIndex >= 8) return;
     if (stage !== 9 && isBossSpawned && type !== 'boss' && type !== 'battleship') {
-        const bossExists = enemies.some(e => e.type === 'boss' || e.type === 'battleship');
+        const bossExists = enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
         if (!bossExists) return; // ボスが既に死んでいるなら雑魚は出さない
     }
 
@@ -1914,46 +1934,44 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
     // 上記のどれにも当てはまらない場合（rnd が totalRate * scale 以上の場合）は初期値の 'crystal' になる
 
     if (type === 'dragon') {
-        enemies.push({
+        const e = spawnEnemyObj({
             x: x, y: y, vx: vx, vy: vy,
             hp: ENEMY_HP.dragon + hpMag * 2,
             speed: ENEMY_SPEEDS.DRAGON * spd * stageMag,
             color: '#c00', type: 'dragon',
             angle: Math.atan2(vy, vx),
-            segments: [],
             drop: 'none',
-            scale: 0.9, fireTimer: 0
+            scale: 0.9,
         });
 
         const segmentCount = 8;
         const initialAngle = Math.atan2(vy, vx);
         for (let i = 0; i < segmentCount; i++) {
-            enemies[enemies.length - 1].segments.push({
+            e.segments.push({
                 x: x, y: y, angle: initialAngle
             });
         }
         spawnedCount++;
 
     } else if (type === 'cube') {
-        enemies.push({
-            x, y, vx, vy,
+        spawnEnemyObj({
+            x: x, y: y, vx: vx, vy: vy,
             hp: ENEMY_HP.cube + Math.floor(hpMag),
             speed: ENEMY_SPEEDS.CUBE * spd * stageMag,
             color: '#0f0', type: 'cube', angle: 0,
             drop: dropType,
             scale: 0.8, rotX: 0, rotY: 0,
-            isWarping: true, warpPercent: 0
+            isWarping: true
         });
         spawnedCount++;
-
     } else if (type === 'tadpole') {
-        enemies.push({
+        spawnEnemyObj({
             x: x, y: y, vx: vx, vy: vy,
             hp: ENEMY_HP.tadpole,
             speed: ENEMY_SPEEDS.TADPOLE * spd * stageMag,
             color: '#0ff', type: 'tadpole', angle: 0,
             drop: 'none',
-            scale: 0.6, history: []
+            scale: 0.6
         });
         spawnedCount++;
     } else if (type === 'triangle') {
@@ -1977,7 +1995,8 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             selectedColor = colorMap[selectedFormationType];
         }
 
-        const leader = {
+        // 1. リーダー機の生成
+        const leader = spawnEnemyObj({
             x: x, y: y, vx: vx, vy: vy,
             hp: ENEMY_HP.triangle + Math.floor(hpMag * 0.5),
             speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
@@ -1987,16 +2006,15 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             angle: initialAngle,
             drop: dropType,
             scale: 0.1,
-            isLeader: true,
-            followers: [],
+            isLeader: true, // ※1
             rotX: Math.random() * Math.PI,
             rotY: Math.random() * Math.PI,
             rotZ: Math.random() * Math.PI,
-            isWarping: true, warpPercent: 0
-        };
-        enemies.push(leader);
+            isWarping: true
+        });
         spawnedCount += 0.2;
 
+        // 2. フォロワー機の生成ループ
         for (let i = 0; i < 4; i++) {
             const ignoreLimit = isBossSpawned || stage === 9 || stage === 10;
             if (!ignoreLimit && spawnedCount >= enemiesToSpawn) break;
@@ -2009,7 +2027,8 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             else if (pattern === 'W') { offX = (step === 1) ? -25 : 0; offY = side * step * 25; }
             else if (pattern === 'H') { offX = (step === 1) ? 25 : -25; offY = side * 25; }
 
-            enemies.push({
+            // フォロワー機を変数で受け取る
+            const follower = spawnEnemyObj({
                 x: x, y: y, vx: vx, vy: vy,
                 hp: ENEMY_HP.triangle,
                 speed: ENEMY_SPEEDS.TRIANGLE * spd * stageMag,
@@ -2019,14 +2038,16 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
                 angle: initialAngle,
                 drop: 'none',
                 scale: 0.1,
-                leader: leader,
+                leader: leader, // 生成したリーダーを割り当て
                 formOffset: { x: offX, y: offY },
                 rotX: Math.random() * Math.PI,
                 rotY: Math.random() * Math.PI,
                 rotZ: Math.random() * Math.PI,
-                isWarping: true, warpPercent: 0
+                isWarping: true
             });
-            leader.followers.push(enemies[enemies.length - 1]);
+            
+            // 配列の末尾を参照するのではなく、直接フォロワー機を格納
+            leader.followers.push(follower);
             spawnedCount += 0.2;
         }
 
@@ -2036,8 +2057,8 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
         const bossHp = variant.hp + (stage - 1) * 10;
         const sX = Number(x); const sY = Number(y);
 
-        enemies.push({
-            x: sX, y: sY, spawnX: sX, spawnY: sY,
+        const e = spawnEnemyObj({
+            x: sX, y: sY,
             vx: 0, vy: 0,
             hp: bossHp, maxHp: bossHp,
             speed: 1.2 * variant.speedFactor * SPEED_SCALE * (1.0 + (stage - 1) * 0.08),
@@ -2045,11 +2066,15 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             type: 'boss', variant: variant, angle: 0,
             drop: 'shield',
             scale: 1.5 + (variant.sides * 0.1),
-            fireTimer: 0, flashTimer: 0,
-            spawnTimer: 0, spawnMax: 150,
-            isSpawning: true,
-            cameraLerpTimer: 0
+            spawnMax: 150,
+            isSpawning: true
         });
+
+        // ボス専用の特殊なパラメータを追加でセット
+        e.spawnX = sX;
+        e.spawnY = sY;
+        e.cameraLerpTimer = 0;
+
         spawnedCount++;
 
     } else if (type === 'bubble' || type === 'asteroid') {
@@ -2062,91 +2087,104 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
         const moveSpeed = (baseSpdConst * 0.7) * (1 + size * 0.4) * spd * stageMag;
         const ang = Math.random() * Math.PI * 2;
 
-        enemies.push({
-            x: x, y: y, vx: Math.cos(ang) * moveSpeed, vy: Math.sin(ang) * moveSpeed,
+        spawnEnemyObj({
+            x: x, y: y, 
+            vx: Math.cos(ang) * moveSpeed, vy: Math.sin(ang) * moveSpeed,
             hp: hp, speed: moveSpeed,
             color: (type === 'bubble') ? '#0ff' : '#fff',
             type: type, variant: (type === 'bubble') ? 'bubble' : 'asteroid',
             size: size, angle: Math.random() * Math.PI * 2,
             rotSpd: (Math.random() - 0.5) * 0.1,
             scale: finalScale, drop: 'none',
-            spawnTimer: 0, trackingStart: 300 + Math.random() * 200,
-            isTracking: false,
-            isWarping: true, warpPercent: 0
+            trackingStart: 300 + Math.random() * 200,
+            isWarping: true
         });
 
     } else if (type === 'hunter') {
-        enemies.push({
+        spawnEnemyObj({
             x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
             hp: ENEMY_HP.hunter + Math.floor(hpMag * 1.5),
             speed: ENEMY_SPEEDS.HUNTER * spd * stageMag,
             color: '#fa4', type: 'hunter', angle: 0,
             drop: dropType, scale: 1.2,
-            actionTimer: 0, state: 'approach', burstCount: 0,
+            state: 'approach'
         });
         spawnedCount++;
-
     } else if (type === 'battleship') {
         const variant = BOSS_VARIANTS[BOSS_VARIANTS.length - 1];
-        enemies.push({
-            x: x, y: y, spawnX: x, spawnY: y, vx: 0, vy: 0,
+        
+        const e = spawnEnemyObj({
+            x: x, y: y, vx: 0, vy: 0,
             hp: variant.hp, maxHp: variant.hp,
             speed: variant.speedFactor * SPEED_SCALE,
             color: variant.color, type: 'battleship', angle: 0,
             drop: 'none', scale: 1.0,
-            fireTimer: 0, flashTimer: 0, spawnTimer: 0, spawnMax: 240,
+            spawnMax: 240,
             isSpawning: true, variant: variant
         });
+        
+        // ボス・戦艦専用の特殊パラメータを直接セット
+        e.spawnX = x;
+        e.spawnY = y;
+
         spawnedCount++;
         if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_large');
 
     } else if (type === 'phantom') {
-        enemies.push({
+        spawnEnemyObj({
             x: x, y: y, vx: vx * 0.5, vy: vy * 0.5,
             hp: ENEMY_HP.phantom + Math.floor(hpMag),
             speed: ENEMY_SPEEDS.PHANTOM * spd * stageMag,
             color: '#0ff', type: 'phantom', angle: 0,
             drop: dropType, scale: 1.0,
-            state: 'stealth', timer: 0, alpha: 0.1, trail: []
+            state: 'stealth', alpha: 0.1
         });
         spawnedCount++;
 
     } else if (type === 'eclipse') {
         const MIN_DISTANCE = 600;
-        const tooClose = enemies.some(other => {
-            if (other.type === 'eclipse') {
+        
+        // ★修正: enemyPool.pool を使い、active なものだけを対象にする
+        const tooClose = enemyPool.pool.some(other => {
+            if (other.active && other.type === 'eclipse') {
                 const dist = Math.hypot(x - other.x, y - other.y);
                 return dist < MIN_DISTANCE;
             }
             return false;
         });
+        
         if (tooClose) return;
 
-        enemies.push({
+        spawnEnemyObj({
             x: x, y: y, vx: vx * 0.2, vy: vy * 0.2,
             hp: ENEMY_HP.eclipse + hpMag * 5,
             speed: ENEMY_SPEEDS.ECLIPSE * spd * stageMag,
             color: '#0ff', type: 'eclipse', angle: 0,
-            rotSpeed: 0.02, drop: dropType, scale: 1.5, actionTimer: 0
+            rotSpeed: 0.02, drop: dropType, scale: 1.5
         });
         spawnedCount++;
 
     } else if (type === 'jellyfish' || type === 'spark_jelly') {
         const isSpark = (type === 'spark_jelly');
-        enemies.push({
+        
+        const e = spawnEnemyObj({
             x: x, y: y, vx: vx * 0.1, vy: vy * 0.1,
             hp: (isSpark ? ENEMY_HP.spark_jelly : ENEMY_HP.jellyfish) + Math.floor(hpMag * 1.5),
             speed: ENEMY_SPEEDS.JELLYFISH * spd * stageMag * (isSpark ? 1.2 : 1.0),
             color: '#0ff', type: 'jellyfish', variant: isSpark ? 'spark' : 'normal',
-            angle: angle, prevAngle: angle, bend: 0,
+            angle: angle,
             drop: dropType, scale: isSpark ? 1.4 : 1.2,
-            timer: Math.random() * 100, canFire: true, chargeLevel: 0,
-            isWarping: true, warpPercent: 0
+            timer: Math.random() * 100,
+            isWarping: true
         });
+        
+        // クラゲ特有のパラメータを直接セット
+        e.prevAngle = angle;
+        
         spawnedCount++;
 
     } else if (type === 'sentinel') {
-        enemies.push({
+        spawnEnemyObj({
             x: x, y: y, vx: 0, vy: 0,
             hp: ENEMY_HP.sentinel + Math.floor(hpMag),
             speed: ENEMY_SPEEDS.SENTINEL * spd * stageMag,
@@ -2209,7 +2247,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
         }
 
         for (let i = 0; i < count; i++) {
-            enemies.push({
+            spawnEnemyObj({
                 x: startX + offsetX * i,
                 y: startY + offsetY * i,
                 vx: moveVx, vy: moveVy,
@@ -2220,8 +2258,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
                 angle: baseAngle, // 計算した向きをセット
                 drop: Math.random() < 0.1 ? dropType : 'none',
                 scale: 0.8,
-                rotX: 0, rotY: 0, rotZ: 0,
-                isWarping: true, warpPercent: 0
+                isWarping: true
             });
         }
         if (typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
@@ -2269,7 +2306,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
 
         const lcSpd = Math.min(ENEMY_SPEEDS.LIGHTCYCLE * spd * stageMag, ENEMY_LIMITS.LIGHTCYCLE_MAX);
 
-        enemies.push({
+        const e = spawnEnemyObj({
             x: rx, y: ry,
             vx: Math.cos(ra) * lcSpd, // 初速をセット
             vy: Math.sin(ra) * lcSpd,
@@ -2278,12 +2315,14 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             color: '#e0e0e0', 
             type: 'lightcycle',
             angle: ra,
-            history: [{ x: rx, y: ry }], // 履歴の初期化
             isWarping: true, 
-            warpPercent: 0,
-            drop: dropType,
-            inActiveRange: true // 出現直後は判定を有効にする
+            drop: dropType
         });
+        
+        // ライトサイクル特有の初期設定
+        e.history.push({ x: rx, y: ry }); // 履歴の初期化
+        e.inActiveRange = true;           // 出現直後は判定を有効にする
+
         spawnedCount++;
 
         if (typeof AudioSys !== 'undefined') {
@@ -2360,7 +2399,10 @@ function updateEnemies() {
         destroyEnemy(e);
     };
 
-    enemies.forEach(e => {
+    enemyPool.pool.forEach(e => {
+        // ★追加: プール内で待機中（非アクティブ）のオブジェクトは処理しない
+        if (!e.active) return;
+
         // --- 画面内（＋マージン）にいるかどうかの判定 ---
         const inActiveRange = (
             e.x > camera.x - ACTIVE_MARGIN &&
@@ -2442,6 +2484,8 @@ function updateEnemies() {
                 e.isDead = true;
                 executeRealDeath(e);
             }
+            // 死亡演出中は以降の処理を行わない
+            if (e.isDead) e.active = false; // ★追加: プールへ返却
             return;
         }
 
@@ -2496,7 +2540,8 @@ function updateEnemies() {
         // ワールドサイズからさらに1000px以上離れた場合は、不要なオブジェクトとして強制削除する
         if (e.x < -1000 || e.x > worldSize + 1000 || e.y < -1000 || e.y > worldSize + 1000) {
             e.hp = 0;
-            e.isDead = true; // 次のフレームで配列から削除される
+            e.isDead = true; 
+            e.active = false; // ★追加: プールへ返却
             return; // これ以上の判定は行わずスキップ
         }
 
@@ -2533,30 +2578,71 @@ function updateEnemies() {
                 executeRealDeath(e);
             }
         }
-    });
 
-    // isDeadフラグが立ったものだけを配列から削除
-    enemies = enemies.filter(e => !e.isDead);
+        // ★追加: 完全に死んだ敵はプールへ返却する
+        if (e.isDead) {
+            e.active = false;
+        }
+    });
 }
 
 function updateFormationMovement(e) {
-    if (!e.leader || e.leader.hp <= 0) return;
+    // ==========================================
+    // ★ 鉄壁の照合ロジック ★
+    // ==========================================
+    // 1. リーダーへの参照があるか
+    // 2. そのリーダーが現在アクティブ（生存）か
+    // 3. リーダーの「今の背番号(spawnId)」が、自分が覚えている「隊長の背番号(leaderSpawnId)」と一致するか
+    const isLeaderValid = e.leader && 
+                         e.leader.active && 
+                         e.leader.spawnId === e.leaderSpawnId;
+
+    if (!isLeaderValid) {
+        // --- 解散処理 ---
+        e.leader = null;       // 参照を切る
+        e.leaderSpawnId = -1;  // IDもリセット
+
+        // リーダーがいなくなった後の「自律移動」へ切り替え
+        // その時の角度を維持して、自身のスピードで直進させる
+        const la = e.angle || 0;
+        e.vx = Math.cos(la) * e.speed;
+        e.vy = Math.sin(la) * e.speed;
+        
+        // これ以降の追従計算は行わない
+        return;
+    }
+
+    // ==========================================
+    // --- 以下、本物のリーダーだと確認できた場合のみ実行 ---
+    // ==========================================
+    
+    // リーダーの現在の向きを取得
     const la = e.leader.angle;
+
+    // リーダーの向きに合わせて「相対的な並び位置(formOffset)」を回転計算
+    // これにより、リーダーが右を向けば部下も右側の相対位置に移動する
     const rotatedOffX = e.formOffset.x * Math.cos(la) - e.formOffset.y * Math.sin(la);
     const rotatedOffY = e.formOffset.x * Math.sin(la) + e.formOffset.y * Math.cos(la);
-    const targetX = e.leader.x + rotatedOffX; const targetY = e.leader.y + rotatedOffY;
-    e.x += (targetX - e.x) * 0.3 * gameSpeed;
-    e.y += (targetY - e.y) * 0.3 * gameSpeed;
-    e.vx = e.leader.vx; e.vy = e.leader.vy; e.angle = la;
+    
+    const targetX = e.leader.x + rotatedOffX; 
+    const targetY = e.leader.y + rotatedOffY;
+
+    // 0.3 の強さでターゲット位置へ吸い寄せる（gameSpeedを考慮）
+    // 1.0 に近づけるほどガチガチに固定され、小さいほどゆったり追従する
+    const lerpFactor = 0.3 * gameSpeed;
+    e.x += (targetX - e.x) * lerpFactor;
+    e.y += (targetY - e.y) * lerpFactor;
+
+    // 速度と角度もリーダーと同期させる（編隊としての統一感）
+    e.vx = e.leader.vx; 
+    e.vy = e.leader.vy; 
+    e.angle = la;
 }
 
-
-
-// --- 7. 敵の出現（スポーン）ロジック ---
 function updateSpawnLogic() {
     if (stage === 9) {
         // --- Stage 9: ボスラッシュ ---
-        const bossExists = enemies.some(e => e.type === 'boss');
+        const bossExists = enemyPool.pool.some(e => e.active && e.type === 'boss');
         if (!bossExists && rushBossIndex < 8) {
             rushIntervalTimer++;
             // 3秒(180F)待って次ボス出現
@@ -2571,7 +2657,16 @@ function updateSpawnLogic() {
 
                 // ボス生成
                 spawnEnemy(cx, cy, 'boss');
-                const newBoss = enemies[enemies.length - 1];
+                // ★修正: 生成されたばかりのボスを取得（配列末尾ではなく、プールの最後尾でアクティブなbossを探す）
+                // ※本来は spawnEnemy の戻り値を使うのが一番確実ですが、現状の仕様に合わせて探索します
+                let newBoss = null;
+                for (let i = enemyPool.pool.length - 1; i >= 0; i--) {
+                    if (enemyPool.pool[i].active && enemyPool.pool[i].type === 'boss') {
+                        newBoss = enemyPool.pool[i];
+                        break;
+                    }
+                }
+
                 if (newBoss && newBoss.type === 'boss') {
                     const variant = BOSS_VARIANTS[rushBossIndex];
                     newBoss.variant = variant;
@@ -2589,7 +2684,7 @@ function updateSpawnLogic() {
         }
         // 2. 援護雑魚のスポーン
         if (bossExists &&
-            enemies.length < BOSS_RUSH_SPAWN_CONFIG.MAX_ENEMIES &&
+            enemyPool.getActiveCount() < BOSS_RUSH_SPAWN_CONFIG.MAX_ENEMIES &&
             frame % BOSS_RUSH_SPAWN_CONFIG.INTERVAL === 0) {
 
             const currentPool = STAGE_ENEMIES[rushBossIndex + 1] || STAGE_ENEMIES[1];
@@ -2598,7 +2693,7 @@ function updateSpawnLogic() {
             // --- ★追加：lightcycleの出現制限ロジック ---
             const LC_LIMIT = 2; // 最大生存数
             // 現在画面にいる lightcycle の数をカウント
-            const currentLCCount = enemies.filter(e => e.type === 'lightcycle' && e.hp > 0).length;
+            const currentLCCount = enemyPool.pool.filter(e => e.active && e.type === 'lightcycle' && e.hp > 0).length;
 
             // 30%の確率で lightcycle を抽選するが、すでに3機以上いる場合は別の敵にする
             if (Math.random() < 0.3) {
@@ -2648,19 +2743,22 @@ function updateSpawnLogic() {
         const maxW = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage * 1.5;
         const activeWh = wormholes.filter(w => w.active).length;
         const screenMax = STAGE_MAX_ON_SCREEN[stage - 1] || 40;
-        const bossExists = enemies.some(e => e.type === 'boss' || e.type === 'battleship');
+        
+        const bossExists = enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
 
         // 修正：ノルマに達していない、またはボス戦中ならスポーン可能
         const canSpawn = (spawnedCount < enemiesToSpawn) || (isBossSpawned && bossExists);
 
+        const currentEnemyCount = enemyPool.getActiveCount();
+
         // 1. 通常のワームホール生成判定
         let shouldSpawn = gameState === 'PLAYING' && spawnWaitTimer <= 0 &&
             !isBossWarning && canSpawn &&
-            activeWh < maxW && enemies.length < screenMax &&
+            activeWh < maxW && currentEnemyCount < screenMax &&
             Math.random() < SPAWN_SETTINGS.WORMHOLE_CHANCE;
 
         // 2. 敵が全滅してワームホールもない場合の救済処置
-        if (gameState === 'PLAYING' && enemies.length === 0 && activeWh === 0 && canSpawn) {
+        if (gameState === 'PLAYING' && currentEnemyCount === 0 && activeWh === 0 && canSpawn) {
             shouldSpawn = true;
         }
 
@@ -2673,7 +2771,7 @@ function updateSpawnLogic() {
         // ==========================================
         // 条件：プレイ中、ボス未出現、ワームホールなし、敵もいない、且つノルマ付近
         const remaining = enemiesToSpawn - enemiesKilled;
-        if (gameState === 'PLAYING' && !isBossSpawned && !isBossWarning && activeWh === 0 && enemies.length === 0) {
+        if (gameState === 'PLAYING' && !isBossSpawned && !isBossWarning && activeWh === 0 && currentEnemyCount === 0) {
             // ノルマをほぼ達成している（残り20%以下）、または生成数が上限に達している場合
             if (remaining <= enemiesToSpawn * 0.2 || spawnedCount >= enemiesToSpawn) {
                 console.log("Safety Net: Triggering Boss Encounter");

@@ -573,7 +573,16 @@ function updateBattleshipAI(e) {
                     // 1. 敵を生成（spawnEnemy内部でステージ10の速度補正 1.72倍 がすでにかかります）
                     spawnEnemy(targetX, targetY, randomType, 1, '#e00');
 
-                    const newEnemy = enemies[enemies.length - 1];
+                    // プールを後ろから検索して「たった今生成された敵」を取得する
+                    let newEnemy = null;
+                    const pool = enemyPool.pool;
+                    for (let i = pool.length - 1; i >= 0; i--) {
+                        if (pool[i].active && pool[i].type === randomType) {
+                            newEnemy = pool[i];
+                            break;
+                        }
+                    }
+
                     if (newEnemy) {
                         // ==========================================
                         // ★ 修正：2倍補正を削除し、ステージ10の最高速度にリセット
@@ -660,16 +669,26 @@ function updateBattleshipAI(e) {
                 const posIdx = i - Math.floor(fighterCount / 2);
                 const launchA = bossToPlayerAngle + posIdx * 0.4;
 
-                enemies.push({
+                const fighter = spawnEnemyObj({
                     x: e.x,
                     y: e.y,
                     // ★修正: 初速を 2.5 -> 0.5 に下げて、フワッと射出させる
                     vx: Math.cos(launchA) * 0.25 * SPEED_SCALE,
                     vy: Math.sin(launchA) * 0.25 * SPEED_SCALE,
-                    hp: 3, speed: 1.0, color: '#0ff', type: 'fighter', state: 'deploy',
-                    timer: 0, burstCount: 0, baseAngle: pToBossAngle, orbitAngleOffset: posIdx,
-                    targetRadius: 400, scale: 0.8, noDrop: true
+                    hp: 3, 
+                    speed: 1.0, 
+                    color: '#0ff', 
+                    type: 'fighter', 
+                    state: 'deploy',
+                    scale: 0.8, 
+                    noDrop: true
                 });
+
+                // fighter特有のパラメータを直接セット
+                fighter.burstCount = 0;
+                fighter.baseAngle = pToBossAngle;
+                fighter.orbitAngleOffset = posIdx;
+                fighter.targetRadius = 400;
             }
             if (typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
 

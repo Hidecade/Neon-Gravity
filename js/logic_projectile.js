@@ -48,13 +48,18 @@ function updatePlayerBullets() {
         const damage = basePower * powerRatio; // 基本威力 × 減衰率
 
         // --- 3. 敵との当たり判定 (Lightcycle特殊判定を含む) ---
-        for (let j = 0; j < enemies.length; j++) {
-            const e = enemies[j];
+        const pool = enemyPool.pool;
+        for (let j = 0; j < pool.length; j++) {
+            const e = pool[j];
+            
+            // ★追加: 非アクティブ（プール内待機中）のオブジェクトは処理をスキップ
+            if (!e.active) continue;
+            
             if (e.hp <= 0 || !e.inActiveRange) continue;
             if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) continue;
 
             // --- A. Lightcycle の特殊判定 ---
-           if (e.type === 'lightcycle') {
+            if (e.type === 'lightcycle') {
                 const dx = b.x - e.x;
                 const dy = b.y - e.y;
                 const headDistSq = dx * dx + dy * dy;
@@ -197,8 +202,11 @@ function updateLasers() {
         const p1x = l.x;
         const p1y = l.y;
 
-        // --- 敵との衝突判定 ---
-        enemies.forEach(e => {
+    // --- 敵との衝突判定 ---
+        enemyPool.pool.forEach(e => {
+            // ★追加: 非アクティブ（プール内待機中）のオブジェクトは無視する
+            if (!e.active) return;
+            
             if (e.hp <= 0 || !e.inActiveRange) return;
             if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) return;
 
@@ -259,20 +267,6 @@ function updateLasers() {
 
         // 最終的な描画長さを保存
         l.renderLen = currentLen;
-
-        // --- 敵弾の消去判定 ---
-        // 事前に計算できる定数を準備
-        // 直線の方程式 Ax + By + C = 0 の係数計算用
-        // (p1x, p1y) と (p2x, p2y) を通る直線
-        // A = p1y - p2y, B = p2x - p1x, C = p1x*p2y - p2x*p1y
-        // ここでは p2 = p1 + vec(cos, sin) * currentLen なので
-        // A = -sin * currentLen
-        // B = cos * currentLen
-        // C = p1x * (p1y + sin*L) - (p1x + cos*L) * p1y = p1x*sin*L - p1y*cos*L
-        // 全体を currentLen で割ると正規化できる:
-        // A' = -sin, B' = cos, C' = p1x*sin - p1y*cos
-        // 点と直線の距離 d = |A'x + B'y + C'| / sqrt(A'^2 + B'^2)
-        // A'^2 + B'^2 = sin^2 + cos^2 = 1 なので、分母は1になる！
 
         const A_norm = -sin;
         const B_norm = cos;
@@ -381,8 +375,13 @@ function updateEnemyBullets() {
 
         // --- 5. アステロイドによる弾の吸収 ---
         if (!eb.isShockwave) {
-            for (let j = 0; j < enemies.length; j++) {
-                const rock = enemies[j];
+            const pool = enemyPool.pool;
+            for (let j = 0; j < pool.length; j++) {
+                const rock = pool[j];
+                
+                // ★追加: 非アクティブ（プール内待機中）のオブジェクトは処理をスキップ
+                if (!rock.active) continue;
+                
                 if (rock.type !== 'asteroid' || rock.hp <= 0) continue;
                 const rockRadius = 25 * rock.scale * G_SCALE;
                 
@@ -482,9 +481,14 @@ function updateHomingLasers() {
         m.age = (m.age || 0) + 1;
 
         // --- 1. ターゲット探索（発射直後はターゲットを探さず直進する） ---
-        if (m.age > 60 && (!m.target || !enemies.includes(m.target))) {
+        if (m.age > 60 && (!m.target || !m.target.active || m.target.hp <= 0)) {
             let min = 999999;
-            enemies.forEach(e => {
+            m.target = null; // 新しく探し直すために一旦リセット
+
+            enemyPool.pool.forEach(e => {
+                // ★追加: 非アクティブ（プール内待機中）のオブジェクトは無視
+                if (!e.active) return;
+                
                 if (e.hp > 0) { // 生きている敵だけ対象
                     // 高速化のため平方根を使わず2乗で距離比較
                     const dx = e.x - m.x;
@@ -547,7 +551,7 @@ function updateHomingLasers() {
             }
         }
 
-// --- 4. 移動と軌跡の記録 ---
+        // --- 4. 移動と軌跡の記録 ---
         m.x += m.vx * gameSpeed;
         m.y += m.vy * gameSpeed;
         m.life -= gameSpeed;
@@ -583,7 +587,10 @@ function updateHomingLasers() {
         }
 
         // --- 6. 敵との衝突判定 ---
-        enemies.forEach(e => {
+        enemyPool.pool.forEach(e => {
+            // ★追加: 既にミサイルが消滅している場合や、非アクティブ（プール内待機中）の敵は無視する
+            if (m.life <= 0 || !e.active) return;
+            
             if (e.hp <= 0) return;
             const hitRadius = (e.type === 'asteroid' ? 25 * e.scale : 30);
             
