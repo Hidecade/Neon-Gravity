@@ -22,10 +22,18 @@ function drawBackground() {
     const loopH = height + LOOP_MARGIN_Y;
 
     // ----------------------------------------------------
-    // 2. 星雲の描画 (変更なし)
+    // 2. 星雲の描画 (超高速化版)
     // ----------------------------------------------------
-    if (typeof nebulae !== 'undefined') {
-        nebulae.forEach(n => {
+    if (typeof nebulae !== 'undefined' && nebulae.length > 0) {
+        
+        // ★ 高速化1: 状態の保存と変更はループの外で「1回だけ」行う
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+
+        // ★ 高速化2: forEach を forループ に変更
+        for (let i = 0; i < nebulae.length; i++) {
+            const n = nebulae[i];
+            
             let nx = (n.x - camera.x * n.parallax) % loopW;
             let ny = (n.y - camera.y * n.parallax) % loopH;
             if (nx < 0) nx += loopW;
@@ -33,17 +41,29 @@ function drawBackground() {
             nx -= LOOP_MARGIN_X / 2;
             ny -= LOOP_MARGIN_Y / 2;
 
-            ctx.save();
-            ctx.globalCompositeOperation = 'lighter';
-            ctx.drawImage(n.image, nx - n.radius, ny - n.radius);
+            // ★ 高速化3: 描画する基準座標を計算し、ここで整数化 (| 0) する
+            const drawX = (nx - n.radius) | 0;
+            const drawY = (ny - n.radius) | 0;
 
-            // ループ境界の折り返し描画
-            if (nx < -n.radius) ctx.drawImage(n.image, nx - n.radius + loopW, ny - n.radius);
-            else if (nx > width + n.radius) ctx.drawImage(n.image, nx - n.radius - loopW, ny - n.radius);
-            if (ny < -n.radius) ctx.drawImage(n.image, nx - n.radius, ny - n.radius + loopH);
-            else if (ny > height + n.radius) ctx.drawImage(n.image, nx - n.radius, ny - n.radius - loopH);
-            ctx.restore();
-        });
+            // メインの星雲を描画
+            ctx.drawImage(n.image, drawX, drawY);
+
+            // --- ループ境界の折り返し描画（こちらも整数化した座標を使う） ---
+            if (nx < -n.radius) {
+                ctx.drawImage(n.image, (drawX + loopW) | 0, drawY);
+            } else if (nx > width + n.radius) {
+                ctx.drawImage(n.image, (drawX - loopW) | 0, drawY);
+            }
+            
+            if (ny < -n.radius) {
+                ctx.drawImage(n.image, drawX, (drawY + loopH) | 0);
+            } else if (ny > height + n.radius) {
+                ctx.drawImage(n.image, drawX, (drawY - loopH) | 0);
+            }
+        }
+        
+        // ★ ループがすべて終わってから、1回だけ状態を元に戻す
+        ctx.restore();
     }
 
     // ----------------------------------------------------
@@ -100,7 +120,7 @@ function drawBackground() {
             return;
     }
 
-    // ==========================================
+  // ==========================================
     // ここから下は「エリア内」の描画（メイングリッド）
     // ==========================================
     ctx.save();
@@ -110,7 +130,8 @@ function drawBackground() {
     ctx.rect(WALL_MARGIN, WALL_MARGIN, worldSize - WALL_MARGIN * 2, worldSize - WALL_MARGIN * 2);
     ctx.clip();
 
-    ctx.globalCompositeOperation = 'lighter';
+    // ★改善1: 重い 'lighter' をやめ、通常の描画モードにする
+    ctx.globalCompositeOperation = 'source-over'; 
     const baseColor = STAGE_THEMES[stage] || '#00f0ff';
     ctx.lineWidth = 1.5;
 
@@ -155,9 +176,18 @@ function drawBackground() {
             }
         }
     }
+    // 静的グリッドは元々一括で stroke されているのでOK
     ctx.stroke();
 
-    // --- B. 動的グリッド（歪み）の個別描画 ---
+    // --- B. 動的グリッド（歪み）の個別描画（★改善2: バッチ処理化） ---
+    // 透明度を4段階（0.2, 0.4, 0.6, 0.8）に分けて座標を貯めておく
+    const batches = {
+        '0.2': [],
+        '0.4': [],
+        '0.6': [],
+        '0.8': []
+    };
+
     for (let i = startX; i <= endX; i++) {
         for (let j = startY; j <= endY; j++) {
             const p = gridPoints[i][j];
@@ -167,22 +197,39 @@ function drawBackground() {
 
             if (energy > 0.5) {
                 const highlightAlpha = Math.min(0.8, energy * 0.12);
-                ctx.beginPath();
-                ctx.strokeStyle = baseColor;
+                
+                // 透明度を 0.2 単位の近い値に丸める（量子化）
+                let level = Math.ceil(highlightAlpha * 5) * 0.2;
+                if (level < 0.2) level = 0.2;
+                if (level > 0.8) level = 0.8;
 
-                // ここも gridFade を掛ける
-                ctx.globalAlpha = highlightAlpha * gridFade;
+                const key = level.toFixed(1);
 
+                // 描画せずに、線を引く座標だけを配列に貯め込む
                 if (i > startX && gridPoints[i - 1][j]) {
-                    ctx.moveTo(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y);
-                    ctx.lineTo(p.x, p.y);
+                    batches[key].push(gridPoints[i - 1][j].x, gridPoints[i - 1][j].y, p.x, p.y);
                 }
                 if (j > startY && gridPoints[i][j - 1]) {
-                    ctx.moveTo(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y);
-                    ctx.lineTo(p.x, p.y);
+                    batches[key].push(gridPoints[i][j - 1].x, gridPoints[i][j - 1].y, p.x, p.y);
                 }
-                ctx.stroke();
             }
+        }
+    }
+
+    // 貯め込んだ座標を使って、透明度ごとに「一筆書き」で描画する
+    ctx.strokeStyle = baseColor;
+    for (const key in batches) {
+        const lines = batches[key];
+        if (lines.length > 0) {
+            ctx.beginPath();
+            ctx.globalAlpha = parseFloat(key) * gridFade;
+            
+            for (let k = 0; k < lines.length; k += 4) {
+                ctx.moveTo(lines[k], lines[k + 1]);
+                ctx.lineTo(lines[k + 2], lines[k + 3]);
+            }
+            // ここでまとめて stroke する！（数百回→最大4回に激減）
+            ctx.stroke();
         }
     }
 

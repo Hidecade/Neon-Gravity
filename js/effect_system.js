@@ -579,21 +579,23 @@ function drawVisualEffects() {
             const renderHeight = (p.size || 2) * 3.0 * G_SCALE; // 太さ
             
             // 【超高速化テクニック】 save/restoreを使わずに座標系を回転
-            ctx.translate(p.x, p.y);
+            // ★ 座標 p.x, p.y を整数化 (| 0) してサブピクセルレンダリングを回避
+            ctx.translate(p.x | 0, p.y | 0);
             ctx.rotate(angle);
             
             // 先頭（右端）が現在位置になるように、左へずらしてスタンプ
+            // ★ 描画座標とサイズもすべて整数化 (| 0) して爆速にする
             ctx.drawImage(
                 texture, 
-                -renderWidth, 
-                -renderHeight / 2, 
-                renderWidth, 
-                renderHeight
+                (-renderWidth) | 0, 
+                (-renderHeight / 2) | 0, 
+                renderWidth | 0, 
+                renderHeight | 0
             );
             
-            // 回転と移動を逆に行って元に戻す（save/restoreより圧倒的に軽い）
+            // 回転と移動を逆に行って元に戻す
             ctx.rotate(-angle);
-            ctx.translate(-p.x, -p.y);
+            ctx.translate(-(p.x | 0), -(p.y | 0));
         }
     }
     // ★ 分類した通常火花を一括描画（for (const key in batches)...）のブロックは丸ごと消去します

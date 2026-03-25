@@ -20,6 +20,7 @@ let debugLastFpsTime = performance.now();   // ロジック処理にかかった
 let debugLogicTime = 0;         // ロジック時間
 let debugDrawTime = 0;          // 描画にかかった時間
 
+
 let width, height;              // 現在のキャンバスサイズ
 let worldSize = 1500;           // ワールドサイズ
 
