@@ -268,8 +268,8 @@ function fire() {
     currentPattern.forEach(offset => {
         const a = player.angle + offset;
         
-        // オフセットの絶対値が45度(Math.PI/4)より大きければ横・後ろと判定し、寿命を半分(0.5)にする
-        const bulletLife = Math.abs(offset) > (Math.PI / 4) ? baseLife * 0.5 : baseLife;
+        // オフセットの絶対値が45度(Math.PI/4)より大きければ横・後ろと判定し、寿命を0.7にする
+        const bulletLife = Math.abs(offset) > (Math.PI / 4) ? baseLife * 0.7 : baseLife;
 
         spawnPlayerBulletObj({
             x: player.x,
