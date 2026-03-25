@@ -901,28 +901,28 @@ if (!this.ctx) this.init();
     },
 
     // ==========================================
-    // ★追加: iOSスリープ復帰時などの強制再起動用
+    // ★修正: iOSフリーズ対策版 強制再起動
     // ==========================================
-    forceWakeUp: async function() {
+    forceWakeUp: function() {
         if (!this.initialized || !this.ctx) return;
         
         try {
-            // state が suspended または interrupted の場合のみ叩き起こす
             if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') {
-                await this.ctx.resume();
-                console.log("AudioContext forced wake up. State:", this.ctx.state);
+                // ★最重要：awaitを使わない（iOSで永遠にPromiseが返ってこないバグを回避するため）
+                this.ctx.resume().then(() => {
+                    console.log("AudioContext forced wake up. State:", this.ctx.state);
+                }).catch(e => console.warn("Wake up error:", e));
             }
             
-            // それでもダメな場合（iOS特有の完全死）、空のバッファを再生して無理やり動かす
-            if (this.ctx.state === 'suspended') {
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                gain.gain.value = 0; // 無音
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(0);
-                osc.stop(this.ctx.currentTime + 0.01);
-            }
+            // 無音のオシレーターを鳴らして無理やりエンジンを駆動させる
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            gain.gain.value = 0; // 無音
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(0);
+            osc.stop(this.ctx.currentTime + 0.1);
+            
         } catch (e) {
             console.warn("AudioContext wake up failed:", e);
         }

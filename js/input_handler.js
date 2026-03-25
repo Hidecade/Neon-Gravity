@@ -165,7 +165,8 @@ const handlePauseClick = (e) => {
 /**
  * ポーズ解除・ゲーム再開時の処理
  */
-const resumeAction = async (e) => {
+// ★修正: async を外す（または残しても中の await を消す）
+const resumeAction = (e) => {
     if (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -175,16 +176,19 @@ const resumeAction = async (e) => {
     setTimeout(() => canvas.focus(), 100);
 
     // ==========================================
-    // ★修正: 復帰時に強制的に AudioContext を叩き起こす
+    // ★修正: オーディオ処理を「待たずに」裏で実行させる
     // ==========================================
     if (typeof AudioSys !== 'undefined') {
         if (typeof AudioSys.forceWakeUp === 'function') {
-            await AudioSys.forceWakeUp();
+            AudioSys.forceWakeUp(); // awaitを削除！
         }
-        await AudioSys.resume(true);
-        await AudioSys.resumeBGM(true);
+        
+        // 通常のBGM・SE再開処理も await せずに実行（フリーズ完全防止）
+        if (typeof AudioSys.resume === 'function') AudioSys.resume(true).catch(err => console.warn(err));
+        if (typeof AudioSys.resumeBGM === 'function') AudioSys.resumeBGM(true).catch(err => console.warn(err));
     }
 
+    // ここにすぐ到達するので、フリーズせずにプレイ画面に戻れます
     gameState = previousGameState || 'PLAYING';
     ui.pauseOverlay.style.display = 'none';
 };
@@ -592,6 +596,7 @@ function initInputHandlers() {
     // 2. オーディオのロック解除監視
     document.addEventListener('click', handleInteraction, { passive: true });
     document.addEventListener('touchstart', handleInteraction, { passive: true });
+    document.addEventListener('touchend', handleInteraction, { passive: true })
     document.addEventListener('keydown', handleInteraction, { passive: true });
 
     // 3. バックグラウンド移行時のポーズ制御
