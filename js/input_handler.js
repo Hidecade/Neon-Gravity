@@ -174,7 +174,13 @@ const resumeAction = async (e) => {
     canvas.focus();
     setTimeout(() => canvas.focus(), 100);
 
+    // ==========================================
+    // ★修正: 復帰時に強制的に AudioContext を叩き起こす
+    // ==========================================
     if (typeof AudioSys !== 'undefined') {
+        if (typeof AudioSys.forceWakeUp === 'function') {
+            await AudioSys.forceWakeUp();
+        }
         await AudioSys.resume(true);
         await AudioSys.resumeBGM(true);
     }
@@ -459,10 +465,9 @@ function handleGamepadInput() {
  * iOS/ブラウザの制限を解除し、AudioContextを強制的に叩き起こす
  */
 const handleInteraction = () => {
-    if (typeof AudioSys !== 'undefined' && AudioSys.ctx) {
-        if (AudioSys.ctx.state === 'suspended' || AudioSys.ctx.state === 'interrupted') {
-            AudioSys.ctx.resume().catch(e => console.error(e));
-        }
+    // ★修正: 先ほど追加した forceWakeUp を呼ぶように変更
+    if (typeof AudioSys !== 'undefined' && typeof AudioSys.forceWakeUp === 'function') {
+        AudioSys.forceWakeUp();
     }
 };
 
@@ -551,6 +556,13 @@ function initInputHandlers() {
             ui.controls.style.display = 'none';
             ui.pauseBtn.style.display = 'none';
         }
+        // ==========================================
+        // ★追加：ゲームパッド接続時は威力を標準(1.5)にする
+        // ==========================================
+        if (typeof BULLET_CONFIG !== 'undefined') {
+            BULLET_CONFIG.PLAYER.POWER = BULLET_CONFIG.PLAYER.BASE_POWER;
+            console.log("Gamepad active: Bullet power set to", BULLET_CONFIG.PLAYER.POWER);
+        }
     });
     window.addEventListener("gamepaddisconnected", (e) => {
         console.log("Gamepad disconnected");
@@ -559,6 +571,13 @@ function initInputHandlers() {
             ui.pauseBtn.style.display = 'flex';
         }
         clearInputState();
+        // ==========================================
+        // ★追加：ゲームパッド切断時（タッチ/キーボード操作時）は威力を上げる(2.0)
+        // ==========================================
+        if (typeof BULLET_CONFIG !== 'undefined') {
+            BULLET_CONFIG.PLAYER.POWER = BULLET_CONFIG.PLAYER.TOUCH_POWER;
+            console.log("Gamepad disconnected: Bullet power set to", BULLET_CONFIG.PLAYER.POWER);
+        }
     });
 
     // -----------------------------------------------------
@@ -733,4 +752,22 @@ function initInputHandlers() {
         if (typeof applyGraphicsQuality === 'function') applyGraphicsQuality('LOW');
     });
 
+    // ==========================================
+    // ゲーム起動時の初期コントローラー判定
+    // ==========================================
+    if (typeof BULLET_CONFIG !== 'undefined') {
+        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+        let hasGamepad = false;
+        
+        for (let i = 0; i < gamepads.length; i++) {
+            if (gamepads[i] && gamepads[i].connected) {
+                hasGamepad = true;
+                break;
+            }
+        }
+        
+        // ★定数を参照するように変更
+        BULLET_CONFIG.PLAYER.POWER = hasGamepad ? BULLET_CONFIG.PLAYER.BASE_POWER : BULLET_CONFIG.PLAYER.TOUCH_POWER;
+        console.log("Initial Setup - Bullet power set to:", BULLET_CONFIG.PLAYER.POWER);
+    }
 } 

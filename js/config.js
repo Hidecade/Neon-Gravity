@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.7.2";
+window.GAME_VERSION = "0.7.3";
 
 
 const DEBUG = {
@@ -243,7 +243,9 @@ const BULLET_CONFIG = {
     PLAYER: {
         SPEED: 32.0,    // 自機の弾の速さ
         LIFE: 60,      // 自機の弾の射程（寿命）
-        POWER: 1.5     // 自機の弾の基本威力
+        POWER: 1.5,      // 自機の弾の基本威力
+        BASE_POWER: 1.5,    // ★追加: ゲームパッド/マウス操作時の基本威力
+        TOUCH_POWER: 2.0    // ★追加: タッチ操作（パッドなし）時の強化威力
     },
     ENEMY_NORMAL: {
         SPEED: 10.0,   // 雑魚敵の弾の速さ

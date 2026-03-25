@@ -898,7 +898,35 @@ if (!this.ctx) this.init();
         if (this.bgmEl && this.bgmEl.paused && this.currentSrc != null && this.bgmEl.src) {
             this.bgmEl.play().catch(() => { });
         }
-    }
+    },
+
+    // ==========================================
+    // ★追加: iOSスリープ復帰時などの強制再起動用
+    // ==========================================
+    forceWakeUp: async function() {
+        if (!this.initialized || !this.ctx) return;
+        
+        try {
+            // state が suspended または interrupted の場合のみ叩き起こす
+            if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') {
+                await this.ctx.resume();
+                console.log("AudioContext forced wake up. State:", this.ctx.state);
+            }
+            
+            // それでもダメな場合（iOS特有の完全死）、空のバッファを再生して無理やり動かす
+            if (this.ctx.state === 'suspended') {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                gain.gain.value = 0; // 無音
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(0);
+                osc.stop(this.ctx.currentTime + 0.01);
+            }
+        } catch (e) {
+            console.warn("AudioContext wake up failed:", e);
+        }
+    },
 };
 
 window.AudioSys = AudioSys;
