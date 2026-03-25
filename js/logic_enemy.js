@@ -2101,7 +2101,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
         });
         
         if (!e) return
-        
+
         // ボス・戦艦専用の特殊パラメータを直接セット
         e.spawnX = x;
         e.spawnY = y;
@@ -2276,7 +2276,9 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             // 通常面：ワームホールの位置から出現
             rx = x; 
             ry = y; 
-            ra = Math.atan2(player.y - y, player.x - x);
+            // ★修正: プレイヤーの大まかな方角を向きつつ、必ず上下左右（90度単位）にスナップさせる
+            const rawAngle = Math.atan2(player.y - y, player.x - x);
+            ra = Math.round(rawAngle / (Math.PI / 2)) * (Math.PI / 2);
         }
 
         // ワールド境界の外に出すぎないようにクランプ（安全策）

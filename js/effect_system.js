@@ -1,5 +1,38 @@
 ﻿
 
+// ==========================================
+// ★ パーティクル画像キャッシュシステム (線状の火花版)
+// ==========================================
+const particleTextureCache = {};
+
+function getParticleTexture(color) {
+    if (particleTextureCache[color]) {
+        return particleTextureCache[color];
+    }
+    // 横長のミニキャンバスを作成 (幅40px, 高さ10px)
+    const offscreen = document.createElement('canvas');
+    offscreen.width = 40;
+    offscreen.height = 10;
+    const oCtx = offscreen.getContext('2d');
+
+    // 左から右への線形グラデーション
+    const grad = oCtx.createLinearGradient(0, 5, 40, 5);
+    grad.addColorStop(0, 'rgba(0,0,0,0)'); // 尻尾（左端）は透明
+    grad.addColorStop(0.8, color);         // 頭の少し後ろが元の色
+    grad.addColorStop(1, '#ffffff');       // 頭（右端）は明るい白
+
+    oCtx.fillStyle = grad;
+    
+    // 少し丸みを帯びた線を描画
+    oCtx.beginPath();
+    oCtx.ellipse(20, 5, 20, 3, 0, 0, Math.PI * 2);
+    oCtx.fill();
+
+    particleTextureCache[color] = offscreen;
+    return offscreen;
+}
+
+
 function initGrid() {
     const cols = Math.ceil(worldSize / GRID_SPACING) + 2;
     const rows = Math.ceil(worldSize / GRID_SPACING) + 2;
@@ -457,19 +490,15 @@ function drawVisualEffects() {
     ctx.fill();
 
     // =========================================================
-    // 2 & 3. パーティクルの描画 (ループ統合版)
+    // 2 & 3. パーティクルの描画 (スタンプ超軽量化版)
     // =========================================================
-    const batches = {};
+    // ★ バッチ処理用の変数は不要になったので削除
 
-    // ★ 変更点1：プールの配列を参照し、通常のforループにする
     const pPoolArray = particlePool.pool;
     for (let i = 0; i < pPoolArray.length; i++) {
         const p = pPoolArray[i];
 
-        // ★ 変更点2：休んでいるオブジェクトは絶対に描画しない！
         if (!p.active) continue;
-
-        // ★ 変更点3：forEachの return は continue に変える
         if (!isOnScreen(p, 50)) continue;
 
         // A. 特殊パーティクル（破片、泡）の個別描画
@@ -533,37 +562,41 @@ function drawVisualEffects() {
             ctx.restore();
 
         } else {
-            // B. 通常火花のバッチ分類処理
-            const alpha = p.life > 1 ? 1 : Math.max(0.1, Math.round(p.life * 10) / 10);
-            const lw = p.size ? Math.round(p.size) : 2;
-            const key = `${p.color}_${lw}_${alpha}`;
-
-            if (!batches[key]) {
-                batches[key] = { color: p.color, lineWidth: lw, alpha: alpha, lines: [] };
-            }
-            batches[key].lines.push(p);
+            // ==========================================
+            // B. 通常火花のスタンプ描画（スピード線版）
+            // ==========================================
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = Math.max(0, Math.min(1.0, p.life));
+            
+            const texture = getParticleTexture(p.color);
+            
+            // 飛んでいる方向（角度）とスピードを計算
+            const angle = Math.atan2(p.vy, p.vx);
+            const speed = Math.hypot(p.vx, p.vy);
+            
+            // ★修正: 線を約1.3倍大きく（長く・太く）する
+            const renderWidth = (p.size || 2) * 6.0 * G_SCALE + speed * 3.0; 
+            const renderHeight = (p.size || 2) * 3.0 * G_SCALE; // 太さ
+            
+            // 【超高速化テクニック】 save/restoreを使わずに座標系を回転
+            ctx.translate(p.x, p.y);
+            ctx.rotate(angle);
+            
+            // 先頭（右端）が現在位置になるように、左へずらしてスタンプ
+            ctx.drawImage(
+                texture, 
+                -renderWidth, 
+                -renderHeight / 2, 
+                renderWidth, 
+                renderHeight
+            );
+            
+            // 回転と移動を逆に行って元に戻す（save/restoreより圧倒的に軽い）
+            ctx.rotate(-angle);
+            ctx.translate(-p.x, -p.y);
         }
     }
-
-    // 分類した通常火花を一括描画
-    ctx.save();
-    ctx.lineCap = 'round';
-    for (const key in batches) {
-        const batch = batches[key];
-        ctx.strokeStyle = batch.color;
-        ctx.lineWidth = batch.lineWidth;
-        ctx.globalAlpha = batch.alpha;
-        
-        ctx.beginPath();
-        for (let j = 0; j < batch.lines.length; j++) {
-            const p = batch.lines[j];
-            const length = 4.0;
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p.x - p.vx * length, p.y - p.vy * length);
-        }
-        ctx.stroke(); 
-    }
-    ctx.restore();
+    // ★ 分類した通常火花を一括描画（for (const key in batches)...）のブロックは丸ごと消去します
 
     // =========================================================
     // 4. リングエフェクト
@@ -625,3 +658,5 @@ function drawVisualEffects() {
         ctx.restore();
     }
 }
+
+
