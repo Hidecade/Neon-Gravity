@@ -59,7 +59,7 @@ const GRAPHICS_SETTINGS = {
 let currentGraphicsQuality = 'MEDIUM'; // 現在の品質
 
 // --- ステージ・難易度設定 ---
-const START_STAGE = 1;        // 開始ステージ
+const START_STAGE = 3;        // 開始ステージ
 const MAX_STAGE = 10;         // 最大ステージ
 
 // ステージごとの敵総出現数

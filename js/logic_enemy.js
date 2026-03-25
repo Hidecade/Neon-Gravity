@@ -1570,14 +1570,13 @@ function destroyEnemy(e) {
     }
     // --- ★変更：JellyfishとBubble共通の特殊撃破演出 ---
     else if (e.type === 'jellyfish' || e.type === 'bubble') {
-        AudioSys.playSE('explode_small', e.x, e.y); // 少し高い音が水泡が弾ける音に似ます
+        AudioSys.playSE('explode_small', e.x, e.y); 
         distortGrid(e.x, e.y, 50, 100);
 
-        // ★追加：バブルの場合はサイズ(1が最大, 3が最小)に応じて泡の数を変える
         let bubbleCount = 20;
         if (e.type === 'bubble') {
-            // size1(大)なら30個、size2(中)なら20個、size3(小)なら10個
-            bubbleCount = (4 - (e.size || 2)) * 5;
+            // ★元の3段階の泡の数に戻す (size1=30, size2=20, size3=10)
+            bubbleCount = (4 - (e.size || 2)) * 10;
         }
 
         for (let i = 0; i < bubbleCount; i++) {
@@ -1603,11 +1602,11 @@ function destroyEnemy(e) {
     // --- アステロイドの判定 ---
     else if (e.type === 'asteroid') {
 
-        // asteroidサイズに応じたスケール
+        // ★元の3段階のスケール計算に戻す
         const scale = (4 - (e.size || 2)) * 0.6;
 
         // 破片数
-        const shardCount = Math.floor((2 + Math.random() * 2) * scale);
+        const shardCount = Math.floor((2 + Math.random() * 2) * scale); 
 
         for (let i = 0; i < shardCount; i++) {
 
@@ -2045,9 +2044,15 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
 
     } else if (type === 'bubble' || type === 'asteroid') {
         const sizeFactor = 1.0 + (stage - 1) * 0.1;
+        
+        // HPは元の3段階のまま
         const hp = (size === 1 ? 4 : size === 2 ? 2 : 1) + Math.floor((stage - 1) * 0.5);
-        const baseScale = size === 1 ? 1.8 : size === 2 ? 1.1 : 0.6;
-        const finalScale = baseScale * sizeFactor;
+        
+        // ★修正: 元の baseScale (1.8 / 1.1 / 0.6) をそれぞれ1.2倍に変更
+        // 大: 1.8 * 1.2 = 2.16
+        // 中: 1.1 * 1.2 = 1.32
+        // 小: 0.6 * 1.2 = 0.72
+        const baseScale = size === 1 ? 2.16 : size === 2 ? 1.32 : 0.72;
 
         const baseSpdConst = (type === 'bubble') ? ENEMY_SPEEDS.BUBBLE : ENEMY_SPEEDS.ASTEROID;
         const moveSpeed = (baseSpdConst * 0.7) * (1 + size * 0.4) * spd * stageMag;
@@ -2061,7 +2066,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             type: type, variant: (type === 'bubble') ? 'bubble' : 'asteroid',
             size: size, angle: Math.random() * Math.PI * 2,
             rotSpd: (Math.random() - 0.5) * 0.1,
-            scale: finalScale, drop: 'none',
+            scale: baseScale * sizeFactor, drop: 'none',
             trackingStart: 300 + Math.random() * 200,
             isWarping: true
         });
@@ -2356,6 +2361,7 @@ function updateEnemies() {
         }
 
         // --- 分裂処理の修正 ---
+        // ★分裂の限界を「size < 3」に戻す
         if ((e.type === 'asteroid' || e.type === 'bubble') && e.size < 3 && !e.noSplit) {
             for (let i = 0; i < 2; i++) {
                 spawnEnemy(e.x, e.y, e.type, e.size + 1, e.variant);
