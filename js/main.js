@@ -1108,6 +1108,7 @@ DRAW TIME: ${typeof debugDrawTime !== 'undefined' ? debugDrawTime.toFixed(2) : "
 PLAYER X: ${px} Y: ${py}
 INVULN: ${pinv}
 WEAPON: ${pweapon}
+WEAPON POWER: ${typeof BULLET_CONFIG !== 'undefined' ? BULLET_CONFIG.PLAYER.POWER.toFixed(1) : "---"}
 SHIELD: ${pshield}
 CAMERA X: ${cx} Y: ${cy}
 OBJECTS
