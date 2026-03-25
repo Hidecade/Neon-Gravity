@@ -243,7 +243,7 @@ const BULLET_CONFIG = {
     PLAYER: {
         SPEED: 32.0,    // 自機の弾の速さ
         LIFE: 60,      // 自機の弾の射程（寿命）
-        POWER: 2.0     // 自機の弾の基本威力
+        POWER: 1.5     // 自機の弾の基本威力
     },
     ENEMY_NORMAL: {
         SPEED: 10.0,   // 雑魚敵の弾の速さ
