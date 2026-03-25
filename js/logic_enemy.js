@@ -2731,8 +2731,15 @@ function updateSpawnLogic() {
         // --- 通常ステージ ---
         const maxW = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage * 1.5;
         const activeWh = wormholes.filter(w => w.active).length;
-        const screenMax = STAGE_MAX_ON_SCREEN[stage - 1] || 40;
         
+        // ★修正：基本の最大数を取得
+        let screenMax = STAGE_MAX_ON_SCREEN[stage - 1] || 40;
+        
+        // ★追加：スマホ（MOBILE_P や MOBILE_L）の時は、最大敵数を 80% に減らす
+        if (typeof currentResolution !== 'undefined' && currentResolution.key.includes('MOBILE')) {
+            screenMax = Math.floor(screenMax * 0.80);
+        }
+
         const bossExists = enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
 
         // 修正：ノルマに達していない、またはボス戦中ならスポーン可能
