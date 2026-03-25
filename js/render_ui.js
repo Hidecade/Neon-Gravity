@@ -327,12 +327,28 @@ function drawDebugWorldOverlay() {
     if (DEBUG.showHitboxes && typeof enemyPool !== 'undefined' && Array.isArray(enemyPool.pool)) {
         ctx.strokeStyle = "rgba(255,80,80,0.95)";
         for (const e of enemyPool.pool) {
-            // ★追加: 非アクティブ（プール内待機中）のオブジェクトはスキップ
             if (!e || !e.active) continue;
-            const r = e.hitRadius || e.radius || e.size || 16;
+
+            // 基本となる当たり判定の半径を敵の種類から推測
+            let baseR = e.hitRadius || e.radius;
+            if (!baseR) {
+                if (e.type === 'asteroid' || e.type === 'bubble') {
+                    baseR = 22 * 0.85; // 岩・泡の基本当たり判定
+                } else if (e.type === 'boss' || e.type === 'battleship') {
+                    baseR = 40; // ボス系の基本判定
+                } else {
+                    baseR = 16; // その他の雑魚のデフォルト
+                }
+            }
+
+            // ★修正: e.scale と G_SCALE を掛け算して実際のサイズに合わせる
+            let currentScale = e.scale || 1.0;
+            if (typeof G_SCALE !== 'undefined') currentScale *= G_SCALE;
+
+            const finalRadius = baseR * currentScale;
 
             ctx.beginPath();
-            ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
+            ctx.arc(e.x, e.y, finalRadius, 0, Math.PI * 2);
             ctx.stroke();
         }
     }

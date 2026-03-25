@@ -16,7 +16,9 @@ let frame = 0;                  // 経過フレームカウント
 
 let debugFps = 0;
 let debugFrameCounter = 0;
-let debugLastFpsTime = performance.now();
+let debugLastFpsTime = performance.now();   // ロジック処理にかかった時間（ミリ秒）を保存する変数
+let debugLogicTime = 0;         // ロジック時間
+let debugDrawTime = 0;          // 描画にかかった時間
 
 let width, height;              // 現在のキャンバスサイズ
 let worldSize = 1500;           // ワールドサイズ
@@ -235,7 +237,7 @@ const createScorePopup = () => ({
 const enemyPool = new ObjectPool(createEnemy, 240);
 const particlePool = new ObjectPool(createParticle, 800);
 const ringPool = new ObjectPool(createRing, 100);
-const enemyBulletPool = new ObjectPool(createEnemyBullet, 500); // 敵弾は多めに確保
+const enemyBulletPool = new ObjectPool(createEnemyBullet, 500); 
 const playerBulletPool = new ObjectPool(createPlayerBullet, 100);
 const scorePopupPool = new ObjectPool(createScorePopup, 50);
 
@@ -772,7 +774,7 @@ function resize() {
     
     const isPortrait = vh > vw;
     if (currentResolution.key === "HD") {
-        baseAppScale *= 0.8;
+        baseAppScale *= 0.85;
     }
     else{
         if (isPortrait) {
@@ -984,8 +986,20 @@ function update() {
     if (typeof updateSpawnLogic === 'function') updateSpawnLogic();
     if (typeof updateWormholes === 'function') updateWormholes();
 
-    updateEntities();
+    // ==========================================
+    // ★追加：ここから時間の計測スタート
+    // ==========================================
+    const startTime = performance.now();
+
+    updateEntities(); // 敵や弾の移動、当たり判定など（一番重い処理）
+    
     if (typeof updateGrid === 'function') updateGrid();
+    if (typeof checkStageClear === 'function') checkStageClear();
+
+    // ★追加：計測終了し、かかった時間(ミリ秒)を記録
+    debugLogicTime = performance.now() - startTime;
+    // ==========================================
+
     if (typeof updateScorePopups === 'function') updateScorePopups();
     if (typeof checkStageClear === 'function') checkStageClear();
     if (typeof updateCamera === 'function') updateCamera();
@@ -1034,7 +1048,7 @@ function updateDebugOverlay() {
 
     if (!el) return;
 
-        // タイトルでは表示しない
+    // タイトルでは表示しない
     if (gameState === 'TITLE') {
         el.style.display = "none";
         return;
@@ -1079,23 +1093,22 @@ function updateDebugOverlay() {
     const cx = camera ? Math.round(camera.x) : 0;
     const cy = camera ? Math.round(camera.y) : 0;
 
+    // ★追加: currentResolution が未定義の時のエラーを防ぐための安全策
+    const resKey = typeof currentResolution !== 'undefined' ? currentResolution.key : "UNKNOWN";
+
     el.textContent =
         `[DEBUG] ${GAME_VERSION}
 FPS: ${debugFps}
 SCENE: ${gameState}
-STAGE: ${stage} / CURRENT: ${currentStage}
-SCORE: ${score}
 FRAME: ${frame}
-
-PLAYER
-X: ${px} Y: ${py}
+RESOLUTION: ${resKey}
+LOGIC TIME: ${typeof debugLogicTime !== 'undefined' ? debugLogicTime.toFixed(2) : "0.00"} ms
+DRAW TIME: ${typeof debugDrawTime !== 'undefined' ? debugDrawTime.toFixed(2) : "0.00"} ms
+PLAYER X: ${px} Y: ${py}
 INVULN: ${pinv}
 WEAPON: ${pweapon}
 SHIELD: ${pshield}
-
-CAMERA
-X: ${cx} Y: ${cy}
-
+CAMERA X: ${cx} Y: ${cy}
 OBJECTS
 ENEMIES: ${enemyCount}
 PLAYER BULLETS: ${bulletCount}
@@ -1105,7 +1118,6 @@ CRYSTALS: ${crystalCount}
 POWERUPS: ${powerupCount}
 MISSILES: ${missileCount}
 TOTAL: ${totalObjects}
-
 FLAGS
 F3 HUD: ${DEBUG.showOverlay ? "ON" : "OFF"}
 F4 HITBOX: ${DEBUG.showHitboxes ? "ON" : "OFF"}
@@ -1121,6 +1133,11 @@ F6 SPAWN: ${DEBUG.showSpawnPoints ? "ON" : "OFF"}`;
  * 画面全体の描画処理
  */
 function draw() {
+    // ==========================================
+    // ★追加：ここから描画時間の計測スタート
+    // ==========================================
+    const startTime = performance.now();
+
     ctx.save();
     ctx.scale(cameraScale, cameraScale);
     ctx.translate(-camera.x, -camera.y);
@@ -1141,7 +1158,6 @@ function draw() {
     if (typeof drawItems === 'function') drawItems();
     if (typeof drawVisualEffects === 'function') drawVisualEffects();
 
-
     if (typeof drawDebugWorldOverlay === 'function') drawDebugWorldOverlay();
 
     // UI要素描画
@@ -1151,6 +1167,11 @@ function draw() {
     if (typeof drawScorePopups === 'function') drawScorePopups();
     
     ctx.restore();
+
+    // ==========================================
+    // ★追加：計測終了し、かかった時間(ミリ秒)を記録
+    // ==========================================
+    debugDrawTime = performance.now() - startTime;
 }
 
 // =========================================================

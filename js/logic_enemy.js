@@ -1909,6 +1909,8 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             scale: 0.9,
         });
 
+        if (!e) return;
+
         const segmentCount = 8;
         const initialAngle = Math.atan2(vy, vx);
         for (let i = 0; i < segmentCount; i++) {
@@ -1977,6 +1979,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             rotZ: Math.random() * Math.PI,
             isWarping: true
         });
+        if (!leader) return;
         spawnedCount += 0.2;
 
         // 2. フォロワー機の生成ループ
@@ -2010,10 +2013,12 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
                 rotZ: Math.random() * Math.PI,
                 isWarping: true
             });
-            
-            // 配列の末尾を参照するのではなく、直接フォロワー機を格納
-            leader.followers.push(follower);
-            spawnedCount += 0.2;
+
+            // フォロワーが正常に作れた時だけ配列に追加
+            if (follower) {
+                leader.followers.push(follower);
+                spawnedCount += 0.2;
+            }
         }
 
     } else if (type === 'boss') {
@@ -2034,6 +2039,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             spawnMax: 150,
             isSpawning: true
         });
+        if (!e) return; // ★追加: 生成失敗（プールがいっぱい）の場合は以降の処理をスキップ
 
         // ボス専用の特殊なパラメータを追加でセット
         e.spawnX = sX;
@@ -2093,6 +2099,8 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             spawnMax: 240,
             isSpawning: true, variant: variant
         });
+        
+        if (!e) return
         
         // ボス・戦艦専用の特殊パラメータを直接セット
         e.spawnX = x;
@@ -2290,6 +2298,8 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             drop: dropType
         });
         
+        if (!e) return; // ★追加
+
         // ライトサイクル特有の初期設定
         e.history.push({ x: rx, y: ry }); // 履歴の初期化
         e.inActiveRange = true;           // 出現直後は判定を有効にする
