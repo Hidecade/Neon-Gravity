@@ -653,7 +653,7 @@ function updateCrystals() {
             }
 
             // 衛星（サテライト）追加ロジック
-            if (player.satellites.length < 12) {
+            if (player.satellites.length < MAX_SATELLITES) {
                 // 初期座標と角度を持たせて push
                 player.satellites.push({
                     x: player.x,
@@ -682,7 +682,7 @@ function updatePowerups() {
         const dist = Math.hypot(dx, dy) || 0.001;
 
         // --- 2. レベルアップアイテム専用：吸い寄せロジック ---
-        if (p.type === 'level') {
+        if (p.type === 'level' || p.type === 'point') {
             // 遠くても確実に自機へ向かう（距離に応じた加速）
             const pullSpeed = (2.0 + (dist * 0.04)) * SPEED_SCALE;
             const moveAmount = Math.min(dist, pullSpeed) * gameSpeed;
@@ -704,7 +704,6 @@ function updatePowerups() {
         // --- 3. 回収判定 ---
         if (dist < 30) {
             p.life = 0;
-            AudioSys.playSE('powerup');
 
         // ★修正：アイテムの回収を種別ごとにカウント（安全対策版）
             if (typeof window.playStats !== 'undefined' && window.playStats.items && window.playStats.items[p.type]) {
@@ -712,6 +711,7 @@ function updatePowerups() {
             }       
 
             if (p.type === 'laser') {
+                AudioSys.playSE('powerup');
                 if (player.overdriveTimer > 0) {
                     player.overdriveTimer = OVERDRIVE_DURATION;
                     player.maxHyperTimer = OVERDRIVE_DURATION;
@@ -738,6 +738,7 @@ function updatePowerups() {
                 distortGrid(player.x, player.y, 150, 300);
             }
             else if (p.type === 'level') {
+                AudioSys.playSE('powerup');
                 if (player.weaponLevel >= MAX_WEAPON_LEVEL) {
                     player.laserTimer = 0; 
                     
@@ -766,6 +767,7 @@ function updatePowerups() {
                 }
             }
             else if (p.type === 'shield') {
+                AudioSys.playSE('powerup');
                 // 最大値(PLAYER_BASE_SHIELD)を超えないように回復
                 player.shield = Math.min(PLAYER_BASE_SHIELD, player.shield + 10);
 
@@ -782,6 +784,37 @@ function updatePowerups() {
                     text: "SHIELD +10",
                     life: 60, alpha: 1, vy: -1.2
                 });
+            }
+            // ==========================================
+            // ★ ここから追加：Pアイテム（ポイント）取得時の処理
+            // ==========================================
+            else if (p.type === 'point') {
+                AudioSys.playSE('coin_system');
+                const POINT_SCORE = ENEMY_SCORES.coin; 
+                
+                // 1. スコア加算とUI更新
+                score += POINT_SCORE;
+                if (ui.score) ui.score.innerText = score.toString().padStart(6, '0');
+
+                // 2. スコアのポップアップ演出
+                if (typeof spawnScorePopupObj === 'function') {
+                    spawnScorePopupObj({
+                        x: player.x, 
+                        y: player.y - 20, 
+                        text: `+${POINT_SCORE}`, 
+                        life: 60, 
+                        alpha: 1, 
+                        vy: -1.2,
+                        // 描画側で色指定に対応していればオレンジ色にする用
+                        color: '#ffc000' 
+                    });
+                }
+
+                // 3. 効果音（上部で 'powerup' が鳴っていますが、別の音にしたい場合はここで上書き再生します）
+                // 例: コイン音や短い取得音がある場合
+                // if (typeof AudioSys !== 'undefined') {
+                //     AudioSys.playSE('coin'); // または 'score' など
+                // }
             }
 
 

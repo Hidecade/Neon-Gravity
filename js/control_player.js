@@ -304,7 +304,7 @@ function launchSatellites() {
     const baseRadius = 50; // 基本の攻撃半径（初期は自機の周辺のみ）
 
     // クリスタル最大数(12個)の時に、ちょうど maxRadius になるように1個あたりの増加量を自動計算
-    const bonusPerCrystal = (maxRadius - baseRadius) / 12;
+    const bonusPerCrystal = (maxRadius - baseRadius) / MAX_SATELLITES;
 
     const bombRadius = baseRadius + (crystalCount * bonusPerCrystal);
 

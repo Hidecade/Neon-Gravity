@@ -76,7 +76,6 @@ const SE_LIBRARY = {
 
         return { osc: null, duration: dur };
     },
-
     shoot: (ctx, t, g) => {
         const o = ctx.createOscillator();
         o.type = 'triangle';
@@ -475,6 +474,74 @@ const SE_LIBRARY = {
             n.connect(f); f.connect(ng); ng.connect(g);
             n.start(t); n.stop(t + dur);
         }
+        return { osc: null, duration: dur };
+    },
+    coin: (ctx, t, g) => {
+        const o = ctx.createOscillator();
+        o.type = 'sine'; // クリアで透明感のあるサイン波
+        
+        // 音程の動き
+        o.frequency.setValueAtTime(1200, t);
+        o.frequency.setValueAtTime(1600, t + 0.1);
+        
+        // 音量の動き
+        g.gain.setValueAtTime(0.08, t);
+        g.gain.setValueAtTime(0.08, t + 0.1);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+        
+        return { osc: o, duration: 0.45 };
+    },
+    coin_cyber: (ctx, t, g) => {
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth'; // エッジの効いたノコギリ波
+        
+        // 400Hzから3200Hzへ、一瞬で駆け上がる
+        o.frequency.setValueAtTime(400, t);
+        o.frequency.exponentialRampToValueAtTime(3200, t + 0.15);
+        
+        // 音量（アタックを鋭く、キレ良く消える）
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.08, t + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        
+        return { osc: o, duration: 0.3 };
+    },
+coin_system: (ctx, t, g) => {
+        const dur = 0.35; // 再生時間
+        
+        // --- 1音目（メインのピッチ） ---
+        const o1 = ctx.createOscillator();
+        o1.type = 'square'; // 機械的な矩形波
+        
+        // 全体的に音程を低く調整
+        o1.frequency.setValueAtTime(800, t);
+        o1.frequency.setValueAtTime(600, t + 0.05);
+        o1.frequency.setValueAtTime(1600, t + 0.1);
+        
+        // --- 2音目（ディチューン用） ---
+        const o2 = ctx.createOscillator();
+        o2.type = 'square';
+        
+        // 1音目から周波数を約1.5%ずらして、厚みと「うねり」を出す
+        o2.frequency.setValueAtTime(812, t);
+        o2.frequency.setValueAtTime(609, t + 0.05);
+        o2.frequency.setValueAtTime(1624, t + 0.1);
+        
+        // --- 音量の制御 ---
+        // 2つの音が重なって爆音にならないよう、少し控えめの音量(0.05)に設定
+        g.gain.setValueAtTime(0.05, t);
+        g.gain.setValueAtTime(0.05, t + 0.15);
+        g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        
+        // 2つのオシレーターを出力(g)に繋ぐ
+        o1.connect(g);
+        o2.connect(g);
+        
+        // 再生と停止のスケジュール
+        o1.start(t); o1.stop(t + dur);
+        o2.start(t); o2.stop(t + dur);
+        
+        // オシレーターを内部で2つ起動しているため osc には null を返す形式にします
         return { osc: null, duration: dur };
     },
 };

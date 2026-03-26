@@ -1583,7 +1583,7 @@ function updateWarpProcess() {
             if (dx < 80 && dy < hitRangeY) {
                 item.life = 0;
                 if (!isPowerup) {
-                    if (player.satellites.length < 12) {
+                    if (player.satellites.length < MAX_SATELLITES) {
                         player.satellites.push({ x: player.x, y: player.y, angle: Math.random() * Math.PI * 2 });
                     }
                     if (typeof createExplosion === 'function') createExplosion(item.x, item.y, '#0f0', 5);
@@ -2037,7 +2037,7 @@ function updateTraining() {
     isBossWarning = false;
     warningTimer = 0;
     wormholes = [];
-    if (player.satellites.length < 12) {
+    if (player.satellites.length < MAX_SATELLITES) {
         player.satellites.push({ x: player.x, y: player.y, angle: Math.random() * Math.PI * 2 });
     }
 

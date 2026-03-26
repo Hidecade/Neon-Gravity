@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.7.6";
+window.GAME_VERSION = "0.7.7";
 
 
 const DEBUG = {
@@ -92,6 +92,7 @@ const PLAYER_BASE_SPEED = 12;   // 自機の基本移動速度
 const PLAYER_BASE_SHIELD = 100; // シールド最大値
 const MAX_WEAPON_LEVEL = 7;     // ショット最大レベル
 const DEFAULT_WEAPON_LEVEL = 1; // 初期レベル
+const MAX_SATELLITES = 12;      // ★追加：サテライトの最大保有数
 
 // --- 敵（エネミー）設定 ---
 // 敵の基本移動速度
@@ -176,6 +177,7 @@ const ENEMY_SCORES = {
     sentinel: 150,
     sweeper: 150,
     lightcycle: 300,
+    coin: 100,
     default: 100
 };
 

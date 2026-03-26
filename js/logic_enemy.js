@@ -1710,20 +1710,27 @@ function destroyEnemy(e) {
     if (e.noDrop || e.drop === 'none') return;
     const itemProps = { x: e.x, y: e.y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4 };
 
-    // ★追加: 実際のドロップ内容を判定する
+    // 実際のドロップ内容を判定する
     let finalDropType = e.drop;
 
+    // ==========================================
+    // ★追加: ドロップする瞬間にクリスタルが満タンならPアイテムに変換
+    // ==========================================
+    if (finalDropType === 'crystal' && player.satellites && player.satellites.length >= MAX_SATELLITES) {
+        finalDropType = 'point'; // Pアイテムに変える
+    }
+
     if (finalDropType === 'level') {
-        // ★ 制限撤廃のため降格処理を削除し、そのままWアイテムを落とす
         levelItemsDroppedInStage++;
     }
 
     // ★変更: e.drop ではなく finalDropType で判定するように書き換える
-    if (finalDropType === 'level') powerups.push({ ...itemProps, type: 'level', life: 999999 });
+    if (finalDropType === 'level') powerups.push({ ...itemProps, type: 'level', life: ITEM_LIFE * 2 });
     else if (finalDropType === 'laser') powerups.push({ ...itemProps, type: 'laser', life: ITEM_LIFE });
     else if (finalDropType === 'invincible') powerups.push({ ...itemProps, type: 'invincible', life: ITEM_LIFE });
     else if (finalDropType === 'crystal') crystals.push({ ...itemProps, life: ITEM_LIFE });
     else if (finalDropType === 'shield') powerups.push({ ...itemProps, type: 'shield', life: ITEM_LIFE });
+    else if (finalDropType === 'point') powerups.push({ ...itemProps, type: 'point', life: ITEM_LIFE });
 
 // ★修正：出たアイテムの種類に合わせてカウント（安全対策版）
     if (['level', 'laser', 'invincible', 'crystal', 'shield'].includes(finalDropType)) {

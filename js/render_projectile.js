@@ -455,29 +455,74 @@ function drawItems() {
         else if (p.type === 'level') { color = '#0f0'; char = 'W'; }
         else if (p.type === 'invincible') { color = '#ff0'; char = 'I'; }
         else if (p.type === 'shield') { color = '#0ff'; char = 'S'; }
+        else if (p.type === 'point') { color = '#fff000'; char = 'P'; } // Pアイテムはオレンジ
 
         ctx.save();
         ctx.translate(p.x, p.y);
-        const scale = p.life > 60 ? 1 : p.life / 60;
-        ctx.scale(scale, scale);
 
-        // ==========================================
-        // ★修正：枠線の色と発光を明示的に指定
-        // ==========================================
-        ctx.strokeStyle = color;   // 枠線をアイテム色にする
-        ctx.lineWidth = 2;
+        // 寿命によるスケール（共通）
+        const baseScale = p.life > 60 ? 1 : p.life / 60;
 
-        if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 10;       // ネオン発光
-        ctx.shadowColor = color;
+        if (p.type === 'point') {
+          // =========================================================
+            // ★Pアイテム：垂直回転円盤 + 固定文字「P」
+            // =========================================================
+            const rotateSpeed = 0.1; // 回転速度
+            const angle = frame * rotateSpeed;
+            const xScale = Math.cos(angle); // -1 ～ 1 で変化（X方向の縮尺、円盤用）
 
-        ctx.strokeRect(-8, -8, 16, 16);
+            // 発光設定（共通）
+            if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 15;
+            ctx.shadowColor = color;
 
-        // 文字の描画
-        ctx.fillStyle = color;
-        ctx.font = 'bold 12px monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(char, 0, 0);
+            // 全体のサイズ設定
+            const itemRadius = 10; 
+
+            // --- 1. 固定文字「P」の描画 ---
+            // ★ユーザー要望：コアをやめて、回転しないPの文字にする
+            ctx.save();
+            // 寿命スケールのみ適用（xScaleを適用しないので常に正面を向く）
+            ctx.scale(baseScale, baseScale); 
+            
+            ctx.fillStyle = color;
+            ctx.font = 'bold 12px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(char, 0, 0); // charには既に 'P' が入っています
+            ctx.restore(); // 文字描画用の状態を戻す（xScaleを適用するため）
+
+            // --- 2. 回転する外側円盤の描画 ---
+            // ここで寿命スケールと回転スケールの両方を適用
+            ctx.save();
+            // ctx.scale(Xスケール, Yスケール)
+            ctx.scale(baseScale * xScale, baseScale); 
+
+            // 立体回転によって潰れた楕円（コインの側面）になります。
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            ctx.arc(0, 0, itemRadius, 0, Math.PI * 2); // 円を描画（スケールされて楕円になる）
+            ctx.stroke();
+            ctx.restore(); // 円盤描画用の状態を戻す
+
+        } else {
+            // =========================================================
+            // 他のアイテム（元の四角い枠線）
+            // =========================================================
+            ctx.scale(baseScale, baseScale); // 寿命スケールのみ
+            if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 10;
+            ctx.shadowColor = color;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(-8, -8, 16, 16);
+
+            // 文字の描画
+            ctx.fillStyle = color;
+            ctx.font = 'bold 12px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(char, 0, 0);
+        }
 
         ctx.restore();
     });
