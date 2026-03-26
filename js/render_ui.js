@@ -68,8 +68,13 @@ function updateUI() {
         ui.enemyBar.style.width = "100%";
         document.querySelector('.bar-label.enemy').innerText = `ENEMY: ∞`;
     } else {
-        const rawRemains = enemiesToSpawn - enemiesKilled;
+        // ==========================================
+        // ★修正：倒した数と逃げられた数を合計して、残り数を計算する
+        // ==========================================
+        const escaped = window.enemiesEscaped || 0;
+        const rawRemains = enemiesToSpawn - (enemiesKilled + escaped);
         const enemyRemains = Math.max(0, Math.ceil(rawRemains));
+        
         ui.enemyBar.style.width = `${(enemyRemains / enemiesToSpawn) * 100}%`;
         document.querySelector('.bar-label.enemy').innerText = `ENEMY: ${enemyRemains}`;
     }

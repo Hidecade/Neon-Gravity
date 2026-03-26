@@ -1812,11 +1812,15 @@ function updateEnemiesForDying() {
 }
 
 function updateWormholes() {
-    wormholes.forEach((w) => {
+wormholes.forEach((w) => {
         w.life--;
         if (w.active) {
             if (stage !== 9 && stage !== 10 && w.life > 60 && w.life % SPAWN_SETTINGS.SPAWN_INTERVAL === 0) {
-                const remaining = enemiesToSpawn - enemiesKilled;
+                
+                // ★修正：escaped を含めて remaining（残りノルマ） を正しく計算
+                const escaped = window.enemiesEscaped || 0;
+                const remaining = enemiesToSpawn - (enemiesKilled + escaped);
+                
                 if (!isBossSpawned && (remaining <= enemiesToSpawn * 0.2 || spawnedCount >= enemiesToSpawn)) {
                     triggerBossEncounter();
                     isBossSpawned = true;
@@ -2419,7 +2423,7 @@ function updateEnemies() {
         // 敵のプロパティとしてフラグを保存（プレイヤーの弾との判定に使うため）
         e.inActiveRange = inActiveRange;
 
-   // ▼▼▼ ここから追加: ワープイン演出（拡大・フェードイン）の進行 ▼▼▼
+        // ▼▼▼ ここから追加: ワープイン演出（拡大・フェードイン）の進行 ▼▼▼
         if (e.isWarping) {
             if (e.warpPercent === undefined) e.warpPercent = 0;
             
@@ -2435,73 +2439,88 @@ function updateEnemies() {
         // ========================================================
         // ★新規追加：タイムリミット（グリッド滞在限界）による強制ワープアウト
         // ========================================================
-        // ★修正：オブジェクトプールの使い回しバグ対策
-        // 敵のspawnIdが変わっていたら「新品の敵」とみなし、前回のgridLifeを強制リセット
         if (e.gridLifeSpawnId !== e.spawnId) {
             e.gridLifeSpawnId = e.spawnId;
             e.gridLife = undefined; 
-            // 点滅したままプールに回収された敵の透明度を元に戻す（ファントムのステルス初期値は除外）
             if (e.type !== 'phantom') e.alpha = 1.0; 
+            
+            e.isWarpingOut = false; // ★追加：消失フラグリセット
+            e.originalScale = undefined; // ★追加：スケール記憶のリセット
         }
 
         if (e.gridLife === undefined) {
-            // 初回に滞在時間を設定 (60フレーム＝約1秒)
             if (e.type === 'boss' || e.type === 'battleship') {
-                e.gridLife = Infinity; // 強力なボスは逃げない
+                e.gridLife = Infinity; 
             } else if (e.type === 'cube' || e.type === 'asteroid' || e.type === 'bubble' || e.type === 'sentinel' || e.type === 'sweeper') {
-                e.gridLife = 1200; // 20秒（動きが遅い・硬い敵は長く留まる）
+                e.gridLife = 1200; 
             } else if (e.type === 'hunter' || e.type === 'phantom' || e.type === 'eclipse' || e.type === 'fighter') {
-                e.gridLife = 600;  // 10秒（動きが速い危険な敵はすぐ消える）
+                e.gridLife = 600;  
             } else {
-                e.gridLife = 900;  // 15秒（標準的な敵）
+                e.gridLife = 900;  
             }
         }
 
+        // ========================================================
+        // ★新規追加：ワープアウト（波打ちフェードアウト）の進行処理
+        // ========================================================
+        if (e.isWarpingOut) {
+            e.warpOutTimer -= gameSpeed;
+            
+            e.invuln = 10; // 消失中は無敵
+            e.isDying = true; // 撃破数カウントや当たり判定を通さないため
+
+            if (e.warpOutTimer <= 0) {
+                // アニメーション完了で完全に消す
+                e.hp = 0;
+                e.isDead = true;
+                e.active = false;
+                e.isWarpingOut = false; 
+            }
+            return; // 消失中は以降の処理（移動など）をすべてスキップ
+        }
+        // ========================================================
+
         // ワープイン完了後から寿命を減らす
-        if (!e.isWarping && e.gridLife !== Infinity && !e.isDying && !e.isDead) {
+        // ★修正: !e.isWarpingOut の条件を追加
+        if (!e.isWarping && !e.isWarpingOut && e.gridLife !== Infinity && !e.isDying && !e.isDead) {
             e.gridLife -= gameSpeed;
 
-            // 残り3秒（180フレーム）を切ったら、空間維持が不安定になりチカチカ点滅する
             if (e.gridLife < 180) {
                 if (Math.floor(e.gridLife) % 6 < 3) {
-                    e.alpha = 0.2; // ノイズのように半透明になる
+                    e.alpha = 0.2; 
                 } else {
                     e.alpha = 1.0;
                 }
             }
 
-            // 寿命切れ（強制強制送還）
+            // 寿命切れ
             if (e.gridLife <= 0) {
-                // 空間が内側に歪んで吸い込まれる演出
-                if (typeof distortGrid === 'function') distortGrid(e.x, e.y, -60, 150);
-                
-                // シュゥゥンと中心に向かって収束するパーティクル
-                for (let i = 0; i < 15; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const dist = 30 + Math.random() * 20;
-                    spawnParticleObj({
-                        x: e.x + Math.cos(angle) * dist, 
-                        y: e.y + Math.sin(angle) * dist,
-                        vx: -Math.cos(angle) * (dist / 15), // 中心に向かって逆再生のように動く
-                        vy: -Math.sin(angle) * (dist / 15),
-                        color: e.color || '#0ff',
-                        life: 0.5,
-                        size: 2
-                    });
+
+                // ==========================================
+                // ★追加：逃亡した敵の数を「進行度」としてカウントする
+                // ==========================================
+                if (e.type !== 'asteroid' && e.type !== 'bubble' && e.type !== 'sweeper') {
+                    if (e.type === 'triangle') {
+                        window.enemiesEscaped = (window.enemiesEscaped || 0) + 0.2;
+                    } else {
+                        window.enemiesEscaped = (window.enemiesEscaped || 0) + 1;
+                    }
                 }
                 
-                // 吸い込まれた音
-                if (typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
+                // 空間が内側に歪んで吸い込まれる演出
+                if (typeof distortGrid === 'function') distortGrid(e.x, e.y, -60, 150);
 
-                // ★重要：通常の「撃破処理(destroyEnemy)」を通さずに消すことで、
-                // アイテムを落とさず、キル数にもカウントさせない（取り逃がし扱いになる）
-                e.hp = 0;
-                e.isDead = true;
-                e.active = false; // プールへ返却して画面から消す
-                return; // 以降の処理（自機との当たり判定など）をすべてスキップ
+                // ★修正: 即座に消さず、消失アニメーション状態へ移行
+                if (!e.isWarpingOut) {
+                    e.isWarpingOut = true;
+                    e.warpOutTimer = 60; // 1秒間のアニメーション
+                    e.warpOutDuration = 60; 
+                    
+                    if (typeof distortGrid === 'function') distortGrid(e.x, e.y, -60, 150);
+                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
+                }
             }
         }
-        // ========================================================
 
         // ========================================================
         // ★修正：ボスの死亡アニメーション（フェードアウト＆誘爆）
@@ -2850,13 +2869,14 @@ function updateSpawnLogic() {
             spawnWormhole();
         }
 
-        // ==========================================
+// ==========================================
         // ★ 追加：ボス出現のセーフティネット
         // ==========================================
         // 条件：プレイ中、ボス未出現、ワームホールなし、敵もいない、且つノルマ付近
-        const remaining = enemiesToSpawn - enemiesKilled;
+        const escaped = window.enemiesEscaped || 0; // ★追加
+        const remaining = enemiesToSpawn - (enemiesKilled + escaped); // ★修正
+        
         if (gameState === 'PLAYING' && !isBossSpawned && !isBossWarning && activeWh === 0 && currentEnemyCount === 0) {
-            // ノルマをほぼ達成している（残り20%以下）、または生成数が上限に達している場合
             if (remaining <= enemiesToSpawn * 0.2 || spawnedCount >= enemiesToSpawn) {
                 console.log("Safety Net: Triggering Boss Encounter");
                 triggerBossEncounter();

@@ -120,6 +120,9 @@ function startStage() {
     // 2. ゲーム内変数のリセット
     spawnedCount = 0;
     enemiesKilled = 0;
+    
+    window.enemiesEscaped = 0;  // ワープアウト（逃亡）した敵の数をリセット
+
     isStageClear = false;
     isBossSpawned = false;
     isBossWarning = false;

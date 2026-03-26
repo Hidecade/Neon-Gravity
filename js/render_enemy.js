@@ -2,11 +2,94 @@
 // renderer.js - 描画専門
 // =========================================================
 
+
+// ==========================================
+// ★追加：敵が消失（isWarpingOut）中の専用描画関数
+// オフスクリーンCanvasを利用したラスタースクロール（波打ち）実装
+// ==========================================
+const rasterCanvas = document.createElement('canvas');
+const rasterCtx = rasterCanvas.getContext('2d');
+
+function drawWarpingOutEnemy(ctx, e) {
+    const animPercent = Math.max(0, e.warpOutTimer / e.warpOutDuration); // 1.0 -> 0.0
+    const invPercent = 1.0 - animPercent; // 0.0 -> 1.0
+
+    // オフスクリーンキャンバスのサイズ（敵が収まる余裕を持ったサイズ）
+    const boxSize = 200;
+    rasterCanvas.width = boxSize;
+    rasterCanvas.height = boxSize;
+    rasterCtx.clearRect(0, 0, rasterCanvas.width, rasterCanvas.height);
+
+    // 敵の座標を一時的に(0,0)にしてオフスクリーンの中央に描画させる
+    const tempX = e.x;
+    const tempY = e.y;
+    e.x = 0;
+    e.y = 0;
+
+    rasterCtx.save();
+    rasterCtx.translate(boxSize / 2, boxSize / 2);
+    
+    // 敵の種類ごとの描画関数を呼び出して裏画面に焼き付ける
+    if (e.type === 'dragon') drawDragonEnemy(rasterCtx, e);
+    else if (e.type === 'triangle') drawTriangleEnemy(rasterCtx, e);
+    else if (e.type === 'cube') drawCubeEnemy(rasterCtx, e);
+    else if (e.type === 'tadpole') drawTadpoleEnemy(rasterCtx, e);
+    else if (e.type === 'asteroid' || e.type === 'bubble') drawAsteroidEnemy(rasterCtx, e);
+    else if (e.type === 'hunter') drawHunterEnemy(rasterCtx, e);
+    else if (e.type === 'phantom') drawPhantomEnemy(rasterCtx, e);
+    else if (e.type === 'eclipse') drawEclipseEnemy(rasterCtx, e);
+    else if (e.type === 'jellyfish') drawJellyfishEnemy(rasterCtx, e);
+    else if (e.type === 'sentinel') drawSentinelEnemy(rasterCtx, e);
+    else if (e.type === 'sweeper') drawSweeperEnemy(rasterCtx, e);
+    else if (e.type === 'lightcycle') drawLightcycle(rasterCtx, e);
+    else if (e.type === 'fighter') drawFighterJet(rasterCtx, e);
+
+    rasterCtx.restore();
+
+    // 座標を元に戻す
+    e.x = tempX;
+    e.y = tempY;
+
+    // --- メインCanvasへの波打ち描画 ---
+    ctx.save();
+    ctx.globalAlpha = animPercent; // フェードアウト
+    ctx.translate(e.x, e.y);
+
+    // 消えるにつれて少し縮小させる
+    const currentScale = 1.0 - (invPercent * 0.4);
+    ctx.scale(currentScale, currentScale);
+
+    // 波の振幅と速度（消えかけほど激しく波打つ）
+    const amplitude = invPercent * 50; 
+    const frequency = 0.3; 
+    const speed = e.warpOutTimer * 0.5;
+
+    for (let y = 0; y < rasterCanvas.height; y++) {
+        // y座標ごとにサイン波で横へのズレを計算
+        const offsetX = Math.sin(speed + y * frequency) * amplitude;
+
+        const dx = offsetX - rasterCanvas.width / 2;
+        const dy = y - rasterCanvas.height / 2;
+
+        // 裏画面から「縦1ピクセルのライン」を切り出してズラして描画
+        ctx.drawImage(rasterCanvas, 0, y, rasterCanvas.width, 1, dx, dy, rasterCanvas.width, 1);
+    }
+    ctx.restore();
+}
+
 function drawEnemies() {
     enemyPool.pool.forEach(e => {
         // ★追加: 非アクティブ（プール内待機中）のオブジェクトは描画しない
         if (!e.active) return;
 
+        // ==========================================
+        // ★追加：ワープアウト（消失）中の特別描画
+        // ==========================================
+        if (e.isWarpingOut) {
+            drawWarpingOutEnemy(ctx, e);
+            return; // 通常描画はスキップ
+        }
+        
         const margin = (e.type === 'boss' || e.type === 'dragon' || e.type === 'battleship') ? 350 : 100;
         if (!isOnScreen(e, margin)) return;
 
