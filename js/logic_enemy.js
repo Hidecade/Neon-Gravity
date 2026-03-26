@@ -1331,6 +1331,14 @@ function applyJellyfishAsteroidCollisions(e) {
 
 function destroyEnemy(e) {
 
+    // ==========================================
+    // ★修正：撃破カウントを関数の最初に移動
+    // （ドロップがない敵でも確実にカウントされるようにする）
+    // ==========================================
+    if (typeof window.playStats !== 'undefined') {
+        window.playStats.enemiesKilled++;
+    }
+
     // --- ボス撃破時の処理 ---
     if (e.type === 'boss') {
         let shouldClearMinions = false;
@@ -1717,16 +1725,11 @@ function destroyEnemy(e) {
     else if (finalDropType === 'crystal') crystals.push({ ...itemProps, life: ITEM_LIFE });
     else if (finalDropType === 'shield') powerups.push({ ...itemProps, type: 'shield', life: ITEM_LIFE });
 
-    // ★修正：出たアイテムの種類に合わせてカウント（安全対策版）
+// ★修正：出たアイテムの種類に合わせてカウント（安全対策版）
     if (['level', 'laser', 'invincible', 'crystal', 'shield'].includes(finalDropType)) {
         if (typeof window.playStats !== 'undefined' && window.playStats.items && window.playStats.items[finalDropType]) {
             window.playStats.items[finalDropType].spawned++;
         }
-    }
-
-    // ついでに撃破カウントも安全対策
-    if (typeof window.playStats !== 'undefined') {
-        window.playStats.enemiesKilled++;
     }
 }
 
