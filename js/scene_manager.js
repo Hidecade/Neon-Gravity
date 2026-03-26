@@ -430,10 +430,15 @@ function checkStageClear() {
                 extraClass: "epic-clear"
             });
 
-            // ★修正：ALL CLEARの文字が出た「直後」に成績ボードが出るように1秒遅らせる
+            // ★修正：メッセージが完全に消え去ってから（3.5秒後）に成績ボードを出す
+            // 全クリア時は showFinalResultBoard（赤いボード）を呼び出すように変更
             setTimeout(() => {
-                if (typeof showStageResultBoard === 'function') showStageResultBoard();
-            }, 1000);
+                if (typeof window.showFinalResultBoard === 'function') {
+                    window.showFinalResultBoard();
+                } else if (typeof showStageResultBoard === 'function') {
+                    showStageResultBoard();
+                }
+            }, 3500);
 
             window.isFireworksActive = true;
             if (typeof triggerRandomFireworkLoop === 'function') {
@@ -462,13 +467,14 @@ function checkStageClear() {
 
             showGameMessage({
                 main: `STAGE ${stage} CLEAR`,
-                glowColor: STAGE_THEMES[stage] || '#00bbff'
+                glowColor: STAGE_THEMES[stage] || '#00bbff',
+                duration: 2000 // ★追加：表示時間を2秒に短縮（デフォルトは3000ms前後の場合が多いです）
             });
 
-            // ★修正：STAGE CLEARの文字が出た「直後」に成績ボードが出るように1秒遅らせる
+            // ★修正：メッセージが完全に消え去ってから（3.5秒後）に成績ボードを出す
             setTimeout(() => {
-                if (typeof showStageResultBoard === 'function') showStageResultBoard();
-            }, 1000);
+                if (typeof window.showStageResultBoard === 'function') window.showStageResultBoard();
+            }, 2500);
         }
     }
 }
@@ -1619,7 +1625,7 @@ function updateWarpProcess() {
     if (typeof updateScorePopups === 'function') updateScorePopups();
 
     // =========================================================
-    // ★大修正：機体が画面外に出た瞬間の処理
+    // 機体が画面外に出た瞬間の処理
     // =========================================================
     if (player.y < camera.y - 50) {
         player.visualScale *= 0.85;
@@ -2073,7 +2079,7 @@ function fadeInElement(element, display = 'flex') {
 
 // ==========================================
 // ★変更：ステージクリア時の成績ポップアップ
-// (iPhone縦画面はみ出し防止・絶対収まるレイアウト版)
+// (iPhone横向き対応・低解像度コンパクト版)
 // ==========================================
 window.showStageResultBoard = function() {
     if (typeof window.playStats === 'undefined') return;
@@ -2090,7 +2096,6 @@ window.showStageResultBoard = function() {
     const enemySpawned = stats.enemiesSpawned || 0;
     const enemyRate = enemySpawned > 0 ? Math.floor((enemyKilled / enemySpawned) * 100) : 0;
 
-    // ★修正：(%)の幅を 4.5em -> 3.8em に少し詰め、マージンも削減
     const getStatStr = (type) => {
         const stat = stats.items && stats.items[type];
         
@@ -2120,12 +2125,19 @@ window.showStageResultBoard = function() {
         document.getElementById('ui').appendChild(resultDiv);
     }
 
-    // ★修正：max-width: 95vw; box-sizing: border-box; を追加して画面外へのはみ出しを完全ブロック
-    // ★修正：paddingを少しスリムに(1.2em)、フォントサイズの最小値を少し小さく(0.75rem)
+    // ★修正：<style>を追加し、画面の高さが低い時(max-height: 500px)は強制的にコンパクト化
     resultDiv.innerHTML = `
-        <div style="
+        <style>
+            @media screen and (max-height: 500px) {
+                #stage-report-panel { 
+                    font-size: 0.65rem !important; 
+                    padding: 0.8em !important; 
+                }
+            }
+        </style>
+        <div id="stage-report-panel" style="
             position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0, 15, 25, 0.9); border: 2px solid #0ff;
+            background: rgba(0, 15, 25, 0.3); border: 2px solid #0ff;
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); border-radius: 8px;
             padding: 1.2em 1.2em; color: #fff; font-family: 'Orbitron', sans-serif;
             text-align: center; z-index: 1000; width: max-content; min-width: 280px; max-width: 95vw; box-sizing: border-box; pointer-events: none;
@@ -2208,7 +2220,7 @@ window.showStageResultBoard = function() {
 
 // ==========================================
 // ★追加：ゲームオーバー時の「全ステージ総合」成績ポップアップ
-// (iPhone縦画面はみ出し防止・絶対収まるレイアウト版)
+// (iPhone横向き対応・低解像度コンパクト版)
 // ==========================================
 window.showFinalResultBoard = function() {
     if (typeof window.playStats === 'undefined' || typeof window.pastPlayStats === 'undefined') return;
@@ -2256,16 +2268,26 @@ window.showFinalResultBoard = function() {
             </div>`;
     };
 
+    // ★修正：<style>を追加し、画面の高さが低い時は強制的にコンパクト化、マージンも詰める
     const html = `
-        <div id="final-stats-board" style="
-            background: rgba(15, 0, 5, 0.9); border: 2px solid #f05;
-            box-shadow: 0 0 20px rgba(255, 0, 85, 0.5); border-radius: 8px;
+        <style>
+            @media screen and (max-height: 500px) {
+                #final-report-panel { 
+                    font-size: 0.65rem !important; 
+                    padding: 0.6em !important; 
+                    margin-top: 5px !important;
+                }
+            }
+        </style>
+        <div id="final-report-panel" style="
+            background: rgba(0, 15, 25, 0.3); border: 2px solid #0ff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); border-radius: 8px;
             padding: 1.2em 1.2em; color: #fff; font-family: 'Orbitron', sans-serif;
             text-align: center; margin: 20px auto 0 auto;
             width: max-content; min-width: 280px; max-width: 95vw; box-sizing: border-box;
             font-size: clamp(0.75rem, 2vw, 1.2rem);
         ">
-            <div style="font-size: 1.3em; color: #f05; margin-bottom: 0.6em; border-bottom: 2px solid rgba(255,0,85,0.5); padding-bottom: 0.3em; letter-spacing: 2px; font-weight: bold;">
+            <div style="font-size: 1.3em; color: #0ff; margin-bottom: 0.6em; border-bottom: 2px solid rgba(0,255,255,0.5); padding-bottom: 0.3em; letter-spacing: 2px; font-weight: bold;">
                 TOTAL REPORT
             </div>
             
@@ -2334,6 +2356,10 @@ window.showFinalResultBoard = function() {
     if (resultContainer) {
         const oldBoard = document.getElementById('final-stats-board');
         if (oldBoard) oldBoard.remove();
+        // ID変更により二重表示を防ぐための追記
+        const oldBoard2 = document.getElementById('final-report-panel');
+        if (oldBoard2) oldBoard2.remove();
+        
         resultContainer.insertAdjacentHTML('afterend', html);
     }
 };

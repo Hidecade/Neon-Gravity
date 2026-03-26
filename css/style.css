@@ -1267,56 +1267,61 @@ canvas {
 }
 
 /* ========================================================
-   ★新規追加：画面の高さが低いデバイス（iPhone横向きなど）専用のスタイル
-   （max-height: 600px 以下の時に適用されます）
+   ★ ネームエントリー画面（iPhone 横向き等・低解像度対応）
+   上下の余白と各要素を極限まで縮小し、画面内に収める最強の設定
    ======================================================== */
-@media screen and (max-height: 600px) {
+@media screen and (max-height: 500px) {
     
-    /* 1. ネームエントリー画面全体のコンテナ（IDやクラス名はご自身のコードに合わせてください） */
-    #name-entry-screen,
-    .ranking-container {
-        padding: 10px !important; /* 上下の余白を極限まで縮小 */
+    /* 1. ネームエントリー画面全体のコンテナ */
+    #name-input-area {
+        justify-content: center !important; 
+        padding-top: 5px !important;
+        padding-bottom: 5px !important;
+        overflow-y: auto !important; /* 万が一はみ出してもスクロールできるようにする */
     }
 
-    /* 2. タイトル「REGISTER TO WORLD RANKING?」 */
-    #name-entry-screen h2,
-    .ranking-container h2 {
-        font-size: 1.2rem !important; /* 文字を小さく */
-        margin-top: 5px !important;   /* 上マージンを削減 */
-        margin-bottom: 5px !important;/* 下マージンを削減 */
+    /* 2. 「CONGRATULATIONS!」タイトル（もしあれば） */
+    #name-input-area #clear-congrats-msg {
+        font-size: 20px !important; /* 36px -> 20px */
+        margin-top: 2px !important;
+        margin-bottom: 2px !important; /* 10px -> 2px */
     }
 
-    /* 3. 名前入力フィールドを包むコンテナ */
-    #name-entry-screen .input-container,
-    .ranking-container .input-field-wrapper {
-        margin-bottom: 8px !important; /* 下の隙間を縮小 */
+    /* 3. 「SCORE: XXXXXX」などの上部スコア表示 */
+    #name-input-area #result-score-display {
+        font-size: 18px !important; /* 32px -> 18px */
+        margin-bottom: 4px !important; /* 20px -> 4px */
     }
 
-    /* 4. 実際の入力フィールド（[ NEON ] の部分） */
-    #name-entry-screen #player-name-input,
-    .ranking-container input[type="text"] {
-        font-size: 1.5rem !important; /* 入力文字サイズを少し縮小 */
-        padding: 5px !important;     /* 内側の余白を縮小 */
-        height: auto !important;     /* 高さを自動調整に */
+    /* 4. 「REGISTER TO WORLD RANKING?」のテキスト */
+    #name-input-area p {
+        font-size: 11px !important; /* 16px -> 11px */
+        margin-top: 2px !important;
+        margin-bottom: 4px !important; /* 10px -> 4px */
+        line-height: 1.2 !important; /* 1行を狭くする */
     }
 
-    /* 5. スコア表示（YOUR SCORE: XXXXXX） */
-    #name-entry-screen .result-score,
-    .ranking-container .final-score-display {
-        font-size: 1rem !important;   /* 文字を小さく */
-        margin-bottom: 8px !important;/* 下の隙間を縮小 */
+    /* 5. 名前入力フォーム（[ ENTER NAME ]） */
+    #name-input-area #player-name-input {
+        font-size: 14px !important; /* 18~24px -> 14px */
+        padding: 3px 6px !important; /* 12px -> 3px */
+        margin-bottom: 6px !important; /* 16px -> 6px */
+        height: auto !important; /* 高さを自然に */
+        width: 60% !important; /* 横幅を少し狭くする */
     }
 
-    /* 6. ボタン（SUBMIT / CANCEL）を包むコンテナ */
-    #name-entry-screen .button-container,
-    .ranking-container .action-buttons {
-        gap: 10px !important; /* ボタン同士の隙間を縮小 */
+    /* 6. SUBMIT / SKIP ボタンの行間・隙間 */
+    #name-input-area .btn-row {
+        margin-top: 4px !important; /* 14px -> 4px */
+        gap: 10px !important; /* 30px -> 10px */
+        margin-bottom: 5px !important;
     }
 
-    /* 7. ボタン自体のスタイル */
-    #name-entry-screen button,
-    .ranking-container button {
-        font-size: 0.9rem !important;   /* 文字を小さく */
-        padding: 8px 16px !important; /* ボタンを小さく（上下左右の余白を削減） */
+    /* 7. SUBMIT / SKIP ボタン本体のサイズ */
+    #name-input-area .menu-btn.btn-small {
+        min-width: 90px !important; /* 140px -> 90px */
+        padding: 5px 10px !important; /* 8px -> 5px */
+        font-size: 11px !important; /* 13px -> 11px */
+        line-height: 1 !important; /* 文字の高さを詰める */
     }
 }

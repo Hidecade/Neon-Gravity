@@ -974,7 +974,9 @@ function update() {
     // ステージクリア後の待機シーケンス
     if (isStageClear && !isWarpingOut) {
         stageClearTimer++;
-        const waitTime = (stage === MAX_STAGE) ? 900 : 180;
+        // 通常ステージの待ち時間（デフォルト 180フレーム = 約3秒）を増やします
+        // 例: 300フレーム（約5秒）に変更
+        const waitTime = (stage === MAX_STAGE) ? 900 : 300; 
 
         if (stageClearTimer === waitTime) {
             hideGameMessage();   // メッセージフェードアウト
@@ -985,7 +987,7 @@ function update() {
 
             if (stage === MAX_STAGE) window.isFireworksActive = false;
         }
-    }
+    }   
 
     // 脱出ワープ演出中 (排他制御)
     if (isWarpingOut) {

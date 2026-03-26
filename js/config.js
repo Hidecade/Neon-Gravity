@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.7.4";
+window.GAME_VERSION = "0.7.5";
 
 
 const DEBUG = {
@@ -64,7 +64,7 @@ const MAX_STAGE = 10;         // 最大ステージ
 
 // ステージごとの敵総出現数
 const STAGE_ENEMY_COUNTS = [
-    6,  // Stage 1
+    60,  // Stage 1
     80,  // Stage 2
     70,  // Stage 3
     120, // Stage 4
