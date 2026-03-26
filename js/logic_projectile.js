@@ -647,6 +647,11 @@ function updateCrystals() {
         if (dist < 30) { // 判定距離（少し広めに30px）
             c.life = 0;
 
+            // ★修正：クリスタルの回収をカウント（安全対策版）
+            if (typeof window.playStats !== 'undefined' && window.playStats.items && window.playStats.items['crystal']) {
+                window.playStats.items['crystal'].collected++;
+            }
+
             // 衛星（サテライト）追加ロジック
             if (player.satellites.length < 12) {
                 // 初期座標と角度を持たせて push
@@ -700,6 +705,11 @@ function updatePowerups() {
         if (dist < 30) {
             p.life = 0;
             AudioSys.playSE('powerup');
+
+        // ★修正：アイテムの回収を種別ごとにカウント（安全対策版）
+            if (typeof window.playStats !== 'undefined' && window.playStats.items && window.playStats.items[p.type]) {
+                window.playStats.items[p.type].collected++;
+            }       
 
             if (p.type === 'laser') {
                 if (player.overdriveTimer > 0) {
@@ -773,6 +783,8 @@ function updatePowerups() {
                     life: 60, alpha: 1, vy: -1.2
                 });
             }
+
+
         }
     });
     // 取得済み(life=0)または時間切れのものを削除

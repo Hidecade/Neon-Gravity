@@ -1384,6 +1384,12 @@ function destroyEnemy(e) {
 
         // ボス撃破の報酬（シールド回復）を確定ドロップ
         powerups.push({ x: e.x, y: e.y, vx: 0, vy: 0, type: 'shield', life: 600 });
+        
+        // ★修正：シールドの出現をカウント（安全対策版）
+        if (typeof window.playStats !== 'undefined' && window.playStats.items && window.playStats.items['shield']) {
+            window.playStats.items['shield'].spawned++;
+        }
+        
     }
     // --- ラスボス（Stage 10 / Battleship） ---
     else if (e.type === 'battleship') {
@@ -1710,6 +1716,18 @@ function destroyEnemy(e) {
     else if (finalDropType === 'invincible') powerups.push({ ...itemProps, type: 'invincible', life: ITEM_LIFE });
     else if (finalDropType === 'crystal') crystals.push({ ...itemProps, life: ITEM_LIFE });
     else if (finalDropType === 'shield') powerups.push({ ...itemProps, type: 'shield', life: ITEM_LIFE });
+
+    // ★修正：出たアイテムの種類に合わせてカウント（安全対策版）
+    if (['level', 'laser', 'invincible', 'crystal', 'shield'].includes(finalDropType)) {
+        if (typeof window.playStats !== 'undefined' && window.playStats.items && window.playStats.items[finalDropType]) {
+            window.playStats.items[finalDropType].spawned++;
+        }
+    }
+
+    // ついでに撃破カウントも安全対策
+    if (typeof window.playStats !== 'undefined') {
+        window.playStats.enemiesKilled++;
+    }
 }
 
 function applySeparation(e) {

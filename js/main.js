@@ -76,6 +76,16 @@ let stage10Timer = 0;           // 経過時間
 let stage10BeatCount = 0;       // ビート演出カウント
 let stage10SpawnTimer = 0;      // ラスボス出現専用タイマー
 
+// ★追加：プレイ成績の記録用オブジェクト
+let playStats = {
+    startTime: 0,
+    endTime: 0,
+    enemiesSpawned: 0,
+    enemiesKilled: 0,
+    itemsSpawned: 0,
+    itemsCollected: 0
+};
+
 // =========================================================
 // 3. プレイヤー（自機）＆ 入力データ
 // =========================================================
@@ -443,6 +453,10 @@ function spawnEnemyObj(options) {
     if (!e.trail) e.trail = [];
     e.trail.length = 0;
 
+    if (e && typeof window.playStats !== 'undefined') {
+        window.playStats.enemiesSpawned++;
+    }
+    
     return e;
 }
 

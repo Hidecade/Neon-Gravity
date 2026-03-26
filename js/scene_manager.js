@@ -82,6 +82,16 @@ function startGame() {
     ui.enemyBar.style.width = "100%";
     ui.pauseBtn.style.display = 'flex';
 
+    // ★追加：成績のリセットとタイム計測開始
+    if (typeof playStats !== 'undefined') {
+        playStats.startTime = performance.now();
+        playStats.endTime = 0;
+        playStats.enemiesSpawned = 0;
+        playStats.enemiesKilled = 0;
+        playStats.itemsSpawned = 0;
+        playStats.itemsCollected = 0;
+    }
+
     gameState = 'PLAYING';
 
     // ステージ開始ロジックへ移行
@@ -101,6 +111,12 @@ function startStage() {
     //hideGameMessage(true); 
     if (ui.bossContainer) ui.bossContainer.style.display = 'none';
 
+    const stageBoard = document.getElementById('stage-result-board');
+    if (stageBoard) {
+        stageBoard.style.display = 'none';
+        stageBoard.style.opacity = '0';
+    }
+
     // 2. ゲーム内変数のリセット
     spawnedCount = 0;
     enemiesKilled = 0;
@@ -114,6 +130,52 @@ function startStage() {
     player.warpTimer = 0;
     player.warpSoundPlayed = false;
     isWarpingOut = false; // グローバル変数の初期化も確実に行う
+
+    // ==========================================
+    // ステージごとの成績リセットと、過去ステージの合算
+    // ==========================================
+    if (stage === 1 || typeof window.pastPlayStats === 'undefined') {
+        // 最初から遊ぶ時は、合計用データもゼロにする
+        window.pastPlayStats = {
+            totalTime: 0,
+            enemiesSpawned: 0,
+            enemiesKilled: 0,
+            items: {
+                level: { spawned: 0, collected: 0 },
+                laser: { spawned: 0, collected: 0 },
+                shield: { spawned: 0, collected: 0 },
+                invincible: { spawned: 0, collected: 0 },
+                crystal: { spawned: 0, collected: 0 }
+            }
+        };
+    } else if (typeof window.playStats !== 'undefined') {
+        // ステージ2以降に進んだ時、クリアした直前のステージ成績を過去分に加算する
+        const endTime = window.playStats.endTime || performance.now();
+        window.pastPlayStats.totalTime += (endTime - window.playStats.startTime);
+        window.pastPlayStats.enemiesSpawned += window.playStats.enemiesSpawned;
+        window.pastPlayStats.enemiesKilled += window.playStats.enemiesKilled;
+        
+        ['level', 'laser', 'shield', 'invincible', 'crystal'].forEach(type => {
+            window.pastPlayStats.items[type].spawned += window.playStats.items[type].spawned;
+            window.pastPlayStats.items[type].collected += window.playStats.items[type].collected;
+        });
+    }
+
+    // 現在のステージ用のデータをリセット
+    window.playStats = {
+        startTime: performance.now(),
+        endTime: 0,
+        enemiesSpawned: 0,
+        enemiesKilled: 0,
+        items: {
+            level: { spawned: 0, collected: 0 },
+            laser: { spawned: 0, collected: 0 },
+            shield: { spawned: 0, collected: 0 },
+            invincible: { spawned: 0, collected: 0 },
+            crystal: { spawned: 0, collected: 0 }
+        }
+    };
+    // ==========================================
 
     // 特殊ステージ用の変数をリセット
     if (stage === 9) {
@@ -343,7 +405,6 @@ function checkStageClear() {
         stageClearTimer = 0;
 
         // クリア演出中は操作UIを隠す
-        //if (ui.controls) ui.controls.style.display = 'none';
         if (ui.pauseBtn) ui.pauseBtn.style.display = 'none';
 
         // --- 演出分岐 ---
@@ -365,6 +426,11 @@ function checkStageClear() {
                 type: "gold",
                 extraClass: "epic-clear"
             });
+
+            // ★修正：ALL CLEARの文字が出た「直後」に成績ボードが出るように1秒遅らせる
+            setTimeout(() => {
+                if (typeof showStageResultBoard === 'function') showStageResultBoard();
+            }, 1000);
 
             window.isFireworksActive = true;
             if (typeof triggerRandomFireworkLoop === 'function') {
@@ -395,6 +461,11 @@ function checkStageClear() {
                 main: `STAGE ${stage} CLEAR`,
                 glowColor: STAGE_THEMES[stage] || '#00bbff'
             });
+
+            // ★修正：STAGE CLEARの文字が出た「直後」に成績ボードが出るように1秒遅らせる
+            setTimeout(() => {
+                if (typeof showStageResultBoard === 'function') showStageResultBoard();
+            }, 1000);
         }
     }
 }
@@ -438,7 +509,18 @@ async function showGameOver() {
     if (ui.bossContainer) ui.bossContainer.style.display = 'none';
     ui.pauseBtn.style.display = 'none';
 
-    document.getElementById('result-score-display').innerText = `SCORE: ${score.toLocaleString()}`;
+    const scoreDisplay = document.getElementById('result-score-display');
+    if (scoreDisplay) {
+        scoreDisplay.innerText = `SCORE: ${score.toLocaleString()}`;
+        // ★追加：スマホ横画面ではみ出さないように、文字サイズと下の余白を小さく上書きする
+        scoreDisplay.style.fontSize = '22px';       // 元の32pxから22pxに縮小
+        scoreDisplay.style.marginBottom = '10px';   // 下の隙間も20pxから10pxに縮める
+    }
+
+    // 全ステージ総合レポートをゲームオーバー画面に表示する
+    if (typeof showFinalResultBoard === 'function') {
+        showFinalResultBoard();
+    }
 
     try {
         await waitForFirebase();
@@ -611,6 +693,10 @@ function returnToTitle() {
     // UIの表示状態
     ui.gameoverOverlay.style.display = 'none';
     ui.titleOverlay.style.display = 'flex';
+
+    // ★追加：成績ボードを確実に隠す
+    const stageBoard = document.getElementById('stage-result-board');
+    if (stageBoard) stageBoard.style.display = 'none';
 
     ui.ostOverlay.style.display = 'none';
     ui.controls.style.display = 'none';
@@ -1548,7 +1634,8 @@ function updateWarpProcess() {
             const uiElements = [
                 document.querySelector('.hud-row'),
                 document.getElementById('minimap-container'),
-                document.getElementById('controls')
+                document.getElementById('controls'),
+                document.getElementById('stage-result-board') // ★追加：成績ボードも一緒にフェードアウト
             ];
             uiElements.forEach(el => {
                 if (el) {
@@ -1980,3 +2067,271 @@ function fadeInElement(element, display = 'flex') {
         element.style.opacity = '1';
     });
 }
+
+// ==========================================
+// ★変更：ステージクリア時の成績ポップアップ（ENEMY行の改行防止・左寄せ調整版）
+// ==========================================
+window.showStageResultBoard = function() {
+    if (typeof window.playStats === 'undefined') return;
+
+    const stats = window.playStats;
+
+    // タイム
+    const now = performance.now();
+    const totalSeconds = Math.floor((now - stats.startTime) / 1000);
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
+
+    // 敵の破壊数 / 出現数 と ％の計算
+    const enemyKilled = stats.enemiesKilled || 0;
+    const enemySpawned = stats.enemiesSpawned || 0;
+    const enemyRate = enemySpawned > 0 ? Math.floor((enemyKilled / enemySpawned) * 100) : 0;
+
+    // ★修正：横幅の指定を「48px」「38px」に縮小し、少し左に寄せつつ改行を防止
+    const getStatStr = (type) => {
+        const stat = stats.items && stats.items[type];
+        
+        if (!stat || stat.spawned === 0) {
+            return `
+                <div style="display: flex; color:#555; white-space: nowrap;">
+                    <span style="width: 48px; text-align: right; font-weight: bold;">0 / 0</span>
+                    <span style="width: 38px; text-align: right; font-size:0.85em; margin-left: 4px; font-weight: normal;">(0%)</span>
+                </div>`;
+        }
+        
+        const rate = Math.floor((stat.collected / stat.spawned) * 100);
+        const color = stat.collected === stat.spawned ? '#0f8' : (stat.collected > 0 ? '#ff0' : '#f05');
+        
+        return `
+            <div style="display: flex; color:${color}; text-shadow:0 0 5px ${color}; white-space: nowrap;">
+                <span style="width: 48px; text-align: right; font-weight: bold;">${stat.collected} / ${stat.spawned}</span>
+                <span style="width: 38px; text-align: right; font-size:0.85em; margin-left: 4px; font-weight: normal;">(${rate}%)</span>
+            </div>`;
+    };
+
+    let resultDiv = document.getElementById('stage-result-board');
+    if (!resultDiv) {
+        resultDiv = document.createElement('div');
+        resultDiv.id = 'stage-result-board';
+        resultDiv.style.transition = 'opacity 0.5s ease-in';
+        document.getElementById('ui').appendChild(resultDiv);
+    }
+
+    // ★修正：各行の flex に `align-items: center` と `margin-left: auto` を設定して綺麗に横並びに
+    resultDiv.innerHTML = `
+        <div style="
+            position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 15, 25, 0.9); border: 1px solid #0ff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5); border-radius: 4px;
+            padding: 10px 15px; color: #fff; font-family: 'Orbitron', sans-serif;
+            text-align: center; z-index: 1000; min-width: 280px; pointer-events: none;
+        ">
+            <div style="font-size: 0.9rem; color: #0ff; margin-bottom: 6px; border-bottom: 1px solid rgba(0,255,255,0.5); padding-bottom: 4px; letter-spacing: 2px; font-weight: bold;">
+                STAGE REPORT
+            </div>
+            
+            <div style="text-align: left; font-size: 0.75rem; line-height: 1.4;">
+                <div style="display: flex; align-items: center; margin-bottom: 2px; white-space: nowrap;">
+                    <span style="font-weight: normal; font-size: 0.7rem;">TIME</span> 
+                    <span style="color: #0f8; font-weight: bold; margin-left: auto;">${timeStr}</span>
+                </div>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 6px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 4px; white-space: nowrap;">
+                    <span style="font-weight: normal; font-size: 0.7rem;">ENEMY</span> 
+                    <div style="display: flex; color: #0f8; margin-left: auto;">
+                        <span style="width: 48px; text-align: right; font-weight: bold;">${enemyKilled} / ${enemySpawned}</span>
+                        <span style="width: 38px; text-align: right; font-size:0.85em; margin-left: 4px; font-weight: normal;">(${enemyRate}%)</span>
+                    </div>
+                </div>
+                
+                <div style="font-size: 0.65rem; color: #aaa; margin-top: 2px; margin-bottom: 4px; text-align: center; letter-spacing: 1px; font-weight: normal;">
+                    [ ITEMS : COLLECTED / SPAWNED ]
+                </div>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 3px; padding-left: 5px; white-space: nowrap;">
+                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-w" style="transform: scale(0.65);">W</span> 
+                    </div>
+                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">WEAPON</span> 
+                    <span style="margin-left: auto;">${getStatStr('level')}</span>
+                </div>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 3px; padding-left: 5px; white-space: nowrap;">
+                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-l" style="transform: scale(0.65);">L</span> 
+                    </div>
+                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">LASER</span> 
+                    <span style="margin-left: auto;">${getStatStr('laser')}</span>
+                </div>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 3px; padding-left: 5px; white-space: nowrap;">
+                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-s" style="transform: scale(0.65);">S</span> 
+                    </div>
+                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">SHIELD</span> 
+                    <span style="margin-left: auto;">${getStatStr('shield')}</span>
+                </div>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 3px; padding-left: 5px; white-space: nowrap;">
+                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-i" style="transform: scale(0.65);">I</span> 
+                    </div>
+                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">INVINCIBLE</span> 
+                    <span style="margin-left: auto;">${getStatStr('invincible')}</span>
+                </div>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 2px; padding-left: 5px; white-space: nowrap;">
+                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="crystal-icon" style="transform: scale(0.65) rotate(45deg); transform-origin: center; display: inline-block;"></span> 
+                    </div>
+                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">CRYSTAL</span> 
+                    <span style="margin-left: auto;">${getStatStr('crystal')}</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    resultDiv.style.opacity = '0';
+    resultDiv.style.display = 'block';
+    
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            resultDiv.style.opacity = '1';
+        });
+    });
+};
+
+// ==========================================
+// ★追加：ゲームオーバー時の「全ステージ総合」成績ポップアップ（横画面・極限圧縮版）
+// ==========================================
+window.showFinalResultBoard = function() {
+    if (typeof window.playStats === 'undefined' || typeof window.pastPlayStats === 'undefined') return;
+
+    // 死んだ瞬間の時間を確定
+    window.playStats.endTime = window.playStats.endTime || performance.now();
+    const currentStageTime = window.playStats.endTime - window.playStats.startTime;
+
+    // 「これまでのクリア済ステージ」 ＋ 「今やられてしまったステージ」 の合算
+    const total = {
+        totalTime: window.pastPlayStats.totalTime + currentStageTime,
+        enemiesSpawned: window.pastPlayStats.enemiesSpawned + window.playStats.enemiesSpawned,
+        enemiesKilled: window.pastPlayStats.enemiesKilled + window.playStats.enemiesKilled,
+        items: {}
+    };
+    ['level', 'laser', 'shield', 'invincible', 'crystal'].forEach(type => {
+        total.items[type] = {
+            spawned: window.pastPlayStats.items[type].spawned + window.playStats.items[type].spawned,
+            collected: window.pastPlayStats.items[type].collected + window.playStats.items[type].collected
+        };
+    });
+
+    // タイム
+    const totalSeconds = Math.floor(total.totalTime / 1000);
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
+
+    // 敵の破壊数 / 出現数 と ％の計算
+    const enemyKilled = total.enemiesKilled;
+    const enemySpawned = total.enemiesSpawned;
+    const enemyRate = enemySpawned > 0 ? Math.floor((enemyKilled / enemySpawned) * 100) : 0;
+
+    const getStatStr = (type) => {
+        const stat = total.items[type];
+        if (!stat || stat.spawned === 0) {
+            return `
+                <div style="display: flex; color:#555; white-space: nowrap;">
+                    <span style="width: 48px; text-align: right; font-weight: bold;">0 / 0</span>
+                    <span style="width: 38px; text-align: right; font-size:0.85em; margin-left: 4px; font-weight: normal;">(0%)</span>
+                </div>`;
+        }
+        const rate = Math.floor((stat.collected / stat.spawned) * 100);
+        const color = stat.collected === stat.spawned ? '#0f8' : (stat.collected > 0 ? '#ff0' : '#f05');
+        return `
+            <div style="display: flex; color:${color}; text-shadow:0 0 5px ${color}; white-space: nowrap;">
+                <span style="width: 48px; text-align: right; font-weight: bold;">${stat.collected} / ${stat.spawned}</span>
+                <span style="width: 38px; text-align: right; font-size:0.85em; margin-left: 4px; font-weight: normal;">(${rate}%)</span>
+            </div>`;
+    };
+
+    // ★修正：行間(line-height)、余白(margin, padding)、アイコンサイズ(scale)を極限まで圧縮
+    const html = `
+        <div id="final-stats-board" style="
+            background: rgba(15, 0, 5, 0.9); border: 1px solid #f05;
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.5); border-radius: 4px;
+            padding: 6px 15px; color: #fff; font-family: 'Orbitron', sans-serif;
+            text-align: center; margin: 5px auto 0 auto; min-width: 280px; max-width: 320px;
+        ">
+            <div style="font-size: 0.85rem; color: #f05; margin-bottom: 4px; border-bottom: 1px solid rgba(255,0,85,0.5); padding-bottom: 2px; letter-spacing: 2px; font-weight: bold;">
+                TOTAL REPORT
+            </div>
+            
+            <div style="text-align: left; font-size: 0.75rem; line-height: 1.2;">
+                <div style="display: flex; align-items: center; margin-bottom: 2px; white-space: nowrap;">
+                    <span style="font-weight: normal; font-size: 0.7rem;">TOTAL TIME</span> 
+                    <span style="color: #0f8; font-weight: bold; margin-left: auto;">${timeStr}</span>
+                </div>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 4px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 3px; white-space: nowrap;">
+                    <span style="font-weight: normal; font-size: 0.7rem;">TOTAL ENEMY</span> 
+                    <div style="display: flex; color: #0f8; margin-left: auto;">
+                        <span style="width: 48px; text-align: right; font-weight: bold;">${enemyKilled} / ${enemySpawned}</span>
+                        <span style="width: 38px; text-align: right; font-size:0.85em; margin-left: 4px; font-weight: normal;">(${enemyRate}%)</span>
+                    </div>
+                </div>
+                
+                <div style="font-size: 0.6rem; color: #aaa; margin-top: 2px; margin-bottom: 3px; text-align: center; letter-spacing: 1px; font-weight: normal;">
+                    [ TOTAL ITEMS : COLLECTED / SPAWNED ]
+                </div>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 1px; padding-left: 5px; white-space: nowrap;">
+                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-w" style="transform: scale(0.6);">W</span> 
+                    </div>
+                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">WEAPON</span> 
+                    <span style="margin-left: auto;">${getStatStr('level')}</span>
+                </div>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 1px; padding-left: 5px; white-space: nowrap;">
+                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-l" style="transform: scale(0.6);">L</span> 
+                    </div>
+                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">LASER</span> 
+                    <span style="margin-left: auto;">${getStatStr('laser')}</span>
+                </div>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 1px; padding-left: 5px; white-space: nowrap;">
+                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-s" style="transform: scale(0.6);">S</span> 
+                    </div>
+                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">SHIELD</span> 
+                    <span style="margin-left: auto;">${getStatStr('shield')}</span>
+                </div>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 1px; padding-left: 5px; white-space: nowrap;">
+                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-i" style="transform: scale(0.6);">I</span> 
+                    </div>
+                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">INVINCIBLE</span> 
+                    <span style="margin-left: auto;">${getStatStr('invincible')}</span>
+                </div>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 0px; padding-left: 5px; white-space: nowrap;">
+                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="crystal-icon" style="transform: scale(0.6) rotate(45deg); transform-origin: center; display: inline-block;"></span> 
+                    </div>
+                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">CRYSTAL</span> 
+                    <span style="margin-left: auto;">${getStatStr('crystal')}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const resultContainer = document.getElementById('result-score-display');
+    if (resultContainer) {
+        const oldBoard = document.getElementById('final-stats-board');
+        if (oldBoard) oldBoard.remove();
+        resultContainer.insertAdjacentHTML('afterend', html);
+    }
+};
