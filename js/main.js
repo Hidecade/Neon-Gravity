@@ -974,8 +974,31 @@ function update() {
     // ステージクリア後の待機シーケンス
     if (isStageClear && !isWarpingOut) {
         stageClearTimer++;
-        // 通常ステージの待ち時間（デフォルト 180フレーム = 約3秒）を増やします
-        // 例: 300フレーム（約5秒）に変更
+
+        // 1. 通常ステージ：約2.5秒（150フレーム）経過で成績ボード表示
+        if (stage !== MAX_STAGE && stageClearTimer === 150) {
+            if (typeof window.showStageResultBoard === 'function') window.showStageResultBoard();
+        }
+
+        // 2. 全クリア（最終ステージ）：約3.5秒（210フレーム）経過で総合成績ボード表示
+        if (stage === MAX_STAGE && stageClearTimer === 210) {
+            if (typeof window.showFinalResultBoard === 'function') {
+                window.showFinalResultBoard();
+            } else if (typeof showStageResultBoard === 'function') {
+                showStageResultBoard();
+            }
+        }
+
+        // 3. 全クリア（最終ステージ）：約8秒（480フレーム）経過でスコアテキスト表示
+        if (stage === MAX_STAGE && stageClearTimer === 480) {
+            const scoreSpan = document.getElementById("clear-score-text");
+            if (scoreSpan) {
+                scoreSpan.style.transition = "opacity 3s ease-in";
+                scoreSpan.style.opacity = "1";
+            }
+        }
+
+        // ワープアウト開始までの待ち時間（通常300フレーム=約5秒、全クリア900フレーム=約15秒）
         const waitTime = (stage === MAX_STAGE) ? 900 : 300; 
 
         if (stageClearTimer === waitTime) {
@@ -1004,7 +1027,7 @@ function update() {
     if (typeof updateWormholes === 'function') updateWormholes();
 
     // ==========================================
-    // ★追加：ここから時間の計測スタート
+    // ★時間の計測スタート
     // ==========================================
     const startTime = performance.now();
 
@@ -1013,7 +1036,7 @@ function update() {
     if (typeof updateGrid === 'function') updateGrid();
     if (typeof checkStageClear === 'function') checkStageClear();
 
-    // ★追加：計測終了し、かかった時間(ミリ秒)を記録
+    // ★計測終了し、かかった時間(ミリ秒)を記録
     debugLogicTime = performance.now() - startTime;
     // ==========================================
 

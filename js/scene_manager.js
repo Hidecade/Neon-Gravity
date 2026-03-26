@@ -430,28 +430,10 @@ function checkStageClear() {
                 extraClass: "epic-clear"
             });
 
-            // ★修正：メッセージが完全に消え去ってから（3.5秒後）に成績ボードを出す
-            // 全クリア時は showFinalResultBoard（赤いボード）を呼び出すように変更
-            setTimeout(() => {
-                if (typeof window.showFinalResultBoard === 'function') {
-                    window.showFinalResultBoard();
-                } else if (typeof showStageResultBoard === 'function') {
-                    showStageResultBoard();
-                }
-            }, 3500);
-
             window.isFireworksActive = true;
             if (typeof triggerRandomFireworkLoop === 'function') {
                 triggerRandomFireworkLoop();
             }
-
-            setTimeout(() => {
-                const scoreSpan = document.getElementById("clear-score-text");
-                if (scoreSpan) {
-                    scoreSpan.style.transition = "opacity 3s ease-in";
-                    scoreSpan.style.opacity = "1";
-                }
-            }, 8000);
 
         } else {
             // 通常クリア
@@ -470,11 +452,6 @@ function checkStageClear() {
                 glowColor: STAGE_THEMES[stage] || '#00bbff',
                 duration: 2000 // ★追加：表示時間を2秒に短縮（デフォルトは3000ms前後の場合が多いです）
             });
-
-            // ★修正：メッセージが完全に消え去ってから（3.5秒後）に成績ボードを出す
-            setTimeout(() => {
-                if (typeof window.showStageResultBoard === 'function') window.showStageResultBoard();
-            }, 2500);
         }
     }
 }
@@ -822,7 +799,15 @@ function setPaused(paused) {
             if (typeof AudioSys !== 'undefined') AudioSys.pauseBGM();
         }
     } else {
+        // 解禁と同時の暴発防止（control_player.jsのイントロ処理と同様の考え方）
+        if (typeof input !== 'undefined') {
+            input.move.x = 0; input.move.y = 0;
+            input.aim.x = 0; input.aim.y = 0;
+            // キー状態も一旦リセットすると確実です
+            input.keys = {}; 
+        }
         if (typeof AudioSys !== 'undefined') AudioSys.resumeBGM(false);
+        gameState = previousGameState; // 状態を戻す
     }
 }
 
@@ -1282,7 +1267,6 @@ async function playStoryTyping(text, options = {}) {
             await new Promise(resolve => setTimeout(resolve, 100));
             if (sessionId !== storyTypingSessionId || isSkippingStory) break;
         }
-
         if (sessionId !== storyTypingSessionId || isSkippingStory) break;
 
         const lineDiv = document.createElement('div');
