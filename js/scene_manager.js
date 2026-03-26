@@ -2072,34 +2072,33 @@ function fadeInElement(element, display = 'flex') {
 }
 
 // ==========================================
-// ★変更：ステージクリア時の成績ポップアップ（ENEMY行の改行防止・左寄せ調整版）
+// ★変更：ステージクリア時の成績ポップアップ
+// (iPhone縦画面はみ出し防止・絶対収まるレイアウト版)
 // ==========================================
 window.showStageResultBoard = function() {
     if (typeof window.playStats === 'undefined') return;
 
     const stats = window.playStats;
 
-    // タイム
     const now = performance.now();
     const totalSeconds = Math.floor((now - stats.startTime) / 1000);
     const m = Math.floor(totalSeconds / 60);
     const s = totalSeconds % 60;
     const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
 
-    // 敵の破壊数 / 出現数 と ％の計算
     const enemyKilled = stats.enemiesKilled || 0;
     const enemySpawned = stats.enemiesSpawned || 0;
     const enemyRate = enemySpawned > 0 ? Math.floor((enemyKilled / enemySpawned) * 100) : 0;
 
-    // ★修正：横幅の指定を「48px」「38px」に縮小し、少し左に寄せつつ改行を防止
+    // ★修正：(%)の幅を 4.5em -> 3.8em に少し詰め、マージンも削減
     const getStatStr = (type) => {
         const stat = stats.items && stats.items[type];
         
         if (!stat || stat.spawned === 0) {
             return `
-                <div style="display: flex; color:#555; white-space: nowrap;">
-                    <span style="width: 48px; text-align: right; font-weight: bold;">0 / 0</span>
-                    <span style="width: 38px; text-align: right; font-size:0.85em; margin-left: 4px; font-weight: normal;">(0%)</span>
+                <div style="display: flex; color:#555; margin-left: auto; align-items: baseline; justify-content: flex-end;">
+                    <span style="font-weight: bold; font-size: 1.1em;">0 / 0</span>
+                    <span style="width: 3.8em; text-align: right; font-size: 0.85em; margin-left: 0.3em; font-weight: normal;">(0%)</span>
                 </div>`;
         }
         
@@ -2107,9 +2106,9 @@ window.showStageResultBoard = function() {
         const color = stat.collected === stat.spawned ? '#0f8' : (stat.collected > 0 ? '#ff0' : '#f05');
         
         return `
-            <div style="display: flex; color:${color}; text-shadow:0 0 5px ${color}; white-space: nowrap;">
-                <span style="width: 48px; text-align: right; font-weight: bold;">${stat.collected} / ${stat.spawned}</span>
-                <span style="width: 38px; text-align: right; font-size:0.85em; margin-left: 4px; font-weight: normal;">(${rate}%)</span>
+            <div style="display: flex; color:${color}; text-shadow:0 0 5px ${color}; margin-left: auto; align-items: baseline; justify-content: flex-end;">
+                <span style="font-weight: bold; font-size: 1.1em;">${stat.collected} / ${stat.spawned}</span>
+                <span style="width: 3.8em; text-align: right; font-size: 0.85em; margin-left: 0.3em; font-weight: normal;">(${rate}%)</span>
             </div>`;
     };
 
@@ -2121,75 +2120,77 @@ window.showStageResultBoard = function() {
         document.getElementById('ui').appendChild(resultDiv);
     }
 
-    // ★修正：各行の flex に `align-items: center` と `margin-left: auto` を設定して綺麗に横並びに
+    // ★修正：max-width: 95vw; box-sizing: border-box; を追加して画面外へのはみ出しを完全ブロック
+    // ★修正：paddingを少しスリムに(1.2em)、フォントサイズの最小値を少し小さく(0.75rem)
     resultDiv.innerHTML = `
         <div style="
             position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0, 15, 25, 0.9); border: 1px solid #0ff;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5); border-radius: 4px;
-            padding: 10px 15px; color: #fff; font-family: 'Orbitron', sans-serif;
-            text-align: center; z-index: 1000; min-width: 280px; pointer-events: none;
+            background: rgba(0, 15, 25, 0.9); border: 2px solid #0ff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); border-radius: 8px;
+            padding: 1.2em 1.2em; color: #fff; font-family: 'Orbitron', sans-serif;
+            text-align: center; z-index: 1000; width: max-content; min-width: 280px; max-width: 95vw; box-sizing: border-box; pointer-events: none;
+            font-size: clamp(0.75rem, 2vw, 1.2rem);
         ">
-            <div style="font-size: 0.9rem; color: #0ff; margin-bottom: 6px; border-bottom: 1px solid rgba(0,255,255,0.5); padding-bottom: 4px; letter-spacing: 2px; font-weight: bold;">
+            <div style="font-size: 1.3em; color: #0ff; margin-bottom: 0.6em; border-bottom: 2px solid rgba(0,255,255,0.5); padding-bottom: 0.3em; letter-spacing: 2px; font-weight: bold;">
                 STAGE REPORT
             </div>
             
-            <div style="text-align: left; font-size: 0.75rem; line-height: 1.4;">
-                <div style="display: flex; align-items: center; margin-bottom: 2px; white-space: nowrap;">
-                    <span style="font-weight: normal; font-size: 0.7rem;">TIME</span> 
-                    <span style="color: #0f8; font-weight: bold; margin-left: auto;">${timeStr}</span>
+            <div style="text-align: left; line-height: 1.4;">
+                <div style="display: flex; align-items: center; margin-bottom: 0.3em; white-space: nowrap;">
+                    <span style="font-weight: normal; font-size: 0.9em;">TIME</span> 
+                    <span style="color: #0f8; font-weight: bold; margin-left: auto; font-size: 1.2em;">${timeStr}</span>
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 6px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 4px; white-space: nowrap;">
-                    <span style="font-weight: normal; font-size: 0.7rem;">ENEMY</span> 
-                    <div style="display: flex; color: #0f8; margin-left: auto;">
-                        <span style="width: 48px; text-align: right; font-weight: bold;">${enemyKilled} / ${enemySpawned}</span>
-                        <span style="width: 38px; text-align: right; font-size:0.85em; margin-left: 4px; font-weight: normal;">(${enemyRate}%)</span>
+                <div style="display: flex; align-items: center; margin-bottom: 0.6em; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 0.5em; white-space: nowrap;">
+                    <span style="font-weight: normal; font-size: 0.9em;">ENEMY</span> 
+                    <div style="display: flex; color: #0f8; margin-left: auto; align-items: baseline; justify-content: flex-end;">
+                        <span style="font-weight: bold; font-size: 1.1em;">${enemyKilled} / ${enemySpawned}</span>
+                        <span style="width: 3.8em; text-align: right; font-size: 0.85em; margin-left: 0.3em; font-weight: normal;">(${enemyRate}%)</span>
                     </div>
                 </div>
                 
-                <div style="font-size: 0.65rem; color: #aaa; margin-top: 2px; margin-bottom: 4px; text-align: center; letter-spacing: 1px; font-weight: normal;">
+                <div style="font-size: 0.8em; color: #aaa; margin-top: 0.4em; margin-bottom: 0.6em; text-align: center; letter-spacing: 1px; font-weight: normal;">
                     [ ITEMS : COLLECTED / SPAWNED ]
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 3px; padding-left: 5px; white-space: nowrap;">
-                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-w" style="transform: scale(0.65);">W</span> 
+                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
+                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-w" style="transform: scale(0.8);">W</span> 
                     </div>
-                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">WEAPON</span> 
-                    <span style="margin-left: auto;">${getStatStr('level')}</span>
+                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">WEAPON</span> 
+                    ${getStatStr('level')}
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 3px; padding-left: 5px; white-space: nowrap;">
-                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-l" style="transform: scale(0.65);">L</span> 
+                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
+                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-l" style="transform: scale(0.8);">L</span> 
                     </div>
-                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">LASER</span> 
-                    <span style="margin-left: auto;">${getStatStr('laser')}</span>
+                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">LASER</span> 
+                    ${getStatStr('laser')}
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 3px; padding-left: 5px; white-space: nowrap;">
-                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-s" style="transform: scale(0.65);">S</span> 
+                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
+                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-s" style="transform: scale(0.8);">S</span> 
                     </div>
-                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">SHIELD</span> 
-                    <span style="margin-left: auto;">${getStatStr('shield')}</span>
+                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">SHIELD</span> 
+                    ${getStatStr('shield')}
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 3px; padding-left: 5px; white-space: nowrap;">
-                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-i" style="transform: scale(0.65);">I</span> 
+                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
+                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-i" style="transform: scale(0.8);">I</span> 
                     </div>
-                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">INVINCIBLE</span> 
-                    <span style="margin-left: auto;">${getStatStr('invincible')}</span>
+                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">INVINCIBLE</span> 
+                    ${getStatStr('invincible')}
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 2px; padding-left: 5px; white-space: nowrap;">
-                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="crystal-icon" style="transform: scale(0.65) rotate(45deg); transform-origin: center; display: inline-block;"></span> 
+                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
+                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="crystal-icon" style="transform: scale(0.8) rotate(45deg); transform-origin: center; display: inline-block;"></span> 
                     </div>
-                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">CRYSTAL</span> 
-                    <span style="margin-left: auto;">${getStatStr('crystal')}</span>
+                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">CRYSTAL</span> 
+                    ${getStatStr('crystal')}
                 </div>
             </div>
         </div>
@@ -2206,16 +2207,15 @@ window.showStageResultBoard = function() {
 };
 
 // ==========================================
-// ★追加：ゲームオーバー時の「全ステージ総合」成績ポップアップ（横画面・極限圧縮版）
+// ★追加：ゲームオーバー時の「全ステージ総合」成績ポップアップ
+// (iPhone縦画面はみ出し防止・絶対収まるレイアウト版)
 // ==========================================
 window.showFinalResultBoard = function() {
     if (typeof window.playStats === 'undefined' || typeof window.pastPlayStats === 'undefined') return;
 
-    // 死んだ瞬間の時間を確定
     window.playStats.endTime = window.playStats.endTime || performance.now();
     const currentStageTime = window.playStats.endTime - window.playStats.startTime;
 
-    // 「これまでのクリア済ステージ」 ＋ 「今やられてしまったステージ」 の合算
     const total = {
         totalTime: window.pastPlayStats.totalTime + currentStageTime,
         enemiesSpawned: window.pastPlayStats.enemiesSpawned + window.playStats.enemiesSpawned,
@@ -2229,13 +2229,11 @@ window.showFinalResultBoard = function() {
         };
     });
 
-    // タイム
     const totalSeconds = Math.floor(total.totalTime / 1000);
     const m = Math.floor(totalSeconds / 60);
     const s = totalSeconds % 60;
     const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
 
-    // 敵の破壊数 / 出現数 と ％の計算
     const enemyKilled = total.enemiesKilled;
     const enemySpawned = total.enemiesSpawned;
     const enemyRate = enemySpawned > 0 ? Math.floor((enemyKilled / enemySpawned) * 100) : 0;
@@ -2244,88 +2242,89 @@ window.showFinalResultBoard = function() {
         const stat = total.items[type];
         if (!stat || stat.spawned === 0) {
             return `
-                <div style="display: flex; color:#555; white-space: nowrap;">
-                    <span style="width: 48px; text-align: right; font-weight: bold;">0 / 0</span>
-                    <span style="width: 38px; text-align: right; font-size:0.85em; margin-left: 4px; font-weight: normal;">(0%)</span>
+                <div style="display: flex; color:#555; margin-left: auto; align-items: baseline; justify-content: flex-end;">
+                    <span style="font-weight: bold; font-size: 1.1em;">0 / 0</span>
+                    <span style="width: 3.8em; text-align: right; font-size: 0.85em; margin-left: 0.3em; font-weight: normal;">(0%)</span>
                 </div>`;
         }
         const rate = Math.floor((stat.collected / stat.spawned) * 100);
         const color = stat.collected === stat.spawned ? '#0f8' : (stat.collected > 0 ? '#ff0' : '#f05');
         return `
-            <div style="display: flex; color:${color}; text-shadow:0 0 5px ${color}; white-space: nowrap;">
-                <span style="width: 48px; text-align: right; font-weight: bold;">${stat.collected} / ${stat.spawned}</span>
-                <span style="width: 38px; text-align: right; font-size:0.85em; margin-left: 4px; font-weight: normal;">(${rate}%)</span>
+            <div style="display: flex; color:${color}; text-shadow:0 0 5px ${color}; margin-left: auto; align-items: baseline; justify-content: flex-end;">
+                <span style="font-weight: bold; font-size: 1.1em;">${stat.collected} / ${stat.spawned}</span>
+                <span style="width: 3.8em; text-align: right; font-size: 0.85em; margin-left: 0.3em; font-weight: normal;">(${rate}%)</span>
             </div>`;
     };
 
-    // ★修正：行間(line-height)、余白(margin, padding)、アイコンサイズ(scale)を極限まで圧縮
     const html = `
         <div id="final-stats-board" style="
-            background: rgba(0, 15, 25, 0.9); border: 1px solid #0ff;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5); border-radius: 4px;
-            padding: 10px 15px; color: #fff; font-family: 'Orbitron', sans-serif;
-            text-align: center; margin: 5px auto 0 auto; min-width: 280px; max-width: 320px;
+            background: rgba(15, 0, 5, 0.9); border: 2px solid #f05;
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.5); border-radius: 8px;
+            padding: 1.2em 1.2em; color: #fff; font-family: 'Orbitron', sans-serif;
+            text-align: center; margin: 20px auto 0 auto;
+            width: max-content; min-width: 280px; max-width: 95vw; box-sizing: border-box;
+            font-size: clamp(0.75rem, 2vw, 1.2rem);
         ">
-            <div style="font-size: 0.85rem; color: #0ff; margin-bottom: 4px; border-bottom: 1px solid rgba(0,255,255,0.5); padding-bottom: 2px; letter-spacing: 2px; font-weight: bold;">
+            <div style="font-size: 1.3em; color: #f05; margin-bottom: 0.6em; border-bottom: 2px solid rgba(255,0,85,0.5); padding-bottom: 0.3em; letter-spacing: 2px; font-weight: bold;">
                 TOTAL REPORT
             </div>
             
-            <div style="text-align: left; font-size: 0.75rem; line-height: 1.2;">
-                <div style="display: flex; align-items: center; margin-bottom: 2px; white-space: nowrap;">
-                    <span style="font-weight: normal; font-size: 0.7rem;">TOTAL TIME</span> 
-                    <span style="color: #0f8; font-weight: bold; margin-left: auto;">${timeStr}</span>
+            <div style="text-align: left; line-height: 1.4;">
+                <div style="display: flex; align-items: center; margin-bottom: 0.3em; white-space: nowrap;">
+                    <span style="font-weight: normal; font-size: 0.9em;">TOTAL TIME</span> 
+                    <span style="color: #0f8; font-weight: bold; margin-left: auto; font-size: 1.2em;">${timeStr}</span>
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 4px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 3px; white-space: nowrap;">
-                    <span style="font-weight: normal; font-size: 0.7rem;">TOTAL ENEMY</span> 
-                    <div style="display: flex; color: #0f8; margin-left: auto;">
-                        <span style="width: 48px; text-align: right; font-weight: bold;">${enemyKilled} / ${enemySpawned}</span>
-                        <span style="width: 38px; text-align: right; font-size:0.85em; margin-left: 4px; font-weight: normal;">(${enemyRate}%)</span>
+                <div style="display: flex; align-items: center; margin-bottom: 0.6em; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 0.5em; white-space: nowrap;">
+                    <span style="font-weight: normal; font-size: 0.9em;">TOTAL ENEMIES</span> 
+                    <div style="display: flex; color: #0f8; margin-left: auto; align-items: baseline; justify-content: flex-end;">
+                        <span style="font-weight: bold; font-size: 1.1em;">${enemyKilled} / ${enemySpawned}</span>
+                        <span style="width: 3.8em; text-align: right; font-size: 0.85em; margin-left: 0.3em; font-weight: normal;">(${enemyRate}%)</span>
                     </div>
                 </div>
                 
-                <div style="font-size: 0.6rem; color: #aaa; margin-top: 2px; margin-bottom: 3px; text-align: center; letter-spacing: 1px; font-weight: normal;">
+                <div style="font-size: 0.8em; color: #aaa; margin-top: 0.4em; margin-bottom: 0.6em; text-align: center; letter-spacing: 1px; font-weight: normal;">
                     [ TOTAL ITEMS : COLLECTED / SPAWNED ]
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 1px; padding-left: 5px; white-space: nowrap;">
-                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-w" style="transform: scale(0.6);">W</span> 
+                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
+                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-w" style="transform: scale(0.8);">W</span> 
                     </div>
-                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">WEAPON</span> 
-                    <span style="margin-left: auto;">${getStatStr('level')}</span>
+                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">WEAPON</span> 
+                    ${getStatStr('level')}
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 1px; padding-left: 5px; white-space: nowrap;">
-                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-l" style="transform: scale(0.6);">L</span> 
+                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
+                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-l" style="transform: scale(0.8);">L</span> 
                     </div>
-                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">LASER</span> 
-                    <span style="margin-left: auto;">${getStatStr('laser')}</span>
+                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">LASER</span> 
+                    ${getStatStr('laser')}
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 1px; padding-left: 5px; white-space: nowrap;">
-                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-s" style="transform: scale(0.6);">S</span> 
+                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
+                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-s" style="transform: scale(0.8);">S</span> 
                     </div>
-                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">SHIELD</span> 
-                    <span style="margin-left: auto;">${getStatStr('shield')}</span>
+                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">SHIELD</span> 
+                    ${getStatStr('shield')}
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 1px; padding-left: 5px; white-space: nowrap;">
-                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-i" style="transform: scale(0.6);">I</span> 
+                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
+                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="item-icon item-i" style="transform: scale(0.8);">I</span> 
                     </div>
-                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">INVINCIBLE</span> 
-                    <span style="margin-left: auto;">${getStatStr('invincible')}</span>
+                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">INVINCIBLE</span> 
+                    ${getStatStr('invincible')}
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 0px; padding-left: 5px; white-space: nowrap;">
-                    <div style="width: 32px; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="crystal-icon" style="transform: scale(0.6) rotate(45deg); transform-origin: center; display: inline-block;"></span> 
+                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
+                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
+                        <span class="crystal-icon" style="transform: scale(0.8) rotate(45deg); transform-origin: center; display: inline-block;"></span> 
                     </div>
-                    <span style="font-weight: normal; margin-left: 5px; font-size: 0.7rem;">CRYSTAL</span> 
-                    <span style="margin-left: auto;">${getStatStr('crystal')}</span>
+                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">CRYSTAL</span> 
+                    ${getStatStr('crystal')}
                 </div>
             </div>
         </div>
