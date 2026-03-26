@@ -2258,12 +2258,12 @@ window.showFinalResultBoard = function() {
     // ★修正：行間(line-height)、余白(margin, padding)、アイコンサイズ(scale)を極限まで圧縮
     const html = `
         <div id="final-stats-board" style="
-            background: rgba(15, 0, 5, 0.9); border: 1px solid #f05;
-            box-shadow: 0 0 15px rgba(255, 0, 85, 0.5); border-radius: 4px;
-            padding: 6px 15px; color: #fff; font-family: 'Orbitron', sans-serif;
+            background: rgba(0, 15, 25, 0.9); border: 1px solid #0ff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5); border-radius: 4px;
+            padding: 10px 15px; color: #fff; font-family: 'Orbitron', sans-serif;
             text-align: center; margin: 5px auto 0 auto; min-width: 280px; max-width: 320px;
         ">
-            <div style="font-size: 0.85rem; color: #f05; margin-bottom: 4px; border-bottom: 1px solid rgba(255,0,85,0.5); padding-bottom: 2px; letter-spacing: 2px; font-weight: bold;">
+            <div style="font-size: 0.85rem; color: #0ff; margin-bottom: 4px; border-bottom: 1px solid rgba(0,255,255,0.5); padding-bottom: 2px; letter-spacing: 2px; font-weight: bold;">
                 TOTAL REPORT
             </div>
             
