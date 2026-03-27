@@ -134,7 +134,7 @@ function startStage() {
     player.warpSoundPlayed = false;
     isWarpingOut = false; // グローバル変数の初期化も確実に行う
 
-    // ==========================================
+// ==========================================
     // ステージごとの成績リセットと、過去ステージの合算
     // ==========================================
     if (stage === 1 || typeof window.pastPlayStats === 'undefined') {
@@ -148,6 +148,7 @@ function startStage() {
                 laser: { spawned: 0, collected: 0 },
                 shield: { spawned: 0, collected: 0 },
                 invincible: { spawned: 0, collected: 0 },
+                point: { spawned: 0, collected: 0 }, // ★ここに追加！
                 crystal: { spawned: 0, collected: 0 }
             }
         };
@@ -158,7 +159,8 @@ function startStage() {
         window.pastPlayStats.enemiesSpawned += window.playStats.enemiesSpawned;
         window.pastPlayStats.enemiesKilled += window.playStats.enemiesKilled;
         
-        ['level', 'laser', 'shield', 'invincible', 'crystal'].forEach(type => {
+        // ★配列に 'point' を追加して、全ステージ総合の合算にも対応させる
+        ['level', 'laser', 'shield', 'invincible', 'point', 'crystal'].forEach(type => {
             window.pastPlayStats.items[type].spawned += window.playStats.items[type].spawned;
             window.pastPlayStats.items[type].collected += window.playStats.items[type].collected;
         });
@@ -175,6 +177,7 @@ function startStage() {
             laser: { spawned: 0, collected: 0 },
             shield: { spawned: 0, collected: 0 },
             invincible: { spawned: 0, collected: 0 },
+            point: { spawned: 0, collected: 0 }, // ★ここに追加！
             crystal: { spawned: 0, collected: 0 }
         }
     };
@@ -2101,6 +2104,19 @@ window.showStageResultBoard = function() {
             </div>`;
     };
 
+    // ★追加：アイテムの行を描画する共通関数
+    const getItemRowHtml = (cssClass, labelChar, labelText, statKey) => {
+        return `
+            <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
+                <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center; align-items: center;">
+                    <span class="result-item-icon ${cssClass}" style="transform: scale(0.75);">${labelChar}</span> 
+                </div>
+                <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">${labelText}</span> 
+                ${getStatStr(statKey)}
+            </div>
+        `;
+    };
+
     let resultDiv = document.getElementById('stage-result-board');
     if (!resultDiv) {
         resultDiv = document.createElement('div');
@@ -2109,7 +2125,6 @@ window.showStageResultBoard = function() {
         document.getElementById('ui').appendChild(resultDiv);
     }
 
-    // ★修正：<style>を追加し、画面の高さが低い時(max-height: 500px)は強制的にコンパクト化
     resultDiv.innerHTML = `
         <style>
             @media screen and (max-height: 500px) {
@@ -2117,6 +2132,37 @@ window.showStageResultBoard = function() {
                     font-size: 0.65rem !important; 
                     padding: 0.8em !important; 
                 }
+            }
+            .result-item-icon {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                /* ★ベースサイズも 26px -> 24px に縮小 */
+                width: 24px !important;
+                height: 24px !important;
+                min-width: 24px !important;
+                min-height: 24px !important;
+                max-width: 24px !important;
+                max-height: 24px !important;
+                font-size: 13px !important; /* フォントも少し小さく */
+                font-weight: bold !important;
+                border: 2px solid !important;
+                box-sizing: border-box !important;
+                background: rgba(0,0,0,0.5) !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                line-height: 1 !important;
+                overflow: hidden !important;
+            }
+            .ri-w { color: #0f0 !important; border-color: #0f0 !important; box-shadow: 0 0 5px #0f0 !important; }
+            .ri-l, .ri-s { color: #0ff !important; border-color: #0ff !important; box-shadow: 0 0 5px #0ff !important; }
+            .ri-i { color: #ff0 !important; border-color: #ff0 !important; box-shadow: 0 0 5px #ff0 !important; }
+            .ri-p {
+                color: #fff000 !important;
+                border-color: #fff000 !important;
+                box-shadow: 0 0 5px #fff000 inset, 0 0 5px #fff000 !important;
+                border-radius: 50% !important;
+                text-shadow: 0 0 5px #fff000 !important;
             }
         </style>
         <div id="stage-report-panel" style="
@@ -2149,45 +2195,11 @@ window.showStageResultBoard = function() {
                     [ ITEMS : COLLECTED / SPAWNED ]
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
-                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-w" style="transform: scale(0.8);">W</span> 
-                    </div>
-                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">WEAPON</span> 
-                    ${getStatStr('level')}
-                </div>
-                
-                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
-                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-l" style="transform: scale(0.8);">L</span> 
-                    </div>
-                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">LASER</span> 
-                    ${getStatStr('laser')}
-                </div>
-                
-                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
-                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-s" style="transform: scale(0.8);">S</span> 
-                    </div>
-                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">SHIELD</span> 
-                    ${getStatStr('shield')}
-                </div>
-                
-                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
-                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-i" style="transform: scale(0.8);">I</span> 
-                    </div>
-                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">INVINCIBLE</span> 
-                    ${getStatStr('invincible')}
-                </div>
-                
-                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
-                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="crystal-icon" style="transform: scale(0.8) rotate(45deg); transform-origin: center; display: inline-block;"></span> 
-                    </div>
-                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">CRYSTAL</span> 
-                    ${getStatStr('crystal')}
-                </div>
+                ${getItemRowHtml('ri-w', 'W', 'WEAPON', 'level')}
+                ${getItemRowHtml('ri-l', 'L', 'LASER', 'laser')}
+                ${getItemRowHtml('ri-s', 'S', 'SHIELD', 'shield')}
+                ${getItemRowHtml('ri-i', 'I', 'INVINCIBLE', 'invincible')}
+                ${getItemRowHtml('ri-p', 'P', 'POINT', 'point')}
             </div>
         </div>
     `;
@@ -2218,10 +2230,16 @@ window.showFinalResultBoard = function() {
         enemiesKilled: window.pastPlayStats.enemiesKilled + window.playStats.enemiesKilled,
         items: {}
     };
-    ['level', 'laser', 'shield', 'invincible', 'crystal'].forEach(type => {
+    
+    ['level', 'laser', 'shield', 'invincible', 'point'].forEach(type => {
+        const pastSpawned = (window.pastPlayStats.items[type] && window.pastPlayStats.items[type].spawned) || 0;
+        const pastCollected = (window.pastPlayStats.items[type] && window.pastPlayStats.items[type].collected) || 0;
+        const currentSpawned = (window.playStats.items[type] && window.playStats.items[type].spawned) || 0;
+        const currentCollected = (window.playStats.items[type] && window.playStats.items[type].collected) || 0;
+
         total.items[type] = {
-            spawned: window.pastPlayStats.items[type].spawned + window.playStats.items[type].spawned,
-            collected: window.pastPlayStats.items[type].collected + window.playStats.items[type].collected
+            spawned: pastSpawned + currentSpawned,
+            collected: pastCollected + currentCollected
         };
     });
 
@@ -2252,7 +2270,19 @@ window.showFinalResultBoard = function() {
             </div>`;
     };
 
-    // ★修正：<style>を追加し、画面の高さが低い時は強制的にコンパクト化、マージンも詰める
+    // ★追加：アイテムの行を描画する共通関数
+    const getItemRowHtml = (cssClass, labelChar, labelText, statKey) => {
+        return `
+            <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
+                <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center; align-items: center;">
+                    <span class="result-item-icon ${cssClass}" style="transform: scale(0.75);">${labelChar}</span> 
+                </div>
+                <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">${labelText}</span> 
+                ${getStatStr(statKey)}
+            </div>
+        `;
+    };
+
     const html = `
         <style>
             @media screen and (max-height: 500px) {
@@ -2261,6 +2291,36 @@ window.showFinalResultBoard = function() {
                     padding: 0.6em !important; 
                     margin-top: 5px !important;
                 }
+            }
+            .result-item-icon {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 24px !important;
+                height: 24px !important;
+                min-width: 24px !important;
+                min-height: 24px !important;
+                max-width: 24px !important;
+                max-height: 24px !important;
+                font-size: 13px !important;
+                font-weight: bold !important;
+                border: 2px solid !important;
+                box-sizing: border-box !important;
+                background: rgba(0,0,0,0.5) !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                line-height: 1 !important;
+                overflow: hidden !important;
+            }
+            .ri-w { color: #0f0 !important; border-color: #0f0 !important; box-shadow: 0 0 5px #0f0 !important; }
+            .ri-l, .ri-s { color: #0ff !important; border-color: #0ff !important; box-shadow: 0 0 5px #0ff !important; }
+            .ri-i { color: #ff0 !important; border-color: #ff0 !important; box-shadow: 0 0 5px #ff0 !important; }
+            .ri-p {
+                color: #fff000 !important;
+                border-color: #fff000 !important;
+                box-shadow: 0 0 5px #fff000 inset, 0 0 5px #fff000 !important;
+                border-radius: 50% !important;
+                text-shadow: 0 0 5px #fff000 !important;
             }
         </style>
         <div id="final-report-panel" style="
@@ -2293,45 +2353,11 @@ window.showFinalResultBoard = function() {
                     [ TOTAL ITEMS : COLLECTED / SPAWNED ]
                 </div>
                 
-                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
-                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-w" style="transform: scale(0.8);">W</span> 
-                    </div>
-                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">WEAPON</span> 
-                    ${getStatStr('level')}
-                </div>
-                
-                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
-                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-l" style="transform: scale(0.8);">L</span> 
-                    </div>
-                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">LASER</span> 
-                    ${getStatStr('laser')}
-                </div>
-                
-                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
-                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-s" style="transform: scale(0.8);">S</span> 
-                    </div>
-                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">SHIELD</span> 
-                    ${getStatStr('shield')}
-                </div>
-                
-                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
-                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="item-icon item-i" style="transform: scale(0.8);">I</span> 
-                    </div>
-                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">INVINCIBLE</span> 
-                    ${getStatStr('invincible')}
-                </div>
-                
-                <div style="display: flex; align-items: center; margin-bottom: 0.2em; padding-left: 0.3em; white-space: nowrap;">
-                    <div style="width: 2.2em; flex-shrink: 0; display: flex; justify-content: center;">
-                        <span class="crystal-icon" style="transform: scale(0.8) rotate(45deg); transform-origin: center; display: inline-block;"></span> 
-                    </div>
-                    <span style="font-weight: normal; margin-left: 0.5em; font-size: 0.9em;">CRYSTAL</span> 
-                    ${getStatStr('crystal')}
-                </div>
+                ${getItemRowHtml('ri-w', 'W', 'WEAPON', 'level')}
+                ${getItemRowHtml('ri-l', 'L', 'LASER', 'laser')}
+                ${getItemRowHtml('ri-s', 'S', 'SHIELD', 'shield')}
+                ${getItemRowHtml('ri-i', 'I', 'INVINCIBLE', 'invincible')}
+                ${getItemRowHtml('ri-p', 'P', 'POINT', 'point')}
             </div>
         </div>
     `;
@@ -2340,7 +2366,6 @@ window.showFinalResultBoard = function() {
     if (resultContainer) {
         const oldBoard = document.getElementById('final-stats-board');
         if (oldBoard) oldBoard.remove();
-        // ID変更により二重表示を防ぐための追記
         const oldBoard2 = document.getElementById('final-report-panel');
         if (oldBoard2) oldBoard2.remove();
         

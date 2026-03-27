@@ -455,7 +455,7 @@ function drawItems() {
         else if (p.type === 'level') { color = '#0f0'; char = 'W'; }
         else if (p.type === 'invincible') { color = '#ff0'; char = 'I'; }
         else if (p.type === 'shield') { color = '#0ff'; char = 'S'; }
-        else if (p.type === 'point') { color = '#fff000'; char = 'P'; } // Pアイテムはオレンジ
+        else if (p.type === 'point') { color = '#fff000'; char = 'P'; } 
 
         ctx.save();
         ctx.translate(p.x, p.y);

@@ -789,7 +789,7 @@ function updatePowerups() {
             // ★ ここから追加：Pアイテム（ポイント）取得時の処理
             // ==========================================
             else if (p.type === 'point') {
-                AudioSys.playSE('coin_system');
+                AudioSys.playSE('point');
                 const POINT_SCORE = ENEMY_SCORES.coin; 
                 
                 // 1. スコア加算とUI更新

@@ -988,7 +988,7 @@ function update() {
                 showStageResultBoard();
             }
         }
-
+        
         // 3. 全クリア（最終ステージ）：約8秒（480フレーム）経過でスコアテキスト表示
         if (stage === MAX_STAGE && stageClearTimer === 480) {
             const scoreSpan = document.getElementById("clear-score-text");
@@ -998,8 +998,8 @@ function update() {
             }
         }
 
-        // ワープアウト開始までの待ち時間（通常300フレーム=約5秒、全クリア900フレーム=約15秒）
-        const waitTime = (stage === MAX_STAGE) ? 900 : 300; 
+        // ワープアウト開始までの待ち時間（通常400フレーム=約6.7秒、全クリア900フレーム=約15秒）
+        const waitTime = (stage === MAX_STAGE) ? 900 : 400; 
 
         if (stageClearTimer === waitTime) {
             hideGameMessage();   // メッセージフェードアウト

@@ -1732,8 +1732,8 @@ function destroyEnemy(e) {
     else if (finalDropType === 'shield') powerups.push({ ...itemProps, type: 'shield', life: ITEM_LIFE });
     else if (finalDropType === 'point') powerups.push({ ...itemProps, type: 'point', life: ITEM_LIFE });
 
-// ★修正：出たアイテムの種類に合わせてカウント（安全対策版）
-    if (['level', 'laser', 'invincible', 'crystal', 'shield'].includes(finalDropType)) {
+    // ★修正：出たアイテムの種類に合わせてカウント（安全対策版）
+    if (['level', 'laser', 'invincible', 'crystal', 'shield', 'point'].includes(finalDropType)) {
         if (typeof window.playStats !== 'undefined' && window.playStats.items && window.playStats.items[finalDropType]) {
             window.playStats.items[finalDropType].spawned++;
         }
