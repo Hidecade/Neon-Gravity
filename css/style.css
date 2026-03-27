@@ -1329,8 +1329,17 @@ canvas {
 /* =========================================================
    フェードアウト専用クラス (iOS Safari アニメーションスキップ対策)
    ========================================================= */
+
+/* 1. リザルトボードにGPUハードウェアアクセラレーションを強制する */
+#stage-result-board {
+    transition: opacity 0.5s ease-in-out !important;
+    will-change: opacity;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+}
+
+/* 2. 透明化クラス */
 .fade-out-now {
-    transition: opacity 0.5s ease-out !important;
     opacity: 0 !important;
     pointer-events: none !important;
 }

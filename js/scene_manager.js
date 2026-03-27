@@ -2195,11 +2195,11 @@ window.showStageResultBoard = function() {
         `;
     };
 
-    let resultDiv = document.getElementById('stage-result-board');
+let resultDiv = document.getElementById('stage-result-board');
     if (!resultDiv) {
         resultDiv = document.createElement('div');
         resultDiv.id = 'stage-result-board';
-        resultDiv.style.transition = 'opacity 0.5s ease-in';
+        // ★修正1：インラインのtransition指定を削除し、CSSファイル側の設定に完全に任せる
         document.getElementById('ui').appendChild(resultDiv);
     }
 
@@ -2281,6 +2281,9 @@ window.showStageResultBoard = function() {
             </div>
         </div>
     `;
+    
+// ★修正2：次回の再表示時に備えて、確実にフェードアウト用クラスを剥がしておく
+    resultDiv.classList.remove('fade-out-now');
     
     resultDiv.style.opacity = '0';
     resultDiv.style.display = 'block';
