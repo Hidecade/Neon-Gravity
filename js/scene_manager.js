@@ -1599,7 +1599,7 @@ function updateWarpProcess() {
     player.warpTimer++;
 
     // ==========================================
-    // ★追加：ワープ演出が開始した瞬間にUIをフェードアウト
+    // ★追加：ワープが開始した瞬間に、CSSクラスを付与して一斉にフェードアウトさせる
     // ==========================================
     if (player.warpTimer === 1) {
         const uiElements = [
@@ -1610,8 +1610,8 @@ function updateWarpProcess() {
         ];
         uiElements.forEach(el => {
             if (el) {
-                el.style.transition = 'opacity 0.5s ease-out';
-                el.style.opacity = '0';
+                // iOS対策: JSで直接styleを書かず、CSSクラスを追加するだけでアニメーションを発火させる
+                el.classList.add('fade-out-now');
             }
         });
     }
@@ -1713,6 +1713,7 @@ function updateWarpProcess() {
         if (!player.hasExitedScreen) {
             player.hasExitedScreen = true;
             player.exitTimer = 0;
+            // ★修正：ここにあった、古い「直接スタイルを書き換えるフェードアウト処理」は削除しました
         }
     }
 
@@ -1731,16 +1732,18 @@ function updateWarpProcess() {
                 player.exitTimer = 0;
                 if (typeof clearInputState === 'function') clearInputState();
 
-                // 次のシーンへ行く前にUIの透明度設定をリセット（通常ステージ移行時のため）
+                // ★修正：次のシーンへ行く前に、付与したフェードアウト用クラスを剥がす
                 const uiElements = [
                     document.querySelector('.hud-row'),
                     document.getElementById('minimap-container'),
-                    document.getElementById('controls')
+                    document.getElementById('controls'),
+                    document.getElementById('stage-result-board')
                 ];
                 uiElements.forEach(el => {
                     if (el) {
                         el.style.transition = '';
                         el.style.opacity = '';
+                        el.classList.remove('fade-out-now'); // クラスを外して元に戻す
                     }
                 });
 
@@ -1768,7 +1771,6 @@ function updateWarpProcess() {
         }
     }
 }
-
 /**
  * エンディングシーケンスの開始
  */

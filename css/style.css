@@ -1325,3 +1325,12 @@ canvas {
         line-height: 1 !important; /* 文字の高さを詰める */
     }
 }
+
+/* =========================================================
+   フェードアウト専用クラス (iOS Safari アニメーションスキップ対策)
+   ========================================================= */
+.fade-out-now {
+    transition: opacity 0.5s ease-out !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
