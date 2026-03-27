@@ -605,6 +605,8 @@ function init() {
     const savedQuality = localStorage.getItem('neonGravity_graphics') || 'HIGH';
     applyGraphicsQuality(savedQuality);
 
+    applyLanguage(currentLanguage);
+
     if (typeof AudioSys !== 'undefined') {
         AudioSys.init();
     }
@@ -655,6 +657,23 @@ function applyGraphicsQuality(quality) {
     // UIの表示状態を更新
     setQuality(quality);        
 }
+
+// 言語品質設定の適用と保存
+window.applyLanguage = function(lang) {
+    currentLanguage = lang;
+    localStorage.setItem('neonGravity_language', lang);
+    
+    // UIの表示状態を更新
+    const btnEn = document.getElementById('btn-lang-en');
+    const btnJa = document.getElementById('btn-lang-ja');
+
+    if(btnEn) btnEn.classList.remove('active-setting');
+    if(btnJa) btnJa.classList.remove('active-setting');
+
+    if(lang === 'en' && btnEn) btnEn.classList.add('active-setting');
+    if(lang === 'ja' && btnJa) btnJa.classList.add('active-setting');
+
+};
 
 function setQuality(quality) {
     currentGraphicsQuality = quality; // config.js の変数を更新
@@ -934,6 +953,7 @@ function loop() {
 
         if (gameState === 'DYING') {
             fade = Math.max(0, (60 - dyingTimer) / 60);
+            fade = Math.min(0.7, fade);
         }
         // ★ここが超重要！ワープ演出の後半(90フレーム目)から、1秒(60フレーム)かけて真っ黒にする
         else if (gameState === 'PLAYING' && isWarpingOut && player.warpTimer > 90) {

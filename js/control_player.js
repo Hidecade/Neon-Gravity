@@ -403,11 +403,13 @@ function damage(v) {
         gameState = 'DYING';
         AudioSys.stopSE('warning');
 
+        // ★修正：「GAME OVER」をメイン、「SHIELD LOST」をサブにまとめて表示
+        // durationを0にすることで、途中で勝手に消えなくなります
         showGameMessage({
-            main: "SHIELD LOST",
+            main: "GAME OVER",
+            sub: "SHIELD LOST",
             type: "warning",
-            compact: true,
-            duration: 1200
+            duration: 0
         });
 
         player.invuln = 0;

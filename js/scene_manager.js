@@ -249,8 +249,9 @@ function startStage() {
 
         // ステージタイトルの多言語対応構築
         const data = STAGE_TITLES[stage] || { en: "UNKNOWN SECTOR", ja: "未知の宙域" };
-        const lang = (window.navigator.languages && window.navigator.languages[0]) || window.navigator.language;
-        const isJa = lang && lang.startsWith('ja');
+        
+        // ★修正：ブラウザ言語判定から、設定した currentLanguage に変更
+        const isJa = currentLanguage === 'ja';
 
         // ステージテーマカラー
         const themeHex = STAGE_THEMES[stage] || '#00bbff';
@@ -608,35 +609,110 @@ async function showGameOver() {
  * リザルト画面・最終メニューの表示
  */
 function proceedToNextMenu() {
-    // 確実にストーリー表示を消去
-    const container = document.getElementById('story-typing-container');
-    if (container) {
-        container.style.display = 'none';
-        container.classList.remove('ending-mode');
-    }
+    // ==========================================
+    // 1. フェードアウトさせる要素をリストアップ
+    // ==========================================
+    const elementsToFade = [
+        ui.nameInputArea,
+        document.getElementById('final-report-panel'),
+        document.getElementById('result-score-display'),
+        document.getElementById('ranking-overlay') // ランキング画面から戻った場合用
+    ];
 
-    ui.nameInputArea.style.display = 'none';
-    ui.titleOverlay.style.display = 'flex';
+    let isFading = false;
 
-    let titleColor = '#f00';
+    // 現在画面に表示されている要素だけをフェードアウトさせる
+    elementsToFade.forEach(el => {
+        if (el && window.getComputedStyle(el).display !== 'none' && el.style.opacity !== '0') {
+            el.style.transition = 'opacity 0.5s ease-out';
+            el.style.opacity = '0';
+            isFading = true;
+        }
+    });
 
-    ui.btnStart.innerText = 'RETRY';
-    ui.btnStart.style.display = 'block';
-    ui.btnStart.style.borderColor = titleColor;
-    ui.btnStart.style.color = titleColor;
+    // ==========================================
+    // 2. フェードアウト完了（0.5秒）を待ってから画面を切り替える
+    // ==========================================
+    setTimeout(() => {
+        // 見えなくなった要素を非表示にして、次回の表示のために透明度を元に戻しておく
+        elementsToFade.forEach(el => {
+            if (el) {
+                el.style.display = 'none';
+                el.style.transition = '';
+                el.style.opacity = '1';
+            }
+        });
 
-    ui.btnTitle.style.display = 'block';
-    ui.btnTitle.onclick = () => returnToTitle();
+        // 確実にストーリー表示を消去
+        const container = document.getElementById('story-typing-container');
+        if (container) {
+            container.style.display = 'none';
+            container.classList.remove('ending-mode');
+        }
 
-    ui.pauseBtn.style.display = 'none';
+        // ==========================================
+        // 3. 次のメニュー（RETRY画面）をフェードインさせる
+        // ==========================================
+        ui.titleOverlay.style.display = 'flex';
+        ui.titleOverlay.style.opacity = '0';
+        ui.titleOverlay.style.transition = 'opacity 0.5s ease-in';
+        
+        // 描画フレームを待って不透明度を1にする（CSSアニメーション発動）
+        requestAnimationFrame(() => {
+            ui.titleOverlay.style.opacity = '1';
+        });
 
-    if (ui.btnHowto) ui.btnHowto.style.display = 'none';
-    if (ui.btnRanking) ui.btnRanking.style.display = 'none';
-    if (ui.btnOst) ui.btnOst.style.display = 'none';
-    if (ui.btnStory) ui.btnStory.style.display = 'none';
-    if (ui.btnSettings) ui.btnSettings.style.display = 'none';
+        let titleColor = '#f00';
 
-    if (window.refreshMenuButtons) window.refreshMenuButtons();
+        ui.btnStart.innerText = 'RETRY';
+        ui.btnStart.style.display = 'block';
+        ui.btnStart.style.borderColor = titleColor;
+        ui.btnStart.style.color = titleColor;
+
+        ui.btnTitle.style.display = 'block';
+
+        ui.btnTitle.onclick = () => {
+            // 1. まず現在のRETRY画面を0.5秒かけてフェードアウト
+            ui.titleOverlay.style.transition = 'opacity 0.5s ease-out';
+            ui.titleOverlay.style.opacity = '0';
+
+            setTimeout(() => {
+                // 2. 画面が完全に消えた裏側で、中身をタイトル画面用にリセットする
+                returnToTitle();
+
+                // 3. タイトル画面として新しくフェードインさせる
+                ui.titleOverlay.style.opacity = '0';
+                ui.titleOverlay.style.transition = 'opacity 0.5s ease-in';
+                
+                requestAnimationFrame(() => {
+                    ui.titleOverlay.style.opacity = '1';
+                });
+
+                // 4. アニメーション完了後にスタイルを元に戻す
+                setTimeout(() => {
+                    ui.titleOverlay.style.transition = '';
+                }, 500);
+                
+            }, 500); // フェードアウトの時間（0.5秒）待つ
+        };
+
+        ui.pauseBtn.style.display = 'none';
+
+        // 不要なボタンを隠す
+        if (ui.btnHowto) ui.btnHowto.style.display = 'none';
+        if (ui.btnRanking) ui.btnRanking.style.display = 'none';
+        if (ui.btnOst) ui.btnOst.style.display = 'none';
+        if (ui.btnStory) ui.btnStory.style.display = 'none';
+        if (ui.btnSettings) ui.btnSettings.style.display = 'none';
+
+        if (window.refreshMenuButtons) window.refreshMenuButtons();
+
+        // フェードインが完了したら transition を消して元に戻す
+        setTimeout(() => {
+            ui.titleOverlay.style.transition = '';
+        }, 500);
+
+    }, isFading ? 500 : 0); // フェードアウトする要素があった時だけ500ms待つ
 }
 
 /**
@@ -850,9 +926,9 @@ function openStory() {
     const container = document.getElementById('story-scroll-container');
     if (container) {
         container.classList.remove('lang-ja', 'lang-en');
-        const lang = (window.navigator.languages && window.navigator.languages[0]) || window.navigator.language;
-        const isJa = lang && lang.startsWith('ja');
-        container.classList.add(isJa ? 'lang-ja' : 'lang-en');
+        
+        // ★修正：ブラウザ言語判定から、設定した currentLanguage に変更
+        container.classList.add(currentLanguage === 'ja' ? 'lang-ja' : 'lang-en');
         container.scrollTop = 0;
     }
 
@@ -998,6 +1074,9 @@ let isStoryTypingActive = false;
 /**
  * ステージ開始前のイントロ（ワープアウト）演出の更新
  */
+/**
+ * ステージ開始前のイントロ（ワープアウト）演出の更新
+ */
 function updateIntro() {
 
     if (gameState === 'PAUSED') return;
@@ -1021,17 +1100,18 @@ function updateIntro() {
 
 // --- Phase 1: タイトル表示 ---
     if (introPhase === 1) {
-        /* --- 722行目あたりの introTimer === 60 のブロックを丸ごと削除 --- */
-
         if (introTimer > 180) { // タイトル表示終了(約3秒後)
             introPhase = 2;
             introTimer = 0;
 
             hideGameMessage(); // ステージタイトルを消す
 
-            const storyText = STAGE_STORY_TEXTS[stage];
-            if (storyText) {
+            const storyTextObj = STAGE_STORY_TEXTS[stage];
+            if (storyTextObj) {
                 resetStoryTypingState();
+
+                // ★修正：現在の言語に対応するテキストを取得
+                const storyText = storyTextObj[currentLanguage] || storyTextObj['en'];
 
                 // ここでストーリー開始と同時にSKIPボタンが出るようになります
                 storyTypingStartTimeout = setTimeout(() => {
@@ -1481,20 +1561,10 @@ function resetStoryTypingState() {
 function updateDying() {
     dyingTimer--;
 
-    if (dyingTimer === 135) {
-        hideGameMessage(); // フェードアウト
-    }
-
-    if (dyingTimer === 120) {
-        showGameMessage({
-            main: "GAME OVER",
-            type: "warning",
-            duration: 0
-        });
-    }
-
-    if (dyingTimer === 20) {
-        hideGameMessage(); // フェードアウト
+    // ★修正1：途中でメッセージを切り替える不要な処理を削除
+    // ★修正2：完全に画面が切り替わる少し前（50フレーム目）に1回だけフェードアウトさせる
+    if (dyingTimer === 50) {
+        hideGameMessage(); 
     }
 
     if (gameSpeed < 1.0) {
@@ -1514,7 +1584,7 @@ function updateDying() {
 
     if (dyingTimer <= 0) {
         gameSpeed = 1.0;
-        hideGameMessage(true); // 即消し
+        // ★修正3：hideGameMessage(true); を削除し、一瞬明るく点滅するバグを防止
         showGameOver();
     }
 }
@@ -1527,6 +1597,24 @@ function updateWarpProcess() {
 
     if (player.warpTimer === undefined) player.warpTimer = 0;
     player.warpTimer++;
+
+    // ==========================================
+    // ★追加：ワープ演出が開始した瞬間にUIをフェードアウト
+    // ==========================================
+    if (player.warpTimer === 1) {
+        const uiElements = [
+            document.querySelector('.hud-row'),
+            document.getElementById('minimap-container'),
+            document.getElementById('controls'),
+            document.getElementById('stage-result-board')
+        ];
+        uiElements.forEach(el => {
+            if (el) {
+                el.style.transition = 'opacity 0.5s ease-out';
+                el.style.opacity = '0';
+            }
+        });
+    }
 
     player.angle = -Math.PI / 2; // 上向き固定
 
@@ -1621,24 +1709,10 @@ function updateWarpProcess() {
         scorePopupPool.clearAll();
         enemyBulletPool.clearAll();
 
-        // 画面から消えた瞬間に、1度だけフェードアウト開始の命令を出す
+        // 画面から消えた瞬間に、次へ進むためのタイマーを開始
         if (!player.hasExitedScreen) {
             player.hasExitedScreen = true;
-            player.exitTimer = 0; // フェードアウト用の新しいタイマー
-
-            // スコアパネルやミニマップなどのUI要素を、CSSで1秒かけて透明にする
-            const uiElements = [
-                document.querySelector('.hud-row'),
-                document.getElementById('minimap-container'),
-                document.getElementById('controls'),
-                document.getElementById('stage-result-board') // ★追加：成績ボードも一緒にフェードアウト
-            ];
-            uiElements.forEach(el => {
-                if (el) {
-                    el.style.transition = 'opacity 1.0s ease-out';
-                    el.style.opacity = '0';
-                }
-            });
+            player.exitTimer = 0;
         }
     }
 
@@ -1761,7 +1835,9 @@ async function startEndingSequence() {
         skipBtn.classList.remove('ending-next');
     }
 
-    const typingResult = await playStoryTyping(ENDING_STORY_TEXT, {
+    const endingText = ENDING_STORY_TEXT[currentLanguage] || ENDING_STORY_TEXT['en'];
+
+    const typingResult = await playStoryTyping(endingText, {
         keepVisibleAfterTyping: true,
         waitAfterTypingMs: 0,
         autoScroll: true

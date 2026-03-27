@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.7.8";
+window.GAME_VERSION = "0.7.9";
 
 
 const DEBUG = {
@@ -57,6 +57,7 @@ const GRAPHICS_SETTINGS = {
     }
 };
 let currentGraphicsQuality = 'MEDIUM'; // 現在の品質
+let currentLanguage = localStorage.getItem('neonGravity_language') || (window.navigator.language.startsWith('ja') ? 'ja' : 'en');
 
 // --- ステージ・難易度設定 ---
 const START_STAGE = 1;        // 開始ステージ
