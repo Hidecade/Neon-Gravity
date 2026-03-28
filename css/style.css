@@ -1332,28 +1332,26 @@ canvas {
 
 /* 1. リザルトボード親コンテナの設定 */
 #stage-result-board {
-    /* ★修正：画面全体に固定配置し、包含ブロック化の影響をなくす */
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 1000; /* HTML側の指定に合わせる */
-    pointer-events: none; /* デフォルトではクリック透過 */
+    z-index: 1000; 
+
+    /* ★最重要修正：常にタッチを貫通させ、下のジョイスティックを操作可能にする */
+    pointer-events: none !important; 
 
     /* GPUハードウェアアクセラレーションを強制する (iOS対策) */
     -webkit-transform: translateZ(0);
     transform: translateZ(0);
     will-change: opacity;
 
-    /* フェードインのアニメーション設定 (js/main.jsから引っ越し) */
+    /* フェードインのアニメーション設定 */
     transition: opacity 0.5s ease-in-out;
 }
 
-/* ★追加：親コンテナが表示中（opacity: 1）の時だけ、子要素へのクリックを有効化 */
-#stage-result-board[style*="opacity: 1"] {
-    pointer-events: auto;
-}
+/* ★修正：前回ここにあった pointer-events: auto; になる記述を丸ごと削除しました */
 
 /* 2. 透明化クラス (親コンテナに付与) */
 .fade-out-now {
