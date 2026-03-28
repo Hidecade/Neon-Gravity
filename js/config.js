@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.7.12";
+window.GAME_VERSION = "0.8.0";
 
 
 const DEBUG = {
@@ -14,18 +14,18 @@ const DEBUG = {
 };
 
 // --- システム設定 ---
-const G_SCALE = 0.7;          // 全体の描画スケール（標準の70%）
-const SPEED_SCALE = 0.25;     // ゲーム全体の速度倍率（全ての移動に適用）
-const WALL_MARGIN = 5;        // 画面端の見えない壁の余白
-let GRID_SPACING = 32;      // 背景グリッド線の間隔
+const G_SCALE = 0.7;            // 全体の描画スケール（標準の70%）
+const SPEED_SCALE = 0.25;       // ゲーム全体の速度倍率（全ての移動に適用）
+const WALL_MARGIN = 5;          // 画面端の見えない壁の余白
+let GRID_SPACING = 32;          // 背景グリッド線の間隔
 
-const CAMERA_Y_OFFSET = 0.60; // 自機の画面内Y座標位置（0.5が中央、大きいほど下）
+const CAMERA_Y_OFFSET = 0.60;   // 自機の画面内Y座標位置（0.5が中央、大きいほど下）
 
-const REFERENCE_SIZE = 1080;   // 画面スケーリングの基準サイズ
+const REFERENCE_SIZE = 1080;    // 画面スケーリングの基準サイズ
 
-const HOWTO_WAIT_TIME = 600;  // HOWTO画面の放置でタイトルに戻る時間
+const HOWTO_WAIT_TIME = 600;    // HOWTO画面の放置でタイトルに戻る時間
 
-const PI2 = Math.PI * 2; // 定数化して計算を省く
+const PI2 = Math.PI * 2;        // 定数化して計算を省く
 
 // --- iOS判定 ---
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);

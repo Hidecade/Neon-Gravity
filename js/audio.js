@@ -748,13 +748,14 @@ const AudioSys = {
     },
 
     getBgmPath(key, idx) {
-        if (BGM_FILES[key]) {
-            if (key === "stage") {
+        if (key === "stage") {
+            if (BGM_FILES.stages && BGM_FILES.stages.length > 0) {
+                // 配列の長さを超えた場合は最初に戻るように剰余(%)を使用
                 return BGM_FILES.stages[idx % BGM_FILES.stages.length];
             }
-            return BGM_FILES[key];
+            return "";
         }
-        return BGM_FILES.stages[0];
+        return BGM_FILES[key] || "";
     },
 
     // BGMデータをネットワークから取得してデコードする

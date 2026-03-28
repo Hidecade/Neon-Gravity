@@ -1,5 +1,5 @@
 ﻿// =========================================================
-// 2. オーディオシステム (Audio System)
+// 2. オーディオシステム (Audio System) - OST Manager
 // =========================================================
 // --- Menu & OST Logic ---
 let ostTracks = [];
@@ -13,11 +13,11 @@ function openOST() {
     gameState = 'OST';
     titleIdleTimer = 0;
 
-    ui.titleOverlay.style.display = 'none';
-
-    // フェードイン開始前の初期状態
-    ui.ostOverlay.style.display = 'flex';
-    ui.ostOverlay.style.opacity = '0';
+    if (ui.titleOverlay) ui.titleOverlay.style.display = 'none';
+    if (ui.ostOverlay) {
+        ui.ostOverlay.style.display = 'flex';
+        ui.ostOverlay.style.opacity = '0';
+    }
 
     const list = document.getElementById('track-list');
     if (!list) return;
@@ -71,7 +71,7 @@ function openOST() {
     // フェードイン
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-            ui.ostOverlay.style.opacity = '1';
+            if (ui.ostOverlay) ui.ostOverlay.style.opacity = '1';
         });
     });
 }
@@ -87,20 +87,18 @@ function closeOST() {
         ostUpdateInterval = null;
     }
 
-    if (AudioSys.bgmEl) AudioSys.bgmEl.pause();
+    // Web Audio API の仕様に合わせて停止を指示
+    if (typeof AudioSys !== 'undefined') {
+        AudioSys.stopBGM(); 
+    }
 
     // フェードアウト
-    ui.ostOverlay.style.opacity = '0';
+    if (ui.ostOverlay) ui.ostOverlay.style.opacity = '0';
 
     setTimeout(() => {
-        ui.ostOverlay.style.display = 'none';
+        if (ui.ostOverlay) ui.ostOverlay.style.display = 'none';
 
-        if (typeof AudioSys !== 'undefined' && AudioSys.bgmEl) {
-            AudioSys.bgmEl.loop = true;
-            AudioSys.bgmEl.onended = null; // イベントを解除
-        }
-
-        ui.titleOverlay.style.display = 'flex';
+        if (ui.titleOverlay) ui.titleOverlay.style.display = 'flex';
         gameState = 'TITLE';
 
         if (window.refreshMenuButtons) {
@@ -117,15 +115,14 @@ function playOSTTrack(idx) {
     currentOstIndex = idx; // 現在の曲番号を更新
     const t = ostTracks[idx];
 
-    // BGM再生（audio_manager.js の playBGM が呼ばれ、loopがfalseになる）
+    // BGM再生
+    // ※ 新しいaudio.jsでは gameState === 'OST' の場合に自動的にループが解除され、終了時にwindow.playNextOSTが呼ばれます
     if (typeof AudioSys !== 'undefined') {
         AudioSys.playBGM(t.k, t.i);
-
-        if (AudioSys.bgmEl) {
-            AudioSys.bgmEl.loop = false;
-            AudioSys.bgmEl.onended = window.playNextOST;
-        }
     }
+
+    // ★ Bluetooth・ロック画面用のメディアセッション更新
+    updateMediaSession(t.n);
 
     // リストの見た目を更新（再生中の曲を光らせる）
     const items = document.querySelectorAll('#track-list .track-item');
@@ -145,7 +142,7 @@ function playOSTTrack(idx) {
     }
 }
 
-// 次の曲へ進む（AudioSysのendedイベントから呼ばれる）
+// 次の曲へ進む（AudioSysのendedイベント、またはメディアコントロールから呼ばれる）
 window.playNextOST = function () {
     if (currentOstIndex >= 0 && ostTracks.length > 0) {
         let nextIndex = currentOstIndex + 1;
@@ -159,6 +156,20 @@ window.playNextOST = function () {
     }
 };
 
+// 前の曲へ戻る（メディアコントロールから呼ばれる）
+window.playPrevOST = function () {
+    if (currentOstIndex >= 0 && ostTracks.length > 0) {
+        let prevIndex = currentOstIndex - 1;
+
+        // 最初の曲から戻ろうとしたら最後に飛ぶ
+        if (prevIndex < 0) {
+            prevIndex = ostTracks.length - 1;
+        }
+
+        playOSTTrack(prevIndex);
+    }
+};
+
 // 秒数を 0:00 形式に変換
 function formatTime(seconds) {
     if (isNaN(seconds) || !isFinite(seconds)) return "0:00";
@@ -167,39 +178,116 @@ function formatTime(seconds) {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-// 再生バーの定期更新
+// 再生バーの定期更新（Web Audio API のオフセット計算に対応）
 function startOstProgressUpdate() {
     if (ostUpdateInterval) clearInterval(ostUpdateInterval);
     ostUpdateInterval = setInterval(() => {
-        if (gameState !== 'OST' || !AudioSys.bgmEl) return;
+        if (gameState !== 'OST' || typeof AudioSys === 'undefined') return;
 
-        const bgm = AudioSys.bgmEl;
-        const cur = bgm.currentTime || 0;
-        const tot = bgm.duration || 0;
+        let cur = 0;
+        let tot = 0;
 
-        document.getElementById('ost-time-current').innerText = formatTime(cur);
-        document.getElementById('ost-time-total').innerText = formatTime(tot);
+        // BGMがロード済み・キャッシュ済みか判定し、時間を計算する
+        if (AudioSys.currentBgmUrl && AudioSys.bgmBuffers && AudioSys.bgmBuffers[AudioSys.currentBgmUrl]) {
+            const buffer = AudioSys.bgmBuffers[AudioSys.currentBgmUrl];
+            tot = buffer.duration;
+            
+            if (AudioSys.isBgmPaused) {
+                cur = AudioSys.bgmOffset;
+            } else if (AudioSys.bgmSource && AudioSys.ctx) {
+                cur = AudioSys.ctx.currentTime - AudioSys.bgmStartTime;
+            }
+            // バッファ長を超えないようにクリップ
+            cur = Math.min(cur, tot);
+        }
+
+        const curEl = document.getElementById('ost-time-current');
+        const totEl = document.getElementById('ost-time-total');
+        if (curEl) curEl.innerText = formatTime(cur);
+        if (totEl) totEl.innerText = formatTime(tot);
 
         let pct = 0;
         if (tot > 0) pct = (cur / tot) * 100;
-        document.getElementById('ost-progress-fill').style.width = `${pct}%`;
+        
+        const fillEl = document.getElementById('ost-progress-fill');
+        if (fillEl) fillEl.style.width = `${pct}%`;
     }, 200);
 }
 
 
-// シークバー（再生バー）のクリック・タップ操作
+// シークバー（再生バー）のクリック・タップ操作（Web Audio API対応版）
 const ostProgressBar = document.getElementById('ost-progress-bar');
+if (ostProgressBar) {
+    const seekOst = (e) => {
+        if (gameState !== 'OST' || typeof AudioSys === 'undefined' || !AudioSys.currentBgmUrl) return;
+        
+        const buffer = AudioSys.bgmBuffers[AudioSys.currentBgmUrl];
+        if (!buffer) return;
 
-const seekOst = (e) => {
-    if (gameState !== 'OST' || !AudioSys.bgmEl || !AudioSys.bgmEl.duration) return;
-    const rect = ostProgressBar.getBoundingClientRect();
-    // タッチかマウスかを判定してX座標を取得
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clickX = clientX - rect.left;
-    const pct = Math.max(0, Math.min(1, clickX / rect.width)); // 0.0 ~ 1.0の範囲に収める
+        const rect = ostProgressBar.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clickX = clientX - rect.left;
+        const pct = Math.max(0, Math.min(1, clickX / rect.width));
 
-    AudioSys.bgmEl.currentTime = AudioSys.bgmEl.duration * pct;
-};
+        const targetTime = buffer.duration * pct;
 
-ostProgressBar.addEventListener('mousedown', seekOst);
-ostProgressBar.addEventListener('touchstart', (e) => { e.preventDefault(); seekOst(e); }, { passive: false });
+        // Web Audio API で途中から再生するには、ノードを破棄して指定位置（オフセット）から再構築する必要があります
+        if (!AudioSys.isBgmPaused && AudioSys.ctx) {
+            AudioSys.stopBGM(false); // 情報は消さずにノードだけ止める
+            AudioSys._startBgmNode(buffer, AudioSys.currentBgmRawKey, targetTime);
+        } else {
+            // ポーズ中の場合は再開用のオフセット記録だけを書き換える
+            AudioSys.bgmOffset = targetTime;
+            
+            // 見た目だけ先に反映
+            document.getElementById('ost-time-current').innerText = formatTime(targetTime);
+            document.getElementById('ost-progress-fill').style.width = `${pct * 100}%`;
+        }
+    };
+
+    ostProgressBar.addEventListener('mousedown', seekOst);
+    ostProgressBar.addEventListener('touchstart', (e) => { e.preventDefault(); seekOst(e); }, { passive: false });
+}
+
+/**
+ * Bluetooth・ロック画面用のメディアコントロールを更新・登録する
+ * @param {string} trackTitle - 表示する曲名
+ */
+function updateMediaSession(trackTitle) {
+    if ('mediaSession' in navigator) {
+        // 1. ディスプレイに表示されるメタデータの設定
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: trackTitle,
+            artist: 'Neon Gravity',
+            album: 'Original Soundtrack',
+            artwork: [
+                { src: 'img/NeonGravity.png', sizes: '512x512', type: 'image/png' }
+            ]
+        });
+
+        // 2. Bluetooth機器からの操作イベントハンドラ
+        navigator.mediaSession.setActionHandler('play', async () => {
+            if (window.AudioSys) {
+                await window.AudioSys.resumeBGM(true);
+            }
+        });
+
+        navigator.mediaSession.setActionHandler('pause', () => {
+            if (window.AudioSys) {
+                window.AudioSys.pauseBGM();
+            }
+        });
+
+        navigator.mediaSession.setActionHandler('nexttrack', () => {
+            if (typeof window.playNextOST === 'function') {
+                window.playNextOST();
+            }
+        });
+
+        navigator.mediaSession.setActionHandler('previoustrack', () => {
+            if (typeof window.playPrevOST === 'function') {
+                window.playPrevOST();
+            }
+        });
+    }
+}
