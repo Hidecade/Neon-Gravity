@@ -1,5 +1,6 @@
 ﻿// =========================================================
-// Audio System Manager (Fixed & Optimized)
+// Audio System Manager (Web Audio API Native Version)
+// 役割: BGM・SEのすべてをWeb Audio APIで統合管理し、iOSの制限を回避する
 // =========================================================
 
 // 警告音の間隔設定
@@ -33,37 +34,31 @@ const BGM_FILES = {
     ]
 };
 
-// --- 1. SEの音響定義ライブラリ ---
+// --- 1. SEの音響定義ライブラリ (変更なし) ---
 const SE_LIBRARY = {
-    // ★追加: 重力場（ブラックホール）の吸い込み音
     gravity: (ctx, t, g, noise) => {
-        const dur = 1.2; // 1回の再生時間（約1.2秒）
-        
-        // --- 1. 低音の地鳴り（重力の歪み） ---
+        const dur = 1.2;
         const o = ctx.createOscillator();
         o.type = 'sawtooth';
-        o.frequency.setValueAtTime(30, t); // 超低音から
-        o.frequency.linearRampToValueAtTime(80, t + dur); // 少しだけピッチを上げる
+        o.frequency.setValueAtTime(30, t);
+        o.frequency.linearRampToValueAtTime(80, t + dur);
         
         const env = ctx.createGain();
         env.gain.setValueAtTime(0, t);
-        env.gain.linearRampToValueAtTime(0.5, t + 0.1); // ドン！と入る
+        env.gain.linearRampToValueAtTime(0.5, t + 0.1);
         env.gain.exponentialRampToValueAtTime(0.01, t + dur);
         
         o.connect(env); env.connect(g);
         o.start(t); o.stop(t + dur);
 
-        // --- 2. 空間が吸い込まれる風切り音（ノイズ+フィルター） ---
         if (noise) {
             const n = ctx.createBufferSource();
             n.buffer = noise;
             const f = ctx.createBiquadFilter();
             f.type = 'bandpass';
-            
-            // シュゥゥゥーッ！と吸い込まれるように周波数を急上昇させる
             f.frequency.setValueAtTime(150, t);
             f.frequency.exponentialRampToValueAtTime(3500, t + dur);
-            f.Q.value = 6.0; // キィィンという金属的・SF的な響きを持たせる
+            f.Q.value = 6.0;
 
             const nEnv = ctx.createGain();
             nEnv.gain.setValueAtTime(0, t);
@@ -73,7 +68,6 @@ const SE_LIBRARY = {
             n.connect(f); f.connect(nEnv); nEnv.connect(g);
             n.start(t); n.stop(t + dur);
         }
-
         return { osc: null, duration: dur };
     },
     shoot: (ctx, t, g) => {
@@ -101,52 +95,39 @@ const SE_LIBRARY = {
         return { osc: o, duration: 0.15 };
     },
     homing: (ctx, t, g) => {
-        const duration = 0.15; // ノイズの余韻のためにわずかに延長
-
-        // --- 1. 低音の芯 (サイン波：さらに音量を下げて下支えに徹する) ---
+        const duration = 0.15;
         const o = ctx.createOscillator();
         o.type = 'sine';
         o.frequency.setValueAtTime(250, t);
         o.frequency.exponentialRampToValueAtTime(40, t + duration);
 
         const oGain = ctx.createGain();
-        // サイン波はノイズの邪魔をしないよう極小に (0.05 -> 0.005)
         oGain.gain.setValueAtTime(0.05, t); 
         oGain.gain.linearRampToValueAtTime(0, t + duration);
         o.connect(oGain); oGain.connect(g);
 
-        // --- 2. メインのノイズ（ここを強化） ---
         const bufferSize = ctx.sampleRate * duration;
         const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const output = noiseBuffer.getChannelData(0);
-        
         for (let i = 0; i < bufferSize; i++) {
-            // 乱数の振幅を 0.1 から 0.5 へ引き上げ（バッファ自体の密度を上げる）
             output[i] = (Math.random() * 2 - 1) * 0.5; 
         }
         
         const noise = ctx.createBufferSource();
         noise.buffer = noiseBuffer;
-
         const filter = ctx.createBiquadFilter();
         filter.type = 'lowpass';
-        // ★ フィルターを 2000Hz から開始して、ノイズの「ザラつき」を残す
         filter.frequency.setValueAtTime(2000, t); 
         filter.frequency.exponentialRampToValueAtTime(100, t + duration);
-        // Q値を上げて、少し「シュピッ」というSF的な鋭さを出す
         filter.Q.value = 2.0; 
 
         const nGain = ctx.createGain();
-        // ★ ノイズのゲインを 0.02 から 0.08 へ引き上げ
-        // これで masterGain (2.5) が掛かっても 0.2 なので、爆音にならずにハッキリ聞こえます
         nGain.gain.setValueAtTime(0.2, t); 
         nGain.gain.linearRampToValueAtTime(0, t + duration);
 
         noise.connect(filter); filter.connect(nGain); nGain.connect(g);
-
         o.start(t); o.stop(t + duration);
         noise.start(t); noise.stop(t + duration);
-
         return { osc: null, duration: duration };
     },
     warning: (ctx, t, g) => {
@@ -282,35 +263,22 @@ const SE_LIBRARY = {
         return { osc: null, duration: dur };
     },
     powerup: (ctx, t, g) => {
-        const dur = 0.2; // 再生時間
-
-        // --- 1音目（メインのピッチ） ---
+        const dur = 0.2;
         const o1 = ctx.createOscillator();
         o1.type = 'sine';
         o1.frequency.setValueAtTime(600, t);
         o1.frequency.linearRampToValueAtTime(1800, t + dur);
 
-        // --- 2音目（ディチューン用） ---
         const o2 = ctx.createOscillator();
         o2.type = 'sine';
-        // メインから約1.5%ピッチをずらして、音に厚みと広がり（コーラス感）を出す
         o2.frequency.setValueAtTime(609, t);
         o2.frequency.linearRampToValueAtTime(1827, t + dur);
 
-        // --- 音量の制御 ---
-        // 2つの音が重なることと、「やや小さく」という要望に合わせて 0.07 にダウン
         g.gain.setValueAtTime(0.07, t);
         g.gain.linearRampToValueAtTime(0, t + dur);
-
-        // 出力への接続
-        o1.connect(g);
-        o2.connect(g);
-
-        // 再生と停止
+        o1.connect(g); o2.connect(g);
         o1.start(t); o1.stop(t + dur);
         o2.start(t); o2.stop(t + dur);
-
-        // オシレーターを2つ使っているため osc は null で返す
         return { osc: null, duration: dur };
     },
     damage: (ctx, t, g) => {
@@ -382,43 +350,29 @@ const SE_LIBRARY = {
         return { osc: null, duration: duration };
     },
     lc_engine: (ctx, t, g) => {
-        const dur = 1.5; // 全体の長さは2秒
-        
-        // --- 1. 低域のモーター音（うねり） ---
+        const dur = 1.5;
         const o1 = ctx.createOscillator();
         o1.type = 'sawtooth';
-        // ★ 変更: 周波数を 60 -> 40 に下げて重低音を強化
         o1.frequency.setValueAtTime(60, t);
-        // ★ 変更: 到達周波数を 120 -> 80 に下げる
         o1.frequency.exponentialRampToValueAtTime(120, t + dur);
-
         const g1 = ctx.createGain();
         g1.gain.setValueAtTime(0, t);
-        // 0.5秒で最大音量(0.04)にする（素早いフェードイン）
         g1.gain.linearRampToValueAtTime(0.04, t + 0.5);
-        // 残り1.5秒（2.0秒地点）にかけて0にフェードアウトする（ゆっくり消える）
         g1.gain.linearRampToValueAtTime(0, t + dur);
         
-        // --- 2. 高域のキーンという電子音（トロンらしさ） ---
         const o2 = ctx.createOscillator();
         o2.type = 'sine';
-        // ★ 変更: 周波数を 800 -> 400 に下げて落ち着いた音色に
         o2.frequency.setValueAtTime(400, t);
-        // ★ 変更: 到達周波数を 1200 -> 600 に下げる
         o2.frequency.exponentialRampToValueAtTime(600, t + dur);
-
         const g2 = ctx.createGain();
         g2.gain.setValueAtTime(0, t);
-        // 0.5秒で最大音量(0.02)にする
         g2.gain.linearRampToValueAtTime(0.02, t + 0.5);
-        // 残り1.5秒（2.0秒地点）にかけて0にフェードアウトする
         g2.gain.linearRampToValueAtTime(0, t + dur);
 
         o1.connect(g1); g1.connect(g);
         o2.connect(g2); g2.connect(g);
         o1.start(t); o1.stop(t + dur);
         o2.start(t); o2.stop(t + dur);
-
         return { osc: null, duration: dur };
     },
     select: (ctx, t, g) => {
@@ -501,102 +455,73 @@ const SE_LIBRARY = {
     },
     coin: (ctx, t, g) => {
         const o = ctx.createOscillator();
-        o.type = 'sine'; // クリアで透明感のあるサイン波
-        
-        // 音程の動き
+        o.type = 'sine';
         o.frequency.setValueAtTime(1200, t);
         o.frequency.setValueAtTime(1600, t + 0.1);
-        
-        // 音量の動き
         g.gain.setValueAtTime(0.08, t);
         g.gain.setValueAtTime(0.08, t + 0.1);
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
-        
         return { osc: o, duration: 0.45 };
     },
     coin_cyber: (ctx, t, g) => {
         const o = ctx.createOscillator();
-        o.type = 'sawtooth'; // エッジの効いたノコギリ波
-        
-        // 400Hzから3200Hzへ、一瞬で駆け上がる
+        o.type = 'sawtooth';
         o.frequency.setValueAtTime(400, t);
         o.frequency.exponentialRampToValueAtTime(3200, t + 0.15);
-        
-        // 音量（アタックを鋭く、キレ良く消える）
         g.gain.setValueAtTime(0, t);
         g.gain.linearRampToValueAtTime(0.08, t + 0.03);
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-        
         return { osc: o, duration: 0.3 };
     },
     point: (ctx, t, g) => {
-        const dur = 0.1; // 再生時間を0.2秒から0.1秒に短縮して歯切れよく
-
-        // --- 1音目（メインのピッチ） ---
+        const dur = 0.1;
         const o1 = ctx.createOscillator();
         o1.type = 'sine';
         o1.frequency.setValueAtTime(600, t);
-        // 短い時間で一気に高音へ駆け上がる
         o1.frequency.linearRampToValueAtTime(1800, t + dur);
-
-        // --- 2音目（ディチューン用） ---
         const o2 = ctx.createOscillator();
         o2.type = 'sine';
-        // メインから約1.5%ピッチをずらす（コーラス感）
         o2.frequency.setValueAtTime(609, t);
         o2.frequency.linearRampToValueAtTime(1827, t + dur);
-
-        // --- 音量の制御 ---
         g.gain.setValueAtTime(0.05, t);
-        g.gain.linearRampToValueAtTime(0, t + dur); // 短い時間でスッと消える
-
-        // 出力への接続
-        o1.connect(g);
-        o2.connect(g);
-
-        // 再生と停止
+        g.gain.linearRampToValueAtTime(0, t + dur);
+        o1.connect(g); o2.connect(g);
         o1.start(t); o1.stop(t + dur);
         o2.start(t); o2.stop(t + dur);
-
-        // オシレーターを2つ使っているため osc は null で返す
         return { osc: null, duration: dur };
     },
 };
 
-
-// --- 2. メインのオーディオシステム ---
+// --- 2. メインのオーディオシステム (Web Audio API リファクタリング版) ---
 
 const AudioSys = {
     ctx: null,
-    bgmEl: null,
-    currentSrc: null,
     noiseBuffer: null,
     activeNodes: [],
-    bgmFadeInterval: null,
     lastPlayed: {},
     isUnlocking: false,
-    wasBgmPlayingBeforeHide: false,
-    isPageHidden: false,
-    lastResumeAt: 0,
     _lifecycleHooksInstalled: false,
-    keepAliveNode: null, // ★追加: CarPlay用セッション維持ノード
+    keepAliveNode: null,
+
+    // BGM管理用プロパティ
+    bgmBuffers: {},       // デコード済みのAudioBufferをキャッシュ
+    bgmSource: null,      // 現在再生中のAudioBufferSourceNode
+    bgmGain: null,        // BGM用のGainNode（フェード・音量制御）
+    currentBgmRawKey: null,  // 再生中のBGMキー
+    currentBgmUrl: null,     // 再生中の完全なURL
+    bgmVolume: 0.4,       // BGMの基本音量
+    bgmStartTime: 0,      // BGM再生開始時刻 (ctx.currentTime)
+    bgmOffset: 0,         // 一時停止時の再生位置（秒）
+    isBgmPaused: false,   // ポーズ状態フラグ
+    isBgmFadingOut: false, // フェードアウト実行中フラグ
 
     reset() {
-        this.stopBgmInterval();
-
+        this.stopBGM();
         if (!this.ctx) {
             this.init();
         } else {
             this.resume(false);
         }
-
-        if (this.bgmEl) {
-            this.bgmEl.pause();
-            this.bgmEl.currentTime = 0;
-            this.bgmEl.src = "";
-            this.currentSrc = null;
-        }
-
         console.log("Audio System Soft Reset.");
     },
 
@@ -605,7 +530,6 @@ const AudioSys = {
             try {
                 const AC = window.AudioContext || window.webkitAudioContext;
                 if (AC) {
-                    // ★修正: CarPlayの標準に合わせてサンプリングレートを44.1kHzに固定（リサンプリングによる途切れを防止）
                     this.ctx = new AC({ sampleRate: 44100 });
                     this.createNoise();
                     this._unlockAudio();
@@ -614,46 +538,21 @@ const AudioSys = {
                 console.error("Audio init error:", e);
             }
         }
-
-        if (!this.bgmEl) {
-            this.bgmEl = new Audio();
-            // ★追加: ネットワークバッファリングを最適化
-            this.bgmEl.preload = "auto";
-            this.bgmEl.loop = true;
-            this.bgmEl.volume = 0.4;
-            this.bgmEl.setAttribute("playsinline", "");
-
-            this.bgmEl.addEventListener("ended", () => {
-                if (window.gameState === "OST" && typeof window.playNextOST === "function") {
-                    window.playNextOST();
-                } else if (this.bgmEl.loop) {
-                    this.bgmEl.currentTime = 0;
-                    this.bgmEl.play().catch(() => { });
-                }
-            });
-        }
-
         this.installLifecycleHooks();
     },
 
     async ensureAudioReady(fromUserGesture = false) {
-        if (!this.ctx) {
-            this.init();
-        }
+        if (!this.ctx) this.init();
         if (!this.ctx) return false;
 
         try {
             if (this.ctx.state !== "running") {
                 await this.ctx.resume();
             }
-
-            // iPhone Safari対策: running にならない時は再アンロック
             if (this.ctx.state !== "running" && fromUserGesture) {
                 this._unlockAudio();
                 await this.ctx.resume().catch(() => { });
             }
-
-            this.lastResumeAt = performance.now();
             return this.ctx.state === "running";
         } catch (e) {
             return false;
@@ -665,16 +564,14 @@ const AudioSys = {
         if (this.ctx.state === "running" && this.keepAliveNode) return;
 
         this.isUnlocking = true;
-
         try {
-            // ★追加: 無音のループ再生を開始し、iOS/CarPlayにオーディオセッションを強制作り付けさせる
             if (!this.keepAliveNode) {
                 const silentBuffer = this.ctx.createBuffer(1, 44100, 44100);
                 this.keepAliveNode = this.ctx.createBufferSource();
                 this.keepAliveNode.buffer = silentBuffer;
                 this.keepAliveNode.loop = true;
                 const lowGain = this.ctx.createGain();
-                lowGain.gain.value = 0.01; // ほぼ無音
+                lowGain.gain.value = 0.01;
                 this.keepAliveNode.connect(lowGain);
                 lowGain.connect(this.ctx.destination);
                 this.keepAliveNode.start(0);
@@ -700,15 +597,12 @@ const AudioSys = {
 
     createNoise() {
         if (!this.ctx) return;
-
         const bSize = this.ctx.sampleRate * 2;
         const buf = this.ctx.createBuffer(1, bSize, this.ctx.sampleRate);
         const data = buf.getChannelData(0);
-
         for (let i = 0; i < bSize; i++) {
             data[i] = Math.random() * 2 - 1;
         }
-
         this.noiseBuffer = buf;
     },
 
@@ -725,16 +619,12 @@ const AudioSys = {
         }
 
         document.addEventListener("visibilitychange", () => {
-            this.isPageHidden = document.hidden;
-
             if (document.hidden) {
-                this.wasBgmPlayingBeforeHide = !!(this.bgmEl && !this.bgmEl.paused);
-                // ★追加: OS側のメモリ解放やクラッシュを防ぐため、明示的にBGMをポーズする
-                if (this.bgmEl && !this.bgmEl.paused) {
-                    this.bgmEl.pause();
+                // 背景移行時にAudioContextを一時停止させる
+                if (this.ctx && this.ctx.state === 'running') {
+                    this.ctx.suspend().catch(()=>{});
                 }
             } else {
-                // ★追加: アプリに画面が戻った際、AudioContextの再開を試みる
                 this.ensureAudioReady(false).catch(() => {});
             }
         });
@@ -743,25 +633,17 @@ const AudioSys = {
             await this.ensureAudioReady(false);
         });
 
-        const resumeFromGesture = async () => {
-            await this.ensureAudioReady(true);
-
-            if (
-                !this.isPageHidden &&
-                this.wasBgmPlayingBeforeHide &&
-                this.bgmEl &&
-                this.bgmEl.paused &&
-                this.currentSrc
-            ) {
-                this.bgmEl.play().catch(() => { });
+        // 完全同期ジェスチャーハンドラ (async/await不使用)
+        const resumeFromGestureSync = () => {
+            if (this.ctx && this.ctx.state !== "running") {
+                this.ctx.resume().catch(() => {});
             }
         };
 
-        window.addEventListener("touchstart", resumeFromGesture, { passive: true });
-        window.addEventListener("pointerdown", resumeFromGesture, { passive: true });
-        window.addEventListener("mousedown", resumeFromGesture, { passive: true });
-        // ★追加: キーボード操作時（SpaceやEscでのポーズ解除時）にもオーディオの復帰処理を走らせる
-        window.addEventListener("keydown", resumeFromGesture, { passive: true });
+        window.addEventListener("touchstart", resumeFromGestureSync, { passive: true, once: false });
+        window.addEventListener("pointerdown", resumeFromGestureSync, { passive: true, once: false });
+        window.addEventListener("mousedown", resumeFromGestureSync, { passive: true, once: false });
+        window.addEventListener("keydown", resumeFromGestureSync, { passive: true, once: false });
     },
 
     registerNode(type, node, durationMs) {
@@ -785,9 +667,8 @@ const AudioSys = {
     },
 
     playSE(type, x = null, y = null) {
-if (!this.ctx) this.init();
+        if (!this.ctx) this.init();
         if (!this.ctx || !SE_LIBRARY[type]) return;
-
         if (document.hidden) return;
 
         if (this.ctx.state !== "running") {
@@ -795,7 +676,7 @@ if (!this.ctx) this.init();
         }
 
         const realNow = performance.now();
-        if (this.lastPlayed[type] && realNow - this.lastPlayed[type] < 50) return; // 50ms = 0.05秒
+        if (this.lastPlayed[type] && realNow - this.lastPlayed[type] < 50) return;
         this.lastPlayed[type] = realNow;
 
         const masterGain = this.ctx.createGain();
@@ -808,19 +689,16 @@ if (!this.ctx) this.init();
             
             const camScale = (typeof cameraScale !== 'undefined') ? cameraScale : 1.0;
             const screenDiag = Math.hypot(width / camScale, height / camScale);
-            
             const maxDist = screenDiag * 1.2; 
 
             let volMult = 1.0 - (dist / maxDist);
             volMult = Math.max(0.4, Math.min(1.0, volMult));
-            
             masterGain.gain.value *= Math.pow(volMult, 0.6); 
 
             if (this.ctx.createStereoPanner) {
                 const panner = this.ctx.createStereoPanner();
                 const panLimit = (width / camScale) * 0.45; 
                 panner.pan.value = Math.max(-1.0, Math.min(1.0, dx / panLimit));
-                
                 masterGain.connect(panner);
                 panner.connect(this.ctx.destination);
             } else {
@@ -848,7 +726,6 @@ if (!this.ctx) this.init();
 
     stopSE(targetType = null) {
         if (!this.ctx) return;
-
         const t = this.ctx.currentTime;
         this.activeNodes = this.activeNodes.filter(item => {
             if (!targetType || item.type === targetType) {
@@ -870,59 +747,6 @@ if (!this.ctx) this.init();
         } catch (e) { }
     },
 
-    getNormalizedUrl(path) {
-        return path ? new URL(path, window.location.href).href : "";
-    },
-
-    playBGM(key, idx = 0) {
-        this.stopBgmInterval();
-        if (!this.bgmEl) this.init();
-        if (!this.bgmEl) return;
-
-        let src = "";
-
-        if (key === "stage") {
-            if (BGM_FILES.stages && BGM_FILES.stages[idx]) {
-                src = BGM_FILES.stages[idx];
-            } else {
-                return;
-            }
-        } else {
-            src = BGM_FILES[key];
-        }
-
-        if (!src) {
-            this.bgmEl.pause();
-            this.bgmEl.src = "";
-            this.currentSrc = null;
-            return;
-        }
-
-        const nextFull = new URL(src, window.location.href).href;
-
-        const isOST = (typeof window.gameState !== "undefined" && window.gameState === "OST");
-        const noLoopKeys = ["ending", "clear", "all_clear", "name"];
-        const shouldLoop = !(isOST || noLoopKeys.includes(key));
-
-        this.bgmEl.loop = shouldLoop;
-
-        if (this.currentSrc === nextFull && !this.bgmEl.paused) {
-            if (this.bgmEl.loop !== shouldLoop) {
-                this.bgmEl.loop = shouldLoop;
-            }
-            return;
-        }
-
-        this.bgmEl.pause();
-        this.bgmEl.currentTime = 0;
-        this.bgmEl.src = nextFull;
-        this.currentSrc = nextFull;
-        this.bgmEl.volume = 0.4;
-        this.bgmEl.loop = shouldLoop;
-
-        this.bgmEl.play().catch(() => { });
-    },
-
     getBgmPath(key, idx) {
         if (BGM_FILES[key]) {
             if (key === "stage") {
@@ -933,80 +757,174 @@ if (!this.ctx) this.init();
         return BGM_FILES.stages[0];
     },
 
-    stopBgmInterval() {
-        if (this.bgmFadeInterval) {
-            clearInterval(this.bgmFadeInterval);
-            this.bgmFadeInterval = null;
+    // BGMデータをネットワークから取得してデコードする
+    async loadBGM(url) {
+        if (!this.ctx) this.init();
+        if (this.bgmBuffers[url]) return this.bgmBuffers[url];
+
+        try {
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+            this.bgmBuffers[url] = audioBuffer;
+            return audioBuffer;
+        } catch (e) {
+            console.error("BGM Load/Decode Error:", e);
+            return null;
         }
     },
 
-    fadeOutBGM() {
-        return new Promise((resolve) => {
-            if (!this.bgmEl || this.bgmEl.paused) {
-                resolve();
-                return;
-            }
+    // 指定されたバッファを使ってソースノードを構築し再生する
+    _startBgmNode(buffer, key, offset = 0) {
+        if (!this.ctx) return;
+        
+        this.bgmSource = this.ctx.createBufferSource();
+        this.bgmSource.buffer = buffer;
 
-            this.stopBgmInterval();
-            let vol = this.bgmEl.volume;
+        // ループ判定のロジックを継承
+        const isOST = (typeof window.gameState !== "undefined" && window.gameState === "OST");
+        const noLoopKeys = ["ending", "clear", "all_clear", "name"];
+        this.bgmSource.loop = !(isOST || noLoopKeys.includes(key));
 
-            this.bgmFadeInterval = setInterval(() => {
-                if (vol > 0.05) {
-                    vol -= 0.05;
-                    if (vol < 0) vol = 0;
-                    this.bgmEl.volume = vol;
-                } else {
-                    this.bgmEl.volume = 0;
-                    this.bgmEl.pause();
-                    this.stopBgmInterval();
-                    resolve();
+        this.bgmGain = this.ctx.createGain();
+        this.bgmGain.gain.value = this.bgmVolume;
+
+        this.bgmSource.connect(this.bgmGain);
+        this.bgmGain.connect(this.ctx.destination);
+
+        // オフセット位置から再生
+        this.bgmSource.start(0, offset);
+        
+        // 再生開始基準時間を記録（オフセット分を引いて計算）
+        this.bgmStartTime = this.ctx.currentTime - offset;
+        this.isBgmFadingOut = false;
+
+        // 再生終了時の処理（ループしない曲やOST用）
+        this.bgmSource.onended = () => {
+            if (!this.isBgmPaused && !this.isBgmFadingOut && !this.bgmSource.loop) {
+                if (window.gameState === "OST" && typeof window.playNextOST === "function") {
+                    window.playNextOST();
                 }
-            }, 50);
-        });
+            }
+        };
     },
 
-    stopBGM() {
-        this.stopBgmInterval();
-        if (this.bgmEl) this.bgmEl.pause();
+    async playBGM(key, idx = 0) {
+        if (!this.ctx) this.init();
+        if (this.ctx.state !== "running") await this.ensureAudioReady(true);
+
+        const src = this.getBgmPath(key, idx);
+        if (!src) {
+            this.stopBGM();
+            return;
+        }
+
+        const nextFull = new URL(src, window.location.href).href;
+
+        // すでに同じ曲が再生中で、ポーズ中でもない場合は何もしない
+        if (this.currentBgmUrl === nextFull && !this.isBgmPaused && !this.isBgmFadingOut) {
+            return;
+        }
+
+        // 次の曲への意図を記録（複数回非同期で呼ばれた場合の競合防止）
+        this.currentBgmRawKey = key;
+        this.currentBgmUrl = nextFull;
+
+        const buffer = await this.loadBGM(nextFull);
+        if (!buffer) return;
+
+        // ロード中に別の曲が要求されていたら中断
+        if (this.currentBgmUrl !== nextFull) return;
+
+        // 既存のBGMを完全に停止
+        this.stopBGM(false); // URLやKeyは消さない
+
+        this.isBgmPaused = false;
+        this._startBgmNode(buffer, key, 0);
+    },
+
+    stopBGM(clearCurrentInfo = true) {
+        if (this.bgmSource) {
+            try { this.bgmSource.stop(); } catch(e){}
+            try { this.bgmSource.disconnect(); } catch(e){}
+            this.bgmSource = null;
+        }
+        if (this.bgmGain) {
+            try { this.bgmGain.disconnect(); } catch(e){}
+            this.bgmGain = null;
+        }
+        
+        this.isBgmPaused = false;
+        this.bgmOffset = 0;
+
+        if (clearCurrentInfo) {
+            this.currentBgmUrl = null;
+            this.currentBgmRawKey = null;
+        }
     },
 
     pauseBGM() {
-        if (this.bgmEl && !this.bgmEl.paused) {
-            this.bgmEl.pause();
+        if (this.bgmSource && !this.isBgmPaused) {
+            // 現在の再生位置(経過秒数)を保存
+            this.bgmOffset = this.ctx.currentTime - this.bgmStartTime;
+            
+            try { this.bgmSource.stop(); } catch(e){}
+            try { this.bgmSource.disconnect(); } catch(e){}
+            this.bgmSource = null;
+            
+            this.isBgmPaused = true;
         }
     },
 
     async resumeBGM(fromUserGesture = false) {
         await this.ensureAudioReady(fromUserGesture);
 
-        if (this.bgmEl && this.bgmEl.paused && this.currentSrc != null && this.bgmEl.src) {
-            this.bgmEl.play().catch(() => { });
+        if (this.isBgmPaused && this.currentBgmUrl) {
+            const buffer = this.bgmBuffers[this.currentBgmUrl];
+            if (buffer) {
+                this.isBgmPaused = false;
+                // バッファの長さを超えていた場合の安全策（ループ処理用）
+                let offset = this.bgmOffset % buffer.duration;
+                this._startBgmNode(buffer, this.currentBgmRawKey, offset);
+            }
         }
     },
 
-    // ==========================================
-    // ★修正: iOSフリーズ対策版 強制再起動
-    // ==========================================
+    fadeOutBGM() {
+        return new Promise((resolve) => {
+            if (!this.bgmGain || !this.bgmSource || this.isBgmPaused) {
+                resolve();
+                return;
+            }
+
+            this.isBgmFadingOut = true;
+            const t = this.ctx.currentTime;
+            
+            // AudioParamを使って滑らかにフェードアウト（1.5秒かけて音量を0へ）
+            this.bgmGain.gain.cancelScheduledValues(t);
+            this.bgmGain.gain.setValueAtTime(this.bgmGain.gain.value, t);
+            this.bgmGain.gain.linearRampToValueAtTime(0, t + 1.5);
+
+            setTimeout(() => {
+                this.stopBGM(true);
+                resolve();
+            }, 1500);
+        });
+    },
+
     forceWakeUp: function() {
-        if (!this.initialized || !this.ctx) return;
-        
+        if (!this.ctx) return;
         try {
             if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') {
-                // ★最重要：awaitを使わない（iOSで永遠にPromiseが返ってこないバグを回避するため）
-                this.ctx.resume().then(() => {
-                    console.log("AudioContext forced wake up. State:", this.ctx.state);
-                }).catch(e => console.warn("Wake up error:", e));
+                this.ctx.resume().catch(() => {});
             }
-            
-            // 無音のオシレーターを鳴らして無理やりエンジンを駆動させる
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
-            gain.gain.value = 0; // 無音
+            gain.gain.value = 0;
             osc.connect(gain);
             gain.connect(this.ctx.destination);
             osc.start(0);
             osc.stop(this.ctx.currentTime + 0.1);
-            
         } catch (e) {
             console.warn("AudioContext wake up failed:", e);
         }
@@ -1014,6 +932,3 @@ if (!this.ctx) this.init();
 };
 
 window.AudioSys = AudioSys;
-
-
-
