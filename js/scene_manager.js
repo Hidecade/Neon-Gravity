@@ -1114,10 +1114,12 @@ function updateIntro() {
                 const storyText = storyTextObj[currentLanguage] || storyTextObj['en'];
 
                 // ここでストーリー開始と同時にSKIPボタンが出るようになります
-                storyTypingStartTimeout = setTimeout(() => {
-                    storyTypingStartTimeout = null;
-                    playStoryTyping(storyText); // この中でボタンが表示されます
-                }, 500); 
+                (async () => {
+                    await waitWithPause(500, () => isSkippingStory);
+                    if (!isSkippingStory && gameState !== 'TITLE') {
+                        playStoryTyping(storyText); // この中でボタンが表示されます
+                    }
+                })();
             } else {
                 isSkippingStory = true;
             }
@@ -1378,19 +1380,15 @@ async function playStoryTyping(text, options = {}) {
             else if (/[!?！？]/.test(char)) delay = 400;
             else if (char === ' ') delay = 20;
 
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
-
-        // ★追加：行が終わったあとの待機（250ms）に入る前もポーズ判定
-        while (gameState === 'PAUSED') {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            if (sessionId !== storyTypingSessionId || isSkippingStory) break;
+            // ポーズ対応の文字単位ディレイ
+            await waitWithPause(delay, () => sessionId !== storyTypingSessionId || isSkippingStory);
         }
 
         if (sessionId !== storyTypingSessionId || isSkippingStory) break;
 
+        // 行終わりの待機
         if (lineText.trim() !== '') {
-            await new Promise(resolve => setTimeout(resolve, 250));
+            await waitWithPause(250, () => sessionId !== storyTypingSessionId || isSkippingStory);
         }
     }
 
@@ -1436,7 +1434,7 @@ async function playStoryTyping(text, options = {}) {
 
     el.style.transition = 'opacity 0.6s ease-out';
     el.style.opacity = '0';
-    await new Promise(r => setTimeout(r, 600));
+    await waitWithPause(600, () => sessionId !== storyTypingSessionId || isSkippingStory);
 
     if (sessionId !== storyTypingSessionId) {
         isStoryTypingActive = false;
@@ -1459,11 +1457,6 @@ window.skipStory = function () {
 
     isSkippingStory = true;
     isSkipComplete = false;
-
-    if (storyTypingStartTimeout) {
-        clearTimeout(storyTypingStartTimeout);
-        storyTypingStartTimeout = null;
-    }
 
     storyTypingSessionId++;
 
@@ -1526,11 +1519,6 @@ function skipToPlaying() {
 function resetStoryTypingState() {
     storyTypingSessionId++;
     isStoryTypingActive = false;
-
-    if (storyTypingStartTimeout) {
-        clearTimeout(storyTypingStartTimeout);
-        storyTypingStartTimeout = null;
-    }
 
     const container = document.getElementById('story-typing-container');
     const el = document.getElementById('story-typing-msg');
@@ -1798,8 +1786,8 @@ async function startEndingSequence() {
         }
     }
 
-    // 余韻用の暗転
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // 余韻用の暗転 (ポーズ対応)
+    await waitWithPause(1500, () => isSkippingStory);
 
     // 2. 星空と文字をフェードイン
     gameState = 'ENDING_STORY';
@@ -2454,3 +2442,31 @@ window.showFinalResultBoard = function() {
         resultContainer.insertAdjacentHTML('afterend', html);
     }
 };
+
+
+
+/**
+ * ポーズ中は時間を進めない非同期待機関数
+ * @param {number} ms - 待機させたい実質的なミリ秒数
+ * @param {function} cancelCondition - 途中で待機をキャンセル（スキップ）するための関数
+ */
+async function waitWithPause(ms, cancelCondition = null) {
+    let waited = 0;
+    const interval = 20; // 判定の精度（ミリ秒）
+
+    while (waited < ms) {
+        // スキップフラグ等が立っていれば即座に待機終了
+        if (cancelCondition && cancelCondition()) {
+            break;
+        }
+
+        if (gameState === 'PAUSED') {
+            // ポーズ中は経過時間を加算せずに待機だけ行う
+            await new Promise(resolve => setTimeout(resolve, interval));
+        } else {
+            // ポーズ中以外は経過時間を加算して待機
+            await new Promise(resolve => setTimeout(resolve, interval));
+            waited += interval;
+        }
+    }
+}
