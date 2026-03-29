@@ -504,7 +504,34 @@ function drawItems() {
             ctx.arc(0, 0, itemRadius, 0, Math.PI * 2); // 円を描画（スケールされて楕円になる）
             ctx.stroke();
             ctx.restore(); // 円盤描画用の状態を戻す
+        } else if (p.type === 'level') {
+            // =========================================================
+            // ★Wアイテム：垂直回転四角枠 + 固定文字「W」
+            // =========================================================
+            const rotateSpeed = 0.1;
+            const angle = frame * rotateSpeed;
+            const xScale = Math.cos(angle);
 
+            if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 15;
+            ctx.shadowColor = color;
+
+            // 1. 固定文字「W」の描画
+            ctx.save();
+            ctx.scale(baseScale, baseScale); 
+            ctx.fillStyle = color;
+            ctx.font = 'bold 12px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(char, 0, 0); 
+            ctx.restore(); 
+
+            // 2. 回転する外側四角枠の描画
+            ctx.save();
+            ctx.scale(baseScale * xScale, baseScale); 
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = color;
+            ctx.strokeRect(-8, -8, 16, 16);
+            ctx.restore();
         } else {
             // =========================================================
             // 他のアイテム（元の四角い枠線）
