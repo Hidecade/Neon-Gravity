@@ -612,7 +612,11 @@ function init() {
         const initAudioOnFirstInteract = () => {
             if (!AudioSys.ctx) {
                 AudioSys.init();
-                AudioSys.resume(true);
+                // 非同期関数を避け、同期的にAudioContextのロック解除を強制実行
+                if (AudioSys.ctx && AudioSys.ctx.state !== "running") {
+                    AudioSys.ctx.resume().catch(() => {});
+                }
+                AudioSys._unlockAudio();
             }
             // 一度実行されたらイベントリスナーを削除（メモリ節約）
             window.removeEventListener('mousedown', initAudioOnFirstInteract);
