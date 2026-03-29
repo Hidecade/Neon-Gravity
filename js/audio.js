@@ -606,15 +606,13 @@ const AudioSys = {
         this.noiseBuffer = buf;
     },
 
-    installLifecycleHooks() {
+installLifecycleHooks() {
         if (this._lifecycleHooksInstalled) return;
         this._lifecycleHooksInstalled = true;
 
         if (this.ctx) {
             this.ctx.onstatechange = () => {
-                if (this.ctx.state === "interrupted" || this.ctx.state === "suspended") {
-                    this.ensureAudioReady(false).catch(() => {});
-                }
+                // 【削除】interrupted 時に非同期で復帰を試みるとiOSで永久ロックされるため何もしない
             };
         }
 
@@ -624,26 +622,31 @@ const AudioSys = {
                 if (this.ctx && this.ctx.state === 'running') {
                     this.ctx.suspend().catch(()=>{});
                 }
-            } else {
-                this.ensureAudioReady(false).catch(() => {});
             }
-        });
-
-        window.addEventListener("pageshow", async () => {
-            await this.ensureAudioReady(false);
+            // 【削除】復帰時 (!document.hidden) の非同期 resume 呼び出しを削除（次のタップイベントに任せる）
         });
 
         // 完全同期ジェスチャーハンドラ (async/await不使用)
         const resumeFromGestureSync = () => {
             if (this.ctx && this.ctx.state !== "running") {
+                // iOSの「別アプリ(YouTube等)からの復帰後」対策
+                // ただ resume() するだけでなく、同期的に空のバッファを生成・再生して
+                // OSレベルのオーディオセッション（再生権限）を強奪し返す
+                const buffer = this.ctx.createBuffer(1, 1, 22050);
+                const source = this.ctx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(this.ctx.destination);
+                source.start(0);
+
                 this.ctx.resume().catch(() => {});
             }
         };
 
-        window.addEventListener("touchstart", resumeFromGestureSync, { passive: true, once: false });
-        window.addEventListener("pointerdown", resumeFromGestureSync, { passive: true, once: false });
-        window.addEventListener("mousedown", resumeFromGestureSync, { passive: true, once: false });
-        window.addEventListener("keydown", resumeFromGestureSync, { passive: true, once: false });
+        // キャプチャフェーズ(capture: true)で登録し、他のボタン(ポーズ解除など)の処理より先に確実に実行させる
+        window.addEventListener("touchstart", resumeFromGestureSync, { passive: true, capture: true });
+        window.addEventListener("touchend", resumeFromGestureSync, { passive: true, capture: true });
+        window.addEventListener("click", resumeFromGestureSync, { passive: true, capture: true });
+        window.addEventListener("keydown", resumeFromGestureSync, { passive: true, capture: true });
     },
 
     registerNode(type, node, durationMs) {
