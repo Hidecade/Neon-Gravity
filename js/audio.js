@@ -509,7 +509,7 @@ const AudioSys = {
     bgmGain: null,        // BGM用のGainNode（フェード・音量制御）
     currentBgmRawKey: null,  // 再生中のBGMキー
     currentBgmUrl: null,     // 再生中の完全なURL
-    bgmVolume: 0.4,       // BGMの基本音量
+    bgmVolume: 1.0,       // BGMの基本音量
     bgmStartTime: 0,      // BGM再生開始時刻 (ctx.currentTime)
     bgmOffset: 0,         // 一時停止時の再生位置（秒）
     isBgmPaused: false,   // ポーズ状態フラグ
