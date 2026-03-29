@@ -198,7 +198,9 @@ function startOstProgressUpdate() {
                 cur = AudioSys.ctx.currentTime - AudioSys.bgmStartTime;
             }
             // バッファ長を超えないようにクリップ
-            cur = Math.min(cur, tot);
+            if (tot > 0) {
+                cur = cur % tot;
+            }
         }
 
         const curEl = document.getElementById('ost-time-current');

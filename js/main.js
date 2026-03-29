@@ -608,7 +608,21 @@ function init() {
     applyLanguage(currentLanguage);
 
     if (typeof AudioSys !== 'undefined') {
-        AudioSys.init();
+        // ページ読み込み時の自動初期化をやめ、ユーザーの初回操作時に初期化・ロック解除を行う
+        const initAudioOnFirstInteract = () => {
+            if (!AudioSys.ctx) {
+                AudioSys.init();
+                AudioSys.resume(true);
+            }
+            // 一度実行されたらイベントリスナーを削除（メモリ節約）
+            window.removeEventListener('mousedown', initAudioOnFirstInteract);
+            window.removeEventListener('touchstart', initAudioOnFirstInteract);
+            window.removeEventListener('keydown', initAudioOnFirstInteract);
+        };
+
+        window.addEventListener('mousedown', initAudioOnFirstInteract, { once: true, passive: true });
+        window.addEventListener('touchstart', initAudioOnFirstInteract, { once: true, passive: true });
+        window.addEventListener('keydown', initAudioOnFirstInteract, { once: true, passive: true });
     }
 
     // PCリサイズ

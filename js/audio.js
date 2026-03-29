@@ -846,6 +846,9 @@ const AudioSys = {
 
     stopBGM(clearCurrentInfo = true) {
         if (this.bgmSource) {
+            // ★追加：停止させる前に onended イベントを無効化し、意図しない曲送りを防ぐ
+            this.bgmSource.onended = null; 
+            
             try { this.bgmSource.stop(); } catch(e){}
             try { this.bgmSource.disconnect(); } catch(e){}
             this.bgmSource = null;
