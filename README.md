@@ -105,6 +105,7 @@ version 0.8.1
 * **CUBE:** アイテムキャリア。破壊すると必ずパワーアップアイテムをドロップします。
 * **TADPOLE:** 素早い動きで接近してくる小型機。尾を引くエフェクトが特徴。
 * **DRAGON:** 複数のコンテナ装甲が連結された巨大な機械竜。体をくねらせて画面を制圧し、弾をばら撒きます。
+* **LIGHTCYCLE:** 高速で直角ターンを繰り返しながら移動し、後方の軌跡に「光の壁」を形成する敵。この壁に接触すると自機は強烈に弾き飛ばされ、ダメージを受けます。
 * **HUNTER:** 高速で接近し、停止して正確な狙いで3連射を行い、再び離脱するヒット＆アウェイ戦法をとる危険な敵。
 * **ASTEROID / BUBBLE:** 宇宙を漂う障害物。
     * **Asteroid (岩):** 攻撃すると分裂します。一定時間経過すると赤く変色して「覚醒」し、猛スピードでプレイヤーを追尾し始めます。
@@ -112,7 +113,6 @@ version 0.8.1
 * **PHANTOM:** ステルス迷彩を持つ敵。透明化して接近し、実体化と同時に全方位レーザーを放ちます。
 * **ECLIPSE:** ブラックホールを生成する敵。周囲の空間を歪ませながら、ビットを展開して攻撃してきます。
 * **JELLYFISH:** 宇宙を漂うクラゲ型メカ。帯電タイプ（Spark）は強力な電撃攻撃を行います。
-* **SENTINEL:** プレイヤーの周囲を周回し、スキャンした後に正確な射撃を行う監視ドローン。
 * **FIGHTER JET:** ボスから射出される小型戦闘機。編隊を組んで攻撃してきます。
 * **BOSS:** 各ステージの最後に待ち受ける巨大要塞。多角形の形状を持ち、回転しながらレーザーやミサイルを乱射します。Stage 9はこれらとの連戦（ボスラッシュ）です。
 * **GENESIS-ARK (Last Boss):** Stage 10に登場する超巨大戦艦。圧倒的な火力と耐久力を誇ります。
@@ -262,6 +262,7 @@ Uses virtual on-screen controllers.
 * **CUBE:** Item carrier. Guaranteed to drop a power-up item upon destruction.
 * **TADPOLE:** A fast-moving, small craft that rapidly approaches the player, leaving a mechanical tail effect.
 * **DRAGON:** A massive mechanical dragon made of linked container armor. It undulates to dominate the screen while scattering bullets.
+* **LIGHTCYCLE:** A fast-moving enemy that makes sharp 90-degree turns, leaving a dangerous "light wall" trail behind it. Touching this wall will violently repel and damage your ship.
 * **HUNTER:** A dangerous hit-and-run enemy that approaches rapidly, stops to lock on with a laser sight, fires a 3-round burst, and retreats.
 * **ASTEROID / BUBBLE:** Obstacles drifting through space.
     * **Asteroid:** Splits when attacked. After a certain time, it turns red, "awakens," and relentlessly chases the player at high speed.
@@ -269,7 +270,6 @@ Uses virtual on-screen controllers.
 * **PHANTOM:** Enemies equipped with stealth camouflage. They approach invisibly and unleash omnidirectional lasers the moment they materialize.
 * **ECLIPSE:** Generates black holes to distort surrounding space while deploying attacking bits.
 * **JELLYFISH:** Drifting jellyfish-like mechas. The charged "Spark" variant unleashes powerful electrical attacks.
-* **SENTINEL:** Surveillance drones that orbit the player, scan, and execute highly accurate shots.
 * **FIGHTER JET:** Small fighters launched from bosses that attack in coordinated formations.
 * **BOSS:** Massive fortresses waiting at the end of each sector. They feature polygonal shapes and unleash chaotic storms of lasers and missiles while rotating. Stage 9 is a Boss Rush mode.
 * **GENESIS-ARK (Last Boss):** The colossal final battleship in Stage 10, boasting overwhelming firepower and durability.
