@@ -2492,7 +2492,8 @@ function updateEnemies() {
         if (!e.isWarping && !e.isWarpingOut && e.gridLife !== Infinity && !e.isDying && !e.isDead) {
             e.gridLife -= gameSpeed;
 
-            if (e.gridLife < 180) {
+            // ★修正：Phantomは自前のステルス処理でalphaを使用するため、警告点滅から除外する
+            if (e.gridLife < 180 && e.type !== 'phantom') {
                 if (Math.floor(e.gridLife) % 6 < 3) {
                     e.alpha = 0.2; 
                 } else {
