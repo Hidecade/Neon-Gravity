@@ -1,5 +1,5 @@
 // ★更新するたびに、ここのバージョン番号を書き換えてください（v1 -> v2 -> v3...）
-const CACHE_NAME = 'neon-gravity-v0.8.0'; 
+const CACHE_NAME = 'neon-gravity-v0.8.1'; 
 
 // キャッシュするファイルのリスト
 const ASSETS_TO_CACHE = [
