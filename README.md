@@ -1,6 +1,6 @@
 # NEON GRAVITY: ORBITAL
 
-version0.6.9
+version 0.8.0
 
 宇宙を幾何学的な死の世界へ変換する謎の機械生命体『アキシオム』。
 空間を歪ませる「ネオン・グリッド」の最深部へ向け、次元潜行型特務戦闘機「エメラルド・フェニックス」が発進する——。
@@ -138,9 +138,166 @@ version0.6.9
 ## 🛠️ 技術スタック (Tech Stack)
 
 * **HTML5 Canvas API:** 描画エンジン（加算合成、パーティクルシステム、多関節アニメーション、疑似3D表現）
-* **Web Audio API:** 効果音（SE）のリアルタイムシンセサイズ生成（外部音声ファイル不使用により超軽量化を実現）、BGM再生制御
+* **Web Audio API:** 全てのオーディオシステムを統合。効果音（SE）はリアルタイムシンセサイズ生成により超軽量化を実現し、BGMはメモリ空間でのシームレスな再生制御とループ処理を実装しています。
 * **Firebase (Firestore):** リアルタイム・オンラインランキングシステム
 * **Vanilla JavaScript:** ライブラリやフレームワークを使用しない、ピュアなJavaScriptによる実装。クラス設計によるオブジェクト指向プログラミング。
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+---
+*Created by Hideki Konishi*
+
+<br><br>
+
+---
+
+# English Version
+
+# NEON GRAVITY: ORBITAL
+
+version 0.8.0
+
+The "Axiom"—a mysterious swarm of machine lifeforms converting the universe into a world of geometric death.
+The dimensional dive fighter "Emerald Phoenix" launches into the deepest sector of the space-distorting "Neon Grid"...
+
+**NEON GRAVITY: ORBITAL** is a high-density, omnidirectional twin-stick shooter where gravity and geometry intersect.
+Navigate through space-distorting wormholes, neon-glowing vector graphics, and utilize the offensive/defensive "Satellite System" to annihilate the infinitely spawning machine lifeforms.
+
+[👉 **Play Now (Play in Browser)**](https://hidecade.github.io/Neon-Gravity/)
+
+---
+
+<details>
+<summary>📖 <b>Read World & Story (Click to expand)</b></summary>
+
+## [Prologue: The Silence of the Cosmos]
+Year 23XX. Humanity had colonized half the galaxy, but one day they realized that stars in the border sectors were "disappearing" one after another.
+They weren't destroyed. Stars, debris, lifeforms—everything was being **reconstructed into "perfect geometric shapes" and ceasing all life activity.**
+
+It was a swarm of autonomous cosmic pioneer machines of unknown origin, known as the "Axiom." Their objective: to eliminate all cosmic chaos (organic matter) and convert the universe into an "ultimate order" based on perfect mathematical formulas.
+The sectors they invaded experienced abnormal twisting of gravitational fields, turning into **"Gravity Distortion Sectors (Neon Grids)"** where space itself luminesces. The standard fleets of the Earth Defense Force were disassembled at the atomic level the moment they touched this grid, resulting in total annihilation.
+
+## [Hope: Emerald Phoenix]
+As the Axiom's invasion closed in on the Earth Sphere's absolute defense line, a prototype fighter developed in top secret was launched.
+**The Dimensional Dive Fighter "Emerald Phoenix".**
+
+The defining feature of this craft is its gravity distortion engine—the exact same technology used by the enemy. By absorbing the energy crystals released from the wreckage of the Axiom, it possesses the ability to organically evolve its weaponry (WEAPON LEVEL) in real-time during combat.
+To withstand the gravitational load of the Grid, the only pilot is "You (COMMANDER)," whose nervous system is directly connected to the craft via an Orbital Link.
+
+There is only one objective: Dive into the deepest part of the enemy swarm and destroy the massive source that is rewriting the universe into geometric space.
+
+## [ACT 1: Dive into the Neon Grid (Stage 1-4)]
+Plunging into a different dimension where space is visualized as a glowing green and blue mesh (Grid).
+Intercepting you are inorganic swarms of purple "Triangles," white "Tadpoles" flowing at high speeds with mechanical tails, and the mid-boss "Dragon" snapping at you with its long, undulating red segments.
+You must destroy the enemies, gather the spilling crystals, widen the main cannon's spread, and push forward by unleashing invincible energy barriers and massive convergent lasers.
+
+## [ACT 2: Evolving Geometry (Stage 5-8)]
+As you approach the enemy's core, the Axiom begins to recognize you—an "unpredictable lifeform"—as a critical threat.
+The number of "Wormholes" tearing through space increases. Blocking your path are orange "Hunters" that rotate, lock onto your future position with laser sights, and fire before retreating; "Asteroids" that split and attack even when destroyed; "Phantoms" that approach hidden by stealth camouflage; and "Eclipses" that generate black holes.
+
+The bosses commanding each sector become progressively more complex.
+Starting from the "TRI-FORTRESS," evolving into the "HEXAGON-NEST," and then the "OCTAGON-COMMAND," the geometric barrages and lasers grow fiercer with every vertex added to the polygons.
+
+## [ACT 3: Absolute Defense Line - Boss Rush (Stage 9)]
+The final defense gate spreading before the enemy's home world.
+Here, the laws of space distort, and the successive polygonal guardians you previously destroyed are reconstructed (respawned) one after another, imbued with even more sinister energy.
+A storm of bullets, back-to-back battles with no time to breathe. You must rely on sharpened reflexes and your accumulated Satellite weaponry (homing missiles) to break through this geometric nightmare alone.
+
+## [CLIMAX: Genesis Ark (Stage 10)]
+Beyond the gate, sitting in the void of space, is a colossal, unprecedented 12-vertex super-fortress: **"GENESIS-ARK."**
+It is not merely a battleship; it is a massive computational core "recalculating" and remaking the universe itself.
+
+It unleashes omnidirectional laser radiation, gravity hatches that carve out space, countless homing missiles, and charges with its massive weight. When its HP drops below half, it shifts into "CRITICAL: EVENT HORIZON" mode, summoning endless reinforcements from wormholes.
+
+After a fierce battle, your ultimate laser pierces the crimson core pulsating at the center of the Ark.
+In what feels like slow motion, the Ark's massive body undergoes a chain collapse from within. Releasing a death-cry of gravitational waves, it engulfs all surrounding asteroids and the remaining fleet, vanishing into a blinding pure white light.
+
+## [Epilogue: MISSION COMPLETE]
+The glowing Neon Grid fades quietly, and the original, beautiful pitch-black universe with its naturally twinkling stars returns.
+The words "ALL SECTORS LIBERATED" float across the screen.
+Though damaged, the Emerald Phoenix glows with its green propulsion jets, drawing a solitary orbit as it quietly begins its journey home.
+
+Your score will be eternally etched in the history of the "WORLD RANKING" as the record of the hero who saved the universe.
+
+</details>
+
+---
+
+## 🎮 Features
+
+* **Twin-Stick Action:** Intuitive twin-stick shooter mechanics, separating movement and aiming. Fully supports both PC (WASD/Arrows) and Mobile devices, as well as Bluetooth gamepads.
+* **Gravity & Grid Physics:** The background grid dynamically and beautifully distorts in real-time due to explosions and gravitational interference from wormholes.
+* **Satellite System:** Collecting enemy debris (Crystals) deploys "Satellites" around your ship.
+    * **Defense:** Acts as a "shield," destroying enemy projectiles and damaging enemies on contact at the cost of the satellite.
+    * **Offense:** Press the 'Launch' button to fire all satellites at once, acting as a powerful screen-clearing "Bomb."
+* **Dynamic Visuals:**
+    * Exhilarating visual feedback, including sparks on hit, flashy particle diffusion upon destruction, and wall impact effects.
+    * Weapon effects evolve drastically as you level up (culminating in the powerful "Emerald Phoenix" aura at Max Level).
+* **Global Ranking:** Features a real-time online leaderboard powered by Firebase. Compete for the highest score with players worldwide.
+
+## 🕹️ Controls
+
+### Smartphone / Tablet (Mobile)
+Uses virtual on-screen controllers.
+
+* **Left Stick:** Move
+* **Right Stick:** Aim & Auto-Shoot
+* **LAUNCH Button:** Launch Satellites (Functions as a Bomb)
+
+### PC & Gamepad
+
+| Action | Key / Button | Note |
+| :--- | :--- | :--- |
+| **Move** | `W` `A` `S` `D`<br>Left Stick | |
+| **Aim & Shoot** | Arrow Keys (`↑` `↓` `←` `→`)<br>Right Stick | Shoots in the targeted direction |
+| **Shoot (Auto-Aim)** | Spacebar (`Space`) / `Z`<br>Gamepad `A` | Hold to auto-fire in the direction of movement |
+| **Launch Satellites (Bomb)** | `X`<br>Gamepad `B` / `X` / `RB` / `RT` | Consumes all satellites for a massive AoE attack |
+| **Pause** | On-screen Pause Button<br>Gamepad `START` | |
+
+## 👾 Enemies
+
+* **TRIANGLE:** The basic enemy unit. Spawns in formations and coordinates attacks around a leader.
+* **CUBE:** Item carrier. Guaranteed to drop a power-up item upon destruction.
+* **TADPOLE:** A fast-moving, small craft that rapidly approaches the player, leaving a mechanical tail effect.
+* **DRAGON:** A massive mechanical dragon made of linked container armor. It undulates to dominate the screen while scattering bullets.
+* **HUNTER:** A dangerous hit-and-run enemy that approaches rapidly, stops to lock on with a laser sight, fires a 3-round burst, and retreats.
+* **ASTEROID / BUBBLE:** Obstacles drifting through space.
+    * **Asteroid:** Splits when attacked. After a certain time, it turns red, "awakens," and relentlessly chases the player at high speed.
+    * **Bubble:** Elastic spheres that bounce off walls and other enemies. Splits upon destruction.
+* **PHANTOM:** Enemies equipped with stealth camouflage. They approach invisibly and unleash omnidirectional lasers the moment they materialize.
+* **ECLIPSE:** Generates black holes to distort surrounding space while deploying attacking bits.
+* **JELLYFISH:** Drifting jellyfish-like mechas. The charged "Spark" variant unleashes powerful electrical attacks.
+* **SENTINEL:** Surveillance drones that orbit the player, scan, and execute highly accurate shots.
+* **FIGHTER JET:** Small fighters launched from bosses that attack in coordinated formations.
+* **BOSS:** Massive fortresses waiting at the end of each sector. They feature polygonal shapes and unleash chaotic storms of lasers and missiles while rotating. Stage 9 is a Boss Rush mode.
+* **GENESIS-ARK (Last Boss):** The colossal final battleship in Stage 10, boasting overwhelming firepower and durability.
+
+## 💎 Power-Ups & Items
+
+Appears when destroying green enemies (CUBEs), wiping out formations, or defeating specific enemies.
+
+* **[W] Weapon (Level Up):** Upgrades your primary shot (Max Level 7). Increases spread, eventually turning into a highly destructive Phoenix-shaped shot.
+* **[L] Laser:** Fires a powerful blue laser that pierces through enemies and obstacles for a limited time.
+* **[I] Invincible:** Grants temporary invincibility (i-frames). You can physically ram and crush enemies during this state.
+* **[S] Shield:** Restores your Shield (HP) bar.
+* **Crystal (Green Diamond):** Replenishes 1 Satellite (Max 12). Also grants bonus points.
+
+## 🚀 Tips & Strategies
+
+1.  **Satellite Offense & Defense:** Satellites act as both a shield and a bomb. If you're surrounded, don't hesitate to "Launch" them to escape danger. They are also your trump card for dealing massive burst damage to bosses.
+2.  **Asteroid Management:** White Asteroids will turn red over time and become extremely dangerous homing missiles. Do not ignore them; clear them out quickly even after they split.
+3.  **Spawn Limits & Wormholes:** New wormholes won't spawn if there are too many enemies on screen. This prevents performance drops, but it also means you *must* aggressively destroy enemies to progress the stage.
+4.  **Tough Armor:** Even if bullets bounce off Boss or Dragon armor (indicated by a 'clink' sound and sparks), damage is still slowly accumulating. Keep firing!
+5.  **Listen Carefully:** The warning siren before a boss spawns and the attack sounds of specific enemies are vital cues. The game utilizes stereo sound, allowing you to gauge enemy positions by audio alone.
+
+## 🛠️ Tech Stack
+
+* **HTML5 Canvas API:** Custom rendering engine handling additive blending, particle systems, multi-joint animations, and pseudo-3D effects.
+* **Web Audio API:** A fully integrated audio system. Sound Effects (SE) are ultra-lightweight due to real-time synthesis generation. BGM utilizes advanced memory management for seamless playback and looping.
+* **Firebase (Firestore):** Real-time online global leaderboard system.
+* **Vanilla JavaScript:** 100% pure JavaScript implementation with zero external libraries or game engines. Built with an Object-Oriented, class-based design pattern.
 
 ## 📄 License
 
