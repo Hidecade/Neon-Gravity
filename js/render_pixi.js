@@ -121,7 +121,6 @@ const PixiRender = {
     // 自機システムのPixiJS同期
     // ==========================================
     syncPlayer() {
-
         const hideStates = [
             'DYING', 'GAMEOVER_UI', 'TITLE', 'HOWTO', 
             'RANKING', 'STORY', 'SETTINGS', 'ENDING', 'ENDING_STORY'
@@ -165,12 +164,11 @@ const PixiRender = {
 
         // --- カラー設定 ---
         let mainHex = 0x00ff88;   
-        let accentHex = 0x00ffff; 
-        let mainColorStr = '#0f8'; // 煙幕パーティクル用
+        let mainColorStr = '#0f8'; 
         let accentColorStr = '#0ff';
-        if (player.overdriveTimer > 0) { mainHex = 0xff8800; accentHex = 0xffcc88; mainColorStr = '#ff8800'; accentColorStr = '#ffcc88'; }
-        else if (player.invuln > 0)    { mainHex = 0xffff00; accentHex = 0xffffff; mainColorStr = '#ff0'; accentColorStr = '#fff'; }
-        else if (player.laserTimer > 0){ mainHex = 0x00ffff; accentHex = 0xffffff; mainColorStr = '#0ff'; accentColorStr = '#fff'; }
+        if (player.overdriveTimer > 0) { mainHex = 0xff8800; mainColorStr = '#ff8800'; accentColorStr = '#ffcc88'; }
+        else if (player.invuln > 0)    { mainHex = 0xffff00; mainColorStr = '#ff0'; accentColorStr = '#fff'; }
+        else if (player.laserTimer > 0){ mainHex = 0x00ffff; mainColorStr = '#0ff'; accentColorStr = '#fff'; }
 
         // --- ジェット噴射の推力計算 ---
         const currentMoveMag = Math.hypot(player.vx, player.vy);
@@ -198,10 +196,7 @@ const PixiRender = {
         const isIntro = (typeof introPhase !== 'undefined' && introPhase === 3);
         const currentFrame = typeof frame !== 'undefined' ? frame : 0;
 
-        // ==========================================
-        // ★復刻1: フェニックス専用の煙幕パーティクル生成
-        // (描画関数内で生成されていた副作用をここに移植)
-        // ==========================================
+        // フェニックス専用の煙幕パーティクル生成
         if (isPhoenix && !isIntro && currentFrame % 2 === 0 && currentScale > 0.5) {
             const pAngle = player.angle + Math.PI + (Math.random() - 0.5);
             const pSpeed = 2 + Math.random() * 4;
@@ -258,12 +253,7 @@ const PixiRender = {
         // --- 機体ベースライン ---
         const drawShipCore = (graphics, baseLineWidth, baseColor, alphaMult = 1.0, isGlow = false) => {
             if (isPhoenix) {
-                // ==========================================
-                // ★復刻2: フェニックスの尾羽と翼のアニメーション
-                // ==========================================
                 const flap = Math.sin(currentFrame * 0.15) * 15;
-
-                // 翼と頭部
                 graphics.lineStyle(baseLineWidth, baseColor, alphaMult);
                 graphics.moveTo(0, -4); graphics.lineTo(25, 0); graphics.lineTo(0, 4);
                 
@@ -272,12 +262,9 @@ const PixiRender = {
                     graphics.bezierCurveTo(-10, side * (30 + flap), -40, side * (40 + flap), -20, side * 5);
                 }
 
-                // ゆらめく3本の尾羽の描画
                 for (let i = 0; i < 3; i++) {
                     const isCenter = (i === 1);
                     const tailOff = Math.sin(currentFrame * 0.2 + i) * 10;
-                    
-                    // 中央の尾は太く、両端は細く薄くする
                     const tailWidth = isCenter ? baseLineWidth * 1.5 : baseLineWidth * 0.5;
                     const tailAlpha = isCenter ? alphaMult : alphaMult * 0.6;
                     
@@ -285,12 +272,9 @@ const PixiRender = {
                     graphics.moveTo(-10, (i - 1) * 5);
                     graphics.quadraticCurveTo(-40, tailOff, -70, tailOff + (i - 1) * 15);
                 }
-
-                // スタイルを元に戻す
                 graphics.lineStyle(baseLineWidth, baseColor, alphaMult);
 
             } else {
-                // --- 通常機体 ---
                 graphics.lineStyle(baseLineWidth, baseColor, alphaMult);
                 graphics.moveTo(20, 0); graphics.lineTo(-10, 10);
                 graphics.lineTo(-5, 0); graphics.lineTo(-10, -10); graphics.lineTo(20, 0);
@@ -305,9 +289,14 @@ const PixiRender = {
             }
         };
 
-        if (typeof currentGraphicsQuality !== 'undefined' && currentGraphicsQuality === 'HIGH') {
-            drawShipCore(sg, 8, mainHex, 0.3, true);
-        }
+        // ==========================================
+        // ★修正: 「シャープな線」にするため、高画質設定時のぼんやりしたグロー（発光）描画をオフにする
+        // ==========================================
+        // if (typeof currentGraphicsQuality !== 'undefined' && currentGraphicsQuality === 'HIGH') {
+        //     drawShipCore(sg, 8, mainHex, 0.3, true);
+        // }
+        
+        // メインのシャープな線だけを描画
         drawShipCore(sg, 2, mainHex, 1.0, false);
 
 
@@ -336,22 +325,53 @@ const PixiRender = {
             wg.endFill();
         });
 
-        // 無敵バリア
+        // ==========================================
+        // ★ 修正: 無敵バリア (3D回転エフェクト版)
+        // ==========================================
         if (player.invuln > 0) {
             const bRadius = 45 * scaleFactor;
             let bColor = 0xffff00;
             let bAlpha = 0.4;
+
+            // 終了間際の赤点滅
             if (player.invuln < 120 && Math.floor(currentFrame / (player.invuln < 60 ? 3 : 6)) % 2 === 0) {
-                bColor = 0xff4444; bAlpha = 0.7;
+                bColor = 0xff4444;
+                bAlpha = 0.7;
             }
-            wg.lineStyle(10, bColor, bAlpha * 0.3);
-            wg.drawCircle(player.x, player.y + vY, bRadius);
+
+            // 3D回転をシミュレートするための伸縮係数 (Canvas版のロジックを移植)
+            // 複数の楕円を異なる位相で回転させることで立体感を出す
+            const rotSpeed = currentFrame * 0.15;
+            
+            // 1. 外側のメインリング
             wg.lineStyle(2, bColor, bAlpha);
             wg.drawCircle(player.x, player.y + vY, bRadius);
-            wg.beginFill(bColor, 0.15);
+
+            // 2. 縦回転する楕円 (3D回転の表現)
+            const sinW = Math.sin(rotSpeed);
+            const cosW = Math.cos(rotSpeed * 0.8); // わずかに速度を変えて複雑さを出す
+
+            // 垂直方向の回転
+            wg.lineStyle(1.5, bColor, bAlpha * 0.8);
+            wg.drawEllipse(player.x, player.y + vY, bRadius * sinW, bRadius);
+            
+            // 水平方向の回転
+            wg.lineStyle(1.5, bColor, bAlpha * 0.8);
+            wg.drawEllipse(player.x, player.y + vY, bRadius, bRadius * cosW);
+
+            // 3. 内部の塗りつぶし (わずかに発光感を出す)
+            wg.beginFill(bColor, 0.1);
             wg.drawCircle(player.x, player.y + vY, bRadius);
             wg.endFill();
-        }
+
+            // 4. グロー効果 (高画質設定時のみ)
+            if (typeof currentGraphicsQuality !== 'undefined' && currentGraphicsQuality === 'HIGH') {
+                wg.lineStyle(8, bColor, bAlpha * 0.2);
+                wg.drawCircle(player.x, player.y + vY, bRadius);
+                // 回転楕円にもグローを適用
+                wg.drawEllipse(player.x, player.y + vY, bRadius * sinW, bRadius);
+            }
+        }   
     },
 
     // --- 機体や残像を描画するためのヘルパー関数 ---
