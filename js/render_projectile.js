@@ -161,7 +161,7 @@ function drawEnemyProjectiles() {
         } else if (eb.isShockwave) {
             drawShockwave(ctx, eb);
         } else {
-            drawNormalBullet(ctx, eb);
+            //drawNormalBullet(ctx, eb);
         }
 
         ctx.restore();

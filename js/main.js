@@ -7,6 +7,11 @@
 // 1. システム・グローバル変数
 // =========================================================
 
+// --- PixiJS レンダリング基盤 ---
+let app;
+let layerBg, layerEntities, layerBullets, layerParticles, layerUI;
+
+
 // --- 基本システム ---
 let baseAppScale = 1.0;         // 画面サイズによる基本拡大率
 let globalUiScale = 1.0;        // UI全体のスケール
@@ -610,15 +615,29 @@ window.updateMenuSelectionUI = function () {
  * アプリケーションの初期化
  */
 function init() {
+    // --- PixiJSの初期化 ---
+    app = new PIXI.Application({
+        backgroundAlpha: 0,
+        antialias: false,
+        autoDensity: true,
+        resolution: window.devicePixelRatio || 1
+    });
 
+    app.view.id = 'pixi-canvas';
+    app.view.style.position = 'absolute';
+    app.view.style.pointerEvents = 'none'; 
+    app.view.style.zIndex = '10'; 
+    document.body.appendChild(app.view);
 
-    // 1. 【最優先】最初に解像度・画面サイズを設定する！
-    //resize();
+    // ========================================================
+    // ★追加: 外部ファイル (render_pixi.js) の初期化を呼び出す
+    if (typeof PixiRender !== 'undefined') {
+        PixiRender.init(app);
+    }
+    // ========================================================
 
-    // 2. その後で、保存された画質設定を読み込んで星などを生成する
     const savedQuality = localStorage.getItem('neonGravity_graphics') || 'HIGH';
     applyGraphicsQuality(savedQuality);
-
     applyLanguage(currentLanguage);
 
     if (typeof AudioSys !== 'undefined') {
@@ -831,6 +850,15 @@ function resize() {
     canvas.style.position = 'absolute';
     canvas.style.left = `${Math.floor((vw - displayW) / 2)}px`;
     canvas.style.top = `${Math.floor((vh - displayH) / 2)}px`;
+
+    // ★追加: PixiJS側のキャンバス解像度とCSS表示サイズも完全に同期させる
+    if (app && app.view) {
+        app.renderer.resize(width, height);
+        app.view.style.width = `${displayW}px`;
+        app.view.style.height = `${displayH}px`;
+        app.view.style.left = canvas.style.left;
+        app.view.style.top = canvas.style.top;
+    }
 
 // アプリ全体スケール
     const maxDim = Math.max(width, height);
@@ -1226,34 +1254,38 @@ F6 SPAWN: ${DEBUG.showSpawnPoints ? "ON" : "OFF"}`;
  * 画面全体の描画処理
  */
 function draw() {
-    // ==========================================
-    // ★追加：ここから描画時間の計測スタート
-    // ==========================================
     const startTime = performance.now();
 
     ctx.save();
     ctx.scale(cameraScale, cameraScale);
     ctx.translate(-camera.x, -camera.y);
 
+// PixiJSの同期
+    if (typeof PixiRender !== 'undefined') {
+        PixiRender.sync(camera, cameraScale);
+    }
+
     if (typeof drawBackground === 'function') drawBackground();
     if (typeof drawWorldBounds === 'function') drawWorldBounds();
     if (typeof drawWormholes === 'function') drawWormholes();
     if (typeof drawEnemies === 'function') drawEnemies();
+
+    // ★ 以下のコメントアウト（//）を外して復活させる！
     if (typeof drawEnemyProjectiles === 'function') drawEnemyProjectiles();
+    if (typeof drawVisualEffects === 'function') drawVisualEffects();
+    
+    //if (typeof drawPlayerBullets === 'function') drawPlayerBullets();
+    //if (typeof drawLasers === 'function') drawLasers();
 
     if (gameState === 'PLAYING') {
         if (typeof drawPlayerSystems === 'function') drawPlayerSystems();
     }
 
-    if (typeof drawLasers === 'function') drawLasers();
-    if (typeof drawPlayerBullets === 'function') drawPlayerBullets();
     if (typeof drawHomingLasers === 'function') drawHomingLasers();
     if (typeof drawItems === 'function') drawItems();
-    if (typeof drawVisualEffects === 'function') drawVisualEffects();
 
     if (typeof drawDebugWorldOverlay === 'function') drawDebugWorldOverlay();
 
-    // UI要素描画
     if ((gameState === 'PLAYING' || gameState === 'DYING') && frame % 3 === 0) {
         if (typeof drawMiniMap === 'function') drawMiniMap();
     }
@@ -1261,9 +1293,6 @@ function draw() {
     
     ctx.restore();
 
-    // ==========================================
-    // ★追加：計測終了し、かかった時間(ミリ秒)を記録
-    // ==========================================
     debugDrawTime = performance.now() - startTime;
 }
 
@@ -1371,6 +1400,9 @@ window.closeInstallPrompt = function () {
 
 checkIOSInstallPrompt();
 init();
-returnToTitle();
-window.refreshMenuButtons();
+
+// 既存の関数が存在するかチェックして安全に起動
+if (typeof returnToTitle === 'function') returnToTitle();
+if (typeof window.refreshMenuButtons === 'function') window.refreshMenuButtons();
+
 loop();
