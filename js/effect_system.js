@@ -3,34 +3,6 @@
 // ==========================================
 // ★ パーティクル画像キャッシュシステム (線状の火花版)
 // ==========================================
-const particleTextureCache = {};
-
-function getParticleTexture(color) {
-    if (particleTextureCache[color]) {
-        return particleTextureCache[color];
-    }
-    // 横長のミニキャンバスを作成 (幅40px, 高さ10px)
-    const offscreen = document.createElement('canvas');
-    offscreen.width = 40;
-    offscreen.height = 10;
-    const oCtx = offscreen.getContext('2d');
-
-    // 左から右への線形グラデーション
-    const grad = oCtx.createLinearGradient(0, 5, 40, 5);
-    grad.addColorStop(0, 'rgba(0,0,0,0)'); // 尻尾（左端）は透明
-    grad.addColorStop(0.8, color);         // 頭の少し後ろが元の色
-    grad.addColorStop(1, '#ffffff');       // 頭（右端）は明るい白
-
-    oCtx.fillStyle = grad;
-    
-    // 少し丸みを帯びた線を描画
-    oCtx.beginPath();
-    oCtx.ellipse(20, 5, 20, 3, 0, 0, Math.PI * 2);
-    oCtx.fill();
-
-    particleTextureCache[color] = offscreen;
-    return offscreen;
-}
 
 
 function initGrid() {
@@ -562,7 +534,7 @@ function drawVisualEffects() {
     }
 
     ctx.globalAlpha = 1.0;
-    
+
     /*
     // 4. リングエフェクト (Canvas 2D オリジナル版完全一致)
     const rPoolArray = ringPool.pool;
