@@ -1277,9 +1277,7 @@ function draw() {
     //if (typeof drawPlayerBullets === 'function') drawPlayerBullets();
     //if (typeof drawLasers === 'function') drawLasers();
 
-    if (gameState === 'PLAYING') {
-        if (typeof drawPlayerSystems === 'function') drawPlayerSystems();
-    }
+    //if (gameState === 'PLAYING') {if (typeof drawPlayerSystems === 'function') drawPlayerSystems();}
 
     if (typeof drawHomingLasers === 'function') drawHomingLasers();
     if (typeof drawItems === 'function') drawItems();

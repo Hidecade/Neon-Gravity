@@ -198,29 +198,75 @@ function createWallImpact(x, y, color) {
 
 function createExplosion(x, y, baseColor, n) {
     const count = Math.floor(n * EXPLOSION_COUNT_MAG);
+
+    // ==========================================
+    // 細いリング（衝撃波）
+    // ==========================================
+    if (typeof spawnRingObj === 'function') {
+        // ① ベースカラーのリング
+        spawnRingObj({
+            x: x, y: y,
+            r: 15 * (typeof G_SCALE !== 'undefined' ? G_SCALE : 1), 
+            vr: 8,            
+            color: baseColor,
+            life: 0.4,
+            lineWidth: 1.5,      // ★修正: 透明にならない最低ラインの「1」
+            fill: false,
+            noGlow: true      
+        });
+        
+        // ② 真っ白なリング
+        spawnRingObj({
+            x: x, y: y,
+            r: 10 * (typeof G_SCALE !== 'undefined' ? G_SCALE : 1),
+            vr: 12,           
+            color: '#ffffff',
+            life: 0.2,         // ★修正: 0.3から「0.2」へ短縮し、一瞬のフラッシュ感にする
+            lineWidth: 1,    // ★修正: 見えなくならない限界の細さ「0.8」
+            fill: false,
+            noGlow: true      
+        });
+    }
+
     for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = (Math.random() * 8 + 2) * EXPLOSION_SPEED_MAG;
+        
+        // ==========================================
+        // ★修正: 火花の出現位置とサイズを調整して「べた塗り」を回避
+        // ==========================================
+        let speed;
+        let px = x;
+        let py = y;
+
+        if (Math.random() < 0.25) {
+            // 遅い火花は、出現位置を中心から少し「散らす」ことで重なりを防ぐ
+            speed = Math.random() * 2 * EXPLOSION_SPEED_MAG;
+            px += (Math.random() - 0.5) * 15 * (typeof G_SCALE !== 'undefined' ? G_SCALE : 1);
+            py += (Math.random() - 0.5) * 15 * (typeof G_SCALE !== 'undefined' ? G_SCALE : 1);
+        } else {
+            // 通常の飛んでいく火花
+            speed = (Math.random() * 8 + 2) * EXPLOSION_SPEED_MAG;
+        }
 
         let color;
         const rnd = Math.random();
 
-        // --- 色の決定ロジックを整理 ---
         if (rnd < 0.85) {
-            // 85% は指定されたベースカラー（敵の色）
             color = baseColor;
         } else {
-            // 残り 15% は「白」または「高輝度な黄色」のみに絞る（火花表現）
             color = Math.random() > 0.5 ? '#ffffff' : '#ffff00';
         }
 
+        // 火花のサイズを抑え、中心の塊感を減らす（シュッとした火花にする）
+        const baseSize = speed < 2 ? (Math.random() * 1.5 + 0.5) : (Math.random() * 2 + 1);
+
         spawnParticleObj({
-            x: x,
-            y: y,
+            x: px,
+            y: py,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
             color: color,
-            size: (Math.random() * 3 + 1) * G_SCALE,
+            size: baseSize * (typeof G_SCALE !== 'undefined' ? G_SCALE : 1),
             life: 1.0 + Math.random() * 0.5
         });
     }

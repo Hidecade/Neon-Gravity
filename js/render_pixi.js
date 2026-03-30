@@ -110,12 +110,276 @@ const PixiRender = {
                 l.position.set(-camera.x * scale, -camera.y * scale);
             }
         });
-
+        this.syncPlayer();
         this.syncPlayerBullets();
         this.syncEnemyBullets();
         this.syncParticles();
         this.syncRings();
         this.syncLasers();
+    },
+    // ==========================================
+    // 自機システムのPixiJS同期
+    // ==========================================
+    syncPlayer() {
+
+        const hideStates = [
+            'DYING', 'GAMEOVER_UI', 'TITLE', 'HOWTO', 
+            'RANKING', 'STORY', 'SETTINGS', 'ENDING', 'ENDING_STORY'
+        ];
+        
+        if (typeof player === 'undefined' || !player || hideStates.includes(gameState)) {
+            if (this.playerShip) this.playerShip.visible = false;
+            if (this.playerWorld) this.playerWorld.visible = false;
+            return;
+        }
+
+        if (!this.playerShip) {
+            this.playerShip = new PIXI.Graphics();
+            this.playerShip.blendMode = PIXI.BLEND_MODES.ADD;
+            layerEntities.addChild(this.playerShip);
+
+            this.playerWorld = new PIXI.Graphics();
+            this.playerWorld.blendMode = PIXI.BLEND_MODES.ADD;
+            layerEntities.addChildAt(this.playerWorld, 0); 
+        }
+
+        const vY = player.visualYOffset || 0;
+        const currentScale = (player.visualScale !== undefined) ? player.visualScale : 1.0;
+
+        if (currentScale < 0.01) {
+            this.playerShip.visible = false;
+            this.playerWorld.visible = false;
+            return;
+        }
+
+        this.playerShip.visible = true;
+        this.playerWorld.visible = true;
+
+        const sg = this.playerShip;
+        const wg = this.playerWorld;
+        sg.clear();
+        wg.clear();
+
+        const scaleFactor = typeof G_SCALE !== 'undefined' ? G_SCALE : 0.7;
+        const finalScale = scaleFactor * currentScale;
+
+        // --- カラー設定 ---
+        let mainHex = 0x00ff88;   
+        let accentHex = 0x00ffff; 
+        let mainColorStr = '#0f8'; // 煙幕パーティクル用
+        let accentColorStr = '#0ff';
+        if (player.overdriveTimer > 0) { mainHex = 0xff8800; accentHex = 0xffcc88; mainColorStr = '#ff8800'; accentColorStr = '#ffcc88'; }
+        else if (player.invuln > 0)    { mainHex = 0xffff00; accentHex = 0xffffff; mainColorStr = '#ff0'; accentColorStr = '#fff'; }
+        else if (player.laserTimer > 0){ mainHex = 0x00ffff; accentHex = 0xffffff; mainColorStr = '#0ff'; accentColorStr = '#fff'; }
+
+        // --- ジェット噴射の推力計算 ---
+        const currentMoveMag = Math.hypot(player.vx, player.vy);
+        let thrustFactor = 0;
+        if (currentMoveMag > 0.1) {
+            const dirX = Math.cos(player.angle);
+            const dirY = Math.sin(player.angle);
+            const moveX = player.vx / currentMoveMag;
+            const moveY = player.vy / currentMoveMag;
+            const dot = dirX * moveX + dirY * moveY;
+            thrustFactor = Math.max(0.2, dot);
+        }
+
+        if (typeof gameState !== 'undefined' && gameState === 'STAGE_INTRO' && typeof introPhase !== 'undefined' && introPhase === 3) {
+            thrustFactor = 0.8 * currentScale;
+        }
+
+        const baseSpd = typeof PLAYER_BASE_SPEED !== 'undefined' ? PLAYER_BASE_SPEED : 12;
+        const spdScale = typeof SPEED_SCALE !== 'undefined' ? SPEED_SCALE : 0.25;
+        const speedFactor = Math.min(1.0, currentMoveMag / (baseSpd * spdScale * 0.8));
+        const finalThrustScale = (typeof gameState !== 'undefined' && gameState === 'STAGE_INTRO') ? thrustFactor : speedFactor * thrustFactor;
+
+        // エメラルドフェニックス状態かどうかの判定
+        const isPhoenix = player.weaponLevel >= (typeof MAX_WEAPON_LEVEL !== 'undefined' ? MAX_WEAPON_LEVEL - 1 : 6);
+        const isIntro = (typeof introPhase !== 'undefined' && introPhase === 3);
+        const currentFrame = typeof frame !== 'undefined' ? frame : 0;
+
+        // ==========================================
+        // ★復刻1: フェニックス専用の煙幕パーティクル生成
+        // (描画関数内で生成されていた副作用をここに移植)
+        // ==========================================
+        if (isPhoenix && !isIntro && currentFrame % 2 === 0 && currentScale > 0.5) {
+            const pAngle = player.angle + Math.PI + (Math.random() - 0.5);
+            const pSpeed = 2 + Math.random() * 4;
+            if (typeof spawnParticleObj === 'function') {
+                spawnParticleObj({
+                    x: player.x,
+                    y: player.y + vY,
+                    vx: Math.cos(pAngle) * pSpeed,
+                    vy: Math.sin(pAngle) * pSpeed,
+                    color: Math.random() > 0.5 ? mainColorStr : accentColorStr,
+                    life: 1,
+                    size: 2 + Math.random() * 2
+                });
+            }
+        }
+
+        // ==========================================
+        // ① 機体本体とスラスターの描画 (ローカル座標系)
+        // ==========================================
+        sg.position.set(player.x, player.y + vY);
+        sg.rotation = player.angle;
+        sg.scale.set(finalScale);
+
+        // --- 通常スラスターの描画 ---
+        if (finalThrustScale > 0.05) {
+            let pColorHex = 0x00ffb4; 
+            if (player.overdriveTimer > 0) pColorHex = 0xff8800; 
+            else if (player.invuln > 0) pColorHex = 0xffe600; 
+            else if (player.laserTimer > 0) pColorHex = 0x00ffff; 
+
+            const offsetStart = 8;
+            const particleCount = Math.floor(30 * finalThrustScale);
+
+            for (let i = 0; i < particleCount; i++) {
+                const ratio = (1 - i / particleCount);
+                const dist = offsetStart + (i * 6 * finalThrustScale);
+                const alpha = Math.pow(ratio, 1.2) * 0.35;
+                const finalSize = 7 - i * 0.2;
+
+                if (finalSize < 0.2) continue;
+
+                sg.beginFill(pColorHex, alpha);
+                sg.drawEllipse(-dist, 0, finalSize, finalSize * 0.5);
+                sg.endFill();
+
+                if (i < 12 && Math.random() > 0.3) {
+                    sg.beginFill(0xffffff, alpha * 0.7);
+                    sg.drawCircle(-dist, 0, finalSize * 0.3);
+                    sg.endFill();
+                }
+            }
+        }
+
+        // --- 機体ベースライン ---
+        const drawShipCore = (graphics, baseLineWidth, baseColor, alphaMult = 1.0, isGlow = false) => {
+            if (isPhoenix) {
+                // ==========================================
+                // ★復刻2: フェニックスの尾羽と翼のアニメーション
+                // ==========================================
+                const flap = Math.sin(currentFrame * 0.15) * 15;
+
+                // 翼と頭部
+                graphics.lineStyle(baseLineWidth, baseColor, alphaMult);
+                graphics.moveTo(0, -4); graphics.lineTo(25, 0); graphics.lineTo(0, 4);
+                
+                for (let side of [-1, 1]) {
+                    graphics.moveTo(0, 0);
+                    graphics.bezierCurveTo(-10, side * (30 + flap), -40, side * (40 + flap), -20, side * 5);
+                }
+
+                // ゆらめく3本の尾羽の描画
+                for (let i = 0; i < 3; i++) {
+                    const isCenter = (i === 1);
+                    const tailOff = Math.sin(currentFrame * 0.2 + i) * 10;
+                    
+                    // 中央の尾は太く、両端は細く薄くする
+                    const tailWidth = isCenter ? baseLineWidth * 1.5 : baseLineWidth * 0.5;
+                    const tailAlpha = isCenter ? alphaMult : alphaMult * 0.6;
+                    
+                    graphics.lineStyle(tailWidth, baseColor, tailAlpha);
+                    graphics.moveTo(-10, (i - 1) * 5);
+                    graphics.quadraticCurveTo(-40, tailOff, -70, tailOff + (i - 1) * 15);
+                }
+
+                // スタイルを元に戻す
+                graphics.lineStyle(baseLineWidth, baseColor, alphaMult);
+
+            } else {
+                // --- 通常機体 ---
+                graphics.lineStyle(baseLineWidth, baseColor, alphaMult);
+                graphics.moveTo(20, 0); graphics.lineTo(-10, 10);
+                graphics.lineTo(-5, 0); graphics.lineTo(-10, -10); graphics.lineTo(20, 0);
+                if (player.weaponLevel >= 1) { graphics.moveTo(-5, 5); graphics.lineTo(-18, 15); graphics.moveTo(-5, -5); graphics.lineTo(-18, -15); }
+                if (player.weaponLevel >= 2) { graphics.moveTo(5, 5); graphics.lineTo(-5, 12); graphics.moveTo(5, -5); graphics.lineTo(-5, -12); }
+                if (player.weaponLevel >= 3) { graphics.moveTo(10, 3); graphics.lineTo(25, 2); graphics.moveTo(10, -3); graphics.lineTo(25, -2); }
+                if (player.weaponLevel >= 4) { graphics.moveTo(-8, 8); graphics.lineTo(-22, 5); graphics.moveTo(-8, -8); graphics.lineTo(-22, -5); }
+                if (player.weaponLevel >= 5 && !isGlow) {
+                    graphics.lineStyle(1, 0xffffff, 0.6);
+                    graphics.moveTo(15, 0); graphics.lineTo(-3, 0);
+                }
+            }
+        };
+
+        if (typeof currentGraphicsQuality !== 'undefined' && currentGraphicsQuality === 'HIGH') {
+            drawShipCore(sg, 8, mainHex, 0.3, true);
+        }
+        drawShipCore(sg, 2, mainHex, 1.0, false);
+
+
+        // ==========================================
+        // ② ワールド座標への描画 (サテライト、バリア、残像)
+        // ==========================================
+        wg.position.set(0, 0);
+        wg.rotation = 0;
+
+        // 機体の残像（Ghost）
+        player.history.forEach((pos, i) => {
+            if (i === 0) return;
+            const alpha = 0.4 * (1 - i / player.history.length);
+            this.drawRotatedTriangle(wg, pos.x, pos.y + vY, pos.angle, finalScale, mainHex, alpha);
+        });
+
+        // サテライト
+        player.satellites.forEach(s => {
+            const rot = currentFrame * 0.1;
+            const sSize = 4 * finalScale;
+            wg.beginFill(0x00ff00, 1.0);
+            this.drawRotatedDiamond(wg, s.x, s.y + vY, rot, sSize);
+            wg.endFill();
+            wg.beginFill(0xffffff, 0.6);
+            wg.drawCircle(s.x, s.y + vY, 1.5 * currentScale);
+            wg.endFill();
+        });
+
+        // 無敵バリア
+        if (player.invuln > 0) {
+            const bRadius = 45 * scaleFactor;
+            let bColor = 0xffff00;
+            let bAlpha = 0.4;
+            if (player.invuln < 120 && Math.floor(currentFrame / (player.invuln < 60 ? 3 : 6)) % 2 === 0) {
+                bColor = 0xff4444; bAlpha = 0.7;
+            }
+            wg.lineStyle(10, bColor, bAlpha * 0.3);
+            wg.drawCircle(player.x, player.y + vY, bRadius);
+            wg.lineStyle(2, bColor, bAlpha);
+            wg.drawCircle(player.x, player.y + vY, bRadius);
+            wg.beginFill(bColor, 0.15);
+            wg.drawCircle(player.x, player.y + vY, bRadius);
+            wg.endFill();
+        }
+    },
+
+    // --- 機体や残像を描画するためのヘルパー関数 ---
+    drawRotatedTriangle(graphics, cx, cy, angle, scale, color, alpha) {
+        graphics.lineStyle(1.5, color, alpha);
+        const cos = Math.cos(angle) * scale;
+        const sin = Math.sin(angle) * scale;
+        
+        // ローカル座標 (20,0), (-10,10), (-5,0), (-10,-10)
+        const pts = [[20,0], [-10,10], [-5,0], [-10,-10]];
+        
+        graphics.moveTo(cx + pts[0][0]*cos - pts[0][1]*sin, cy + pts[0][0]*sin + pts[0][1]*cos);
+        for(let i=1; i<pts.length; i++) {
+            graphics.lineTo(cx + pts[i][0]*cos - pts[i][1]*sin, cy + pts[i][0]*sin + pts[i][1]*cos);
+        }
+        graphics.lineTo(cx + pts[0][0]*cos - pts[0][1]*sin, cy + pts[0][0]*sin + pts[0][1]*cos);
+    },
+
+    drawRotatedDiamond(graphics, cx, cy, angle, size) {
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const pts = [[0, -size*1.5], [size, 0], [0, size*1.5], [-size, 0]];
+        
+        graphics.moveTo(cx + pts[0][0]*cos - pts[0][1]*sin, cy + pts[0][0]*sin + pts[0][1]*cos);
+        for(let i=1; i<pts.length; i++) {
+            graphics.lineTo(cx + pts[i][0]*cos - pts[i][1]*sin, cy + pts[i][0]*sin + pts[i][1]*cos);
+        }
+        graphics.lineTo(cx + pts[0][0]*cos - pts[0][1]*sin, cy + pts[0][0]*sin + pts[0][1]*cos);
     },
 
     syncPlayerBullets() {
@@ -229,7 +493,11 @@ const PixiRender = {
             }
             
             // 破片や泡は2D Canvasに任せる
-            if (!p.active || p.isShard || p.isBubble) { p.sprite.x = -9999; p.sprite.alpha = 0; return; }
+            if (!p.active || p.isShard || p.isBubble) { 
+                p.sprite.x = -9999; 
+                p.sprite.alpha = 0; 
+                return; 
+            }
             
             p.sprite.position.set(p.x, p.y);
             
@@ -239,8 +507,13 @@ const PixiRender = {
             const speed = Math.hypot(p.vx, p.vy);
             p.sprite.rotation = Math.atan2(p.vy, p.vx);
             
-            const rw = (p.size || 2) * 6 * scaleFactor + speed * 3;
+            // ==========================================
+            // ★修正: 速度(speed)による線の引き伸ばしを「3」から「10」へ大幅強化！
+            // 初速が速い爆発の瞬間だけグンと線が長くなり、遅くなると点に戻ります。
+            // ==========================================
+            const rw = (p.size || 2) * 6 * scaleFactor + speed * 7; 
             const rh = (p.size || 2) * 3 * scaleFactor;
+            
             p.sprite.scale.set(rw / 40, rh / 10);
             
             let alpha = p.life <= 1.0 ? p.life : p.life / (p.maxLife || 60);
@@ -253,15 +526,13 @@ const PixiRender = {
         
         ringPool.pool.forEach(r => {
             if (!r.sprite) {
-                // リングはサイズや線の太さが個別に変化するため、SpriteではなくGraphicsを使う
                 r.sprite = new PIXI.Graphics();
                 r.sprite.blendMode = PIXI.BLEND_MODES.ADD;
-                // GraphicsはParticleContainerには入れられないため、layerBulletsに入れる
                 layerBullets.addChild(r.sprite);
             }
             
             const g = r.sprite;
-            g.clear(); // 毎フレーム描画をリセットして書き直す
+            g.clear(); 
             
             if (!r.active) { 
                 g.visible = false; 
@@ -274,19 +545,13 @@ const PixiRender = {
             const rColorHex = PIXI.utils.string2hex(r.color || '#0ff');
 
             if (r.isBomb) {
-                // =====================================
-                // プレイヤーのボム (3層構造)
-                // =====================================
-                // 1. 半透明の塗りつぶし
                 g.beginFill(rColorHex, Math.max(0, r.life * 0.25));
                 g.drawCircle(0, 0, r.r * scaleFactor);
                 g.endFill();
                 
-                // 2. 外側の太い枠線（時間経過で細くなる）
                 g.lineStyle(20 * r.life * scaleFactor, rColorHex, Math.max(0, r.life * 0.8));
                 g.drawCircle(0, 0, r.r * scaleFactor);
                 
-                // 3. 内側の白い芯（シャープな線）
                 g.lineStyle(4 * scaleFactor, 0xFFFFFF, Math.max(0, r.life));
                 g.drawCircle(0, 0, r.r * scaleFactor);
                 
@@ -294,7 +559,8 @@ const PixiRender = {
                 // =====================================
                 // 通常のリング・衝撃波
                 // =====================================
-                const lw = (r.lineWidth !== undefined ? r.lineWidth : 4) * scaleFactor;
+                const originalLw = r.lineWidth !== undefined ? r.lineWidth : 4;
+                const lw = originalLw * scaleFactor;
                 const currentR = Math.max(0, r.r * scaleFactor);
                 let sizeFactor = 1.0;
 
@@ -312,8 +578,10 @@ const PixiRender = {
                     g.endFill();
                 }
 
-                // 2. 発光(グロー)のシミュレート (WebGLにはshadowBlurが無いため、太くて薄い線で代用)
-                if (typeof currentGraphicsQuality !== 'undefined' && currentGraphicsQuality === 'HIGH') {
+                // ★ 1や2の太さでは巨大グローを発動させず、本来の大きなリング(4以上)の時だけ発動させる
+                const shouldDrawGlow = !r.noGlow && (originalLw > 2);
+
+                if (typeof currentGraphicsQuality !== 'undefined' && currentGraphicsQuality === 'HIGH' && shouldDrawGlow) {
                     g.lineStyle(lw + 15 * sizeFactor, rColorHex, baseAlpha * 0.3);
                     g.drawCircle(0, 0, currentR);
                 }
@@ -323,7 +591,7 @@ const PixiRender = {
                 g.drawCircle(0, 0, currentR);
 
                 // 4. 内側の白い芯線
-                if (lw > 2) {
+                if (originalLw > 2) {
                     g.lineStyle(lw * 0.3, 0xFFFFFF, Math.min(1.0, baseAlpha * 1.5));
                     g.drawCircle(0, 0, currentR);
                 }

@@ -1271,6 +1271,10 @@ function drawIntro() {
     ctx.scale(cameraScale, cameraScale);
     ctx.translate(-camera.x, -camera.y);
 
+    if (typeof PixiRender !== 'undefined') {
+        PixiRender.sync(camera, cameraScale);
+    }
+    
     if (typeof drawBackground === 'function') drawBackground();
     if (typeof drawVisualEffects === 'function') drawVisualEffects();
 
@@ -1284,11 +1288,11 @@ function drawIntro() {
         ctx.save();
         ctx.globalAlpha = 1.0;
         if (typeof drawWormholes === 'function') drawWormholes();
-        if (typeof drawLasers === 'function') drawLasers();
-        if (typeof drawPlayerBullets === 'function') drawPlayerBullets();
+        //if (typeof drawLasers === 'function') drawLasers();
+        //if (typeof drawPlayerBullets === 'function') drawPlayerBullets();
         if (typeof drawHomingLasers === 'function') drawHomingLasers();
         if (typeof drawItems === 'function') drawItems();
-        if (typeof drawPlayerSystems === 'function') drawPlayerSystems();
+        //if (typeof drawPlayerSystems === 'function') drawPlayerSystems();
         ctx.restore();
 
         if (frame % 3 === 0 && typeof drawMiniMap === 'function') drawMiniMap();
