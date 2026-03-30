@@ -92,7 +92,7 @@ const DIFFICULTY_CONFIG = {
 const PLAYER_BASE_SPEED = 12;   // 自機の基本移動速度
 const PLAYER_BASE_SHIELD = 100; // シールド最大値
 const MAX_WEAPON_LEVEL = 7;     // ショット最大レベル
-const DEFAULT_WEAPON_LEVEL = 6; // 初期レベル
+const DEFAULT_WEAPON_LEVEL = 1; // 初期レベル
 const MAX_SATELLITES = 12;      // ★追加：サテライトの最大保有数
 
 // --- 敵（エネミー）設定 ---
