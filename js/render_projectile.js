@@ -559,15 +559,21 @@ function drawScorePopups() {
     ctx.save();
     ctx.textAlign = 'center';
 
-    const sPool = scorePopupPool.pool; // ★ プールを参照
+    // ★追加: ブラー（発光・影）を完全に無効化してシャープにする
+    ctx.shadowBlur = 0; 
+    ctx.shadowColor = 'transparent';
+
+    const sPool = scorePopupPool.pool; // プールを参照
     for (let i = 0; i < sPool.length; i++) {
         const s = sPool[i];
         
-        // ★ 生存チェック（休んでいるオブジェクトは描画しない）
+        // 生存チェック
         if (!s.active) continue;
 
-        // ボス撃破時はフォントと色を強調する（少しリッチな演出！）
-        ctx.fillStyle = s.isBoss ? '#ffea00' : '#fff';
+        // ★修正: アイテム取得時などに指定された色(s.color)を使用する
+        ctx.fillStyle = s.color || '#ffffff';
+        
+        // ボス撃破時だけ文字サイズを少し大きくする
         ctx.font = s.isBoss ? 'bold 20px Orbitron' : '16px Orbitron';
         
         // 透明度を安全な範囲（0.0〜1.0）に収めて適用

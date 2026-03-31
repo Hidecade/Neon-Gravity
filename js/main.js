@@ -261,7 +261,7 @@ const createPlayerBullet = () => ({
 
 const createScorePopup = () => ({
     x: 0, y: 0, vy: 0, text: '', life: 0, alpha: 1, 
-    isBoss: false, active: false
+    isBoss: false, active: false, color: '#ffffff'
 });
 
 const enemyPool = new ObjectPool(createEnemy, 240);
@@ -374,6 +374,7 @@ function spawnScorePopupObj(options) {
     s.life = options.life || 60;
     s.alpha = options.alpha !== undefined ? options.alpha : 1;
     s.isBoss = options.isBoss || false;
+    s.color = options.color || '#ffffff'; // ★追加: 指定された色を保存する
     return s;
 }
 
