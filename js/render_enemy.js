@@ -542,7 +542,8 @@ function drawHunterEnemy(ctx, e) {
 
         // 1層目：赤いアウター
         ctx.lineWidth = 4.0 * G_SCALE;
-        ctx.strokeStyle = `rgba(255, 0, 0, ${laserAlpha * 0.4})`;
+        ctx.globalAlpha = laserAlpha * 0.4;
+        ctx.strokeStyle = '#ff0000'; // 固定文字列
         ctx.beginPath(); 
         ctx.moveTo(R_L, 0); 
         ctx.lineTo(targetX, 0); 
@@ -550,7 +551,8 @@ function drawHunterEnemy(ctx, e) {
 
         // 2層目：白いインナーコア
         ctx.lineWidth = 1.2 * G_SCALE;
-        ctx.strokeStyle = `rgba(255, 200, 200, ${laserAlpha})`;
+        ctx.globalAlpha = laserAlpha;
+        ctx.strokeStyle = '#ffc8c8'; // 固定文字列
         ctx.beginPath(); 
         ctx.moveTo(R_L, 0); 
         ctx.lineTo(targetX, 0); 
