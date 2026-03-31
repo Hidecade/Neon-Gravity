@@ -198,6 +198,20 @@ const createEnemy = () => ({
 
     cameraLerpTimer: 0,
 
+    // ==========================================
+    // ★追加: Hidden Class最適化のための事前定義プロパティ
+    // ==========================================
+    gridLifeSpawnId: -1,
+    gridLife: 0,
+    isWarpingOut: false,
+    warpOutTimer: 0,
+    warpOutDuration: 0,
+    prevHp: 0,
+    aimProgress: 0,
+    rotAngle: 0,
+    prevAngle: 0,
+    originalScale: 1.0,
+    
     // 編隊・親子関係
     leader: null,
     followers: [],
