@@ -153,7 +153,7 @@ function drawEnemyProjectiles() {
 
         // 弾の種類に応じた描画関数の呼び出し
         if (eb.isLaserMissile) {
-            drawLaserMissile(ctx, eb);
+            //drawLaserMissile(ctx, eb);
         } else if (eb.isFighter) {
             drawFighterJet(ctx, eb);
         } else if (eb.isMissile) {
@@ -197,6 +197,9 @@ function drawNormalBullet(ctx, eb) {
 }
 
 function drawHomingMissile(ctx, eb) {
+    // 移行済み: 関数全体を実質的に停止（PixiJS側で処理）
+    return;
+    /*
     // --- 0. フェードアウト処理の反映 ---
     // eb.alpha が定義されている場合はそれを使用し、なければ 1.0 とする
     const currentAlpha = (eb.alpha !== undefined) ? eb.alpha : 1.0;
@@ -266,6 +269,7 @@ function drawHomingMissile(ctx, eb) {
     ctx.arc(-mSize * 0.5, 0, 3 * G_SCALE, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+    */
 }
 
 function drawLaserMissile(ctx, eb) {

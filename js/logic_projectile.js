@@ -812,8 +812,6 @@ function updatePowerups() {
                     });
                 }
             }
-
-
         }
     });
     // 取得済み(life=0)または時間切れのものを削除

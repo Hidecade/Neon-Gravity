@@ -13,7 +13,6 @@ const PixiRender = {
     },
 
     setupLayers() {
-        // main.jsのグローバル変数へ直接代入
         layerBg = new PIXI.Container();
         layerEntities = new PIXI.Container();
         layerBullets = new PIXI.Container(); 
@@ -21,67 +20,37 @@ const PixiRender = {
             position: true, rotation: true, scale: true, alpha: true, tint: true 
         });
         layerUI = new PIXI.Container();
-
         this.app.stage.addChild(layerBg, layerEntities, layerBullets, layerParticles, layerUI);
     },
 
     generateTextures() {
-        // --- 1. 敵弾用テクスチャ (Canvasオリジナル版完全再現) ---
-        // ① ひし形のベース (Canvasの size=10 相当の比率)
+        // --- 1. 敵弾用 ---
         const dg = new PIXI.Graphics();
         dg.beginFill(0xFFFFFF);
         dg.moveTo(0, -10); dg.lineTo(7, 0); dg.lineTo(0, 10); dg.lineTo(-7, 0);
         dg.endFill();
         this.textures.enemyDiamond = this.app.renderer.generateTexture(dg);
 
-        // ② 中心の点滅コア (Canvasの size*0.5 相当の半径5)
         const cg = new PIXI.Graphics();
-        cg.beginFill(0xFFFFFF);
-        cg.drawCircle(0, 0, 5);
-        cg.endFill();
+        cg.beginFill(0xFFFFFF); cg.drawCircle(0, 0, 5); cg.endFill();
         this.textures.enemyCore = this.app.renderer.generateTexture(cg);
 
-        // 2-A. リングエフェクト用 (太さ2のくっきりした白枠)
+        // --- 2. 汎用ライン用 (1x1の白ピクセル) ★これを引き伸ばしてレーザーにする ---
+        const lg = new PIXI.Graphics();
+        lg.beginFill(0xFFFFFF); lg.drawRect(0, 0, 1, 1); lg.endFill();
+        this.textures.line = this.app.renderer.generateTexture(lg);
+
+        // --- 3. その他 ---
+        this.textures.playerBullet = this.generateGlowLine();
+        this.textures.spark = this.generateSparkBase();
+        
+        // リング系
         const rg = new PIXI.Graphics();
         rg.lineStyle(2, 0xFFFFFF); rg.drawCircle(0, 0, 64);
         this.textures.ring = this.app.renderer.generateTexture(rg);
-        
-        // 2-B. ボム・フラッシュコア用 (真っ白な塗りつぶし円)
         const rgf = new PIXI.Graphics();
-        rgf.beginFill(0xFFFFFF); 
-        rgf.drawCircle(0, 0, 64); 
-        rgf.endFill();
+        rgf.beginFill(0xFFFFFF); rgf.drawCircle(0, 0, 64); rgf.endFill();
         this.textures.ringFilled = this.app.renderer.generateTexture(rgf);
-
-        // 3. レーザー用 (1x1の白ピクセル)
-        const lg = new PIXI.Graphics();
-        lg.beginFill(0xFFFFFF); lg.drawRect(0, -0.5, 1, 1); lg.endFill();
-        this.textures.line = this.app.renderer.generateTexture(lg);
-
-        // 4. 自機弾 (3層グロー)
-        this.textures.playerBullet = this.generateGlowLine();
-        
-        // 5. 花火・パーティクル用 (純白のスピード線グラデーション)
-        this.textures.spark = this.generateSparkBase();
-
-        // 6. 自機弾用テクスチャ (Sprite用)長さ12pxの弾を作ります
-        const bg = new PIXI.Graphics();
-        const bLen = 12; 
-        const offset = 3;
-
-        // 1. 外側グロー (太さ: 6)
-        bg.lineStyle({ width: 6, color: 0x00ffb4, alpha: 0.22, cap: PIXI.LINE_CAP.ROUND });
-        bg.moveTo(offset, 6); bg.lineTo(bLen + offset, 6); // Yを6にズラして見切れを防ぐ
-        
-        // 2. 中間光 (太さ: 3)
-        bg.lineStyle({ width: 3, color: 0x00ffb4, alpha: 0.55, cap: PIXI.LINE_CAP.ROUND });
-        bg.moveTo(offset, 6); bg.lineTo(bLen + offset, 6);
-        
-        // 3. 芯 (太さ: 1.4)
-        bg.lineStyle({ width: 1.4, color: 0xcffff5, alpha: 1.0, cap: PIXI.LINE_CAP.ROUND });
-        bg.moveTo(offset, 6); bg.lineTo(bLen + offset, 6);
-
-        this.textures.playerBullet = this.app.renderer.generateTexture(bg);
     },
 
     // 自機弾用テクスチャの生成（オリジナルと全く同じ色・太さ・透明度）
@@ -136,24 +105,23 @@ const PixiRender = {
                 l.position.set(-camera.x * scale, -camera.y * scale);
             }
         });
+
         this.syncPlayerBullets();
         this.syncEnemyBullets();
         this.syncParticles();
         this.syncRings();
+         
+        this.syncEnemyProjectiles(scale); // 敵レーザー (Sprite版)
     },
 
     syncPlayerBullets() {
         playerBulletPool.pool.forEach(b => {
             if (!b.sprite) {
-                // =====================================
-                // ★ 処理落ち解消！ Graphicsをやめて Sprite(画像) を使用
-                // =====================================
                 b.sprite = new PIXI.Sprite(this.textures.playerBullet);
                 
-                // アンカーを (1.0, 0.5) にすることで、
-                // 画像の「右端（弾の先端）」を中心座標(b.x, b.y)に合わせます
-                // これにより、オリジナルの offset めり込み防止と全く同じ位置に描画されます
-                b.sprite.anchor.set(1.0, 0.5);
+                // Canvas版は座標(b.x, b.y)から線を描画し、先端に丸み(約3px)がはみ出します。
+                // アンカーを 0.85 付近にすることで、Canvas版の先端位置と完全に一致します。
+                b.sprite.anchor.set(0.85, 0.5);
                 b.sprite.blendMode = PIXI.BLEND_MODES.NORMAL;
                 
                 layerBullets.addChild(b.sprite);
@@ -170,12 +138,18 @@ const PixiRender = {
             s.position.set(b.x, b.y);
             s.rotation = Math.atan2(b.vy, b.vx);
             
-            // 長さの計算（寿命に応じて短くなる）
+            // =====================================
+            // ★ Canvas版と全く同じ長さを計算して適用
+            // =====================================
             const maxLife = (typeof BULLET_CONFIG !== 'undefined') ? BULLET_CONFIG.PLAYER.LIFE : 120;
             const lifeRatio = Math.max(0, b.life / maxLife);
             
-            // ★ポイント: 画像全体のX軸(横幅)のスケールを縮小することで、弾が短くなる演出を再現
-            s.scale.set(lifeRatio, 1.0);
+            // Canvas版の線の長さ(最大12) + 線の丸み部分(約6)
+            const canvasLen = (12 * lifeRatio) + 6;
+            
+            // スケール(scale.x)ではなく、幅(width)を直接Canvasのピクセル数に合わせる
+            s.width = canvasLen;
+            s.scale.y = 1.0; // 高さはそのまま
         });
     },
 
@@ -353,5 +327,52 @@ const PixiRender = {
             }
         });
     },
+    
+  // ★修正: 敵の直線レーザー (LaserMissile) を2層スプライトで同期
+    syncEnemyProjectiles(scaleFactor) {
+        enemyBulletPool.pool.forEach(eb => {
+            if (!eb.active || !eb.isLaserMissile) {
+                if (eb.laserContainer) eb.laserContainer.visible = false;
+                return;
+            }
 
+            // 初回生成: 外光と芯の2層構造を作成
+            if (!eb.laserContainer) {
+                eb.laserContainer = new PIXI.Container();
+                
+                // 層1: 外側のグロー (加算合成)
+                eb.glowSprite = new PIXI.Sprite(this.textures.line);
+                eb.glowSprite.anchor.set(0.5, 0.5);
+                eb.glowSprite.blendMode = PIXI.BLEND_MODES.ADD;
+                
+                // 層2: 中心の芯 (通常合成)
+                eb.coreSprite = new PIXI.Sprite(this.textures.line);
+                eb.coreSprite.anchor.set(0.5, 0.5);
+                eb.coreSprite.blendMode = PIXI.BLEND_MODES.NORMAL;
+
+                eb.laserContainer.addChild(eb.glowSprite, eb.coreSprite);
+                layerBullets.addChild(eb.laserContainer);
+            }
+
+            const container = eb.laserContainer;
+            container.visible = true;
+            container.position.set(eb.x, eb.y);
+            container.rotation = Math.atan2(eb.vy, eb.vx);
+
+            const len = 40 * scaleFactor;
+            const baseAlpha = eb.alpha !== undefined ? eb.alpha : 1.0;
+
+            // 外光の設定 (太め、色付き)
+            eb.glowSprite.width = len;
+            eb.glowSprite.height = 8 * scaleFactor;
+            eb.glowSprite.tint = PIXI.utils.string2hex(eb.color || '#0ff');
+            eb.glowSprite.alpha = 0.4 * baseAlpha;
+
+            // 芯の設定 (細め、白)
+            eb.coreSprite.width = len;
+            eb.coreSprite.height = 2 * scaleFactor;
+            eb.coreSprite.tint = 0xFFFFFF;
+            eb.coreSprite.alpha = 0.8 * baseAlpha;
+        });
+    },
 };
