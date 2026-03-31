@@ -581,68 +581,39 @@ function drawVisualEffects() {
 
     ctx.globalAlpha = 1.0;
 
-    /*
-    // 4. リングエフェクト (Canvas 2D オリジナル版完全一致)
+    // ==========================================
+    // ボムのみCanvas 2Dで高画質描画する
+    // ==========================================
     const rPoolArray = ringPool.pool;
     for (let i = 0; i < rPoolArray.length; i++) {
         const r = rPoolArray[i];
-        if (!r.active) continue;
+        
+        // アクティブでない、または「ボム以外」ならスキップ（通常リングはPixiJSに任せる）
+        if (!r.active || !r.isBomb) continue;
         if (!isOnScreen({ x: r.x, y: r.y }, r.r * G_SCALE + 50)) continue;
 
         ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalCompositeOperation = 'lighter'; // 加算合成(ADD)
 
-        if (r.isBomb) {
-            ctx.fillStyle = r.color; 
-            ctx.globalAlpha = Math.max(0, r.life * 0.25); 
-            ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, PI2); ctx.fill();
-            
-            ctx.strokeStyle = r.color; 
-            ctx.lineWidth = 20 * r.life * G_SCALE; 
-            ctx.globalAlpha = Math.max(0, r.life * 0.8); 
-            ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, PI2); ctx.stroke();
-            
-            ctx.strokeStyle = '#fff'; 
-            ctx.lineWidth = 4 * G_SCALE; 
-            ctx.globalAlpha = Math.max(0, r.life); 
-            ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, PI2); ctx.stroke();
-        } else {
-            const lw = (r.lineWidth !== undefined ? r.lineWidth : 4) * G_SCALE;
-            const currentR = Math.max(0, r.r * G_SCALE);
-            let sizeFactor = 1.0;
+        // 1. 半透明の塗りつぶし
+        ctx.fillStyle = r.color; 
+        ctx.globalAlpha = Math.max(0, r.life * 0.25); 
+        ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, PI2); ctx.fill();
+        
+        // 2. 外側の太い枠線（時間経過で細くなる）
+        ctx.strokeStyle = r.color; 
+        ctx.lineWidth = 20 * r.life * G_SCALE; 
+        ctx.globalAlpha = Math.max(0, r.life * 0.8); 
+        ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, PI2); ctx.stroke();
+        
+        // 3. 内側の白い芯（シャープな線）
+        ctx.strokeStyle = '#fff'; 
+        ctx.lineWidth = 4 * G_SCALE; 
+        ctx.globalAlpha = Math.max(0, r.life); 
+        ctx.beginPath(); ctx.arc(r.x, r.y, r.r * G_SCALE, 0, PI2); ctx.stroke();
 
-            if (r.vr < 0 && !r.isIntroRing) {
-                const progress = Math.max(0, Math.min(1.0, 1.0 - (r.r / 500)));
-                sizeFactor = Math.pow(progress, 3);
-            }
-
-            const baseAlpha = Math.min(1.0, r.life) * sizeFactor;
-
-            if (r.fill) {
-                ctx.fillStyle = r.color;
-                ctx.globalAlpha = baseAlpha * 0.15;
-                ctx.beginPath(); ctx.arc(r.x, r.y, currentR, 0, PI2); ctx.fill();
-            }
-
-            ctx.globalAlpha = baseAlpha;
-            ctx.strokeStyle = r.color;
-            ctx.lineWidth = lw;
-            if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 15 * sizeFactor;
-            ctx.shadowColor = r.color;
-
-            ctx.beginPath(); ctx.arc(r.x, r.y, currentR, 0, PI2); ctx.stroke();
-
-            if (lw > 2) {
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = lw * 0.3;
-                ctx.shadowBlur = 0;
-                ctx.globalAlpha = Math.min(1.0, baseAlpha * 1.5);
-                ctx.beginPath(); ctx.arc(r.x, r.y, currentR, 0, PI2); ctx.stroke();
-            }
-        }
         ctx.restore();
     }
-    */
 }
 
 

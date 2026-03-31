@@ -41,10 +41,17 @@ const PixiRender = {
         cg.endFill();
         this.textures.enemyCore = this.app.renderer.generateTexture(cg);
 
-        // 2. リングエフェクト用
+        // 2-A. リングエフェクト用 (太さ2のくっきりした白枠)
         const rg = new PIXI.Graphics();
         rg.lineStyle(2, 0xFFFFFF); rg.drawCircle(0, 0, 64);
         this.textures.ring = this.app.renderer.generateTexture(rg);
+        
+        // 2-B. ボム・フラッシュコア用 (真っ白な塗りつぶし円)
+        const rgf = new PIXI.Graphics();
+        rgf.beginFill(0xFFFFFF); 
+        rgf.drawCircle(0, 0, 64); 
+        rgf.endFill();
+        this.textures.ringFilled = this.app.renderer.generateTexture(rgf);
 
         // 3. レーザー用 (1x1の白ピクセル)
         const lg = new PIXI.Graphics();
@@ -56,6 +63,25 @@ const PixiRender = {
         
         // 5. 花火・パーティクル用 (純白のスピード線グラデーション)
         this.textures.spark = this.generateSparkBase();
+
+        // 6. 自機弾用テクスチャ (Sprite用)長さ12pxの弾を作ります
+        const bg = new PIXI.Graphics();
+        const bLen = 12; 
+        const offset = 3;
+
+        // 1. 外側グロー (太さ: 6)
+        bg.lineStyle({ width: 6, color: 0x00ffb4, alpha: 0.22, cap: PIXI.LINE_CAP.ROUND });
+        bg.moveTo(offset, 6); bg.lineTo(bLen + offset, 6); // Yを6にズラして見切れを防ぐ
+        
+        // 2. 中間光 (太さ: 3)
+        bg.lineStyle({ width: 3, color: 0x00ffb4, alpha: 0.55, cap: PIXI.LINE_CAP.ROUND });
+        bg.moveTo(offset, 6); bg.lineTo(bLen + offset, 6);
+        
+        // 3. 芯 (太さ: 1.4)
+        bg.lineStyle({ width: 1.4, color: 0xcffff5, alpha: 1.0, cap: PIXI.LINE_CAP.ROUND });
+        bg.moveTo(offset, 6); bg.lineTo(bLen + offset, 6);
+
+        this.textures.playerBullet = this.app.renderer.generateTexture(bg);
     },
 
     // 自機弾用テクスチャの生成（オリジナルと全く同じ色・太さ・透明度）
@@ -115,7 +141,6 @@ const PixiRender = {
         this.syncEnemyBullets();
         this.syncParticles();
         this.syncRings();
-        this.syncLasers();
     },
     // ==========================================
     // 自機システムのPixiJS同期
@@ -405,44 +430,37 @@ const PixiRender = {
     syncPlayerBullets() {
         playerBulletPool.pool.forEach(b => {
             if (!b.sprite) {
-                b.sprite = new PIXI.Graphics();
-                // ★ 修正1: 加算合成(ADD)を外し、オリジナルと同じ通常合成(NORMAL)に戻すことで透け・貫通感をなくす
+                // =====================================
+                // ★ 処理落ち解消！ Graphicsをやめて Sprite(画像) を使用
+                // =====================================
+                b.sprite = new PIXI.Sprite(this.textures.playerBullet);
+                
+                // アンカーを (1.0, 0.5) にすることで、
+                // 画像の「右端（弾の先端）」を中心座標(b.x, b.y)に合わせます
+                // これにより、オリジナルの offset めり込み防止と全く同じ位置に描画されます
+                b.sprite.anchor.set(1.0, 0.5);
                 b.sprite.blendMode = PIXI.BLEND_MODES.NORMAL;
+                
                 layerBullets.addChild(b.sprite);
             }
             
-            const g = b.sprite;
-            g.clear(); // 毎フレーム描画をリセット
+            const s = b.sprite;
             
             if (!b.active) { 
-                g.visible = false; 
+                s.visible = false; 
                 return; 
             }
             
-            g.visible = true;
-            g.position.set(b.x, b.y);
-            g.rotation = Math.atan2(b.vy, b.vx);
+            s.visible = true;
+            s.position.set(b.x, b.y);
+            s.rotation = Math.atan2(b.vy, b.vx);
             
-            // 長さの計算
+            // 長さの計算（寿命に応じて短くなる）
             const maxLife = (typeof BULLET_CONFIG !== 'undefined') ? BULLET_CONFIG.PLAYER.LIFE : 120;
             const lifeRatio = Math.max(0, b.life / maxLife);
-            const len = 12 * lifeRatio;
             
-            // ★ 修正2: cap: 'ROUND' による丸みのはみ出し（太さの半分=3px）を相殺するため、
-            // 描画の開始点を 3px 後ろにずらして敵にめり込まないようにする
-            const offset = 3; 
-
-            // 1. 外側グロー (太さ: 6)
-            g.lineStyle({ width: 6, color: 0x00ffb4, alpha: 0.22, cap: PIXI.LINE_CAP.ROUND });
-            g.moveTo(-offset, 0); g.lineTo(-(len + offset), 0);
-            
-            // 2. 中間光 (太さ: 3)
-            g.lineStyle({ width: 3, color: 0x00ffb4, alpha: 0.55, cap: PIXI.LINE_CAP.ROUND });
-            g.moveTo(-offset, 0); g.lineTo(-(len + offset), 0);
-            
-            // 3. 芯 (太さ: 1.4)
-            g.lineStyle({ width: 1.4, color: 0xcffff5, alpha: 1.0, cap: PIXI.LINE_CAP.ROUND });
-            g.moveTo(-offset, 0); g.lineTo(-(len + offset), 0);
+            // ★ポイント: 画像全体のX軸(横幅)のスケールを縮小することで、弾が短くなる演出を再現
+            s.scale.set(lifeRatio, 1.0);
         });
     },
 
@@ -527,10 +545,6 @@ const PixiRender = {
             const speed = Math.hypot(p.vx, p.vy);
             p.sprite.rotation = Math.atan2(p.vy, p.vx);
             
-            // ==========================================
-            // ★修正: 速度(speed)による線の引き伸ばしを「3」から「10」へ大幅強化！
-            // 初速が速い爆発の瞬間だけグンと線が長くなり、遅くなると点に戻ります。
-            // ==========================================
             const rw = (p.size || 2) * 6 * scaleFactor + speed * 7; 
             const rh = (p.size || 2) * 3 * scaleFactor;
             
@@ -546,163 +560,83 @@ const PixiRender = {
         
         ringPool.pool.forEach(r => {
             if (!r.sprite) {
-                r.sprite = new PIXI.Graphics();
-                r.sprite.blendMode = PIXI.BLEND_MODES.ADD;
+                r.sprite = new PIXI.Container();
+                
+                const fillSprite = new PIXI.Sprite(this.textures.ringFilled);
+                fillSprite.anchor.set(0.5);
+                fillSprite.blendMode = PIXI.BLEND_MODES.ADD;
+                
+                const lineSprite = new PIXI.Sprite(this.textures.ring);
+                lineSprite.anchor.set(0.5);
+                lineSprite.blendMode = PIXI.BLEND_MODES.ADD;
+
+                const coreSprite = new PIXI.Sprite(this.textures.ring);
+                coreSprite.anchor.set(0.5);
+                coreSprite.blendMode = PIXI.BLEND_MODES.ADD;
+
+                r.sprite.addChild(fillSprite, lineSprite, coreSprite);
                 layerBullets.addChild(r.sprite);
             }
             
-            const g = r.sprite;
-            g.clear(); 
+            const container = r.sprite;
+            const fillSprite = container.children[0];
+            const lineSprite = container.children[1];
+            const coreSprite = container.children[2];
             
             if (!r.active) { 
-                g.visible = false; 
+                container.visible = false; 
                 return; 
             }
             
-            g.visible = true;
-            g.position.set(r.x, r.y);
+            // =====================================
+            // ★修正: ボムの場合はCanvasで描画するため、PixiJS(WebGL)では非表示にしてスキップ
+            // =====================================
+            if (r.isBomb) {
+                container.visible = false;
+                return;
+            }
+
+            container.visible = true;
+            container.position.set(r.x, r.y);
             
             const rColorHex = PIXI.utils.string2hex(r.color || '#0ff');
+            const currentR = Math.max(0.1, r.r * scaleFactor);
+            container.scale.set(currentR / 64);
 
-            if (r.isBomb) {
-                g.beginFill(rColorHex, Math.max(0, r.life * 0.25));
-                g.drawCircle(0, 0, r.r * scaleFactor);
-                g.endFill();
-                
-                g.lineStyle(20 * r.life * scaleFactor, rColorHex, Math.max(0, r.life * 0.8));
-                g.drawCircle(0, 0, r.r * scaleFactor);
-                
-                g.lineStyle(4 * scaleFactor, 0xFFFFFF, Math.max(0, r.life));
-                g.drawCircle(0, 0, r.r * scaleFactor);
-                
+            // =====================================
+            // 通常のリング・衝撃波（ボムのコードは削除してスッキリ）
+            // =====================================
+            const originalLw = r.lineWidth !== undefined ? r.lineWidth : 4;
+            let sizeFactor = 1.0;
+
+            if (r.vr < 0 && !r.isIntroRing) {
+                const progress = Math.max(0, Math.min(1.0, 1.0 - (r.r / 500)));
+                sizeFactor = Math.pow(progress, 3);
+            }
+
+            const baseAlpha = Math.min(1.0, r.life) * sizeFactor;
+
+            if (r.fill) {
+                fillSprite.visible = true;
+                fillSprite.tint = rColorHex;
+                fillSprite.alpha = baseAlpha * 0.15;
             } else {
-                // =====================================
-                // 通常のリング・衝撃波
-                // =====================================
-                const originalLw = r.lineWidth !== undefined ? r.lineWidth : 4;
-                const lw = originalLw * scaleFactor;
-                const currentR = Math.max(0, r.r * scaleFactor);
-                let sizeFactor = 1.0;
+                fillSprite.visible = false;
+            }
 
-                if (r.vr < 0 && !r.isIntroRing) {
-                    const progress = Math.max(0, Math.min(1.0, 1.0 - (r.r / 500)));
-                    sizeFactor = Math.pow(progress, 3);
-                }
+            lineSprite.visible = true;
+            lineSprite.tint = rColorHex;
+            lineSprite.alpha = baseAlpha;
 
-                const baseAlpha = Math.min(1.0, r.life) * sizeFactor;
-
-                // 1. 塗りつぶし (fillフラグがある場合)
-                if (r.fill) {
-                    g.beginFill(rColorHex, baseAlpha * 0.15);
-                    g.drawCircle(0, 0, currentR);
-                    g.endFill();
-                }
-
-                // ★ 1や2の太さでは巨大グローを発動させず、本来の大きなリング(4以上)の時だけ発動させる
-                const shouldDrawGlow = !r.noGlow && (originalLw > 2);
-
-                if (typeof currentGraphicsQuality !== 'undefined' && currentGraphicsQuality === 'HIGH' && shouldDrawGlow) {
-                    g.lineStyle(lw + 15 * sizeFactor, rColorHex, baseAlpha * 0.3);
-                    g.drawCircle(0, 0, currentR);
-                }
-
-                // 3. メインのカラー枠線
-                g.lineStyle(lw, rColorHex, baseAlpha);
-                g.drawCircle(0, 0, currentR);
-
-                // 4. 内側の白い芯線
-                if (originalLw > 2) {
-                    g.lineStyle(lw * 0.3, 0xFFFFFF, Math.min(1.0, baseAlpha * 1.5));
-                    g.drawCircle(0, 0, currentR);
-                }
+            if (originalLw > 2) {
+                coreSprite.visible = true;
+                coreSprite.tint = 0xFFFFFF;
+                coreSprite.alpha = Math.min(1.0, baseAlpha * 1.5);
+                coreSprite.scale.set(0.95);
+            } else {
+                coreSprite.visible = false;
             }
         });
     },
 
-    syncLasers() {
-        if (typeof lasers === 'undefined' || !Array.isArray(lasers)) return;
-        const scaleFactor = typeof G_SCALE !== 'undefined' ? G_SCALE : 1;
-        
-        if (!this.laserGraphics) this.laserGraphics = [];
-        let gIdx = 0;
-
-        lasers.forEach(l => {
-            let g = this.laserGraphics[gIdx];
-            if (!g) {
-                g = new PIXI.Graphics();
-                // ★ 修正: 加算合成(ADD)を外し、通常合成(NORMAL)に変更して透け・貫通感をなくす
-                g.blendMode = PIXI.BLEND_MODES.NORMAL;
-                layerBullets.addChild(g);
-                this.laserGraphics[gIdx] = g;
-            }
-            
-            g.clear();
-            g.visible = true;
-            g.position.set(l.x, l.y);
-            g.rotation = l.angle;
-
-            const isHyper = typeof player !== 'undefined' && player.overdriveTimer > 0;
-            const mainColor = isHyper ? 0xff8800 : 0x00ffff;
-            const coreColor = isHyper ? 0xffddaa : 0xffffff;
-            const hitColor  = isHyper ? 0xffcc88 : 0xffffff;
-
-            const mainLineWidth = (isHyper ? 3.0 : 1.5) * scaleFactor;
-            const coreLineWidth = (isHyper ? 2.0 : 1.0) * scaleFactor;
-
-            // 当たり判定システム側で計算された着弾点までの長さ (renderLen) を使用
-            const len = l.renderLen || 2000;
-            const segments = 20;
-            const segLen = len / segments;
-            const jitter = 15 * (l.life / 5) * (isHyper ? 1.5 : 1.0) * scaleFactor;
-
-            // 1. レーザーの外側の光 (少し透明)
-            if (typeof currentGraphicsQuality !== 'undefined' && currentGraphicsQuality === 'HIGH') {
-                g.lineStyle(mainLineWidth + 10 * scaleFactor, mainColor, 0.3);
-                g.moveTo(0, 0);
-                for (let i = 1; i <= segments; i++) {
-                    const px = i * segLen;
-                    const py = (Math.random() - 0.5) * jitter * 2;
-                    g.lineTo(px, py);
-                }
-            }
-
-            // 2. レーザーのメインの線 (不透明)
-            g.lineStyle(mainLineWidth, mainColor, 1.0);
-            g.moveTo(0, 0);
-            for (let i = 1; i <= segments; i++) {
-                const px = i * segLen;
-                const py = (Math.random() - 0.5) * jitter * 2;
-                g.lineTo(px, py);
-            }
-
-            // 3. レーザーの芯の線
-            if (Math.random() > 0.2) {
-                g.lineStyle(coreLineWidth, coreColor, 1.0);
-                g.moveTo(0, 0);
-                g.lineTo(len, (Math.random() - 0.5) * 5 * scaleFactor);
-            }
-
-            // 4. 着弾点の爆発エフェクト
-            // (画面端の2000まで到達していない = 何かに当たっている場合)
-            if (len < 1900) {
-                const hitSize = ((isHyper ? 15 : 10) + Math.random() * 10) * scaleFactor;
-                g.lineStyle(0);
-                if (typeof currentGraphicsQuality !== 'undefined' && currentGraphicsQuality === 'HIGH') {
-                    g.beginFill(hitColor, 0.3);
-                    g.drawCircle(len, 0, hitSize * 1.8);
-                    g.endFill();
-                }
-                g.beginFill(hitColor, 1.0);
-                g.drawCircle(len, 0, hitSize);
-                g.endFill();
-            }
-
-            gIdx++;
-        });
-
-        for (let j = gIdx; j < this.laserGraphics.length; j++) {
-            this.laserGraphics[j].clear();
-            this.laserGraphics[j].visible = false;
-        }
-    }
 };
