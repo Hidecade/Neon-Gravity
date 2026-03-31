@@ -1201,14 +1201,16 @@ function applyAsteroidCollisions(e) {
 
         const dx = other.x - e.x;
         const dy = other.y - e.y;
-        const dist = Math.hypot(dx, dy) || 0.001;
+        const distSq = dx * dx + dy * dy;
 
         const hitRadius = 22 * 0.85;
         const r1 = hitRadius * e.scale * G_SCALE;
         const r2 = hitRadius * other.scale * G_SCALE;
         const minDist = r1 + r2;
 
-        if (dist < minDist) {
+        // 二乗同士で比較
+        if (distSq < minDist * minDist) {
+            const dist = Math.sqrt(distSq) || 0.001; // 衝突が確定した場合のみ計算
             // --- 1. 重なり解消（少し強めに押し出す） ---
             const overlap = minDist - dist;
             const nx = dx / dist;
@@ -1755,10 +1757,11 @@ function applySeparation(e) {
 
         const odx = e.x - other.x;
         const ody = e.y - other.y;
-        const od = Math.hypot(odx, ody);
+        const distSq = odx * odx + ody * ody;
 
-        // 距離が30未満の場合、お互いを押し離す
-        if (od > 0 && od < 30) {
+        // 距離が30未満(二乗で900未満)の場合
+        if (distSq > 0 && distSq < 900) {
+            const od = Math.sqrt(distSq); // 衝突が確定した場合のみ平方根を計算
             const push = (30 - od) * 0.05;
             e.x += (odx / od) * push;
             e.y += (ody / od) * push;
