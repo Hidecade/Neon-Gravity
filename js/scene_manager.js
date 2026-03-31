@@ -2325,6 +2325,7 @@ window.showFinalResultBoard = function() {
     const enemyKilled = total.enemiesKilled;
     const enemySpawned = total.enemiesSpawned;
     const enemyRate = enemySpawned > 0 ? Math.floor((enemyKilled / enemySpawned) * 100) : 0;
+    const scoreStr = typeof score !== 'undefined' ? score.toLocaleString() : '0';
 
     const getStatStr = (type) => {
         const stat = total.items[type];
@@ -2422,7 +2423,7 @@ window.showFinalResultBoard = function() {
                         <span style="width: 3.8em; text-align: right; font-size: 0.85em; margin-left: 0.3em; font-weight: normal;">(${enemyRate}%)</span>
                     </div>
                 </div>
-                
+
                 <div style="font-size: 0.8em; color: #aaa; margin-top: 0.4em; margin-bottom: 0.6em; text-align: center; letter-spacing: 1px; font-weight: normal;">
                     [ TOTAL ITEMS : COLLECTED / SPAWNED ]
                 </div>
