@@ -362,15 +362,18 @@ const PixiRender = {
             const len = 40 * scaleFactor;
             const baseAlpha = eb.alpha !== undefined ? eb.alpha : 1.0;
 
-            // 外光の設定 (太め、色付き)
+            // ==========================================
+            // ★修正: 外光と芯の height (太さ) を小さくする
+            // ==========================================
+            // 外光の設定 (元は 8 だったものを 5 くらいに細く)
             eb.glowSprite.width = len;
-            eb.glowSprite.height = 8 * scaleFactor;
+            eb.glowSprite.height = 5 * scaleFactor; 
             eb.glowSprite.tint = PIXI.utils.string2hex(eb.color || '#0ff');
             eb.glowSprite.alpha = 0.4 * baseAlpha;
 
-            // 芯の設定 (細め、白)
+            // 芯の設定 (元は 2 だったものを 1.2〜1.5 くらいに細く)
             eb.coreSprite.width = len;
-            eb.coreSprite.height = 2 * scaleFactor;
+            eb.coreSprite.height = 1.2 * scaleFactor;
             eb.coreSprite.tint = 0xFFFFFF;
             eb.coreSprite.alpha = 0.8 * baseAlpha;
         });
