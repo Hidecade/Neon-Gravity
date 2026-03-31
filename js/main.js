@@ -1277,14 +1277,16 @@ function draw() {
     //if (typeof drawPlayerBullets === 'function') drawPlayerBullets();
     if (typeof drawLasers === 'function') drawLasers();
 
-    //if (gameState === 'PLAYING') {if (typeof drawPlayerSystems === 'function') drawPlayerSystems();}
+    if (gameState === 'PLAYING' || gameState === 'DYING' || gameState === 'STAGE_INTRO') {
+        if (typeof drawPlayerSystems === 'function') drawPlayerSystems();
+    }
 
     if (typeof drawHomingLasers === 'function') drawHomingLasers();
     if (typeof drawItems === 'function') drawItems();
 
     if (typeof drawDebugWorldOverlay === 'function') drawDebugWorldOverlay();
 
-    if ((gameState === 'PLAYING' || gameState === 'DYING') && frame % 3 === 0) {
+    if (gameState === 'PLAYING' || gameState === 'DYING' || gameState === 'STAGE_INTRO') {
         if (typeof drawMiniMap === 'function') drawMiniMap();
     }
     if (typeof drawScorePopups === 'function') drawScorePopups();

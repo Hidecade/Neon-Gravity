@@ -1292,7 +1292,7 @@ function drawIntro() {
         //if (typeof drawPlayerBullets === 'function') drawPlayerBullets();
         if (typeof drawHomingLasers === 'function') drawHomingLasers();
         if (typeof drawItems === 'function') drawItems();
-        //if (typeof drawPlayerSystems === 'function') drawPlayerSystems();
+        if (typeof drawPlayerSystems === 'function') drawPlayerSystems();
         ctx.restore();
 
         if (frame % 3 === 0 && typeof drawMiniMap === 'function') drawMiniMap();

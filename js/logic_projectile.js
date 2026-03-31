@@ -690,15 +690,6 @@ function updatePowerups() {
             p.x += (dx / dist) * moveAmount;
             p.y += (dy / dist) * moveAmount;
 
-            // 飛んでいる間、キラキラしたパーティクルを出す演出
-            if (frame % 3 === 0) {
-                spawnParticleObj({
-                    x: p.x, y: p.y,
-                    vx: (Math.random() - 0.5) * 2,
-                    vy: (Math.random() - 0.5) * 2,
-                    color: '#0f8', life: 0.3, size: 1.5
-                });
-            }
         }
 
         // --- 3. 回収判定 ---
