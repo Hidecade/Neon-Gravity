@@ -541,7 +541,7 @@ function updateEclipseAI(e) {
     if (e.rotSpeed === undefined) e.rotSpeed = 0.02;
     e.angle += e.rotSpeed * gameSpeed;
 
-    // ★タイマーは絶対に整数で管理する（小数点のズレによる不発・バグを防ぐ）
+    // ★タイマーは絶対に整数で管理する
     if (e.actionTimer === undefined) e.actionTimer = 0;
     e.actionTimer++;
 
@@ -550,6 +550,7 @@ function updateEclipseAI(e) {
     // ★ 出現直後（最初の60フレーム）の後はすぐに攻撃を許可する
     if (e.actionTimer > 60) {
         if (e.inActiveRange) {
+            
             // 攻撃1：全方位ばらまき弾
             if (cycle === 120) {
                 const ways = 16;
@@ -567,8 +568,7 @@ function updateEclipseAI(e) {
             }
             
             // ==========================================
-            // ★追加 攻撃3：ブラックホール（重力引き寄せ）
-            // サイクル 150 〜 220 の間、自機を強烈に吸い寄せる
+            // 攻撃3：ブラックホール（重力引き寄せ）
             // ==========================================
             else if (cycle > 150 && cycle < 220) {
 
@@ -580,60 +580,48 @@ function updateEclipseAI(e) {
                 const pullDy = e.y - player.y;
                 const pullDist = Math.hypot(pullDx, pullDy) || 0.001;
 
-                const maxPullDist = 800; // 引力が届く最大距離（画面の大部分）
+                const maxPullDist = 800; 
                 
                 if (pullDist < maxPullDist) {
-                    // エクリプスに近いほど引力が強くなる計算
                     const pullStrength = 8.0 * SPEED_SCALE * gameSpeed;
                     const force = pullStrength * (1 - pullDist / maxPullDist);
-
-                    // プレイヤーの座標をエクリプス側へ直接引き寄せる
                     player.x += (pullDx / pullDist) * force;
                     player.y += (pullDy / pullDist) * force;
                 }
 
-                // --- 視覚演出 ---
-                // グリッドの歪みは処理が重いため4フレームに1回だけ実行
-                if (frame % 4 === 0) {
+                // --- 視覚演出の軽量化 ---
+                // ★軽量化1: グリッドの歪みは6フレームに1回に間引く（見た目の違和感はゼロです）
+                if (frame % 6 === 0) {
                     if (typeof distortGrid === 'function') distortGrid(e.x, e.y, -40, 400);
                 }
 
-                // ==========================================
-                // ★ 渦を巻いて中心で消滅するブラックホールエフェクト
-                // ==========================================
-                // 光の線が途切れないよう【毎フレーム】発生させる
-                const numParticles = 2 + Math.floor(Math.random() * 2);
-                
-                for (let i = 0; i < numParticles; i++) {
-                    const pAngle = Math.random() * Math.PI * 2;
+                // ★軽量化2: パーティクルの生成を「2フレームに1回」に間引く
+                // （毎フレーム作らなくても、人間の目には十分な連続した線に見えます）
+                if (frame % 2 === 0) {
+                    // 間引いた分、1回あたりの生成数を少し増やす（3〜4個）
+                    const numParticles = 3 + Math.floor(Math.random() * 2);
                     
-                    // 距離を少し調整し、画面の広範囲から集まるように
-                    const pDist = 120 + Math.random() * 250; 
-                    
-                    const colors = ['#ffaaff', '#880000', '#ffffff', '#00ffff'];
-                    const pColor = colors[Math.floor(Math.random() * colors.length)];
-                    
-                    const speed = (14 + Math.random() * 6) * SPEED_SCALE;
-
-                    // ★ポイント1：直進ではなく、少しだけ角度をずらして「渦（スワール）」を巻くようにする
-                    const swirlAngle = pAngle + 0.15; 
-
-                    // ★ポイント2：中心に到達する時間を逆算し、ピッタリ中心で消滅する寿命を設定する
-                    // （距離 ÷ 速度）で到達フレーム数を出し、1フレームの減少量(約0.02)を掛ける
-                    const exactLife = (pDist / speed) * 0.02;
-
-                    spawnParticleObj({
-                        x: e.x + Math.cos(pAngle) * pDist,
-                        y: e.y + Math.sin(pAngle) * pDist,
-                        vx: -Math.cos(swirlAngle) * speed, 
-                        vy: -Math.sin(swirlAngle) * speed,
-                        color: pColor,
+                    for (let i = 0; i < numParticles; i++) {
+                        const pAngle = Math.random() * Math.PI * 2;
+                        const pDist = 120 + Math.random() * 250; 
                         
-                        // ランダムではなく、計算で求めた「ピッタリ中心で消える寿命」を入れる
-                        life: exactLife, 
+                        const colors = ['#ffaaff', '#880000', '#ffffff', '#00ffff'];
+                        const pColor = colors[Math.floor(Math.random() * colors.length)];
                         
-                        size: 1.5 + Math.random() * 2.5 
-                    });
+                        const speed = (14 + Math.random() * 6) * SPEED_SCALE;
+                        const swirlAngle = pAngle + 0.15; 
+                        const exactLife = (pDist / speed) * 0.02;
+
+                        spawnParticleObj({
+                            x: e.x + Math.cos(pAngle) * pDist,
+                            y: e.y + Math.sin(pAngle) * pDist,
+                            vx: -Math.cos(swirlAngle) * speed, 
+                            vy: -Math.sin(swirlAngle) * speed,
+                            color: pColor,
+                            life: exactLife, 
+                            size: 1.5 + Math.random() * 2.5 
+                        });
+                    }
                 }
             }
             // 攻撃2：超高速レーザー

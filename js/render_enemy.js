@@ -945,54 +945,57 @@ function drawEclipseEnemy(ctx, e) {
     ctx.globalCompositeOperation = 'lighter';
 
     // ==========================================
-    // 本体デザイン（shadowBlurを使わず、線の太さと透明度で構築）
+    // 1. 同心円状の拘束グリッド (バッチ描画化)
     // ==========================================
-    const sides = 6;
     const bodyRotation = e.angle * 0.5;
 
     ctx.save();
     ctx.rotate(bodyRotation + frame * 0.01);
-
-    // 1. 同心円状の拘束グリッド
     ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 2.0;
+    
+    // ★ アルファを平均化して1回の stroke にまとめる
+    ctx.globalAlpha = 0.3 * easeProgress;
+    ctx.beginPath();
     for (let r = 16; r <= 28; r += 6) {
-        ctx.beginPath();
-        ctx.globalAlpha = (0.5 - (r / 100)) * easeProgress;
-        ctx.lineWidth = 2.0;
-       
+        ctx.moveTo(r, 0); // 円の開始位置へ移動 (パスが繋がるのを防ぐ)
         ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
     }
-
+    ctx.stroke();
     ctx.restore(); // ボディ回転終了
 
-    // --- ブラックホール本体 ---
+    // ==========================================
+    // 2. ブラックホール本体
+    // ==========================================
     const corePulse = 1.0 + Math.sin(frame * 0.05) * 0.08;
     const holeRad = 12 * corePulse;
 
-    ctx.beginPath(); ctx.arc(0, 0, holeRad * 2.8, 0, Math.PI * 2);
+    ctx.beginPath(); 
+    ctx.arc(0, 0, holeRad * 2.8, 0, Math.PI * 2);
     const grad = ctx.createRadialGradient(0, 0, holeRad * 0.8, 0, 0, holeRad * 2.8);
     grad.addColorStop(0, isDmg ? '#fff' : '#f05');
     grad.addColorStop(0.3, isDmg ? '#fff' : '#800');
     grad.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = grad; ctx.fill();
+    ctx.fillStyle = grad; 
+    ctx.fill();
 
     // 事象の地平面（リング）
     ctx.globalCompositeOperation = 'lighter';
-    ctx.beginPath(); ctx.arc(0, 0, holeRad + 1, 0, Math.PI * 2);
+    ctx.beginPath(); 
+    ctx.arc(0, 0, holeRad + 1, 0, Math.PI * 2);
     ctx.strokeStyle = isDmg ? '#fff' : '#f05';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     // 漆黒の中心
     ctx.globalCompositeOperation = 'source-over';
-    ctx.beginPath(); ctx.arc(0, 0, holeRad, 0, Math.PI * 2);
+    ctx.beginPath(); 
+    ctx.arc(0, 0, holeRad, 0, Math.PI * 2);
     ctx.fillStyle = isDmg ? '#fff' : '#000';
     ctx.fill();
     
     // ==========================================
-    // ★ ビット（6基）をPhantom仕様に変更
+    // 3. ビット（6基）のバッチ描画処理 ★超軽量化
     // ==========================================
     ctx.globalCompositeOperation = 'lighter';
     const cycle = timer % 350;
@@ -1012,7 +1015,6 @@ function drawEclipseEnemy(ctx, e) {
     const targetAngle = Math.atan2(player.y - e.y, player.x - e.x);
     const orbitDist = 55 + Math.sin(frame * 0.05) * 5;
 
-    // Phantomと完全に同じ形状（サイズも同じ）
     const pts = [
         { x: 15, y: 0, z: 0 },     // 先端
         { x: -10, y: 10, z: 5 },   // 底面1
@@ -1020,6 +1022,14 @@ function drawEclipseEnemy(ctx, e) {
         { x: -10, y: 0, z: -9 }    // 底面3
     ];
     const lines = [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]];
+
+    // 各ビットの変換後座標を一時保存する配列
+    const bitPaths = [];
+
+    // ★ 計算の最適化: 変化しない固定値はループの外に出す
+    const tilt = 0.4;
+    const cosTilt = Math.cos(tilt);
+    const sinTilt = Math.sin(tilt);
 
     for (let i = 0; i < 6; i++) {
         const orbitAngle = e.angle + (Math.PI * 2 / 6) * i;
@@ -1030,44 +1040,59 @@ function drawEclipseEnemy(ctx, e) {
         diff = Math.atan2(Math.sin(diff), Math.cos(diff));
         const currentLookAngle = orbitAngle + diff * smoothAim;
 
+        // ★ 三角関数の呼び出しをビットごとに1回ずつに激減
+        const cosL = Math.cos(currentLookAngle);
+        const sinL = Math.sin(currentLookAngle);
+
         const p = pts.map(pt => {
-            const rx = pt.x * Math.cos(currentLookAngle) - pt.y * Math.sin(currentLookAngle);
-            const ry = pt.x * Math.sin(currentLookAngle) + pt.y * Math.cos(currentLookAngle);
+            const rx = pt.x * cosL - pt.y * sinL;
+            const ry = pt.x * sinL + pt.y * cosL;
             const rz = pt.z;
             
-            // Phantomと同じ投影ロジック
-            const tilt = 0.4;
-            const finalY = ry * Math.cos(tilt) - rz * Math.sin(tilt);
+            const finalY = ry * cosTilt - rz * sinTilt;
             return { px: rx + ox, py: finalY + oy };
         });
-
-        // 1. Phantomと同じく、本体色（mainColor）で太めの外枠を描く
-        ctx.strokeStyle = mainColor;
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = easeProgress * 0.8;
-        ctx.beginPath();
-        lines.forEach(l => { ctx.moveTo(p[l[0]].px, p[l[0]].py); ctx.lineTo(p[l[1]].px, p[l[1]].py); });
-        ctx.stroke();
-
-        // 2. Phantomと同じく、白色（#fff）で細いハイライト芯を描く
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 0.8;
-        ctx.globalAlpha = easeProgress * 0.8;
-        ctx.beginPath();
-        lines.forEach(l => { ctx.moveTo(p[l[0]].px, p[l[0]].py); ctx.lineTo(p[l[1]].px, p[l[1]].py); });
-        ctx.stroke();
-
-        // 3. Phantomと同じく、半透明の本体色で面を塗りつぶす（立体感の強調）
-        ctx.save();
-        ctx.globalAlpha = easeProgress * 0.12;
-        ctx.fillStyle = mainColor;
-        ctx.beginPath();
-        ctx.moveTo(p[0].px, p[0].py); ctx.lineTo(p[1].px, p[1].py); ctx.lineTo(p[2].px, p[2].py);
-        ctx.fill();
-        ctx.restore();
+        bitPaths.push(p); // 計算結果だけを配列に突っ込む
     }
 
-    // --- 予兆演出 ---
+    // --- 3-A. アウター線のバッチ描画 (1回のstroke) ---
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = easeProgress * 0.8;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const p = bitPaths[i];
+        lines.forEach(l => { ctx.moveTo(p[l[0]].px, p[l[0]].py); ctx.lineTo(p[l[1]].px, p[l[1]].py); });
+    }
+    ctx.stroke();
+
+    // --- 3-B. インナー芯のバッチ描画 (1回のstroke) ---
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const p = bitPaths[i];
+        lines.forEach(l => { ctx.moveTo(p[l[0]].px, p[l[0]].py); ctx.lineTo(p[l[1]].px, p[l[1]].py); });
+    }
+    ctx.stroke();
+
+    // --- 3-C. 面のバッチ塗りつぶし (1回のfill) ---
+    ctx.save();
+    ctx.globalAlpha = easeProgress * 0.12;
+    ctx.fillStyle = mainColor;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const p = bitPaths[i];
+        ctx.moveTo(p[0].px, p[0].py); 
+        ctx.lineTo(p[1].px, p[1].py); 
+        ctx.lineTo(p[2].px, p[2].py);
+    }
+    ctx.fill();
+    ctx.restore();
+
+    // ==========================================
+    // 4. 予兆演出
+    // ==========================================
     ctx.globalAlpha = 1.0 * easeProgress;
     if (timer >= appearDuration && !isDmg) {
         if (isChargingAoe) {

@@ -79,6 +79,45 @@ function getEnemyBulletTextures() {
     return enemyBulletTextures;
 }
 
+const laserMissileTextureCache = {};    // ★ 敵レーザーミサイルの画像キャッシュ
+
+function getLaserMissileTexture(color) {
+    if (laserMissileTextureCache[color]) {
+        return laserMissileTextureCache[color];
+    }
+
+    const offscreen = document.createElement('canvas');
+    // 基本の長さ40、太さ8。見切れないように少し余裕を持たせて 幅60・高さ20 とする
+    offscreen.width = 60;
+    offscreen.height = 20;
+    const oCtx = offscreen.getContext('2d');
+
+    const cx = offscreen.width / 2;
+    const cy = offscreen.height / 2;
+    const len = 40; // レーザーの基本長
+
+    // 1. 外側の光（厚み）
+    oCtx.strokeStyle = color;
+    oCtx.globalAlpha = 0.3;
+    oCtx.lineWidth = 8;
+    oCtx.beginPath();
+    oCtx.moveTo(cx - len / 2, cy);
+    oCtx.lineTo(cx + len / 2, cy);
+    oCtx.stroke();
+
+    // 2. 中心の芯（真っ白）
+    oCtx.strokeStyle = '#fff';
+    oCtx.globalAlpha = 1.0;
+    oCtx.lineWidth = 3;
+    oCtx.beginPath();
+    oCtx.moveTo(cx - len / 2, cy);
+    oCtx.lineTo(cx + len / 2, cy);
+    oCtx.stroke();
+
+    laserMissileTextureCache[color] = offscreen;
+    return offscreen;
+}
+
 function drawPlayerBullets() {
     const tex = getPlayerBulletTexture();
     ctx.save();
@@ -175,6 +214,80 @@ function drawLasers() {
     });
     ctx.globalCompositeOperation = 'source-over';
 }
+
+function drawHomingLasers() {
+    if (typeof homingLasers === 'undefined' || homingLasers.length === 0) return;
+
+    ctx.save();
+    // 描画モードを「加算」に設定（強く発光させるため）
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    homingLasers.forEach(m => {
+        if (!isOnScreen(m, 50)) return;
+
+        const color = m.color || (player.overdriveTimer > 0 ? '#ff8800' : '#0ff');
+
+        // --- 1. 軌跡（レーザーの尾）の描画 ---
+        if (m.trail && m.trail.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(m.trail[0].x, m.trail[0].y);
+            for (let i = 1; i < m.trail.length; i++) {
+                ctx.lineTo(m.trail[i].x, m.trail[i].y);
+            }
+
+            // 外側の光
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 6 * G_SCALE;
+            ctx.globalAlpha = 0.5;
+            ctx.stroke();
+
+            // ★ 内側の芯を高熱を感じさせる薄いオレンジ(#ffddaa)に
+            ctx.strokeStyle = '#ffddaa';
+            ctx.lineWidth = 2 * G_SCALE;
+            ctx.globalAlpha = 1.0;
+            ctx.stroke();
+        }
+
+     // --- 2. ミサイル先端（レーザーの頭）の描画 ---
+        ctx.save();
+        ctx.translate(m.x, m.y);
+        const angle = Math.atan2(m.vy, m.vx);
+        ctx.rotate(angle);
+        
+        // ==========================================
+        // ★修正: 先端の長さも寿命の割合に応じて短くする
+        // ==========================================
+        const maxLife = 180;
+        const lifeRatio = Math.max(0, m.life / maxLife);
+        const headLen = Math.max(2, 15 * G_SCALE * lifeRatio); // 最低2pxの長さは残す
+        
+        // 外側の光
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 6 * G_SCALE;
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(-headLen * 0.5, 0);
+        ctx.lineTo(headLen * 0.5, 0);
+        ctx.stroke();
+
+        // 内側の白い芯
+        ctx.strokeStyle = '#fff8cc';
+        ctx.lineWidth = 2 * G_SCALE;
+        ctx.globalAlpha = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(-headLen * 0.5, 0);
+        ctx.lineTo(headLen * 0.5, 0);
+        ctx.stroke();
+        
+        ctx.restore();
+    });
+
+    ctx.restore();
+}
+
+
 
 function drawEnemyProjectiles() {
     // 描画モードを「加算」に設定（光る演出のため）
@@ -312,106 +425,24 @@ function drawLaserMissile(ctx, eb) {
     const angle = Math.atan2(eb.vy, eb.vx);
     ctx.rotate(angle);
 
-    const len = 40 * G_SCALE;
     const color = eb.color || '#0ff';
+    const tex = getLaserMissileTexture(color);
+
+    // G_SCALEを使って描画時のサイズを調整
+    const scale = (typeof G_SCALE !== 'undefined') ? G_SCALE : 1.0;
+    
+    // キャッシュキャンバスのサイズ(60x20)にスケールを掛ける
+    const drawW = 60 * scale;
+    const drawH = 20 * scale;
 
     // 加算合成は強力ですが、一回にまとめます
     ctx.globalCompositeOperation = 'lighter';
 
-    // --- 1. 外側の光（厚み） ---
-    // lineWidthと不透明度の組み合わせでグローを代用（ぼかしなし）
-    ctx.strokeStyle = color;
-    ctx.globalAlpha = 0.3;
-    ctx.lineWidth = 8 * G_SCALE;
-    ctx.beginPath();
-    ctx.moveTo(-len / 2, 0);
-    ctx.lineTo(len / 2, 0);
-    ctx.stroke();
-
-    // --- 2. 中心の芯（真っ白） ---
-    // 描画ステート（AlphaとWidth）を変更して重ねる
-    ctx.strokeStyle = '#fff';
-    ctx.globalAlpha = 1.0;
-    ctx.lineWidth = 3 * G_SCALE;
-    ctx.beginPath();
-    ctx.moveTo(-len / 2, 0);
-    ctx.lineTo(len / 2, 0);
-    ctx.stroke();
+    // 画像の中心が (0,0) にくるようにずらして描画！
+    ctx.drawImage(tex, -drawW / 2, -drawH / 2, drawW, drawH);
 
     // source-overに戻すのは全体の最後、または描画マネージャー側で行うとさらに軽くなります
     ctx.globalCompositeOperation = 'source-over';
-}
-
-function drawHomingLasers() {
-    if (typeof homingLasers === 'undefined' || homingLasers.length === 0) return;
-
-    ctx.save();
-    // 描画モードを「加算」に設定（強く発光させるため）
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    homingLasers.forEach(m => {
-        if (!isOnScreen(m, 50)) return;
-
-        const color = m.color || (player.overdriveTimer > 0 ? '#ff8800' : '#0ff');
-
-        // --- 1. 軌跡（レーザーの尾）の描画 ---
-        if (m.trail && m.trail.length > 1) {
-            ctx.beginPath();
-            ctx.moveTo(m.trail[0].x, m.trail[0].y);
-            for (let i = 1; i < m.trail.length; i++) {
-                ctx.lineTo(m.trail[i].x, m.trail[i].y);
-            }
-
-            // 外側の光
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 6 * G_SCALE;
-            ctx.globalAlpha = 0.5;
-            ctx.stroke();
-
-            // ★ 内側の芯を高熱を感じさせる薄いオレンジ(#ffddaa)に
-            ctx.strokeStyle = '#ffddaa';
-            ctx.lineWidth = 2 * G_SCALE;
-            ctx.globalAlpha = 1.0;
-            ctx.stroke();
-        }
-
-     // --- 2. ミサイル先端（レーザーの頭）の描画 ---
-        ctx.save();
-        ctx.translate(m.x, m.y);
-        const angle = Math.atan2(m.vy, m.vx);
-        ctx.rotate(angle);
-        
-        // ==========================================
-        // ★修正: 先端の長さも寿命の割合に応じて短くする
-        // ==========================================
-        const maxLife = 180;
-        const lifeRatio = Math.max(0, m.life / maxLife);
-        const headLen = Math.max(2, 15 * G_SCALE * lifeRatio); // 最低2pxの長さは残す
-        
-        // 外側の光
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 6 * G_SCALE;
-        ctx.globalAlpha = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(-headLen * 0.5, 0);
-        ctx.lineTo(headLen * 0.5, 0);
-        ctx.stroke();
-
-        // 内側の白い芯
-        ctx.strokeStyle = '#fff8cc';
-        ctx.lineWidth = 2 * G_SCALE;
-        ctx.globalAlpha = 1.0;
-        ctx.beginPath();
-        ctx.moveTo(-headLen * 0.5, 0);
-        ctx.lineTo(headLen * 0.5, 0);
-        ctx.stroke();
-        
-        ctx.restore();
-    });
-
-    ctx.restore();
 }
 
 function drawShockwave(ctx, eb) {
@@ -422,7 +453,7 @@ function drawShockwave(ctx, eb) {
     const scale = currentScale * G_SCALE;
     ctx.scale(scale, scale);
 
-    // --- ★修正ロジック：広がるほど薄くなるが、0.3以下にはならない ---
+    // --- 広がるほど薄くなるが、0.3以下にはならない ---
     let scatterAlpha = 1.2 - (currentScale * 0.4);
     scatterAlpha = Math.max(0.3, scatterAlpha);
 
@@ -432,35 +463,17 @@ function drawShockwave(ctx, eb) {
     if (finalAlpha <= 0) return;
 
     ctx.globalCompositeOperation = 'lighter';
-
-    // ★修正1：弾に設定された色(eb.color)を使用する。未設定ならシアン(#0ff)。
     const waveColor = eb.color || '#0ff';
-
-    // --- 1. 外側の波紋 ---
-    ctx.strokeStyle = waveColor; // ★修正
-    ctx.lineWidth = 4 + (currentScale);
-    ctx.lineCap = 'round';
-    if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = 15;
-    ctx.shadowColor = waveColor; // ★修正
-
-    // 元の設計より少しだけ alpha を底上げ
-    ctx.globalAlpha = finalAlpha * 0.8;
 
     ctx.beginPath();
     ctx.arc(-10, 0, 25, -Math.PI / 3, Math.PI / 3, false);
-    ctx.stroke();
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = waveColor;
 
-    // --- 3. 背後の余韻粒子 ---
-    if (frame % 5 === 0 && Math.random() < Math.max(0.2, scatterAlpha)) {
-        spawnParticleObj({
-            x: eb.x, y: eb.y,
-            vx: -eb.vx * 0.05, vy: -eb.vy * 0.05,
-            color: waveColor, // ★修正：パーティクルも同じ色にする
-            life: 0.3, size: 1.0 * scale,
-            isBubble: true,
-            wobbleOffset: Math.random() * Math.PI
-        });
-    }
+    // 中心の芯（元の太さと濃さ）
+    ctx.globalAlpha = finalAlpha * 0.8;
+    ctx.lineWidth = 4 + currentScale;
+    ctx.stroke();
 }
 
 function drawItems() {
