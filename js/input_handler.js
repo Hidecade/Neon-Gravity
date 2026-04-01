@@ -561,11 +561,12 @@ function initInputHandlers() {
             ui.pauseBtn.style.display = 'none';
         }
         // ==========================================
-        // ★追加：ゲームパッド接続時は威力を標準(1.5)にする
+        // ゲームパッド接続時は威力・寿命を標準にする
         // ==========================================
         if (typeof BULLET_CONFIG !== 'undefined') {
             BULLET_CONFIG.PLAYER.POWER = BULLET_CONFIG.PLAYER.BASE_POWER;
-            console.log("Gamepad active: Bullet power set to", BULLET_CONFIG.PLAYER.POWER);
+            BULLET_CONFIG.PLAYER.LIFE = BULLET_CONFIG.PLAYER.BASE_LIFE; 
+            console.log("Gamepad active: Bullet power set to", BULLET_CONFIG.PLAYER.POWER, "LIFE set to", BULLET_CONFIG.PLAYER.LIFE);
         }
     });
     window.addEventListener("gamepaddisconnected", (e) => {
@@ -576,11 +577,12 @@ function initInputHandlers() {
         }
         clearInputState();
         // ==========================================
-        // ★追加：ゲームパッド切断時（タッチ/キーボード操作時）は威力を上げる(2.0)
+        // ゲームパッド切断時（タッチ/キーボード操作時）は威力・寿命を上げる
         // ==========================================
         if (typeof BULLET_CONFIG !== 'undefined') {
             BULLET_CONFIG.PLAYER.POWER = BULLET_CONFIG.PLAYER.TOUCH_POWER;
-            console.log("Gamepad disconnected: Bullet power set to", BULLET_CONFIG.PLAYER.POWER);
+            BULLET_CONFIG.PLAYER.LIFE = BULLET_CONFIG.PLAYER.TOUCH_LIFE; 
+            console.log("Gamepad disconnected: Bullet power set to", BULLET_CONFIG.PLAYER.POWER, "LIFE set to", BULLET_CONFIG.PLAYER.LIFE);
         }
     });
 
@@ -771,8 +773,9 @@ function initInputHandlers() {
             }
         }
         
-        // ★定数を参照するように変更
         BULLET_CONFIG.PLAYER.POWER = hasGamepad ? BULLET_CONFIG.PLAYER.BASE_POWER : BULLET_CONFIG.PLAYER.TOUCH_POWER;
-        console.log("Initial Setup - Bullet power set to:", BULLET_CONFIG.PLAYER.POWER);
+        BULLET_CONFIG.PLAYER.LIFE = hasGamepad ? BULLET_CONFIG.PLAYER.BASE_LIFE : BULLET_CONFIG.PLAYER.TOUCH_LIFE; 
+        
+        console.log("Initial Setup - Bullet power set to:", BULLET_CONFIG.PLAYER.POWER, "LIFE set to:", BULLET_CONFIG.PLAYER.LIFE);
     }
 } 

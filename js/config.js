@@ -89,12 +89,12 @@ const DIFFICULTY_CONFIG = {
 };
 
 // --- プレイヤー設定 ---
-const PLAYER_BASE_SPEED = 12;   // 自機の基本移動速度
-const PLAYER_BASE_SHIELD = 100; // シールド最大値
-const MAX_WEAPON_LEVEL = 7;     // ショット最大レベル
-const DEFAULT_WEAPON_LEVEL = 1; // 初期レベル
-const MAX_SATELLITES = 12;      // サテライトの最大保有数
-const SHIELD_HEAL_AMOUNT = 2;     // シールド回復量
+const PLAYER_BASE_SPEED = 12;       // 自機の基本移動速度
+const PLAYER_BASE_SHIELD = 100;     // シールド最大値
+const MAX_WEAPON_LEVEL = 7;         // ショット最大レベル
+const DEFAULT_WEAPON_LEVEL = 1;     // 初期レベル
+const MAX_SATELLITES = 12;          // サテライトの最大保有数
+const SHIELD_HEAL_AMOUNT = 2;       // シールド回復量
 
 // --- 敵（エネミー）設定 ---
 // 敵の基本移動速度
@@ -245,12 +245,14 @@ const BOSS_VARIANTS = [
 // --- 弾丸設定 ---
 const BULLET_CONFIG = {
     PLAYER: {
-        SPEED: 32.0,    // 自機の弾の速さ
-        LIFE: 60,      // 自機の弾の射程（寿命）
-        POWER: 1.5,      // 自機の弾の基本威力
-        BASE_POWER: 1.5,    // ★追加: ゲームパッド/マウス操作時の基本威力
-        TOUCH_POWER: 2.0    // ★追加: タッチ操作（パッドなし）時の強化威力
-    },
+        SPEED: 32.0,        // 自機の弾の速さ
+        LIFE: 60,           // 自機の弾の現在の射程（寿命）
+        BASE_LIFE: 60,      // ゲームパッド/マウス操作時の基本寿命
+        TOUCH_LIFE: 90,     // タッチ操作時の強化寿命
+        POWER: 1.5,         // 自機の弾の基本威力
+        BASE_POWER: 1.5,    // ゲームパッド/マウス操作時の基本威力
+        TOUCH_POWER: 2.0    // タッチ操作（パッドなし）時の強化威力
+    },  
     ENEMY_NORMAL: {
         SPEED: 10.0,   // 雑魚敵の弾の速さ
         LIFE: 300      // 敵弾の射程

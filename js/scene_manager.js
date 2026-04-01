@@ -1277,15 +1277,23 @@ function drawIntro() {
     if (typeof drawVisualEffects === 'function') drawVisualEffects();
 
     if (introPhase === 3) {
+
+        ctx.save();
+        ctx.globalAlpha = 1.0;
+        if (typeof drawWormholes === 'function') drawWormholes();
+        ctx.restore();
+
+        // 敵とワールド境界線（フェードイン演出あり）
         ctx.save();
         ctx.globalAlpha = introAlpha;
         if (typeof drawWorldBounds === 'function') drawWorldBounds();
         if (typeof drawEnemies === 'function') drawEnemies();
         ctx.restore();
 
+        // 弾やプレイヤーなどの手前のオブジェクト
         ctx.save();
         ctx.globalAlpha = 1.0;
-        if (typeof drawWormholes === 'function') drawWormholes();
+        // ※ここにあった drawWormholes() を削除し、上に移動しました
         if (typeof drawLasers === 'function') drawLasers();
         if (typeof drawPlayerBullets === 'function') drawPlayerBullets();
         if (typeof drawHomingLasers === 'function') drawHomingLasers();

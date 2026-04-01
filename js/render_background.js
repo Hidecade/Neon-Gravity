@@ -1,9 +1,6 @@
 ﻿
 
-// ==========================================
-// ★ 星（Star）の画像キャッシュシステム
-// ==========================================
-const starTextureCache = {};
+const starTextureCache = {};    // ★ 星（Star）の画像キャッシュシステム
 
 function getStarTexture(color) {
     if (starTextureCache[color]) {
