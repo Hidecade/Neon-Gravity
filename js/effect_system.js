@@ -223,7 +223,6 @@ function createWallImpact(x, y, color) {
     spawnRingObj({ x: x, y: y, r: 2, color: color, life: 0.3 });
 }
 
-
 function createExplosion(x, y, baseColor, n) {
     const count = Math.floor(n * EXPLOSION_COUNT_MAG);
     for (let i = 0; i < count; i++) {
@@ -253,8 +252,6 @@ function createExplosion(x, y, baseColor, n) {
         });
     }
 }
-
-
 
 // 花火ループ用関数（グローバルに定義、またはmain.js内の適当な場所に配置）
 function triggerRandomFireworkLoop() {

@@ -721,6 +721,8 @@ function proceedToNextMenu() {
 function returnToTitle() {
     gameState = 'TITLE';
 
+    if (typeof resetStoryTypingState === 'function') resetStoryTypingState();
+
     playerBulletPool.clearAll(); lasers = []; 
     enemyPool.clearAll();
     enemyBulletPool.clearAll();
@@ -2220,8 +2222,8 @@ window.showStageResultBoard = function() {
                 line-height: 1 !important;
                 overflow: hidden !important;
             }
-            .ri-w { color: #0f0 !important; border-color: #0f0 !important; box-shadow: 0 0 5px #0f0 !important; }
-            .ri-l, .ri-s { color: #0ff !important; border-color: #0ff !important; box-shadow: 0 0 5px #0ff !important; }
+            .ri-w, .ri-s { color: #0f0 !important; border-color: #0f0 !important; box-shadow: 0 0 5px #0f0 !important; }
+            .ri-l { color: #0ff !important; border-color: #0ff !important; box-shadow: 0 0 5px #0ff !important; }
             .ri-i { color: #ff0 !important; border-color: #ff0 !important; box-shadow: 0 0 5px #ff0 !important; }
             .ri-p {
                 color: #fff000 !important;
@@ -2382,8 +2384,8 @@ window.showFinalResultBoard = function() {
                 line-height: 1 !important;
                 overflow: hidden !important;
             }
-            .ri-w { color: #0f0 !important; border-color: #0f0 !important; box-shadow: 0 0 5px #0f0 !important; }
-            .ri-l, .ri-s { color: #0ff !important; border-color: #0ff !important; box-shadow: 0 0 5px #0ff !important; }
+            .ri-w, .ri-s { color: #0f0 !important; border-color: #0f0 !important; box-shadow: 0 0 5px #0f0 !important; }
+            .ri-l { color: #0ff !important; border-color: #0ff !important; box-shadow: 0 0 5px #0ff !important; }
             .ri-i { color: #ff0 !important; border-color: #ff0 !important; box-shadow: 0 0 5px #ff0 !important; }
             .ri-p {
                 color: #fff000 !important;

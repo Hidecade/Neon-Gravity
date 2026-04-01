@@ -2,67 +2,113 @@
 // 描画（見た目・エフェクト） 弾の光り方、色、形などを定義
 // ==========================================
 
-function drawPlayerBullets() {
-    ctx.save();
+let playerBulletTexture = null;     // ★ 自機弾の画像キャッシュ
 
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+function getPlayerBulletTexture() {
+    if (playerBulletTexture) return playerBulletTexture;
 
-    const pPool = playerBulletPool.pool; // ★プールを参照
-    for (let i = 0; i < pPool.length; i++) {
-        const b = pPool[i];
+    const offscreen = document.createElement('canvas');
+    offscreen.width = 60;  // 弾の最大の長さ
+    offscreen.height = 16; // 弾の太さ（余白含む）
+    const oCtx = offscreen.getContext('2d');
 
-        // ★生存チェック：アクティブでない弾は描画しない
-        if (!b.active) continue;
+    const centerY = offscreen.height / 2;
 
-        // 画面外チェック（最適化のため、これまでの関数を維持）
-        if (!isOnScreen(b, 50)) continue;
+    oCtx.lineCap = 'round';
+    oCtx.lineJoin = 'round';
 
-        // 弾の進行方向から短いレーザー線を作る
-        const vx = b.vx ?? 0;
-        const vy = b.vy ?? -8;
+    // 1. 外側グロー
+    oCtx.strokeStyle = 'rgba(0,255,180,0.22)';
+    oCtx.lineWidth = 6;
+    oCtx.beginPath(); oCtx.moveTo(4, centerY); oCtx.lineTo(56, centerY); oCtx.stroke();
 
-        const speed = Math.hypot(vx, vy) || 1;
-        const nx = vx / speed;
-        const ny = vy / speed;
+    // 2. 中間光
+    oCtx.strokeStyle = 'rgba(0,255,180,0.55)';
+    oCtx.lineWidth = 4;
+    oCtx.beginPath(); oCtx.moveTo(4, centerY); oCtx.lineTo(56, centerY); oCtx.stroke();
 
-        // ==========================================
-        // ★修正: 線の長さを寿命に応じて計算し、徐々に短くする
-        // ==========================================
-        const maxLife = (typeof BULLET_CONFIG !== 'undefined') ? BULLET_CONFIG.PLAYER.LIFE : 120;
-        const lifeRatio = Math.max(0, b.life / maxLife);
-        const len = 12 * lifeRatio; // 元の長さ(12) × 寿命の割合(1.0〜0.0)
+    // 3. 芯
+    oCtx.strokeStyle = '#cffff5';
+    oCtx.lineWidth = 1.4;
+    oCtx.beginPath(); oCtx.moveTo(4, centerY); oCtx.lineTo(56, centerY); oCtx.stroke();
 
-        // 先端が現在位置、後端が少し後ろ
-        const x1 = b.x;
-        const y1 = b.y;
-        const x2 = b.x - nx * len;
-        const y2 = b.y - ny * len;
+    playerBulletTexture = offscreen;
+    return offscreen;
+}
 
-        // --- 描画処理 ---
-        
-        // 外側グロー
-        ctx.strokeStyle = 'rgba(0,255,180,0.22)';
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-        ctx.stroke();
+let enemyBulletTextures = null;     // ★ 敵通常弾の画像キャッシュ (デザイン修正版)
 
-        // 中間光
-        ctx.strokeStyle = 'rgba(0,255,180,0.55)';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-        ctx.stroke();
+function getEnemyBulletTextures() {
+    if (enemyBulletTextures) return enemyBulletTextures;
 
-        // 芯
-        ctx.strokeStyle = '#cffff5';
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-        ctx.stroke();
+    enemyBulletTextures = [];
+    
+    // 元のコードの size = 8 に相当する基本サイズ
+    const baseSize = 8; 
+    // 回転しても絶対に見切れないように大きめのキャンバスにする (8 × 4 = 32px)
+    const canvasSize = baseSize * 4; 
+    const center = canvasSize / 2;
+
+    const centerColors = ['#ff0000', '#ff8800']; 
+
+    for (let i = 0; i < 2; i++) {
+        const offscreen = document.createElement('canvas');
+        offscreen.width = canvasSize;
+        offscreen.height = canvasSize;
+        const oCtx = offscreen.getContext('2d');
+
+        // 1. ベースのひし形を描画（元の比率を完全再現）
+        oCtx.fillStyle = '#ff8800';
+        oCtx.beginPath();
+        oCtx.moveTo(center, center - baseSize);
+        oCtx.lineTo(center + baseSize * 0.7, center); // 横は0.7倍
+        oCtx.lineTo(center, center + baseSize);
+        oCtx.lineTo(center - baseSize * 0.7, center);
+        oCtx.closePath();
+        oCtx.fill();
+
+        // 2. 中心の円を描画
+        oCtx.fillStyle = centerColors[i];
+        oCtx.beginPath();
+        oCtx.arc(center, center, baseSize * 0.5, 0, Math.PI * 2);
+        oCtx.fill();
+
+        enemyBulletTextures.push(offscreen);
     }
 
+    return enemyBulletTextures;
+}
+
+function drawPlayerBullets() {
+    const tex = getPlayerBulletTexture();
+    ctx.save();
+
+    const pPool = playerBulletPool.pool;
+    for (let i = 0; i < pPool.length; i++) {
+        const b = pPool[i];
+        if (!b.active || !isOnScreen(b, 50)) continue;
+
+        const vx = b.vx ?? 0;
+        const vy = b.vy ?? -8;
+        const angle = Math.atan2(vy, vx); // 進行方向の角度
+
+        const maxLife = (typeof BULLET_CONFIG !== 'undefined') ? BULLET_CONFIG.PLAYER.LIFE : 120;
+        const lifeRatio = Math.max(0, b.life / maxLife);
+        
+        // 寿命に合わせて長さを変える（引き伸ばし/縮小）
+        const drawLen = Math.max(4, 20 * lifeRatio); 
+        const drawThick = 12; // 描画する太さ
+
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(angle);
+        
+        // 画像の中心（先端を現在地にしたい場合はX座標をずらす）
+        // x位置は -drawLen(後方へ伸ばす), y位置は -drawThick/2(中心合わせ)
+        ctx.drawImage(tex, -drawLen, -drawThick / 2, drawLen, drawThick);
+        
+        ctx.restore();
+    }
     ctx.restore();
 }
 
@@ -173,27 +219,21 @@ function drawEnemyProjectiles() {
 }
 
 function drawNormalBullet(ctx, eb) {
+    // 10フレームごとに点滅画像を交互に選ぶ（元のコードの周期を再現）
+    const texIndex = (Math.floor(frame / 10) % 2 === 0) ? 0 : 1;
+    const tex = getEnemyBulletTextures()[texIndex];
+
+    // 弾全体を回転させる
     ctx.rotate(frame * 0.15);
 
-    const bulletColor = '#ff8800';
-    const size = 8 * G_SCALE;
+    // ★修正: 元の G_SCALE を描画時に掛けて大きさを合わせる
+    const scale = (typeof G_SCALE !== 'undefined') ? G_SCALE : 1.0;
+    
+    // キャッシュキャンバスのサイズ(32) × G_SCALE
+    const drawSize = 32 * scale; 
 
-
-    ctx.fillStyle = bulletColor;
-
-    ctx.beginPath();
-    ctx.moveTo(0, -size);
-    ctx.lineTo(size * 0.7, 0);
-    ctx.lineTo(0, size);
-    ctx.lineTo(-size * 0.7, 0);
-    ctx.closePath();
-    ctx.fill();
-
-    // 中心を白くして発光感を出す
-    ctx.fillStyle = (Math.floor(frame / 10) % 2 === 0) ? '#ff0000' : '#ff8800';
-    ctx.beginPath();
-    ctx.arc(0, 0, size * 0.5, 0, Math.PI * 2);
-    ctx.fill();
+    // 画像の中心が(0,0)にくるようにずらして描画
+    ctx.drawImage(tex, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
 }
 
 function drawHomingMissile(ctx, eb) {
@@ -451,11 +491,11 @@ function drawItems() {
         let char = '?';
         let color = '#fff';
 
-        if (p.type === 'laser') { color = '#aff'; char = 'L'; }
-        else if (p.type === 'level') { color = '#0f0'; char = 'W'; }
+        if (p.type === 'laser') { color = '#00ffff'; char = 'L'; }
+        else if (p.type === 'level') { color = '#00ff88'; char = 'W'; }
         else if (p.type === 'invincible') { color = '#ff0'; char = 'I'; }
-        else if (p.type === 'shield') { color = '#0ff'; char = 'S'; }
-        else if (p.type === 'point') { color = '#fff000'; char = 'P'; } 
+        else if (p.type === 'shield') { color = '#00ff88'; char = 'S'; }
+        else if (p.type === 'point') { color = '#ffc000'; char = 'P'; } 
 
         ctx.save();
         ctx.translate(p.x, p.y);
@@ -558,6 +598,7 @@ function drawItems() {
 function drawScorePopups() {
     ctx.save();
     ctx.textAlign = 'center';
+    ctx.shadowBlur = 0;
 
     const sPool = scorePopupPool.pool; // ★ プールを参照
     for (let i = 0; i < sPool.length; i++) {
@@ -566,9 +607,13 @@ function drawScorePopups() {
         // ★ 生存チェック（休んでいるオブジェクトは描画しない）
         if (!s.active) continue;
 
-        // ボス撃破時はフォントと色を強調する（少しリッチな演出！）
-        ctx.fillStyle = s.isBoss ? '#ffea00' : '#fff';
+        // フォントサイズの指定
         ctx.font = s.isBoss ? 'bold 20px Orbitron' : '16px Orbitron';
+        
+        // ==========================================
+        // ★修正: オブジェクトの color プロパティを最優先で使う！
+        // ==========================================
+        ctx.fillStyle = s.color || (s.isBoss ? '#ffea00' : '#fff');
         
         // 透明度を安全な範囲（0.0〜1.0）に収めて適用
         ctx.globalAlpha = Math.max(0, Math.min(1, s.alpha));

@@ -186,14 +186,14 @@
     background: rgba(0,0,0,0.5);
 }
 
-.item-w {
-    color: #0f0;
-    border-color: #0f0;
-    box-shadow: 0 0 5px #0f0;
+.item-w,
+.item-s  {
+    color: #00ff88;
+    border-color: #00ff88;
+    box-shadow: 0 0 5px #00ff88;
 }
 
-.item-l,
-.item-s {
+.item-l{
     color: #0ff;
     border-color: #0ff;
     box-shadow: 0 0 5px #0ff;

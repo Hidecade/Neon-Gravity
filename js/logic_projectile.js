@@ -695,40 +695,66 @@ function updatePowerups() {
         if (dist < 30) {
             p.life = 0;
 
-        // ★修正：アイテムの回収を種別ごとにカウント（安全対策版）
+            // ★修正：アイテムの回収を種別ごとにカウント（安全対策版）
             if (typeof window.playStats !== 'undefined' && window.playStats.items && window.playStats.items[p.type]) {
                 window.playStats.items[p.type].collected++;
             }       
 
             if (p.type === 'laser') {
-                AudioSys.playSE('powerup');
+                // 効果音
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('powerup');
+                
                 if (player.overdriveTimer > 0) {
                     player.overdriveTimer = OVERDRIVE_DURATION;
                     player.maxHyperTimer = OVERDRIVE_DURATION;
                     if (typeof spawnScorePopupObj === 'function') {
-                        spawnScorePopupObj({ x: player.x, y: player.y - 20, text: "OVERDRIVE MAX!", life: 60, alpha: 1, vy: -1.2 });
+                        // ★修正: オレンジ色(#ff8800)を追加
+                        spawnScorePopupObj({ 
+                            x: player.x, y: player.y - 20, 
+                            text: "OVERDRIVE MAX!", 
+                            life: 60, alpha: 1, vy: -1.2, color: '#ff8800' 
+                        });
                     }
-                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('powerup');
                 }
                 else {
                     // 通常のレーザー発動
                     player.laserTimer = (typeof LASER_DURATION !== 'undefined') ? LASER_DURATION : 240;
+                    if (typeof spawnScorePopupObj === 'function') {
+                        spawnScorePopupObj({ 
+                            x: player.x, y: player.y - 20, 
+                            text: "LASER ACTIVATED!", 
+                            life: 60, alpha: 1, vy: -1.2, color: '#00ffff' 
+                        });
+                    }
                     spawnRingObj({ x: player.x, y: player.y, r: 10, color: '#0ff', life: 1 });
                     spawnRingObj({ x: player.x, y: player.y, r: 50, color: '#0ff', life: 1 });
-                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('powerup');
                 }
             }
             else if (p.type === 'invincible') {
                 player.invuln = INVULN_DURATION;
-                AudioSys.playSE('invincible');
+                
+                // ★修正: 安全な呼び出しに変更
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('invincible');
 
+                if (typeof spawnScorePopupObj === 'function') {
+                    spawnScorePopupObj({ 
+                        x: player.x, y: player.y - 20, 
+                        text: "INVINCIBLE!", 
+                        life: 60, alpha: 1, vy: -1.2, color: '#ffff00' 
+                    });
+                }
+                
                 // 取得時の演出：白い大きなリングを表示
-                spawnRingObj({ x: player.x, y: player.y, r: 10, color: '#fff', life: 1.0 });
+                spawnRingObj({ x: player.x, y: player.y, r: 10, color: '#ff0', life: 1.0 });
+                
                 // グリッドを大きく歪ませる
-                distortGrid(player.x, player.y, 150, 300);
+                // ★修正: 安全な呼び出しに変更
+                if (typeof distortGrid === 'function') distortGrid(player.x, player.y, 150, 300);
             }
             else if (p.type === 'level') {
-                AudioSys.playSE('powerup');
+                // 効果音はここで1回だけ鳴らす
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('powerup');
+                
                 if (player.weaponLevel >= MAX_WEAPON_LEVEL) {
                     player.laserTimer = 0; 
                     
@@ -736,24 +762,31 @@ function updatePowerups() {
                     player.maxHyperTimer = OVERDRIVE_DURATION;
                     
                     if (typeof spawnScorePopupObj === 'function') {
-                        spawnScorePopupObj({ x: player.x, y: player.y - 30, text: "OVERDRIVE AWAKENING!", life: 90, alpha: 1, vy: -1.5, isBoss: true });
+                        // ★修正: 覚醒時は赤色(#ff0055)を追加
+                        spawnScorePopupObj({ 
+                            x: player.x, y: player.y - 30, 
+                            text: "OVERDRIVE AWAKENING!", 
+                            life: 90, alpha: 1, vy: -1.5, isBoss: true, color: '#ff8800' 
+                        });
                     }
                     
                     spawnRingObj({ x: player.x, y: player.y, r: 20, color: '#ff8800', life: 1.5, lineWidth: 8 });
                     spawnRingObj({ x: player.x, y: player.y, r: 80, color: '#ff5500', life: 1.0 });
                     if (typeof distortGrid === 'function') distortGrid(player.x, player.y, 100, 200);
-                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('powerup');
                     
                 }
                 else {
                     // 通常のレベルアップ
                     player.weaponLevel = Math.min(MAX_WEAPON_LEVEL, player.weaponLevel + 1);
+                    
                     if (typeof spawnScorePopupObj === 'function') {
-                        spawnScorePopupObj({ x: player.x, y: player.y - 20, text: "LEVEL UP!", life: 60, alpha: 1, vy: -1.2 });
-                    } else {
-                        scorePopups.push({ x: player.x, y: player.y - 20, text: "LEVEL UP!", life: 60, alpha: 1, vy: -1.2 });
+                        // ★修正: レベルアップは鮮やかな緑色(#00ff88)を追加し、古いコードを削除
+                        spawnScorePopupObj({ 
+                            x: player.x, y: player.y - 20, 
+                            text: "LEVEL UP!", 
+                            life: 60, alpha: 1, vy: -1.2, color: '#00ff88' 
+                        });
                     }
-                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('powerup');
                 }
             }
             else if (p.type === 'shield') {
@@ -772,11 +805,12 @@ function updatePowerups() {
                     x: player.x,
                     y: player.y - 20,
                     text: "SHIELD +10",
-                    life: 60, alpha: 1, vy: -1.2
+                    life: 60, alpha: 1, vy: -1.2,
+                    color: '#00ff88' 
                 });
             }
             // ==========================================
-            // ★ ここから追加：Pアイテム（ポイント）取得時の処理
+            // ★ Pアイテム（ポイント）取得時の処理
             // ==========================================
             else if (p.type === 'point') {
                 if (typeof AudioSys !== 'undefined') AudioSys.playSE('point');
@@ -786,7 +820,7 @@ function updatePowerups() {
                 score += POINT_SCORE;
                 if (ui.score) ui.score.innerText = score.toString().padStart(6, '0');
 
-                // 2. シールドを確実に「1」回復させる
+                // 2. シールドを「1」回復させる
                 player.shield = Math.min(PLAYER_BASE_SHIELD, player.shield + SHIELD_HEAL_AMOUNT);
                 
                 // シールドUIの更新
@@ -797,16 +831,28 @@ function updatePowerups() {
                 }
                 if (ui.shieldVal) ui.shieldVal.innerText = Math.floor(player.shield);
 
-                // 3. ★修正: スコアと「SHIELD +1」のポップアップ演出
+                // 3. ★修正: スコアと「フレーズ」を2段に分けてポップアップ！
                 if (typeof spawnScorePopupObj === 'function') {
+                    // ① スコアのポップアップ (黄色で少し上に速く飛ぶ)
                     spawnScorePopupObj({
                         x: player.x, 
-                        y: player.y - 20, 
-                        text: `${POINT_SCORE} + SHIELD ADD${healAmount}`,
+                        y: player.y - 30, 
+                        text: `${POINT_SCORE}`,
                         life: 60, 
                         alpha: 1, 
-                        vy: -1.2,
-                        color: '#ffffff' // ポイントらしく黄色に変更
+                        vy: -1.5,
+                        color: '#ffffff' 
+                    });
+
+                    // ② かっこいいフレーズのポップアップ (シアン色で少し下からゆっくり飛ぶ)
+                    spawnScorePopupObj({
+                        x: player.x, 
+                        y: player.y - 15, 
+                        text: `SHIELD +${SHIELD_HEAL_AMOUNT}`, // ★定数を展開して表示
+                        life: 70, 
+                        alpha: 1, 
+                        vy: -0.8,
+                        color: '#00ff88' 
                     });
                 }
             }
