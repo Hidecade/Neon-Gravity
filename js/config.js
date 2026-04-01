@@ -46,7 +46,7 @@ const GRAPHICS_SETTINGS = {
         explosionMag: 3.0,    // 大量の火花
         starCount: 300,       // 星の数
         nebulaeCount: 20,     // 星雲の数
-        resScale: 1.0
+        resScale: 1.5
     },
     MEDIUM: {
         gridSpacing: 40,      // やや粗いグリッド
@@ -63,7 +63,7 @@ const GRAPHICS_SETTINGS = {
         resScale: 0.75
     }
 };
-let currentGraphicsQuality = 'MEDIUM'; // 現在の品質
+let currentGraphicsQuality = 'ULTRA'; // 現在の品質
 let currentLanguage = localStorage.getItem('neonGravity_language') || (window.navigator.language.startsWith('ja') ? 'ja' : 'en');
 
 // --- ステージ・難易度設定 ---

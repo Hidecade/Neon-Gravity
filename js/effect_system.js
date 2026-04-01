@@ -1,7 +1,7 @@
 ﻿
 
 // ==========================================
-// ★ パーティクル画像キャッシュシステム (線状の火花版)
+// ★ パーティクル画像キャッシュシステム (より細長く鋭い火花版)
 // ==========================================
 const particleTextureCache = {};
 
@@ -9,23 +9,23 @@ function getParticleTexture(color) {
     if (particleTextureCache[color]) {
         return particleTextureCache[color];
     }
-    // 横長のミニキャンバスを作成 (幅40px, 高さ10px)
+    // ★修正: 横幅を倍の 80px に伸ばし、高さを少し削って 8px にする
     const offscreen = document.createElement('canvas');
-    offscreen.width = 40;
+    offscreen.width = 80;
     offscreen.height = 10;
     const oCtx = offscreen.getContext('2d');
 
-    // 左から右への線形グラデーション
-    const grad = oCtx.createLinearGradient(0, 5, 40, 5);
+    // ★修正: グラデーションの終点も幅に合わせて 80 に伸ばす (Y座標は高さの半分の4)
+    const grad = oCtx.createLinearGradient(0, 4, 80, 4);
     grad.addColorStop(0, 'rgba(0,0,0,0)'); // 尻尾（左端）は透明
     grad.addColorStop(0.8, color);         // 頭の少し後ろが元の色
     grad.addColorStop(1, '#ffffff');       // 頭（右端）は明るい白
 
     oCtx.fillStyle = grad;
     
-    // 少し丸みを帯びた線を描画
+    // ★修正: 中心を(40, 4)にし、横の半径を40(めいっぱい)、縦の半径を1.5(超細く)にする
     oCtx.beginPath();
-    oCtx.ellipse(20, 5, 20, 3, 0, 0, Math.PI * 2);
+    oCtx.ellipse(40, 4, 40, 1.5, 0, 0, Math.PI * 2);
     oCtx.fill();
 
     particleTextureCache[color] = offscreen;
@@ -47,16 +47,12 @@ function initStars() {
     stars = [];
     starClusters = [];
 
-    // ★修正1：画面外の予備スペース設定
-    // スクロールした際に星が急に消えたり現れたりしないよう、
-    // 画面サイズ（width, height）より広い範囲（マージン）に星を生成します。
-    // マージンを 1000 -> 400 に減らすことで、計算範囲を狭め密度感を上げています。
+    // 画面外の予備スペース設定
     const LOOP_MARGIN = 400;
     const rangeW = width + LOOP_MARGIN;
     const rangeH = height + LOOP_MARGIN;
 
     // --- A. 星団（星が集まる中心点）の生成 ---
-    // 画面内に 8箇所の「星が集まるポイント」をランダムに決めます。
     const clusterCount = 8;
     for (let i = 0; i < clusterCount; i++) {
         starClusters.push({
@@ -66,35 +62,47 @@ function initStars() {
     }
 
     // --- B. 星の生成ループ ---
-    // 300個の星を作成します
     const starNum = window.currentStarCount !== undefined ? window.currentStarCount : 300;
+    
+    // ★追加：星の数に応じたサイズ倍率の計算
+    // 300個を基準のサイズ(1.0倍)とします。
+    // 例: 600個なら0.5倍（小さめ）、100個なら約2.0倍（大きめ）になります。
+    // ※最小0.4倍 ～ 最大2.0倍 の範囲に収まるよう制限をかけています。
+    const countSizeMultiplier = Math.max(0.4, Math.min(2.0, 300 / starNum));
+
     for (let i = 0; i < starNum; i++) {
         let sx, sy;
 
-        // 60%の確率で「星団の近く」に配置し、40%は「ランダム」に配置します
-        // これにより、疎密（濃い部分と薄い部分）のある自然な星空になります
+        // 60%の確率で「星団の近く」、40%は「ランダム」
         if (Math.random() < 0.6) {
-            // 星団モード: ランダムに選んだ星団の中心から、±250pxの範囲に配置
             const cluster = starClusters[Math.floor(Math.random() * clusterCount)];
             const spread = 500; // 散らばり具合
             sx = cluster.x + (Math.random() - 0.5) * spread;
             sy = cluster.y + (Math.random() - 0.5) * spread;
         } else {
-            // ランダムモード: 全体にまんべんなく配置
             sx = Math.random() * rangeW - LOOP_MARGIN / 2;
             sy = Math.random() * rangeH - LOOP_MARGIN / 2;
         }
 
-        // 色をランダムに決定（青白～白～黄色～赤）
+        // 色をランダムに決定
         const starColors = ['#ffffff', '#cceeff', '#ffddaa', '#ffcccc'];
         const randomColor = starColors[Math.floor(Math.random() * starColors.length)];
 
+        // グラフィック設定による解像度スケール
+        const scale = (typeof currentGraphicsQuality !== 'undefined' && GRAPHICS_SETTINGS[currentGraphicsQuality]) 
+                      ? GRAPHICS_SETTINGS[currentGraphicsQuality].resScale 
+                      : 1.0;
+
+        // ★変更点：基準サイズに対して、星の数による倍率を掛け合わせる
+        const baseSize = 0.5 + Math.random() * 1.5; // 星ごとの基本サイズ（0.5 〜 2.0）
+        const finalSize = baseSize * countSizeMultiplier * scale;
+
         stars.push({
             x: sx, y: sy,
-            size: 0.5 + Math.random() * 2,
+            size: finalSize,
             brightness: Math.random(),
             parallax: 0.2 + Math.random() * 0.3,
-            color: randomColor // ★ここに色情報を保存する
+            color: randomColor 
         });
     }
 }
@@ -247,7 +255,7 @@ function createExplosion(x, y, baseColor, n) {
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
             color: color,
-            size: (Math.random() * 3 + 1) * G_SCALE,
+            size: (Math.random() * 4 + 1) * G_SCALE,
             life: 1.0 + Math.random() * 0.5
         });
     }
