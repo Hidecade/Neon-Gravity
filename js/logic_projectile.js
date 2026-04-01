@@ -779,32 +779,36 @@ function updatePowerups() {
             // ★ ここから追加：Pアイテム（ポイント）取得時の処理
             // ==========================================
             else if (p.type === 'point') {
-                AudioSys.playSE('point');
-                const POINT_SCORE = ENEMY_SCORES.coin; 
-                
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('point');
+                const POINT_SCORE = (typeof ENEMY_SCORES !== 'undefined' && ENEMY_SCORES.coin) ? ENEMY_SCORES.coin : 100; 
+            
                 // 1. スコア加算とUI更新
                 score += POINT_SCORE;
                 if (ui.score) ui.score.innerText = score.toString().padStart(6, '0');
 
-                // 2. スコアのポップアップ演出
+                // 2. シールドを確実に「1」回復させる
+                player.shield = Math.min(PLAYER_BASE_SHIELD, player.shield + SHIELD_HEAL_AMOUNT);
+                
+                // シールドUIの更新
+                if (ui.shieldBar) {
+                    ui.shieldBar.style.width = Math.max(0, (player.shield / PLAYER_BASE_SHIELD) * 100) + "%";
+                    if (player.shield < PLAYER_BASE_SHIELD * 0.3) ui.shieldBar.classList.add('shield-critical');
+                    else ui.shieldBar.classList.remove('shield-critical');
+                }
+                if (ui.shieldVal) ui.shieldVal.innerText = Math.floor(player.shield);
+
+                // 3. ★修正: スコアと「SHIELD +1」のポップアップ演出
                 if (typeof spawnScorePopupObj === 'function') {
                     spawnScorePopupObj({
                         x: player.x, 
                         y: player.y - 20, 
-                        text: `+${POINT_SCORE}`, 
+                        text: `${POINT_SCORE} + SHIELD ADD${healAmount}`,
                         life: 60, 
                         alpha: 1, 
                         vy: -1.2,
-                        // 描画側で色指定に対応していればオレンジ色にする用
-                        color: '#ffc000' 
+                        color: '#ffffff' // ポイントらしく黄色に変更
                     });
                 }
-
-                // 3. 効果音（上部で 'powerup' が鳴っていますが、別の音にしたい場合はここで上書き再生します）
-                // 例: コイン音や短い取得音がある場合
-                // if (typeof AudioSys !== 'undefined') {
-                //     AudioSys.playSE('coin'); // または 'score' など
-                // }
             }
 
 

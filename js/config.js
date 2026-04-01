@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.8.6"; // ゲームのバージョン（更新のたびにここを変更）
+window.GAME_VERSION = "0.8.7"; // ゲームのバージョン（更新のたびにここを変更）
 
 
 const DEBUG = {
@@ -93,7 +93,8 @@ const PLAYER_BASE_SPEED = 12;   // 自機の基本移動速度
 const PLAYER_BASE_SHIELD = 100; // シールド最大値
 const MAX_WEAPON_LEVEL = 7;     // ショット最大レベル
 const DEFAULT_WEAPON_LEVEL = 1; // 初期レベル
-const MAX_SATELLITES = 12;      // ★追加：サテライトの最大保有数
+const MAX_SATELLITES = 12;      // サテライトの最大保有数
+const SHIELD_HEAL_AMOUNT = 1;     // シールド回復量
 
 // --- 敵（エネミー）設定 ---
 // 敵の基本移動速度
