@@ -31,43 +31,71 @@
         justify-content: center; /* 中央に寄せてはみ出しを防ぐ */
     }
     
-    /* ヘッダー（SETTINGSのタイトル部分）の余白を詰める */
-    #settings-overlay .overlay-header {
-        margin-bottom: 5px !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-    }
-    
-    /* 見出し（GRAPHICS QUALITY / LANGUAGE）を小さくする */
-    #settings-overlay h3 {
-        font-size: 13px !important;
-        margin-top: 8px !important;
-        margin-bottom: 6px !important;
-    }
-
-    /* 各種ボタンのサイズと隙間を小さくする */
-    #settings-overlay .menu-btn {
-        padding: 6px 20px !important;
-        font-size: 11px !important;
-        min-width: 160px !important;
-        margin-bottom: 4px !important;
-    }
-
-    /* 戻るボタンの行をタイトルに近づける */
-    #settings-overlay .btn-row {
-        margin-top: 5px !important;
-    }
 }
 
-/* さらに高さが低い（iPhoneの完全な横持ちなど）場合はパネルごと縮小する */
-@media screen and (max-height: 400px) {
-    #settings-overlay #menu-buttons-container {
-        transform: scale(0.85); /* ボタン群全体を85%に縮小 */
-        transform-origin: center;
-    }
-    #settings-overlay .btn-row {
-        transform: scale(0.85); /* 戻るボタンも85%に縮小 */
-        transform-origin: top center;
-        margin-top: -5px !important; /* 隙間を詰める */
-    }
+/* ==========================================
+   ★ ネオンスライダーのスタイル
+   ========================================== */
+.neon-slider {
+    -webkit-appearance: none;
+    width: 260px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.neon-slider:focus {
+    outline: none;
+}
+
+/* --- WebKit (Chrome, Safari, Edge) 向け --- */
+.neon-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    background: rgba(0, 255, 255, 0.2);
+    border-radius: 2px;
+    box-shadow: 0 0 5px #0ff;
+}
+
+.neon-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 24px;
+    width: 12px;
+    background: #fff;
+    border-radius: 2px;
+    margin-top: -10px; /* (trackHeight / 2) - (thumbHeight / 2) */
+    box-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 30px #0ff;
+    transition: transform 0.1s, box-shadow 0.1s, background-color 0.1s;
+}
+
+.neon-slider::-webkit-slider-thumb:hover,
+.neon-slider::-webkit-slider-thumb:active {
+    transform: scale(1.2);
+    background: #0ff;
+    box-shadow: 0 0 15px #fff, 0 0 30px #0ff, 0 0 45px #0ff;
+}
+
+/* --- Firefox 向け (追加) --- */
+.neon-slider::-moz-range-track {
+    width: 100%;
+    height: 4px;
+    background: rgba(0, 255, 255, 0.2);
+    border-radius: 2px;
+    box-shadow: 0 0 5px #0ff;
+}
+
+.neon-slider::-moz-range-thumb {
+    height: 24px;
+    width: 12px;
+    background: #fff;
+    border-radius: 2px;
+    border: none;
+    box-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 30px #0ff;
+    transition: transform 0.1s, box-shadow 0.1s, background-color 0.1s;
+}
+
+.neon-slider::-moz-range-thumb:hover,
+.neon-slider::-moz-range-thumb:active {
+    transform: scale(1.2);
+    background: #0ff;
+    box-shadow: 0 0 15px #fff, 0 0 30px #0ff, 0 0 45px #0ff;
 }

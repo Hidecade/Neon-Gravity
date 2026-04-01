@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.8.9"; // ゲームのバージョン（更新のたびにここを変更）
+window.GAME_VERSION = "0.8.10"; // ゲームのバージョン（更新のたびにここを変更）
 
 
 const DEBUG = {
@@ -34,6 +34,13 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ★追加: グラフィック設定のプリセット
 // ==========================================
 const GRAPHICS_SETTINGS = {
+    ULTRA: {
+        gridSpacing: 32,       // さらに緻密なグリッド
+        explosionMag: 3.0,     // 派手な爆発
+        starCount: 300,        // 星を増量
+        nebulaeCount: 20,      // 豪華な星雲
+        resScale: 2.0          // ★超高解像度（Retina/4K対応レベル）
+    },
     HIGH: {
         gridSpacing: 32,      // 細かいグリッド（綺麗だが重い）
         explosionMag: 3.0,    // 大量の火花

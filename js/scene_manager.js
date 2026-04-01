@@ -1047,7 +1047,16 @@ function openSetting() {
             settingOverlay.style.opacity = '1';
         });
     }
+    
     if (window.refreshMenuButtons) window.refreshMenuButtons();
+
+    if (typeof syncSliderWithCurrentQuality === 'function') {
+        syncSliderWithCurrentQuality();
+    }
+
+    if (typeof syncLanguageToggleText === 'function') {
+        syncLanguageToggleText();
+    }
 }
 
 function closeSetting() {

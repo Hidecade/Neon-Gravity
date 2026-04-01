@@ -264,13 +264,22 @@
 
         <div id="menu-buttons-container">
             <h3 style="color:#0ff; margin-bottom:10px; font-size:18px;">GRAPHICS QUALITY</h3>
-            <div class="menu-btn" id="btn-gfx-high" onclick="applyGraphicsQuality('HIGH')">QUALITY: HIGH</div>
-            <div class="menu-btn" id="btn-gfx-medium" onclick="applyGraphicsQuality('MEDIUM')">QUALITY: MEDIUM</div>
-            <div class="menu-btn" id="btn-gfx-low" onclick="applyGraphicsQuality('LOW')">QUALITY: LOW</div>
+            
+            <div class="slider-container" style="margin-bottom: 5px; text-align: center;">
+                <div id="gfx-slider-label" style="color: #fff; font-size: 16px; margin-bottom: 15px; text-shadow: 0 0 8px #0ff, 0 0 15px #0ff;">
+                    QUALITY: HIGH
+                </div>
+                <input type="range" id="gfx-slider" class="neon-slider" min="0" max="3" step="1" value="2" 
+                       oninput="updateGraphicsSliderText(this.value)" 
+                       onchange="applyGraphicsSliderValue(this.value)">
+            </div>
             
             <h3 style="color:#0ff; margin-top:20px; margin-bottom:10px; font-size:18px;">LANGUAGE / 言語</h3>
-            <div class="menu-btn" id="btn-lang-en" onclick="applyLanguage('en')">ENGLISH</div>
-            <div class="menu-btn" id="btn-lang-ja" onclick="applyLanguage('ja')">日本語</div>
+            <div class="menu-btn" id="btn-lang-toggle" onclick="toggleLanguage()">ENGLISH</div>
+            
+            <div id="lang-instruction" style="color: #888; font-size: 11px; margin-top: 2px; letter-spacing: 1px;">
+                PLEASE SELECT YOUR LANGUAGE
+            </div>
         </div>
 
         <div class="btn-row">
@@ -616,6 +625,7 @@
     <script src="js/config.js"></script>
     <script src="js/story_data.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/setting.js"></script>
 
     <script src="js/audio.js"></script>
     <script src="js/ost_manager.js"></script>
