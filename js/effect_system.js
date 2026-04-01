@@ -574,17 +574,17 @@ function drawVisualEffects() {
             const angle = Math.atan2(p.vy, p.vx);
             const speed = Math.hypot(p.vx, p.vy);
             
-            // ★修正: 線を約1.3倍大きく（長く・太く）する
+            // 線を約1.3倍大きく（長く・太く）する
             const renderWidth = (p.size || 2) * 6.0 * G_SCALE + speed * 3.0; 
             const renderHeight = (p.size || 2) * 3.0 * G_SCALE; // 太さ
             
             // 【超高速化テクニック】 save/restoreを使わずに座標系を回転
-            // ★ 座標 p.x, p.y を整数化 (| 0) してサブピクセルレンダリングを回避
+            // 座標 p.x, p.y を整数化 (| 0) してサブピクセルレンダリングを回避
             ctx.translate(p.x | 0, p.y | 0);
             ctx.rotate(angle);
             
             // 先頭（右端）が現在位置になるように、左へずらしてスタンプ
-            // ★ 描画座標とサイズもすべて整数化 (| 0) して爆速にする
+            // 描画座標とサイズもすべて整数化 (| 0) して爆速にする
             ctx.drawImage(
                 texture, 
                 (-renderWidth) | 0, 

@@ -213,7 +213,7 @@ function updateUI() {
 function drawMiniMap() {
     // プレイ中または死亡演出中以外は非表示
     const container = document.getElementById('minimap-container');
-    if (gameState !== 'PLAYING' && gameState !== 'DYING') {
+    if (gameState !== 'PLAYING' && gameState !== 'DYING' && gameState !== 'STAGE_INTRO') {
         container.style.display = 'none';
         return;
     }

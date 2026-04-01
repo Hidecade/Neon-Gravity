@@ -1254,7 +1254,7 @@ function draw() {
     if (typeof drawDebugWorldOverlay === 'function') drawDebugWorldOverlay();
 
     // UI要素描画
-    if ((gameState === 'PLAYING' || gameState === 'DYING') && frame % 3 === 0) {
+    if ((gameState === 'PLAYING' || gameState === 'DYING' || gameState === 'STAGE_INTRO') && frame % 3 === 0) {
         if (typeof drawMiniMap === 'function') drawMiniMap();
     }
     if (typeof drawScorePopups === 'function') drawScorePopups();

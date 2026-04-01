@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.8.4";
+window.GAME_VERSION = "0.8.6"; // ゲームのバージョン（更新のたびにここを変更）
 
 
 const DEBUG = {
