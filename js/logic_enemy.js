@@ -1027,7 +1027,7 @@ function updateLightcycleAI(e) {
                 vy: Math.sin(backAngleLeft) * jetSpeed,
                 color: jetColor,
                 life: 0.1 + Math.random() * 0.15, // 寿命を短くして鋭い炎にする
-                size: 4.0 + Math.random() * 2.0
+                size: 4.0 + Math.random() * 4.0
             });
 
             // 右側のジェット噴射

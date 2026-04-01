@@ -2212,6 +2212,7 @@ window.showStageResultBoard = function() {
 
     resultDiv.innerHTML = `
         <style>
+            /* 既存のstyleの中身はそのまま */
             @media screen and (max-height: 500px) {
                 #stage-report-panel { 
                     font-size: 0.65rem !important; 
@@ -2222,14 +2223,13 @@ window.showStageResultBoard = function() {
                 display: inline-flex !important;
                 align-items: center !important;
                 justify-content: center !important;
-                /* ★ベースサイズも 26px -> 24px に縮小 */
                 width: 24px !important;
                 height: 24px !important;
                 min-width: 24px !important;
                 min-height: 24px !important;
                 max-width: 24px !important;
                 max-height: 24px !important;
-                font-size: 13px !important; /* フォントも少し小さく */
+                font-size: 13px !important;
                 font-weight: bold !important;
                 border: 2px solid !important;
                 box-sizing: border-box !important;
@@ -2258,19 +2258,19 @@ window.showStageResultBoard = function() {
             text-align: center; z-index: 1000; width: max-content; min-width: 280px; max-width: 95vw; box-sizing: border-box; pointer-events: none;
             font-size: clamp(0.75rem, 2vw, 1.2rem);
         ">
-            <div style="font-size: 1.3em; color: #0ff; margin-bottom: 0.6em; border-bottom: 2px solid rgba(0,255,255,0.5); padding-bottom: 0.3em; letter-spacing: 2px; font-weight: bold;">
+            <div style="font-size: 1.3em; color: #0ff; text-shadow: 0 0 8px #0ff; margin-bottom: 0.6em; border-bottom: 2px solid rgba(0,255,255,0.5); padding-bottom: 0.3em; letter-spacing: 2px; font-weight: bold;">
                 STAGE REPORT
             </div>
             
             <div style="text-align: left; line-height: 1.4;">
                 <div style="display: flex; align-items: center; margin-bottom: 0.3em; white-space: nowrap;">
                     <span style="font-weight: normal; font-size: 0.9em;">TIME</span> 
-                    <span style="color: #0f8; font-weight: bold; margin-left: auto; font-size: 1.2em;">${timeStr}</span>
+                    <span style="color: #0f8; text-shadow: 0 0 5px #0f8; font-weight: bold; margin-left: auto; font-size: 1.2em;">${timeStr}</span>
                 </div>
                 
                 <div style="display: flex; align-items: center; margin-bottom: 0.6em; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 0.5em; white-space: nowrap;">
                     <span style="font-weight: normal; font-size: 0.9em;">ENEMY</span> 
-                    <div style="display: flex; color: #0f8; margin-left: auto; align-items: baseline; justify-content: flex-end;">
+                    <div style="display: flex; color: #0f8; text-shadow: 0 0 5px #0f8; margin-left: auto; align-items: baseline; justify-content: flex-end;">
                         <span style="font-weight: bold; font-size: 1.1em;">${enemyKilled} / ${enemySpawned}</span>
                         <span style="width: 3.8em; text-align: right; font-size: 0.85em; margin-left: 0.3em; font-weight: normal;">(${enemyRate}%)</span>
                     </div>
@@ -2372,8 +2372,9 @@ window.showFinalResultBoard = function() {
         `;
     };
 
-    const html = `
+const html = `
         <style>
+            /* 既存のstyleの中身はそのまま */
             @media screen and (max-height: 500px) {
                 #final-report-panel { 
                     font-size: 0.65rem !important; 
@@ -2420,19 +2421,19 @@ window.showFinalResultBoard = function() {
             width: max-content; min-width: 280px; max-width: 95vw; box-sizing: border-box;
             font-size: clamp(0.75rem, 2vw, 1.2rem);
         ">
-            <div style="font-size: 1.3em; color: #0ff; margin-bottom: 0.6em; border-bottom: 2px solid rgba(0,255,255,0.5); padding-bottom: 0.3em; letter-spacing: 2px; font-weight: bold;">
+            <div style="font-size: 1.3em; color: #0ff; text-shadow: 0 0 8px #0ff; margin-bottom: 0.6em; border-bottom: 2px solid rgba(0,255,255,0.5); padding-bottom: 0.3em; letter-spacing: 2px; font-weight: bold;">
                 TOTAL REPORT
             </div>
             
             <div style="text-align: left; line-height: 1.4;">
                 <div style="display: flex; align-items: center; margin-bottom: 0.3em; white-space: nowrap;">
                     <span style="font-weight: normal; font-size: 0.9em;">TOTAL TIME</span> 
-                    <span style="color: #0f8; font-weight: bold; margin-left: auto; font-size: 1.2em;">${timeStr}</span>
+                    <span style="color: #0f8; text-shadow: 0 0 5px #0f8; font-weight: bold; margin-left: auto; font-size: 1.2em;">${timeStr}</span>
                 </div>
                 
                 <div style="display: flex; align-items: center; margin-bottom: 0.6em; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 0.5em; white-space: nowrap;">
                     <span style="font-weight: normal; font-size: 0.9em;">TOTAL ENEMIES</span> 
-                    <div style="display: flex; color: #0f8; margin-left: auto; align-items: baseline; justify-content: flex-end;">
+                    <div style="display: flex; color: #0f8; text-shadow: 0 0 5px #0f8; margin-left: auto; align-items: baseline; justify-content: flex-end;">
                         <span style="font-weight: bold; font-size: 1.1em;">${enemyKilled} / ${enemySpawned}</span>
                         <span style="width: 3.8em; text-align: right; font-size: 0.85em; margin-left: 0.3em; font-weight: normal;">(${enemyRate}%)</span>
                     </div>
