@@ -127,7 +127,7 @@ function drawPlayer(ctx, p) {
     // --- 1. 自機本体の描画 ---
     ctx.save();
 
-    // ★ 修正：本体の表示座標にも vY を加算
+    // 本体の表示座標にも vY を加算
     ctx.translate(p.x, p.y + vY);
     ctx.rotate(p.angle);
     ctx.scale(G_SCALE * currentScale, G_SCALE * currentScale);
@@ -140,7 +140,7 @@ function drawPlayer(ctx, p) {
 
     ctx.strokeStyle = shipColor;
     ctx.lineWidth = 2;
-    if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = 10;
+    if (currentGraphicsQuality === 'HIGH' || currentGraphicsQuality === 'ULTRA') ctx.shadowBlur = 10;
     ctx.shadowColor = shipColor;
 
     // --- ベース機体 ---
@@ -152,7 +152,7 @@ function drawPlayer(ctx, p) {
     ctx.closePath();
     ctx.stroke();
 
-    // --- 装飾・進化パーツ（そのまま） ---
+    // --- 装飾・進化パーツ ---
     if (p.weaponLevel >= 1) { // LV2
         ctx.beginPath(); ctx.moveTo(-5, 5); ctx.lineTo(-18, 15); ctx.moveTo(-5, -5); ctx.lineTo(-18, -15); ctx.stroke();
     }
@@ -173,32 +173,39 @@ function drawPlayer(ctx, p) {
     ctx.restore();
 
     // --- 2. サテライト（衛星）の描画 ---
+    const crystalTex = ItemTextures['crystal'];
+    
     p.satellites.forEach(s => {
         ctx.save();
-        // ★ サテライトは既に player.x/y を基準に計算されているはずなので、
-        // 同様に表示用オフセット vY を加算して同期させる
+        // 表示用オフセット vY を加算して同期させる
         ctx.translate(s.x, s.y + vY);
 
-        ctx.rotate(frame * 0.1);
-        ctx.fillStyle = '#0f0';
-        ctx.shadowColor = ctx.fillStyle;
+        // ★ 修正：クリスタルテクスチャが存在する場合、テクスチャを描画する
+        if (crystalTex) {
+            // 自転アニメーションを追加してキラキラさせる
+            ctx.rotate(frame * 0.1);
+            
+            // 自機のスケール（currentScale）を適用
+            ctx.scale(currentScale, currentScale);
 
-        // ひし形の描画
-        const size = 4 * currentScale; // サテライトも本体のスケールに合わせる
-        ctx.beginPath();
-        ctx.moveTo(0, -size * 1.5);
-        ctx.lineTo(size, 0);
-        ctx.lineTo(0, size * 1.5);
-        ctx.lineTo(-size, 0);
-        ctx.closePath();
-        ctx.fill();
-
-        // 芯を白く
-        ctx.fillStyle = '#fff';
-        ctx.globalAlpha = 0.6;
-        ctx.beginPath();
-        ctx.arc(0, 0, 1.5 * currentScale, 0, Math.PI * 2);
-        ctx.fill();
+            // 高解像度テクスチャを論理サイズに縮小して貼り付ける
+            ctx.drawImage(
+                crystalTex.frameCanvas,
+                -crystalTex.logicalCx,
+                -crystalTex.logicalCy,
+                crystalTex.logicalSize,
+                crystalTex.logicalSize
+            );
+        } else {
+            // フォールバック：テクスチャがない場合は元のひし形を描画
+            ctx.rotate(frame * 0.1);
+            ctx.fillStyle = '#0f0';
+            const size = 4 * currentScale;
+            ctx.beginPath();
+            ctx.moveTo(0, -size * 1.5); ctx.lineTo(size, 0); ctx.lineTo(0, size * 1.5); ctx.lineTo(-size, 0);
+            ctx.closePath();
+            ctx.fill();
+        }
 
         ctx.restore();
     });

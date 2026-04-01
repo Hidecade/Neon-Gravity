@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.8.10"; // ゲームのバージョン（更新のたびにここを変更）
+window.GAME_VERSION = "0.8.11"; // ゲームのバージョン（更新のたびにここを変更）
 
 
 const DEBUG = {
@@ -35,31 +35,37 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // ==========================================
 const GRAPHICS_SETTINGS = {
     ULTRA: {
-        gridSpacing: 32,       // さらに緻密なグリッド
-        explosionMag: 3.0,     // 派手な爆発
-        starCount: 300,        // 星を増量
-        nebulaeCount: 20,      // 豪華な星雲
-        resScale: 2.0          // ★超高解像度（Retina/4K対応レベル）
+        gridSpacing: 32,       
+        explosionMag: 3.0,     
+        starCount: 300,        
+        nebulaeCount: 20,      
+        // ★修正: 判定ラインを 1024 から 768（PCの実質的な最低高さ）に下げる
+        resScale: (Math.min(window.innerWidth, window.innerHeight) >= 768) 
+                  ? 1.0 
+                  : Math.min(window.devicePixelRatio || 2.0, 2.5)
     },
     HIGH: {
-        gridSpacing: 32,      // 細かいグリッド（綺麗だが重い）
-        explosionMag: 3.0,    // 大量の火花
-        starCount: 300,       // 星の数
-        nebulaeCount: 20,     // 星雲の数
-        resScale: 1.5
+        gridSpacing: 32,      
+        explosionMag: 3.0,    
+        starCount: 300,       
+        nebulaeCount: 20,     
+        // ★修正: こちらも 1024 から 768 に下げる
+        resScale: (Math.min(window.innerWidth, window.innerHeight) >= 768) 
+                  ? 1.0 
+                  : Math.min(window.devicePixelRatio || 1.5, 2.0)
     },
     MEDIUM: {
-        gridSpacing: 40,      // やや粗いグリッド
-        explosionMag: 1.5,    // 中程度の火花
+        gridSpacing: 32,
+        explosionMag: 1.5,
         starCount: 250,
-        nebulaeCount: 10,
+        nebulaeCount: 20,
         resScale: 1.0
     },
     LOW: {
-        gridSpacing: 48,      // 粗いグリッド（軽い）
-        explosionMag: 1.0,    // 最小限の火花
+        gridSpacing: 48,
+        explosionMag: 1.0,
         starCount: 200,
-        nebulaeCount: 5,       // 星雲を描画しない
+        nebulaeCount: 5,
         resScale: 0.75
     }
 };

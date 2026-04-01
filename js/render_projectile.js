@@ -476,138 +476,6 @@ function drawShockwave(ctx, eb) {
     ctx.stroke();
 }
 
-function drawItems() {
-    // --- 1. クリスタル（スコアアイテム） ---
-    ctx.fillStyle = '#008000';
-    crystals.forEach(c => {
-        if (!isOnScreen(c, 50)) return;
-        ctx.save();
-        ctx.translate(c.x, c.y);
-        ctx.rotate(frame * 0.1);
-        const scale = c.life > 60 ? 1 : c.life / 60;
-        ctx.scale(scale, scale);
-
-        // クリスタルも少し光らせる
-        if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = 5;
-        ctx.shadowColor = '#0f0';
-
-        ctx.beginPath();
-        ctx.moveTo(0, -6); ctx.lineTo(4, 0); ctx.lineTo(0, 6); ctx.lineTo(-4, 0);
-        ctx.fill();
-        ctx.restore();
-    });
-
-    // --- 2. パワーアップアイテム ---
-    powerups.forEach(p => {
-        if (!isOnScreen(p, 50)) return;
-
-        let char = '?';
-        let color = '#fff';
-
-        if (p.type === 'laser') { color = '#00ffff'; char = 'L'; }
-        else if (p.type === 'level') { color = '#00ff88'; char = 'W'; }
-        else if (p.type === 'invincible') { color = '#ff0'; char = 'I'; }
-        else if (p.type === 'shield') { color = '#00ff88'; char = 'S'; }
-        else if (p.type === 'point') { color = '#ffc000'; char = 'P'; } 
-
-        ctx.save();
-        ctx.translate(p.x, p.y);
-
-        // 寿命によるスケール（共通）
-        const baseScale = p.life > 60 ? 1 : p.life / 60;
-
-        if (p.type === 'point') {
-          // =========================================================
-            // ★Pアイテム：垂直回転円盤 + 固定文字「P」
-            // =========================================================
-            const rotateSpeed = 0.1; // 回転速度
-            const angle = frame * rotateSpeed;
-            const xScale = Math.cos(angle); // -1 ～ 1 で変化（X方向の縮尺、円盤用）
-
-            // 発光設定（共通）
-            if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 15;
-            ctx.shadowColor = color;
-
-            // 全体のサイズ設定
-            const itemRadius = 10; 
-
-            // --- 1. 固定文字「P」の描画 ---
-            // ★ユーザー要望：コアをやめて、回転しないPの文字にする
-            ctx.save();
-            // 寿命スケールのみ適用（xScaleを適用しないので常に正面を向く）
-            ctx.scale(baseScale, baseScale); 
-            
-            ctx.fillStyle = color;
-            ctx.font = 'bold 12px monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(char, 0, 0); // charには既に 'P' が入っています
-            ctx.restore(); // 文字描画用の状態を戻す（xScaleを適用するため）
-
-            // --- 2. 回転する外側円盤の描画 ---
-            // ここで寿命スケールと回転スケールの両方を適用
-            ctx.save();
-            // ctx.scale(Xスケール, Yスケール)
-            ctx.scale(baseScale * xScale, baseScale); 
-
-            // 立体回転によって潰れた楕円（コインの側面）になります。
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = color;
-            ctx.beginPath();
-            ctx.arc(0, 0, itemRadius, 0, Math.PI * 2); // 円を描画（スケールされて楕円になる）
-            ctx.stroke();
-            ctx.restore(); // 円盤描画用の状態を戻す
-        } else if (p.type === 'level') {
-            // =========================================================
-            // ★Wアイテム：垂直回転四角枠 + 固定文字「W」
-            // =========================================================
-            const rotateSpeed = 0.1;
-            const angle = frame * rotateSpeed;
-            const xScale = Math.cos(angle);
-
-            if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 15;
-            ctx.shadowColor = color;
-
-            // 1. 固定文字「W」の描画
-            ctx.save();
-            ctx.scale(baseScale, baseScale); 
-            ctx.fillStyle = color;
-            ctx.font = 'bold 12px monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(char, 0, 0); 
-            ctx.restore(); 
-
-            // 2. 回転する外側四角枠の描画
-            ctx.save();
-            ctx.scale(baseScale * xScale, baseScale); 
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = color;
-            ctx.strokeRect(-8, -8, 16, 16);
-            ctx.restore();
-        } else {
-            // =========================================================
-            // 他のアイテム（元の四角い枠線）
-            // =========================================================
-            ctx.scale(baseScale, baseScale); // 寿命スケールのみ
-            if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 10;
-            ctx.shadowColor = color;
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            ctx.strokeRect(-8, -8, 16, 16);
-
-            // 文字の描画
-            ctx.fillStyle = color;
-            ctx.font = 'bold 12px monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(char, 0, 0);
-        }
-
-        ctx.restore();
-    });
-}
-
 function drawScorePopups() {
     ctx.save();
     ctx.textAlign = 'center';
@@ -636,4 +504,178 @@ function drawScorePopups() {
     }
 
     ctx.restore();
+}
+
+
+// =========================================================
+// アイテムのネオンテクスチャ（キャッシュ）システム
+// =========================================================
+const ItemTextures = {};
+
+// 指定した色・サイズ・文字の「光るテクスチャ」を2枚（枠と文字）生成する
+function createNeonItemTexture(char, color, baseGlow, shape) {
+    const texScale = 3.0; 
+
+    const logicalRadius = 16;
+    const logicalPadding = Math.max(baseGlow * 2, 10); 
+    const logicalSize = (logicalRadius + logicalPadding) * 2;
+    const logicalCx = logicalSize / 2;
+    const logicalCy = logicalSize / 2;
+
+    const canvasSize = logicalSize * texScale;
+    const cx = canvasSize / 2;
+    const cy = canvasSize / 2;
+
+    // --- 1. 枠（フレーム）のテクスチャ ---
+    const frameCanvas = document.createElement('canvas');
+    frameCanvas.width = canvasSize; frameCanvas.height = canvasSize;
+    const fCtx = frameCanvas.getContext('2d');
+    
+    // 枠を描画する内部関数
+    const drawFrameShape = () => {
+        if (shape === 'circle') {
+            fCtx.beginPath();
+            fCtx.arc(cx, cy, 10 * texScale, 0, Math.PI * 2);
+            fCtx.stroke();
+        } else if (shape === 'rect') {
+            fCtx.strokeRect(cx - 8 * texScale, cy - 8 * texScale, 16 * texScale, 16 * texScale);
+        } else if (shape === 'crystal') {
+            fCtx.beginPath();
+            fCtx.moveTo(cx, cy - 6 * texScale); fCtx.lineTo(cx + 4 * texScale, cy);
+            fCtx.lineTo(cx, cy + 6 * texScale); fCtx.lineTo(cx - 4 * texScale, cy);
+            fCtx.fill();
+        }
+    };
+
+    if (baseGlow > 0) {
+        // [調整1] カラーの光（重ねがけをやめて1回だけ描画）
+        fCtx.shadowBlur = baseGlow * texScale;
+        fCtx.shadowColor = shape === 'crystal' ? '#0f0' : color; 
+        fCtx.strokeStyle = color;
+        fCtx.fillStyle = color;
+        fCtx.lineWidth = (shape === 'circle' ? 1.5 : 2) * texScale; 
+        drawFrameShape(); 
+
+        // [調整2] 中心の「芯」を少し透明にしてギラギラ感を抑える
+        fCtx.shadowBlur = (baseGlow / 2) * texScale;
+        fCtx.strokeStyle = 'rgba(255, 255, 255, 0.7)'; // 70%の白
+        fCtx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        fCtx.lineWidth = (shape === 'circle' ? 1.5 : 2) * texScale * 0.4;
+        drawFrameShape();
+    } else {
+        fCtx.strokeStyle = color;
+        fCtx.fillStyle = color;
+        fCtx.lineWidth = (shape === 'circle' ? 1.5 : 2) * texScale;
+        drawFrameShape();
+    }
+
+    // --- 2. 文字のテクスチャ ---
+    let textCanvas = null;
+    if (char) {
+        textCanvas = document.createElement('canvas');
+        textCanvas.width = canvasSize; textCanvas.height = canvasSize;
+        const tCtx = textCanvas.getContext('2d');
+        
+        tCtx.font = `bold ${12 * texScale}px monospace`;
+        tCtx.textAlign = 'center';
+        tCtx.textBaseline = 'middle';
+
+        if (baseGlow > 0) {
+            // 文字のカラー光（1回のみ）
+            tCtx.shadowBlur = baseGlow * texScale;
+            tCtx.shadowColor = color;
+            tCtx.fillStyle = color;
+            tCtx.fillText(char, cx, cy);
+
+            // 文字の白い芯（70%の白）
+            tCtx.shadowBlur = (baseGlow / 2) * texScale;
+            tCtx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            tCtx.fillText(char, cx, cy);
+        } else {
+            tCtx.fillStyle = color;
+            tCtx.fillText(char, cx, cy);
+        }
+    }
+
+    return { frameCanvas, textCanvas, logicalSize, logicalCx, logicalCy };
+}
+// すべてのアイテムのテクスチャを一括生成する関数
+function initItemTextures() {
+    const quality = typeof currentGraphicsQuality !== 'undefined' ? currentGraphicsQuality : 'HIGH';
+    
+    let baseGlow = (currentGraphicsQuality === 'LOW') ? 0 : 20;
+
+    ItemTextures['point'] = createNeonItemTexture('P', '#ffc000', baseGlow, 'circle');
+    ItemTextures['level'] = createNeonItemTexture('W', '#00ff88', baseGlow, 'rect');
+    ItemTextures['laser'] = createNeonItemTexture('L', '#00ffff', baseGlow, 'rect');
+    ItemTextures['shield'] = createNeonItemTexture('S', '#00ff88', baseGlow, 'rect');
+    ItemTextures['invincible'] = createNeonItemTexture('I', '#ff0', baseGlow, 'rect');
+    ItemTextures['crystal'] = createNeonItemTexture(null, '#008000', baseGlow * 0.5, 'crystal');
+    
+    // 現在の画質を記録（変更されたら再生成するため）
+    ItemTextures._lastQuality = quality;
+}
+
+// メインの描画ループ
+function drawItems() {
+    if (!ItemTextures._lastQuality || ItemTextures._lastQuality !== currentGraphicsQuality) {
+        initItemTextures();
+    }
+
+    // ★調整3: ctx.globalCompositeOperation = 'lighter'; を削除し、通常ブレンドに戻す
+
+    // --- 1. クリスタル（スコアアイテム） ---
+    const crystalTex = ItemTextures['crystal'];
+    crystals.forEach(c => {
+        if (!isOnScreen(c, 50)) return;
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.rotate(frame * 0.1);
+        
+        const scale = c.life > 60 ? 1 : c.life / 60;
+        ctx.scale(scale, scale);
+
+        if (crystalTex) {
+            ctx.drawImage(
+                crystalTex.frameCanvas, 
+                -crystalTex.logicalCx, 
+                -crystalTex.logicalCy, 
+                crystalTex.logicalSize, 
+                crystalTex.logicalSize
+            );
+        }
+
+        ctx.restore();
+    });
+
+    // --- 2. パワーアップアイテム ---
+    powerups.forEach(p => {
+        if (!isOnScreen(p, 50)) return;
+
+        const tex = ItemTextures[p.type];
+        if (!tex) return; 
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+
+        const baseScale = p.life > 60 ? 1 : p.life / 60;
+        ctx.scale(baseScale, baseScale);
+
+        // --- 枠の描画（PとWは回転させる） ---
+        ctx.save();
+        if (p.type === 'point' || p.type === 'level') {
+            const rotateSpeed = 0.1;
+            const angle = frame * rotateSpeed;
+            ctx.scale(Math.cos(angle), 1); 
+        }
+        ctx.drawImage(tex.frameCanvas, -tex.logicalCx, -tex.logicalCy, tex.logicalSize, tex.logicalSize);
+        ctx.restore(); 
+
+        // --- 固定文字の描画 ---
+        if (tex.textCanvas) {
+            ctx.drawImage(tex.textCanvas, -tex.logicalCx, -tex.logicalCy, tex.logicalSize, tex.logicalSize);
+        }
+
+        ctx.restore();
+    });
 }

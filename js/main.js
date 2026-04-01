@@ -714,17 +714,23 @@ window.applyLanguage = function(lang) {
 function setQuality(quality) {
     currentGraphicsQuality = quality; // config.js の変数を更新
     
-// UIの表示状態を更新
+    // UIの表示状態を更新
+    // ★追加：ULTRAボタンの取得
+    const btnUltra = document.getElementById('btn-gfx-ultra'); 
     const btnHigh = document.getElementById('btn-gfx-high');
     const btnMed = document.getElementById('btn-gfx-medium');
     const btnLow = document.getElementById('btn-gfx-low');
 
     // 一度すべてのボタンからクラスを外す
+    // ★追加：ULTRAボタンのクラス解除
+    if(btnUltra) btnUltra.classList.remove('active-setting'); 
     if(btnHigh) btnHigh.classList.remove('active-setting');
     if(btnMed)  btnMed.classList.remove('active-setting');
     if(btnLow)  btnLow.classList.remove('active-setting');
 
     // 選ばれているものだけにクラスを付与する
+    // ★追加：ULTRAが選ばれた時の処理
+    if(quality === 'ULTRA' && btnUltra) btnUltra.classList.add('active-setting'); 
     if(quality === 'HIGH' && btnHigh) btnHigh.classList.add('active-setting');
     if(quality === 'MEDIUM' && btnMed) btnMed.classList.add('active-setting');
     if(quality === 'LOW' && btnLow) btnLow.classList.add('active-setting');
@@ -732,31 +738,35 @@ function setQuality(quality) {
 
 // グラフィックス品質を順番に切り替える関数
 function toggleGraphicsQuality() {
-    const qualities = ['HIGH', 'MEDIUM', 'LOW'];
+    const qualities = ['ULTRA', 'HIGH', 'MEDIUM', 'LOW'];
     let currentIndex = qualities.indexOf(currentGraphicsQuality);
+    
+    // 現在の品質が配列に見つからない場合（異常値の場合）はULTRAを基準にする
+    if (currentIndex === -1) currentIndex = 0;
+    
     let nextIndex = (currentIndex + 1) % qualities.length;
+    const nextQuality = qualities[nextIndex];
     
-    currentGraphicsQuality = qualities[nextIndex];
-    
-    // 設定を適用 (config.js の GRAPHICS_SETTINGS 参照)
-    const settings = GRAPHICS_SETTINGS[currentGraphicsQuality];
-    GRID_SPACING = settings.gridSpacing;
-    EXPLOSION_COUNT_MAG = settings.explosionMag;
+    // ★修正：変数を直接いじらず、applyGraphicsQuality を呼び出す！
+    // これにより resize() や initGrid()、保存処理などが全て完璧に実行されます。
+    if (typeof applyGraphicsQuality === 'function') {
+        applyGraphicsQuality(nextQuality);
+    }
     
     // UIメッセージを表示してプレイヤーに知らせる
     if (typeof showGameMessage === 'function') {
         showGameMessage({
-            main: `QUALITY: ${currentGraphicsQuality}`,
+            main: `QUALITY: ${nextQuality}`,
             type: 'compact',
             duration: 1000
         });
     }
     
-    console.log(`Graphics quality changed to: ${currentGraphicsQuality}`);
+    console.log(`Graphics quality changed to: ${nextQuality}`);
 }
 
 let currentResolution = {
-    key: "FHD",
+    key: "PC_L",
     width: 1920,
     height: 1080,
     uiScale: 1.0
@@ -766,44 +776,61 @@ function detectResolution(screenW, screenH) {
     const ratio = screenW / screenH;
     const isPortrait = screenH > screenW;
 
-    // VGA横固定
-    if (!isPortrait && ratio >= 1.2 && ratio <= 1.5 && screenW < 900) {
-        return {
-            key: "VGA_L",
-            width: 640,
-            height: 480,
-            uiScale: 0.6
-        };
-    }
+    // 縦持ち・横持ちに左右されないよう、長辺と短辺を取得
+    const longSide = Math.max(screenW, screenH);
+    const shortSide = Math.min(screenW, screenH);
 
-    // VGA縦固定
-    if (isPortrait && ratio >= 0.7 && ratio <= 0.8 && screenW <= 600) {
+    // ----------------------------------------------------
+    // 1. PC / 大画面モニター (横長かつ短辺が十分大きい)
+    // ----------------------------------------------------
+    if (!isPortrait && shortSide >= 768) {
+        // 4Kなど巨大すぎる画面は、アスペクト比を保ったまま長辺を1920に制限
+        if (longSide > 1920) {
+            return {
+                key: "FHD_CAPPED",
+                width: 1920,
+                height: Math.floor(1920 / ratio), // 比率を維持！
+                uiScale: 1.0
+            };
+        }
+        // フルHD以下のPC画面はそのままの解像度を使用
         return {
-            key: "VGA_P",
-            width: 480,
-            height: 640,
-            uiScale: 0.6
-        };
-    }
-
-        // FHD以上の横長画面は最大FHDで打ち止め
-    if (!isPortrait && screenW >= 1280 && ratio > 1.5) {
-        return {
-            key: "HD",
-            width: 1280,  
-            height: 720,  
+            key: "PC_L",
+            width: screenW,
+            height: screenH,
             uiScale: 1.0
         };
     }
 
-    // スマホ等の場合も、内部解像度に少しリミッターをかける（例: 最大幅を制限）
-    const maxMobileW = 1000;
-    const mobileScale = screenW > maxMobileW ? (maxMobileW / screenW) : 1.0;
+    // ----------------------------------------------------
+    // 2. 超小型画面 (古いスマホやVGA相当のウィンドウ)
+    // ----------------------------------------------------
+    if (longSide <= 800) {
+        return {
+            key: isPortrait ? "SMALL_P" : "SMALL_L",
+            width: screenW,
+            height: screenH,
+            // 画面が小さいのでUIが被らないように小さくする
+            uiScale: 0.6 
+        };
+    }
+
+    // ----------------------------------------------------
+    // 3. 一般的なスマホ / タブレット
+    // ----------------------------------------------------
+    // 描画負荷とゲームバランスのため、長辺を最大1200程度に制限する
+    const MAX_MOBILE_LONG_SIDE = 1200;
+    let scale = 1.0;
+    
+    // タブレットや大型スマホの場合のみ、比率を保って全体を縮小
+    if (longSide > MAX_MOBILE_LONG_SIDE) {
+        scale = MAX_MOBILE_LONG_SIDE / longSide;
+    }
 
     return {
         key: isPortrait ? "MOBILE_P" : "MOBILE_L",
-        width: Math.floor(screenW * mobileScale),
-        height: Math.floor(screenH * mobileScale),
+        width: Math.floor(screenW * scale),
+        height: Math.floor(screenH * scale),
         uiScale: isPortrait ? 0.82 : 0.78
     };
 }
@@ -1189,15 +1216,24 @@ function updateDebugOverlay() {
     const cx = camera ? Math.round(camera.x) : 0;
     const cy = camera ? Math.round(camera.y) : 0;
 
-    // ★追加: currentResolution が未定義の時のエラーを防ぐための安全策
+    // currentResolution が未定義の時のエラーを防ぐための安全策
     const resKey = typeof currentResolution !== 'undefined' ? currentResolution.key : "UNKNOWN";
 
+    // ★追加: 現在の画質設定と resScale を安全に取得
+    const qualityStr = typeof currentGraphicsQuality !== 'undefined' ? currentGraphicsQuality : "UNKNOWN";
+    const resScaleVal = (typeof currentGraphicsQuality !== 'undefined' && typeof GRAPHICS_SETTINGS !== 'undefined' && GRAPHICS_SETTINGS[currentGraphicsQuality]) 
+                      ? GRAPHICS_SETTINGS[currentGraphicsQuality].resScale 
+                      : 1.0;
+
+    // ★修正: テンプレートリテラル内に QUALITY と RES SCALE を追加
     el.textContent =
         `[DEBUG] ${GAME_VERSION}
 FPS: ${debugFps}
 SCENE: ${gameState}
 FRAME: ${frame}
+QUALITY: ${qualityStr}
 RESOLUTION: ${resKey}
+RES SCALE: ${typeof resScaleVal === 'number' ? resScaleVal.toFixed(2) : resScaleVal}
 LOGIC TIME: ${typeof debugLogicTime !== 'undefined' ? debugLogicTime.toFixed(2) : "0.00"} ms
 DRAW TIME: ${typeof debugDrawTime !== 'undefined' ? debugDrawTime.toFixed(2) : "0.00"} ms
 PLAYER X: ${px} Y: ${py}

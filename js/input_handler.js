@@ -689,8 +689,13 @@ function initInputHandlers() {
 
             if (gameState === 'PAUSED') {
                 // --- ポーズ中の場合：グラフィック品質をローテーションで切り替える ---
-                const qualities = ['HIGH', 'MEDIUM', 'LOW'];
+                // ★修正: 配列の先頭に 'ULTRA' を追加！
+                const qualities = ['ULTRA', 'HIGH', 'MEDIUM', 'LOW'];
                 let currentIndex = qualities.indexOf(currentGraphicsQuality);
+                
+                // 万が一見つからなかった場合の安全対策
+                if (currentIndex === -1) currentIndex = 0;
+
                 let nextIndex = (currentIndex + 1) % qualities.length;
                 let nextQuality = qualities[nextIndex];
                 
@@ -742,10 +747,13 @@ function initInputHandlers() {
     bindBtn('btn-settings', openSetting);
     bindBtn('btn-settings-back', closeSetting);
 
-    // -----------------------------------------------------
+// -----------------------------------------------------
     // F. SETTINGS（画質設定）メニューのバインド
     // -----------------------------------------------------
 
+    bindBtn('btn-gfx-ultra', () => {
+        if (typeof applyGraphicsQuality === 'function') applyGraphicsQuality('ULTRA');
+    });
 
     bindBtn('btn-gfx-high', () => {
         if (typeof applyGraphicsQuality === 'function') applyGraphicsQuality('HIGH');
