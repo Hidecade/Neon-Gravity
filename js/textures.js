@@ -104,17 +104,41 @@ function initItemTextures() {
 // 2. アステロイド（岩）用テクスチャ (textures.js)
 // ---------------------------------------------------------
 const AsteroidTextures = {};
+let asteroidCacheCount = 0; // ★ キャッシュ上限を管理するカウンターを追加
 
-// 引数に asteroidScale（大きさ）を追加
 function getAsteroidTexture(color, typeId, asteroidScale = 1.0) {
-    // キャッシュキーにスケールも含める
-    const key = `${color}_${typeId}_${asteroidScale}`;
+    // ==========================================
+    // ★ 修正1: 形状のバリエーションを5種類に制限し、Canvasを使い回す
+    // （typeIdに連番のspawnIdが渡されても安全になります）
+    // ==========================================
+    const patternId = (typeof typeId === 'number') ? typeId % 5 : 0;
+    
+    // ★ 修正2: スケールの微小なブレで別の画像が作られるのを防ぐ（小数点第1位で丸める）
+    const roundedScale = Math.round(asteroidScale * 10) / 10;
+    
+    // キャッシュキーを安全な値で生成
+    const key = `${color}_${patternId}_${roundedScale}`;
     if (AsteroidTextures[key]) return AsteroidTextures[key];
+
+    // ==========================================
+    // ★ 修正3: iOSクラッシュ対策（増えすぎた場合はメモリ強制解放）
+    // ==========================================
+    if (asteroidCacheCount > 50) {
+        for (let k in AsteroidTextures) {
+            if (AsteroidTextures[k] && AsteroidTextures[k].canvas) {
+                AsteroidTextures[k].canvas.width = 1;
+                AsteroidTextures[k].canvas.height = 1; // Safariにメモリを即座に破棄させる
+            }
+            delete AsteroidTextures[k];
+        }
+        asteroidCacheCount = 0;
+        console.log("[TEXTURE] Asteroid cache cleared to prevent memory leak");
+    }
 
     const texScale = 3.0;
     
     // 岩の大きさに応じてキャンバスサイズを広げる
-    const logicalSize = 80 * asteroidScale; 
+    const logicalSize = 80 * roundedScale; // ★ roundedScaleを使用
     const canvasSize = logicalSize * texScale;
     const cx = canvasSize / 2;
     const cy = canvasSize / 2;
@@ -128,8 +152,8 @@ function getAsteroidTexture(color, typeId, asteroidScale = 1.0) {
 
     fCtx.beginPath();
     for (let i = 0; i < 8; i++) {
-        // 半径に asteroidScale を掛けて大きくする
-        const r = 22 * asteroidScale * (0.8 + Math.sin(i * 2.1 + typeId * 5) * 0.25) * texScale;
+        // ★ 半径の計算に patternId と roundedScale を使用
+        const r = 22 * roundedScale * (0.8 + Math.sin(i * 2.1 + patternId * 5) * 0.25) * texScale;
         const ang = (Math.PI * 2 / 8) * i;
         const vx = cx + Math.cos(ang) * r;
         const vy = cy + Math.sin(ang) * r;
@@ -139,33 +163,20 @@ function getAsteroidTexture(color, typeId, asteroidScale = 1.0) {
     }
     fCtx.closePath();
 
-    // グラデーション（ネオンのエネルギー）
-    const grad = fCtx.createRadialGradient(cx, cy, 0, cx, cy, 25 * asteroidScale * texScale);
-    grad.addColorStop(0, color);
-    grad.addColorStop(0.4, color);
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    
-    fCtx.fillStyle = grad;
-    fCtx.globalAlpha = 0.15; // うっすら
-    fCtx.fill();
-
     // 拡散（グロー）
     fCtx.strokeStyle = color;
     fCtx.globalAlpha = 0.25;
-    fCtx.lineWidth = 3 * texScale; // 太さは一定
+    fCtx.lineWidth = 3 * texScale; 
     fCtx.stroke();
 
     // 芯の線（シャープ）
     fCtx.globalAlpha = 1.0;
-    fCtx.lineWidth = 1.5 * texScale; // 太さは一定
+    fCtx.lineWidth = 1.5 * texScale; 
     fCtx.stroke();
 
-    // =========================================================
-    // ★ 修正：内部ディテール（シンプルに数本の線のみ）
-    // =========================================================
-    
+    // 内部ディテール
     fCtx.strokeStyle = color;
-    fCtx.globalAlpha = 0.4; // くっきり見える濃さ
+    fCtx.globalAlpha = 0.4; 
     fCtx.lineWidth = 1.5 * texScale; 
     fCtx.lineJoin = 'round';
 
@@ -174,7 +185,6 @@ function getAsteroidTexture(color, typeId, asteroidScale = 1.0) {
         return x - Math.floor(x);
     };
 
-    // ギザギザ線を引く関数（complexity=1 で控えめなギザギザに）
     const drawCraggyLine = (p1, p2) => {
         fCtx.beginPath();
         fCtx.moveTo(p1.x, p1.y);
@@ -188,32 +198,27 @@ function getAsteroidTexture(color, typeId, asteroidScale = 1.0) {
         const nx = -dy / dist; 
         const ny = dx / dist;
         
-        // 少しだけ中央をずらす
-        const offset = (getRand(typeId * 100) - 0.5) * 8 * asteroidScale * texScale;
+        // ★ offset計算に patternId と roundedScale を使用
+        const offset = (getRand(patternId * 100) - 0.5) * 8 * roundedScale * texScale;
         
         fCtx.lineTo(midX + nx * offset, midY + ny * offset);
         fCtx.lineTo(p2.x, p2.y);
         fCtx.stroke();
     };
 
-    // --- シンプルに2〜3本のひび割れだけを描く ---
-    const numLines = 2 + Math.floor(getRand(typeId * 5) * 2); // 2本か3本
+    const numLines = 2 + Math.floor(getRand(patternId * 5) * 2); 
     
     for (let i = 0; i < numLines; i++) {
-        // 外郭の頂点を選ぶ
-        const startIdx = Math.floor(getRand(typeId * 10 + i) * outerVertices.length);
+        const startIdx = Math.floor(getRand(patternId * 10 + i) * outerVertices.length);
         const startP = outerVertices[startIdx];
         
         let endP;
-        // 半分の確率で中心へ、半分の確率で向かい側の頂点へ線を引く
-        if (getRand(typeId * 20 + i) > 0.5) {
-            // 中心付近へ
-            const endX = cx + (getRand(typeId * 30 + i) - 0.5) * 20 * asteroidScale * texScale;
-            const endY = cy + (getRand(typeId * 40 + i) - 0.5) * 20 * asteroidScale * texScale;
+        if (getRand(patternId * 20 + i) > 0.5) {
+            const endX = cx + (getRand(patternId * 30 + i) - 0.5) * 20 * roundedScale * texScale;
+            const endY = cy + (getRand(patternId * 40 + i) - 0.5) * 20 * roundedScale * texScale;
             endP = { x: endX, y: endY };
         } else {
-            // 向かい側（または少しずれた）頂点へ
-            const targetIdx = (startIdx + 3 + Math.floor(getRand(typeId * 50 + i) * 3)) % outerVertices.length;
+            const targetIdx = (startIdx + 3 + Math.floor(getRand(patternId * 50 + i) * 3)) % outerVertices.length;
             endP = outerVertices[targetIdx];
         }
         
@@ -222,6 +227,9 @@ function getAsteroidTexture(color, typeId, asteroidScale = 1.0) {
 
     const texture = { canvas, logicalSize, cx: logicalSize / 2, cy: logicalSize / 2 };
     AsteroidTextures[key] = texture;
+    
+    // ★ キャッシュカウンターを増やす
+    asteroidCacheCount++;
 
     return texture;
 }
