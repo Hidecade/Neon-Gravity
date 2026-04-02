@@ -120,8 +120,8 @@ const SE_LIBRARY = {
             const nEnv = ctx.createGain();
             nEnv.gain.setValueAtTime(0, t);
             // ★ ノイズの爆音にも ratio を掛ける
-            nEnv.gain.linearRampToValueAtTime(2.5 * ratio, t + 0.1);
-            nEnv.gain.exponentialRampToValueAtTime(0.1 * ratio, t + dur - 0.1); 
+            nEnv.gain.linearRampToValueAtTime(1.5 * ratio, t + 0.1);
+            nEnv.gain.exponentialRampToValueAtTime(0.08 * ratio, t + dur - 0.1); 
             nEnv.gain.linearRampToValueAtTime(0.01, t + dur);
 
             n.connect(f); f.connect(nEnv); nEnv.connect(g);
