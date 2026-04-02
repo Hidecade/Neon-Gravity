@@ -1,53 +1,6 @@
 ﻿
 
-// ==========================================
-// ★ パーティクル画像キャッシュシステム (より細長く鋭い火花版)
-// ==========================================
-const particleTextureCache = {};
-let particleCacheCount = 0; // ★これを追加
 
-function getParticleTexture(color) {
-    if (particleTextureCache[color]) {
-        return particleTextureCache[color];
-    }
-
-    // ==========================================
-    // ★追加: キャッシュの無限増殖を防ぐ（50色を超えたらリセット）
-    // ==========================================
-    if (particleCacheCount > 50) {
-        for (let key in particleTextureCache) {
-            particleTextureCache[key].width = 1;
-            particleTextureCache[key].height = 1; // メモリ強制解放
-        }
-        for (let key in particleTextureCache) {
-            delete particleTextureCache[key];
-        }
-        particleCacheCount = 0;
-    }
-    // ==========================================
-    
-    const offscreen = document.createElement('canvas');
-    offscreen.width = 80;
-    offscreen.height = 10;
-    const oCtx = offscreen.getContext('2d');
-
-    // ★修正: グラデーションの終点も幅に合わせて 80 に伸ばす (Y座標は高さの半分の4)
-    const grad = oCtx.createLinearGradient(0, 4, 80, 4);
-    grad.addColorStop(0, 'rgba(0,0,0,0)'); // 尻尾（左端）は透明
-    grad.addColorStop(0.8, color);         // 頭の少し後ろが元の色
-    grad.addColorStop(1, '#ffffff');       // 頭（右端）は明るい白
-
-    oCtx.fillStyle = grad;
-    
-    // ★修正: 中心を(40, 4)にし、横の半径を40(めいっぱい)、縦の半径を1.5(超細く)にする
-    oCtx.beginPath();
-    oCtx.ellipse(40, 4, 40, 1.5, 0, 0, Math.PI * 2);
-    oCtx.fill();
-
-    particleTextureCache[color] = offscreen;
-    particleCacheCount++; 
-    return offscreen;
-}
 
 
 function initGrid() {

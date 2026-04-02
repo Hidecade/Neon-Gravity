@@ -1245,8 +1245,8 @@ canvas {
     top: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 160px;  
-    height: 110px; /* ★修正: 5行入るようにさらに高さを広げる (90px -> 110px) */
+    width: 250px;  
+    height: auto; /* ★修正: 5行入るようにさらに高さを広げる (90px -> 110px) */
     z-index: 9999;
     display: flex;
     justify-content: center;

@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.8.17"; // ゲームのバージョン（更新のたびにここを変更）
+window.GAME_VERSION = "0.8.18"; // ゲームのバージョン（更新のたびにここを変更）
 
 
 const DEBUG = {
@@ -72,7 +72,7 @@ const GRAPHICS_SETTINGS = {
                 }
                 return 1.0; 
             } else {
-                return Math.min(window.devicePixelRatio || 1.5, 2.0);
+                return Math.min(window.devicePixelRatio || 1.5, 1.5);
             }
         }
     },
@@ -95,7 +95,7 @@ let currentGraphicsQuality = 'ULTRA'; // 現在の品質
 let currentLanguage = localStorage.getItem('neonGravity_language') || (window.navigator.language.startsWith('ja') ? 'ja' : 'en');
 
 // --- ステージ・難易度設定 ---
-const START_STAGE = 1;        // 開始ステージ
+const START_STAGE = 6;        // 開始ステージ
 const MAX_STAGE = 10;         // 最大ステージ
 
 // ステージごとの敵総出現数

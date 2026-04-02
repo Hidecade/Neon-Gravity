@@ -1,26 +1,6 @@
 ﻿
 
-const starTextureCache = {};    // ★ 星（Star）の画像キャッシュシステム
 
-function getStarTexture(color) {
-    if (starTextureCache[color]) {
-        return starTextureCache[color];
-    }
-    const offscreen = document.createElement('canvas');
-    const size = 16; // 余裕を持たせたサイズ
-    offscreen.width = size;
-    offscreen.height = size;
-    const oCtx = offscreen.getContext('2d');
-
-    // 綺麗な円を描いてキャッシュ
-    oCtx.fillStyle = color;
-    oCtx.beginPath();
-    oCtx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
-    oCtx.fill();
-
-    starTextureCache[color] = offscreen;
-    return offscreen;
-}
 
 // ==========================================
 // 背景描画メイン

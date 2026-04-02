@@ -261,7 +261,7 @@ const createScorePopup = () => ({
 });
 
 const enemyPool = new ObjectPool(createEnemy, 400, 520);
-const particlePool = new ObjectPool(createParticle, 1500, 1800);
+const particlePool = new ObjectPool(createParticle, 1500, 2400);
 const ringPool = new ObjectPool(createRing, 100, 140);
 const enemyBulletPool = new ObjectPool(createEnemyBullet, 500, 700);
 const playerBulletPool = new ObjectPool(createPlayerBullet, 100, 140);
@@ -627,7 +627,7 @@ function init() {
     //resize();
 
     // 2. その後で、保存された画質設定を読み込んで星などを生成する
-    const savedQuality = localStorage.getItem('neonGravity_graphics') || 'HIGH';
+    const savedQuality = localStorage.getItem('neonGravity_graphics') || 'ULTRA';
     applyGraphicsQuality(savedQuality);
 
     applyLanguage(currentLanguage);
@@ -1194,7 +1194,7 @@ function updateDebugStats() {
             // 60FPS(16.666ms)に対する使用率
             const cpuUsage = Math.round((totalTime / 16.666) * 100);
             
-            fpsEl.innerText = `FPS: ${debugFps} (CPU: ${cpuUsage}%)\nKEY: ${resKey}\nHUD: ${hudScaleStr}\nRES: ${typeof resScaleVal === 'number' ? resScaleVal.toFixed(2) : resScaleVal}\nAPP: ${typeof appScaleVal === 'number' ? appScaleVal.toFixed(2) : appScaleVal}`;
+            fpsEl.innerText = `FPS: ${debugFps} (CPU: ${cpuUsage}%)\nKEY: ${resKey}\nHUD: ${hudScaleStr} RES: ${typeof resScaleVal === 'number' ? resScaleVal.toFixed(2) : resScaleVal} APP: ${typeof appScaleVal === 'number' ? appScaleVal.toFixed(2) : appScaleVal}`;
         }
     }
 }
