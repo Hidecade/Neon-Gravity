@@ -70,6 +70,65 @@ const SE_LIBRARY = {
         }
         return { osc: null, duration: dur };
     },
+    gravity_boss: (ctx, t, g, noise, ratio = 1.0) => {
+        const dur = 2.2; 
+
+        // 1. 地鳴りのような低い振動
+        const oscLow = ctx.createOscillator();
+        oscLow.type = 'sawtooth';
+        oscLow.frequency.setValueAtTime(40, t);
+        oscLow.frequency.exponentialRampToValueAtTime(10, t + dur); 
+        
+        const envLow = ctx.createGain();
+        envLow.gain.setValueAtTime(0, t);
+        // ★ 引数で受け取った ratio を掛けて比例させる
+        envLow.gain.linearRampToValueAtTime(0.6 * ratio, t + 0.2);
+        envLow.gain.linearRampToValueAtTime(1.0 * ratio, t + dur - 0.2);
+        envLow.gain.exponentialRampToValueAtTime(0.01, t + dur);
+        
+        oscLow.connect(envLow); envLow.connect(g);
+        oscLow.start(t); oscLow.stop(t + dur);
+
+        // 2. 吸い込まれるような上昇音
+        const oscHigh = ctx.createOscillator();
+        oscHigh.type = 'sine';
+        oscHigh.frequency.setValueAtTime(100, t);
+        oscHigh.frequency.exponentialRampToValueAtTime(1200, t + dur); 
+        
+        const envHigh = ctx.createGain();
+        envHigh.gain.setValueAtTime(0, t);
+        envHigh.gain.linearRampToValueAtTime(0.05 * ratio, t + 0.5);
+        envHigh.gain.exponentialRampToValueAtTime(0.15 * ratio, t + dur - 0.2); 
+        envHigh.gain.linearRampToValueAtTime(0.01, t + dur);
+        
+        oscHigh.connect(envHigh); envHigh.connect(g);
+        oscHigh.start(t); oscHigh.stop(t + dur);
+
+        // 3. 轟音ノイズ
+        if (noise) {
+            const n = ctx.createBufferSource();
+            n.buffer = noise;
+            n.loop = true; 
+            
+            const f = ctx.createBiquadFilter();
+            f.type = 'bandpass';
+            f.frequency.setValueAtTime(4000, t);
+            f.frequency.exponentialRampToValueAtTime(200, t + dur); 
+            f.Q.setValueAtTime(5.0, t);
+            f.Q.linearRampToValueAtTime(1.0, t + dur); 
+
+            const nEnv = ctx.createGain();
+            nEnv.gain.setValueAtTime(0, t);
+            // ★ ノイズの爆音にも ratio を掛ける
+            nEnv.gain.linearRampToValueAtTime(2.5 * ratio, t + 0.1);
+            nEnv.gain.exponentialRampToValueAtTime(0.1 * ratio, t + dur - 0.1); 
+            nEnv.gain.linearRampToValueAtTime(0.01, t + dur);
+
+            n.connect(f); f.connect(nEnv); nEnv.connect(g);
+            n.start(t); n.stop(t + dur);
+        }
+        return { osc: null, duration: dur };
+    },
     shoot: (ctx, t, g) => {
         const o = ctx.createOscillator();
         o.type = 'triangle';
@@ -606,7 +665,7 @@ const AudioSys = {
         this.noiseBuffer = buf;
     },
 
-installLifecycleHooks() {
+    installLifecycleHooks() {
         if (this._lifecycleHooksInstalled) return;
         this._lifecycleHooksInstalled = true;
 
@@ -669,9 +728,12 @@ installLifecycleHooks() {
         }, durationMs);
     },
 
-    playSE(type, x = null, y = null) {
+    playSE: function(name, x = null, y = null, customParam = 1.0) {
+        if (!this.ctx || this.isMuted) return;
+        
         if (!this.ctx) this.init();
-        if (!this.ctx || !SE_LIBRARY[type]) return;
+        // ★修正: `type` になっていた部分をすべて引数である `name` に統一しました
+        if (!this.ctx || !SE_LIBRARY[name]) return;
         if (document.hidden) return;
 
         if (this.ctx.state !== "running") {
@@ -679,12 +741,13 @@ installLifecycleHooks() {
         }
 
         const realNow = performance.now();
-        if (this.lastPlayed[type] && realNow - this.lastPlayed[type] < 50) return;
-        this.lastPlayed[type] = realNow;
+        if (this.lastPlayed[name] && realNow - this.lastPlayed[name] < 50) return;
+        this.lastPlayed[name] = realNow;
 
         const masterGain = this.ctx.createGain();
         masterGain.gain.value = 2.5;
 
+        // --- 距離とパン(左右)の計算 ---
         if (x !== null && y !== null && typeof player !== 'undefined' && typeof width !== 'undefined') {
             const dx = x - player.x;
             const dy = y - player.y;
@@ -716,15 +779,21 @@ installLifecycleHooks() {
         g.connect(masterGain); 
 
         try {
-            const effect = SE_LIBRARY[type](this.ctx, t, g, this.noiseBuffer);
+            // ==========================================
+            // ★最重要修正: ここで customParam をシンセ関数に渡す！
+            // ==========================================
+            const effect = SE_LIBRARY[name](this.ctx, t, g, this.noiseBuffer, customParam);
+            
             if (effect.osc) {
                 effect.osc.connect(g);
                 effect.osc.start(t);
                 effect.osc.stop(t + effect.duration);
             }
             const cleanupTime = Math.max(2000, effect.duration * 1000 + 500);
-            this.registerNode(type, g, cleanupTime);
-        } catch (e) { }
+            this.registerNode(name, g, cleanupTime);
+        } catch (e) { 
+            console.error("SE Error:", e);
+        }
     },
 
     stopSE(targetType = null) {

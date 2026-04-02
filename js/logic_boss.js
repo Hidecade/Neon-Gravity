@@ -62,8 +62,8 @@ function updateBossAI(e) {
                     isLaserMissile: true // 当たり判定の大きい弾を使用
                 });
             }
-            AudioSys.playSE('shoot');    // 発射音
-            distortGrid(e.x, e.y, 80, 150); // 空間を歪ませる演出
+            if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');    // 発射音
+            if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 80, 150); // 空間を歪ませる演出
         }
 
         // --- 4. 結末：自爆 ---
@@ -72,8 +72,8 @@ function updateBossAI(e) {
             e.hp = 0; // HPを0にする（updateEnemies側で爆発演出と撃破処理が行われる）
 
             // 自爆時の特大エフェクト（断末魔）
-            distortGrid(e.x, e.y, 500, 800);
-            createExplosion(e.x, e.y, '#f00', 50);
+            if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 500, 800);
+            if (typeof createExplosion === 'function') createExplosion(e.x, e.y, '#f00', 50);
         }
 
         // ★重要：ここでreturnし、通常の移動・攻撃ロジックを実行させない
@@ -141,14 +141,17 @@ function updateBossAI(e) {
     // --- C. 攻撃サイクル ---
     e.fireTimer++;
 
-    // サイクルの定義（フレーム数）
-    const maxCycle = 280;
-    const brakeStart = 160;  // 攻撃停止・溜め開始
-    const fireTime = 220;    // 必殺技発射
-    const restartTime = 250; // 次サイクル準備
+    // ==========================================
+    // ★修正: 重力（吸い込み）時間を倍にするため、サイクル全体を延長
+    // ==========================================
+    const maxCycle = 360;     // サイクル全体を延長
+    const brakeStart = 140;   // メイン攻撃終了
+    const gravityEnd = 260;   // ★重力攻撃終了（140〜260Fの「120フレーム＝2秒間」吸い込む）
+    const fireTime = 300;     // 必殺技発射
+    const restartTime = 330;  // クールダウン開始
 
     // ----------------------------------------------------
-    // [フェーズ1] メイン攻撃 (0 ~ 159F)
+    // [フェーズ1] メイン攻撃 (0 ~ 139F)
     // ----------------------------------------------------
     if (e.fireTimer < brakeStart) {
 
@@ -166,7 +169,7 @@ function updateBossAI(e) {
                         life: BULLET_CONFIG.BOSS_LASER.LIFE, isLaserMissile: true, color: e.color
                     });
                 }
-                if (isOnScreen(e)) AudioSys.playSE('shoot');
+                if (isOnScreen(e) && typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
             }
         }
         // パターン1: 自機狙い3WAY
@@ -188,7 +191,7 @@ function updateBossAI(e) {
                         life: 300, color: '#ffaa00'
                     });
                 }
-                if (isOnScreen(e)) AudioSys.playSE('shoot');
+                if (isOnScreen(e) && typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
             }
         }
         // パターン2: 十字回転クロスファイア
@@ -204,31 +207,78 @@ function updateBossAI(e) {
                         life: 180, color: '#ff00ff', isLaserMissile: true
                     });
                 }
-                if (isOnScreen(e) && e.fireTimer % 16 === 0) AudioSys.playSE('shoot');
+                if (isOnScreen(e) && e.fireTimer % 16 === 0 && typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
             }
         }
     }
     // ----------------------------------------------------
-    // [フェーズ2] 減速・溜め演出 (160 ~ 219F)
+    // [フェーズ1.5 & 2] 減速・重力場・溜め演出 (140 ~ 299F)
     // ----------------------------------------------------
     else if (e.fireTimer >= brakeStart && e.fireTimer < fireTime) {
+        
         // 回転を徐々に止める
         const ratio = 1.0 - (e.fireTimer - brakeStart) / (fireTime - brakeStart);
         e.angle += Math.pow(ratio, 1.5) * 0.1;
 
-        // エネルギー吸引パーティクル
-        if (frame % 3 === 0) {
-            const ang = Math.random() * Math.PI * 2;
-            const distP = 80 + Math.random() * 20;
-            spawnParticleObj({
-                x: e.x + Math.cos(ang) * distP, y: e.y + Math.sin(ang) * distP,
-                vx: -Math.cos(ang) * 4, vy: -Math.sin(ang) * 4,
-                color: '#fff', life: 0.2, size: 1.5
-            });
-        }
+        // ★ ステージに応じた重力の強さ（割合）を計算
+        // 1: 1/4(0.25), 2: 1/3(0.33), 3: 1/2(0.5), 4: 3/4(0.75), 5以上: 最大(1.0)
+        let gravityRatio = 1.0;
+        if (stage === 1) gravityRatio = 0.25;
+        else if (stage === 2) gravityRatio = 0.333;
+        else if (stage === 3) gravityRatio = 0.5;
+        else if (stage === 4) gravityRatio = 0.75;
+
+        // ★ 全ステージで引き寄せ攻撃を行うように変更
+        if (e.fireTimer < gravityEnd) {
+            
+            if (e.fireTimer === brakeStart + 1) {
+                // ★ グローバル変数を廃止し、第4引数として gravityRatio を直接渡す
+                if (typeof AudioSys !== 'undefined') AudioSys.playSE('gravity_boss', e.x, e.y, gravityRatio);
+            }
+
+            const pullDx = e.x - player.x;
+            const pullDy = e.y - player.y;
+            const pullDist = Math.hypot(pullDx, pullDy) || 0.001;
+
+            const maxPullDist = 2400; 
+            
+            if (pullDist < maxPullDist) {
+                // ★ 引き込みの強さにも gravityRatio を掛ける
+                const pullStrength = 12.0 * SPEED_SCALE * gameSpeed * angerFactor * gravityRatio;
+                const force = pullStrength * (1 - pullDist / maxPullDist);
+                player.x += (pullDx / pullDist) * force;
+                player.y += (pullDy / pullDist) * force;
+            }
+
+            // 空間の歪みも強さに比例させる
+            if (frame % 6 === 0 && typeof distortGrid === 'function') {
+                distortGrid(e.x, e.y, -80 * gravityRatio, 1200 * gravityRatio);
+            }
+            
+            // ★ パーティクルの生成量も gravityRatio に比例させる（最大8個、最低1個）
+            const particleCount = Math.max(1, Math.round(8 * gravityRatio));
+            for (let i = 0; i < particleCount; i++) {
+                const pAngle = Math.random() * Math.PI * 2;
+                const pDist = 200 + Math.random() * 1000; 
+                const pColor = Math.random() > 0.5 ? e.color : '#ffffff';
+                const pSpeed = (12 + Math.random() * 18) * SPEED_SCALE;
+                const swirlAngle = pAngle + 0.2;
+
+                spawnParticleObj({
+                    x: e.x + Math.cos(pAngle) * pDist,
+                    y: e.y + Math.sin(pAngle) * pDist,
+                    vx: -Math.cos(swirlAngle) * pSpeed, 
+                    vy: -Math.sin(swirlAngle) * pSpeed,
+                    color: pColor, 
+                    life: 1.5 + Math.random(),
+                    // ★ パーティクルの太さも強さに比例させる（最低でも少し太く）
+                    size: Math.max(2.0, (4.0 + Math.random() * 4.0) * gravityRatio) 
+                });
+            }
+        } 
     }
     // ----------------------------------------------------
-    // [フェーズ3] 必殺技発射 (220F)
+    // [フェーズ3] 必殺技発射
     // ----------------------------------------------------
     else if (e.fireTimer >= fireTime && e.fireTimer < restartTime) {
         if (e.fireTimer === fireTime) {
@@ -261,10 +311,10 @@ function updateBossAI(e) {
                     });
                 }
             }
-            if (isOnScreen(e)) AudioSys.playSE('launch');
+            if (isOnScreen(e) && typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
             spawnRingObj({ x: e.x, y: e.y, r: 20, color: '#fff', life: 1.0 });
             spawnRingObj({ x: e.x, y: e.y, r: 100, color: e.color, life: 0.8 });
-            distortGrid(e.x, e.y, 150, 300);
+            if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 150, 300);
         }
     }
     // ----------------------------------------------------
