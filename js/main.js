@@ -259,12 +259,12 @@ const createScorePopup = () => ({
     isBoss: false, active: false, color: '#ffffff' 
 });
 
-const enemyPool = new ObjectPool(createEnemy, 400);
-const particlePool = new ObjectPool(createParticle, 1500);
-const ringPool = new ObjectPool(createRing, 100);
-const enemyBulletPool = new ObjectPool(createEnemyBullet, 500); 
-const playerBulletPool = new ObjectPool(createPlayerBullet, 100);
-const scorePopupPool = new ObjectPool(createScorePopup, 50);
+const enemyPool = new ObjectPool(createEnemy, 400, 520);
+const particlePool = new ObjectPool(createParticle, 1500, 1800);
+const ringPool = new ObjectPool(createRing, 100, 140);
+const enemyBulletPool = new ObjectPool(createEnemyBullet, 500, 700);
+const playerBulletPool = new ObjectPool(createPlayerBullet, 100, 140);
+const scorePopupPool = new ObjectPool(createScorePopup, 50, 80);
 
 // オブジェクトを受け取るヘルパー関数
 function spawnParticleObj(options) {

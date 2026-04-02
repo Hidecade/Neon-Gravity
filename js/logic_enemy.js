@@ -111,6 +111,8 @@ function updateTadpoleAI(e) {
     // 進行方向を向く
     e.angle = Math.atan2(e.vy, e.vx);
 
+    if (!e.history) e.history = [];
+
     // --- 4. 軌跡の更新 ---
     e.history.unshift({ x: e.x, y: e.y });
     if (e.history.length > 80) e.history.pop();
@@ -910,33 +912,39 @@ function updateSweeperAI(e) {
 }
 
 function updateLightcycleAI(e) {
-// --- ライトサイクルのワープ（出現）更新ロジック ---
+    // history 未初期化対策
+    if (!e.history) e.history = [];
+
+    // --- ライトサイクルのワープ（出現）更新ロジック ---
     if (e.isWarping) {
-        e.warpPercent += 0.02; // 出現スピード
-        
-        // ★追加：ワープ中も少しずつ前進させて、履歴（尾）を生成する
-        // warpPercentに応じて、本来の速度(e.speed)の 20% 程度で微速前進させる
-        const moveStep = e.speed * 0.2; 
+        e.warpPercent += 0.02;
+
+        // ワープ中も少しずつ前進
+        const moveStep = e.speed * 0.2;
         e.x += Math.cos(e.angle) * moveStep;
         e.y += Math.sin(e.angle) * moveStep;
 
-        // 履歴を更新（これにより、出現しながら尾が伸びる）
+        // 履歴更新
         if (typeof frame !== 'undefined' && frame % 2 === 0) {
             e.history.unshift({ x: e.x, y: e.y });
-            if (e.history.length > ENEMY_LIMITS.LIGHTCYCLE_TAIL_LENGTH) e.history.pop();
+            if (e.history.length > ENEMY_LIMITS.LIGHTCYCLE_TAIL_LENGTH) {
+                e.history.pop();
+            }
         }
 
         if (e.warpPercent >= 1.0) {
             e.isWarping = false;
             e.warpPercent = 1.0;
         }
-        return; // ワープ中はAI処理（旋回など）をスキップ
+
+        return;
     }
 
     // 2. 初速の設定とタイマー初期化
     if (e.turnTimer === undefined) {
         e.turnTimer = 40;
         e.history = [];
+
         // 初期方向を縦か横に固定
         if (Math.abs(e.vx) > Math.abs(e.vy)) {
             e.vx = (e.vx > 0 ? 1 : -1) * e.speed;
@@ -964,13 +972,16 @@ function updateLightcycleAI(e) {
             e.vx = (player.x > e.x) ? speed : -speed;
         }
 
-        // ターン時に火花（パーティクル）を散らす
+        // ターン時の火花
         if (typeof spawnParticleObj === 'function') {
             spawnParticleObj({
-                x: e.x, y: e.y,
-                vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4,
+                x: e.x,
+                y: e.y,
+                vx: (Math.random() - 0.5) * 3.2,
+                vy: (Math.random() - 0.5) * 3.2,
                 color: e.variant ? (e.variant.trailColor || '#00ffff') : '#00ffff',
-                life: 0.3, size: 2
+                life: 0.22,
+                size: 1.7
             });
         }
     }
@@ -980,64 +991,51 @@ function updateLightcycleAI(e) {
     e.y += e.vy * gameSpeed;
     e.angle = Math.atan2(e.vy, e.vx);
 
-    // 5. 光の壁の履歴（Tadpoleと同じ unshift 方式に適合）
+    // 5. 光の壁の履歴
     e.history.unshift({ x: e.x, y: e.y });
-    if (e.history.length > ENEMY_LIMITS.LIGHTCYCLE_TAIL_LENGTH) e.history.pop();
-
-// 光の壁の履歴追加（既存のコード）
-    e.history.unshift({ x: e.x, y: e.y });
-    if (e.history.length > ENEMY_LIMITS.LIGHTCYCLE_TAIL_LENGTH) e.history.pop();
+    if (e.history.length > ENEMY_LIMITS.LIGHTCYCLE_TAIL_LENGTH) {
+        e.history.pop();
+    }
 
     // ==========================================
-    // ★ 修正：三角の底辺の左右からジェット噴射を出す
+    // ジェット噴射
+    // 負荷軽減のため 2フレームに1回、左右どちらか1発のみ生成
     // ==========================================
-    // ジェット感を出すため、毎フレーム(または2フレーム毎)生成します
-    if (!e.isWarping && typeof frame !== 'undefined' && frame % 1 === 0) {
+    if (!e.isWarping && typeof frame !== 'undefined' && frame % 2 === 0) {
         const scale = e.scale || 1;
 
-        // 1. 車体の後方（底辺の中心）の座標を計算
-        const rearOffset = 15 * scale; // 中心から後ろへ15px
+        // 車体後方中心
+        const rearOffset = 15 * scale;
         const rearX = e.x - Math.cos(e.angle) * rearOffset;
         const rearY = e.y - Math.sin(e.angle) * rearOffset;
 
-        // 2. そこから左右に開いて、底辺の「角」の座標を計算
-        const widthOffset = 5 * scale; // 中心から左右へそれぞれ12px開く
-        // 左の角 (進行方向から見て -90度 の方向)
+        // 左右の底辺角
+        const widthOffset = 5 * scale;
         const leftX = rearX + Math.cos(e.angle - Math.PI / 2) * widthOffset;
         const leftY = rearY + Math.sin(e.angle - Math.PI / 2) * widthOffset;
-        // 右の角 (進行方向から見て +90度 の方向)
         const rightX = rearX + Math.cos(e.angle + Math.PI / 2) * widthOffset;
         const rightY = rearY + Math.sin(e.angle + Math.PI / 2) * widthOffset;
 
-        // 3. ジェットの速度と角度（真後ろへ勢いよく、わずかに乱気流のように散らす）
-        const jetSpeed = 5 + Math.random() * 4; // 速度を速めにして噴射感を出す
-        const backAngleLeft = e.angle + Math.PI + (Math.random() - 0.5) * 0.2;
-        const backAngleRight = e.angle + Math.PI + (Math.random() - 0.5) * 0.2;
+        // 左右交互に1発だけ出す
+        const useLeft = ((frame >> 1) % 2 === 0);
+        const spawnX = useLeft ? leftX : rightX;
+        const spawnY = useLeft ? leftY : rightY;
 
-        // ★ 色を濃く鮮やかにする（白をほとんど無くし、原色を100%活かす）
+        const backAngle = e.angle + Math.PI + (Math.random() - 0.5) * 0.16;
+        const jetSpeed = 4.2 + Math.random() * 2.0;
+
         const baseColor = e.variant ? (e.variant.trailColor || '#00ffff') : '#00ffff';
-        // 白が混ざるのは10%以下にして、残りはすべて濃いベースカラーにする
-        const jetColor = (Math.random() > 0.9) ? '#ffffff' : baseColor;
+        const jetColor = (Math.random() > 0.94) ? '#ffffff' : baseColor;
 
         if (typeof spawnParticleObj === 'function') {
-            // 左側のジェット噴射
             spawnParticleObj({
-                x: leftX, y: leftY,
-                vx: Math.cos(backAngleLeft) * jetSpeed,
-                vy: Math.sin(backAngleLeft) * jetSpeed,
+                x: spawnX,
+                y: spawnY,
+                vx: Math.cos(backAngle) * jetSpeed,
+                vy: Math.sin(backAngle) * jetSpeed,
                 color: jetColor,
-                life: 0.1 + Math.random() * 0.15, // 寿命を短くして鋭い炎にする
-                size: 4.0 + Math.random() * 4.0
-            });
-
-            // 右側のジェット噴射
-            spawnParticleObj({
-                x: rightX, y: rightY,
-                vx: Math.cos(backAngleRight) * jetSpeed,
-                vy: Math.sin(backAngleRight) * jetSpeed,
-                color: jetColor,
-                life: 0.1 + Math.random() * 0.15,
-                size: 4.0 + Math.random() * 2.0
+                life: 0.08 + Math.random() * 0.08,
+                size: 2.2 + Math.random() * 1.8
             });
         }
     }

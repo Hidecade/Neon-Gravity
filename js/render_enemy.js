@@ -1514,10 +1514,6 @@ function drawLightcycle(ctx, e) {
         visualAlpha = wp; 
     } else {
         visualAlpha = 1.0;
-        // ★トロン走行音のトリガー（20フレームに1回：AudioSysにlc_engineがある前提）
-        if (typeof frame !== 'undefined' && frame % 20 === 0 && typeof AudioSys !== 'undefined') {
-            AudioSys.playSE('lc_engine', e.x, e.y);
-        }
     }
 
     const trailColor = e.variant ? (e.variant.trailColor || '#00ffff') : '#00ffff';
