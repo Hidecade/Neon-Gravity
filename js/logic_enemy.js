@@ -1235,6 +1235,24 @@ function applyAsteroidCollisions(e) {
             other.vx += j * nx * ratioOther;
             other.vy += j * ny * ratioOther;
 
+            // ==========================================
+            // ★追加：物理暴走を防ぐための速度リミッター（安全装置）
+            // ==========================================
+            const maxSpeedE = (e.speed || 5) * 4.0; // 通常の4倍程度を絶対上限とする
+            const cvE = Math.hypot(e.vx, e.vy);
+            if (cvE > maxSpeedE) {
+                e.vx = (e.vx / cvE) * maxSpeedE;
+                e.vy = (e.vy / cvE) * maxSpeedE;
+            }
+
+            const maxSpeedOther = (other.speed || 5) * 4.0;
+            const cvOther = Math.hypot(other.vx, other.vy);
+            if (cvOther > maxSpeedOther) {
+                other.vx = (other.vx / cvOther) * maxSpeedOther;
+                other.vy = (other.vy / cvOther) * maxSpeedOther;
+            }
+            // ==========================================
+
             // --- 3. 演出 ---
             if (Math.abs(effectiveVel) > 0.5) {
                 const midX = (e.x + other.x) / 2;

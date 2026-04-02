@@ -19,6 +19,7 @@ let debugFrameCounter = 0;
 let debugLastFpsTime = performance.now();   // ロジック処理にかかった時間（ミリ秒）を保存する変数
 let debugLogicTime = 0;         // ロジック時間
 let debugDrawTime = 0;          // 描画にかかった時間
+let debugTotalTime = 0;
 
 
 let width, height;              // 現在のキャンバスサイズ
@@ -946,6 +947,8 @@ function resize() {
  */
 function loop() {
 
+    const loopStartTime = performance.now();
+    
     requestAnimationFrame(loop);
 
     if (typeof handleGamepadInput === 'function') handleGamepadInput();
@@ -1049,6 +1052,8 @@ function loop() {
     }
 
     if (typeof drawBossWarningEffect === 'function') drawBossWarningEffect();
+
+    debugTotalTime = performance.now() - loopStartTime;
 }
 
 /**
@@ -1182,8 +1187,14 @@ function updateDebugStats() {
             if (!hudScaleStr) hudScaleStr = "1.0"; 
             else hudScaleStr = parseFloat(hudScaleStr).toFixed(2); 
             
-            // ★修正: 5行構成でAPPも追加
-            fpsEl.innerText = `FPS: ${debugFps}\nKEY: ${resKey}\nHUD: ${hudScaleStr}\nRES: ${typeof resScaleVal === 'number' ? resScaleVal.toFixed(2) : resScaleVal}\nAPP: ${typeof appScaleVal === 'number' ? appScaleVal.toFixed(2) : appScaleVal}`;
+            // ==========================================
+            // ★変更：loop()全体の時間からCPU使用率を計算
+            // ==========================================
+            const totalTime = typeof debugTotalTime !== 'undefined' ? debugTotalTime : 0;
+            // 60FPS(16.666ms)に対する使用率
+            const cpuUsage = Math.round((totalTime / 16.666) * 100);
+            
+            fpsEl.innerText = `FPS: ${debugFps} (CPU: ${cpuUsage}%)\nKEY: ${resKey}\nHUD: ${hudScaleStr}\nRES: ${typeof resScaleVal === 'number' ? resScaleVal.toFixed(2) : resScaleVal}\nAPP: ${typeof appScaleVal === 'number' ? appScaleVal.toFixed(2) : appScaleVal}`;
         }
     }
 }
