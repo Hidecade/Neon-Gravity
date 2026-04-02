@@ -499,10 +499,6 @@ async function showGameOver() {
     if (ui.bossContainer) ui.bossContainer.style.display = 'none';
     ui.pauseBtn.style.display = 'none';
 
-    // ==========================================
-    // ★修正: ここにあったスコア書き込み処理を下（表示後）に移動させました
-    // ==========================================
-
     // 全ステージ総合レポートをゲームオーバー画面に表示する
     if (typeof showFinalResultBoard === 'function') {
         showFinalResultBoard();
@@ -520,43 +516,52 @@ async function showGameOver() {
             canRegister = true; // エラー時は念のため登録許容
         }
 
-        // ★ 1. まず名前入力画面を「表示状態」にする
-        ui.nameInputArea.style.display = 'flex';
-
         // ==========================================
-        // ★ 2. 画面が表示された直後に、確実にスコアを書き込む
+        // ★修正: 画面を表示する前に、裏側で確実に文字を作る
         // ==========================================
         const scoreDisplay = document.getElementById('result-score-display');
         if (scoreDisplay) {
-            // innerText は非表示時に無視されることがあるため、より安全な textContent を使用
-            scoreDisplay.textContent = `SCORE: ${score.toLocaleString()}`;
-            // スマホ横画面ではみ出さないように、文字サイズと下の余白を小さく上書きする
-            scoreDisplay.style.fontSize = '22px';       // 元の32pxから22pxに縮小
-            scoreDisplay.style.marginBottom = '10px';   // 下の隙間も20pxから10pxに縮める
+            scoreDisplay.innerHTML = `SCORE: ${score.toLocaleString()}`;
+            scoreDisplay.style.display = "flex";
+            scoreDisplay.style.textAlign = "center";
         }
 
         const msgPara = document.querySelector("#name-input-area p");
         const nameInp = document.getElementById("player-name-input");
-        msgPara.style.textAlign = "center";
+        if (msgPara) msgPara.style.textAlign = "center";
 
         if (canRegister) {
-            msgPara.innerText = "NEW RECORD! REGISTER TO WORLD RANKING?";
-            msgPara.style.color = "#0ff";
-            nameInp.style.display = "block";
+            if (msgPara) {
+                msgPara.innerHTML = "NEW RECORD! REGISTER TO WORLD RANKING?";
+                msgPara.style.color = "#0ff";
+            }
+            if (nameInp) nameInp.style.display = "block";
             ui.submitBtn.style.display = "block";
             ui.submitBtn.innerText = "SUBMIT";
             ui.submitBtn.style.pointerEvents = "auto";
             ui.skipScoreBtn.innerText = "SKIP";
-            nameInp.focus();
+            
         } else {
-            msgPara.innerText = "RANKING OUT (TOP 10 ONLY)";
-            msgPara.style.color = "#f44";
-            nameInp.style.display = "none";
+            if (msgPara) {
+                msgPara.innerHTML = "RANKING OUT (TOP 10 ONLY)";
+                msgPara.style.color = "#f44";
+            }
+            if (nameInp) nameInp.style.display = "none";
             ui.submitBtn.style.display = "none";
             ui.skipScoreBtn.innerText = "NEXT";
         }
 
         if (window.refreshMenuButtons) window.refreshMenuButtons();
+
+        // ==========================================
+        // ★修正: 全てのテキストの準備が整ってから、画面を表示する
+        // ==========================================
+        ui.nameInputArea.style.display = 'flex';
+        
+        // 画面が表示された直後にフォーカスを当てる
+        if (canRegister && nameInp) {
+            setTimeout(() => nameInp.focus(), 50);
+        }
 
         // --- 送信ボタン処理 ---
         let isSubmitting = false;

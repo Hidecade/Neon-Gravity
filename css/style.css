@@ -140,7 +140,7 @@ canvas {
 .bar-frame,
 .laser-bar-frame {
     width: 100%;
-    height: calc(8px * var(--hud-scale, 1)); /* スマートに細く */
+    height: calc(10px * var(--hud-scale, 1)); /* スマートに細く */
     background: rgba(0, 15, 30, 0.6); 
     border: 1.5px solid rgba(0, 255, 255, 0.2);
     border-radius: 2px; /* 少しだけ丸みを持たせて洗練させる */
@@ -452,13 +452,13 @@ canvas {
    6. ミニマップ
    ========================================================= */
 #minimap-container {
-    position: relative;
-    top: auto;
+    position: absolute;
+    top: 150px;
     left: auto;
     transform: none;
     margin-top: calc(5px * var(--hud-scale));
-    width: calc(100px * var(--hud-scale));
-    height: calc(100px * var(--hud-scale));
+    width: calc(120px * var(--hud-scale));
+    height: calc(120px * var(--hud-scale));
     border: 1px solid rgba(0, 255, 255, 0.5);
     background: rgba(0, 10, 20, 0.6);
     backdrop-filter: blur(2px);
@@ -472,6 +472,19 @@ canvas {
     display: block;
 }
 
+/* =========================================================
+   11. レスポンシブ設定
+   - 通常 / portrait / landscape のみ
+   ========================================================= */
+@media (orientation: portrait) {
+    #minimap-container {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-top: 0;
+    }
+}
 
 /* =========================================================
    8. 共通ボタン類
@@ -672,31 +685,17 @@ canvas {
     align-items: center;
     box-sizing: border-box;
     width: min(90vw, 460px);
-    margin: 0 auto 20px;
+    margin: 0 auto 10px;
     
-    /* ▼ 左側にletter-spacingと同じ分の余白を足して視覚的中心を合わせる */
     padding: 16px 18px;
     padding-left: calc(18px + 0.08em);
     
     text-align: center;
     color: #fff;
-    font-size: clamp(22px, 2.5vw, 34px);
+    text-shadow: 0 0 20px #0ff;
+    font-size: clamp(25px, 2.5vw, 34px);
     font-weight: 700;
     letter-spacing: 0.08em;
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(10, 24, 34, 0.76),
-            rgba(4, 10, 18, 0.92)
-        );
-    border-top: 1px solid rgba(120,255,255,0.28);
-    border-bottom: 1px solid rgba(120,255,255,0.28);
-    box-shadow:
-        0 0 18px rgba(0,255,255,0.08),
-        inset 0 0 16px rgba(120,255,255,0.04);
-    text-shadow:
-        0 0 8px rgba(255,255,255,0.28),
-        0 0 16px rgba(0,255,255,0.16);
 }
 
 #player-name-input {
@@ -786,17 +785,6 @@ canvas {
     #game-message-overlay.compact {
         padding-top: 12vh;
     }
-
-
-    #minimap-container {
-        position: absolute;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        margin-top: 0;
-    }
-
-
 
     #title-shell {
         min-width: 92vw;

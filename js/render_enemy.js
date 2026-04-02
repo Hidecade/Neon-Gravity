@@ -352,10 +352,10 @@ function drawCubeEnemy(ctx, e) {
     // ▲▲▲ 修正ここまで ▲▲▲
 
     // --- 2. アイテムの種類に応じたコアの色設定 ---
-    let coreColor = '#ff0'; // デフォルト（クリスタル/なし）：黄
+    let coreColor = '#00a010'; // デフォルト（クリスタル/なし）：黄
     if (e.drop === 'laser') coreColor = '#0ff';      // レーザー：シアン
-    if (e.drop === 'level') coreColor = '#0f0';      // レベルアップ：緑
-    if (e.drop === 'invincible') coreColor = '#fff'; // 無敵：白
+    if (e.drop === 'level') coreColor = 'rgb(0, 225, 0)';      // レベルアップ：緑
+    if (e.drop === 'invincible') coreColor = '#ff0'; // 無敵：黄
 
     // 点滅演出
     const pulse = (Math.sin(frame * 0.15) * 0.5) + 0.5;
@@ -411,16 +411,24 @@ function drawCubeEnemy(ctx, e) {
 
     // ▼▼▼ 修正: shadowBlurを使わないマルチパス描画 ▼▼▼
     ctx.strokeStyle = e.color;
-
-    // 1. 光の拡散部分（太く、薄く）
-    ctx.globalAlpha = visualAlpha * 0.4;
-    ctx.lineWidth = 6.0;
+    
+    // 1. 光の拡散部分（グローを細く・薄く抑える）
+    ctx.strokeStyle = e.color;
+    ctx.globalAlpha = visualAlpha * 0.3; // 0.4から0.3へ減らす
+    ctx.lineWidth = 5.0;                 // 6.0から4.0へ細くする
     ctx.stroke();
 
-    // 2. 線の中心（細く、濃く）
+    // 2. メインの線（細くくっきりと）
+    ctx.globalAlpha = visualAlpha * 0.9;
+    ctx.lineWidth = 2;                 // 2.5から1.5へ細くする
+    ctx.stroke();
+
+    // 3. 線の芯（真っ白な極細のハイライトを追加してシャープさを極立たせる）
+    ctx.strokeStyle = '#ffffff';
     ctx.globalAlpha = visualAlpha;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 0.5;                 // 0.5の極細線
     ctx.stroke();
+    
     // ▲▲▲ 修正ここまで ▲▲▲
 
     ctx.restore();
