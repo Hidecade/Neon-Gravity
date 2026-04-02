@@ -1074,7 +1074,7 @@ canvas {
     transform: translateX(-50%);
     width: 250px;  
     height: auto; 
-    min-height: 20px;
+    min-height: 80px;
     z-index: 9999;
     display: flex;
     justify-content: center;
