@@ -1,0 +1,183 @@
+/* =========================================================
+   操作コントローラー (controls.css)
+   ========================================================= */
+#controls {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 50;
+    display: none;
+    touch-action: none;
+    pointer-events: auto;
+}
+
+.joystick-area {
+    position: absolute;
+    width: calc(200px * var(--ui-scale, 1));
+    height: calc(200px * var(--ui-scale, 1));
+    border-radius: 50%;
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    background: radial-gradient(circle, rgba(0, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.2) 70%);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+.joystick-area::before,
+.joystick-area::after {
+    content: '';
+    position: absolute;
+    background: rgba(0, 255, 255, 0.2);
+}
+
+.joystick-area::before {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+}
+
+.joystick-area::after {
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+}
+
+.knob {
+    width: calc(60px * var(--ui-scale, 1));
+    height: calc(60px * var(--ui-scale, 1));
+    border-radius: 50%;
+    background: rgba(0, 255, 255, 0.15);
+    border: 2px solid #0ff;
+    position: absolute;
+    transform: translate(0, 0);
+    transition: transform 0.05s;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+    z-index: 2;
+}
+
+.knob::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: calc(10px * var(--ui-scale, 1));
+    height: calc(10px * var(--ui-scale, 1));
+    background: #fff;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px #fff;
+}
+
+#launch-btn {
+    position: absolute;
+    width: calc(100px * var(--ui-scale, 1));
+    height: calc(100px * var(--ui-scale, 1));
+    right: calc(30px * var(--ui-scale, 1));
+    bottom: calc(230px * var(--ui-scale, 1));
+    border-radius: 50%;
+    background: rgba(255, 255, 0, 0.1);
+    border: 2px solid #ff0;
+    color: #ff0;
+    font-family: 'Orbitron', monospace;
+    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: calc(16px * var(--ui-scale, 1));
+    letter-spacing: calc(1px * var(--ui-scale, 1));
+    box-shadow: 0 0 15px rgba(30, 30, 27, 0.3), inset 0 0 10px rgba(255, 255, 0, 0.2);
+    pointer-events: auto;
+    text-shadow: 0 0 5px #ff0;
+    z-index: 100;
+    box-sizing: border-box;
+}
+
+#launch-btn::before {
+    content: '';
+    position: absolute;
+    width: calc(110px * var(--ui-scale, 1));
+    height: calc(110px * var(--ui-scale, 1));
+    border: 1px dashed rgba(255, 255, 0, 0.4);
+    border-radius: 50%;
+    animation: rotate 4s linear infinite;
+    box-sizing: border-box;
+}
+
+#launch-btn.active {
+    background: #ff0;
+    color: #000;
+    transform: scale(0.85);
+    box-shadow: 0 0 30px #ff0;
+    text-shadow: none;
+}
+
+#stick-left {
+    left: calc(10px * var(--ui-scale, 1));
+    bottom: calc(10px * var(--ui-scale, 1));
+}
+
+#stick-right {
+    right: calc(10px * var(--ui-scale, 1));
+    bottom: calc(10px * var(--ui-scale, 1));
+}
+
+
+/* ---------- ポーズボタン ---------- */
+#pause-btn {
+    position: absolute;
+    right: calc(30px * var(--ui-scale, 1));
+    bottom: calc(350px * var(--ui-scale, 1));
+    width: calc(50px * var(--ui-scale, 1));
+    height: calc(50px * var(--ui-scale, 1));
+    font-size: calc(20px * var(--ui-scale, 1));
+    background: rgba(0, 20, 40, 0.8);
+    border: 2px solid rgba(0, 255, 255, 0.5);
+    color: #0ff;
+    font-weight: bold;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 100;
+    pointer-events: auto;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+    box-sizing: border-box;
+}
+
+/* =========================================================
+   レスポンシブ設定 (縦画面 / スマホ横画面の強制拡大)
+   ========================================================= */
+
+/* スマホ縦持ち時の配置調整 */
+@media (orientation: portrait) {
+    #stick-left {
+        left: calc(10px * var(--ui-scale, 1));
+        bottom: calc(20px * var(--ui-scale, 1));
+    }
+
+    #stick-right {
+        right: calc(10px * var(--ui-scale, 1));
+        bottom: calc(20px * var(--ui-scale, 1));
+    }
+
+    #launch-btn {
+        right: calc(5px * var(--ui-scale, 1));
+        bottom: calc(250px * var(--ui-scale, 1));
+    }
+
+    #pause-btn {
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 15px;
+    }
+
+    #pause-btn:active {
+        transform: translateX(-50%) scale(0.9);
+    }
+}

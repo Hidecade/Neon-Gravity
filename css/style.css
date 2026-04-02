@@ -472,132 +472,6 @@ canvas {
     display: block;
 }
 
-/* =========================================================
-   7. 操作コントローラー
-   ========================================================= */
-#controls {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 50;
-    display: none;
-    touch-action: none;
-    pointer-events: auto;
-}
-
-.joystick-area {
-    position: absolute;
-    width: calc(144px * var(--ui-scale, 1));
-    height: calc(140px * var(--ui-scale, 1));
-    border-radius: 50%;
-    border: 1px solid rgba(0, 255, 255, 0.3);
-    background: radial-gradient(circle, rgba(0, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.2) 70%);
-    box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.1);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    pointer-events: none;
-}
-
-.joystick-area::before,
-.joystick-area::after {
-    content: '';
-    position: absolute;
-    background: rgba(0, 255, 255, 0.2);
-}
-
-.joystick-area::before {
-    width: 100%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
-}
-
-.joystick-area::after {
-    width: 1px;
-    height: 100%;
-    background: linear-gradient(180deg, transparent, rgba(0, 255, 255, 0.2), transparent);
-}
-
-.knob {
-    width: calc(60px * var(--ui-scale, 1));
-    height: calc(60px * var(--ui-scale, 1));
-    border-radius: 50%;
-    background: rgba(0, 255, 255, 0.15);
-    border: 2px solid #0ff;
-    position: absolute;
-    transform: translate(0, 0);
-    transition: transform 0.05s;
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
-    z-index: 2;
-}
-
-.knob::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: calc(10px * var(--ui-scale, 1));
-    height: calc(10px * var(--ui-scale, 1));
-    background: #fff;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 10px #fff;
-}
-
-#launch-btn {
-    position: absolute;
-    width: calc(60px * var(--ui-scale, 1));
-    height: calc(60px * var(--ui-scale, 1));
-    right: calc(15px * var(--ui-scale, 1));
-    bottom: calc(155px * var(--ui-scale, 1));
-    border-radius: 50%;
-    background: rgba(255, 255, 0, 0.1);
-    border: 2px solid #ff0;
-    color: #ff0;
-    font-family: 'Orbitron', monospace;
-    font-weight: bold;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    font-size: calc(11px * var(--ui-scale, 1));
-    letter-spacing: calc(1px * var(--ui-scale, 1));
-    box-shadow: 0 0 15px rgba(255, 255, 0, 0.3), inset 0 0 10px rgba(255, 255, 0, 0.2);
-    pointer-events: auto;
-    text-shadow: 0 0 5px #ff0;
-    z-index: 100;
-    box-sizing: border-box;
-}
-
-#launch-btn::before {
-    content: '';
-    position: absolute;
-    width: calc(70px * var(--ui-scale, 1));
-    height: calc(70px * var(--ui-scale, 1));
-    border: 1px dashed rgba(255, 255, 0, 0.4);
-    border-radius: 50%;
-    animation: rotate 4s linear infinite;
-    box-sizing: border-box;
-}
-
-#launch-btn.active {
-    background: #ff0;
-    color: #000;
-    transform: scale(0.85);
-    box-shadow: 0 0 30px #ff0;
-    text-shadow: none;
-}
-
-#stick-left {
-    left: calc(10px * var(--ui-scale, 1));
-    bottom: calc(10px * var(--ui-scale, 1));
-}
-
-#stick-right {
-    right: calc(10px * var(--ui-scale, 1));
-    bottom: calc(10px * var(--ui-scale, 1));
-}
 
 /* =========================================================
    8. 共通ボタン類
@@ -701,28 +575,6 @@ canvas {
     color: #aaa;
 }
 
-/* ---------- ポーズボタン ---------- */
-#pause-btn {
-    position: absolute;
-    right: calc(30px * var(--ui-scale, 1));
-    bottom: calc(240px * var(--ui-scale, 1));
-    width: calc(40px * var(--ui-scale, 1));
-    height: calc(40px * var(--ui-scale, 1));
-    font-size: calc(18px * var(--ui-scale, 1));
-    background: rgba(0, 20, 40, 0.8);
-    border: 2px solid rgba(0, 255, 255, 0.5);
-    color: #0ff;
-    font-weight: bold;
-    display: none;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    z-index: 100;
-    pointer-events: auto;
-    border-radius: 50%;
-    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
-    box-sizing: border-box;
-}
 
 /* ---------- フッター ---------- */
 #menu-footer {
@@ -936,22 +788,6 @@ canvas {
     }
 
 
-
-    #stick-left {
-        left: calc(10px * var(--ui-scale, 1));
-        bottom: calc(50px * var(--ui-scale, 1));
-    }
-
-    #stick-right {
-        right: calc(10px * var(--ui-scale, 1));
-        bottom: calc(50px * var(--ui-scale, 1));
-    }
-
-    #launch-btn {
-        right: calc(5px * var(--ui-scale, 1));
-        bottom: calc(220px * var(--ui-scale, 1));
-    }
-
     #minimap-container {
         position: absolute;
         top: 10px;
@@ -960,16 +796,7 @@ canvas {
         margin-top: 0;
     }
 
-    #pause-btn {
-        right: auto;
-        left: 50%;
-        transform: translateX(-50%);
-        bottom: 15px;
-    }
 
-    #pause-btn:active {
-        transform: translateX(-50%) scale(0.9);
-    }
 
     #title-shell {
         min-width: 92vw;
@@ -1246,7 +1073,7 @@ canvas {
     left: 50%;
     transform: translateX(-50%);
     width: 250px;  
-    height: auto; /* ★修正: 5行入るようにさらに高さを広げる (90px -> 110px) */
+    height: auto; 
     z-index: 9999;
     display: flex;
     justify-content: center;
@@ -1269,62 +1096,64 @@ canvas {
 }
 
 /* ========================================================
-   ★ ネームエントリー画面（iPhone 横向き等・低解像度対応）
-   上下の余白と各要素を極限まで縮小し、画面内に収める最強の設定
+   ★ 低解像度・スマホ横画面対応（max-height: 500px）
+   タッチコントローラーの拡大 ＆ ネームエントリー画面の縮小
    ======================================================== */
 @media screen and (max-height: 500px) {
     
-    /* 1. ネームエントリー画面全体のコンテナ */
+    /* ----------------------------------------------------
+       2. ネームエントリー画面全体のコンテナ
+       ---------------------------------------------------- */
     #name-input-area {
         justify-content: center !important; 
         padding-top: 5px !important;
         padding-bottom: 5px !important;
-        overflow-y: auto !important; /* 万が一はみ出してもスクロールできるようにする */
+        overflow-y: auto !important; 
     }
 
-    /* 2. 「CONGRATULATIONS!」タイトル（もしあれば） */
+    /* 「CONGRATULATIONS!」タイトル */
     #name-input-area #clear-congrats-msg {
-        font-size: 20px !important; /* 36px -> 20px */
+        font-size: 20px !important; 
         margin-top: 2px !important;
-        margin-bottom: 2px !important; /* 10px -> 2px */
+        margin-bottom: 2px !important; 
     }
 
-    /* 3. 「SCORE: XXXXXX」などの上部スコア表示 */
+    /* 「SCORE: XXXXXX」などの上部スコア表示 */
     #name-input-area #result-score-display {
-        font-size: 18px !important; /* 32px -> 18px */
-        margin-bottom: 4px !important; /* 20px -> 4px */
+        font-size: 18px !important; 
+        margin-bottom: 4px !important; 
     }
 
-    /* 4. 「REGISTER TO WORLD RANKING?」のテキスト */
+    /* 「REGISTER TO WORLD RANKING?」のテキスト */
     #name-input-area p {
-        font-size: 11px !important; /* 16px -> 11px */
+        font-size: 11px !important; 
         margin-top: 2px !important;
-        margin-bottom: 4px !important; /* 10px -> 4px */
-        line-height: 1.2 !important; /* 1行を狭くする */
+        margin-bottom: 4px !important; 
+        line-height: 1.2 !important; 
     }
 
-    /* 5. 名前入力フォーム（[ ENTER NAME ]） */
+    /* 名前入力フォーム（[ ENTER NAME ]） */
     #name-input-area #player-name-input {
-        font-size: 14px !important; /* 18~24px -> 14px */
-        padding: 3px 6px !important; /* 12px -> 3px */
-        margin-bottom: 6px !important; /* 16px -> 6px */
-        height: auto !important; /* 高さを自然に */
-        width: 60% !important; /* 横幅を少し狭くする */
+        font-size: 14px !important; 
+        padding: 3px 6px !important; 
+        margin-bottom: 6px !important; 
+        height: auto !important; 
+        width: 60% !important; 
     }
 
-    /* 6. SUBMIT / SKIP ボタンの行間・隙間 */
+    /* SUBMIT / SKIP ボタンの行間・隙間 */
     #name-input-area .btn-row {
-        margin-top: 4px !important; /* 14px -> 4px */
-        gap: 10px !important; /* 30px -> 10px */
+        margin-top: 4px !important; 
+        gap: 10px !important; 
         margin-bottom: 5px !important;
     }
 
-    /* 7. SUBMIT / SKIP ボタン本体のサイズ */
+    /* SUBMIT / SKIP ボタン本体のサイズ */
     #name-input-area .menu-btn.btn-small {
-        min-width: 90px !important; /* 140px -> 90px */
-        padding: 5px 10px !important; /* 8px -> 5px */
-        font-size: 11px !important; /* 13px -> 11px */
-        line-height: 1 !important; /* 文字の高さを詰める */
+        min-width: 90px !important; 
+        padding: 5px 10px !important; 
+        font-size: 11px !important; 
+        line-height: 1 !important; 
     }
 }
 
@@ -1352,8 +1181,6 @@ canvas {
     /* フェードインのアニメーション設定 */
     transition: opacity 0.5s ease-in-out;
 }
-
-/* ★修正：前回ここにあった pointer-events: auto; になる記述を丸ごと削除しました */
 
 /* 2. 透明化クラス (親コンテナに付与) */
 .fade-out-now {
