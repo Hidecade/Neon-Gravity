@@ -259,7 +259,7 @@ const createScorePopup = () => ({
     isBoss: false, active: false, color: '#ffffff' 
 });
 
-const enemyPool = new ObjectPool(createEnemy, 240);
+const enemyPool = new ObjectPool(createEnemy, 400);
 const particlePool = new ObjectPool(createParticle, 1500);
 const ringPool = new ObjectPool(createRing, 100);
 const enemyBulletPool = new ObjectPool(createEnemyBullet, 500); 
