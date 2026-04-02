@@ -4,12 +4,28 @@
 // ★ パーティクル画像キャッシュシステム (より細長く鋭い火花版)
 // ==========================================
 const particleTextureCache = {};
+let particleCacheCount = 0; // ★これを追加
 
 function getParticleTexture(color) {
     if (particleTextureCache[color]) {
         return particleTextureCache[color];
     }
-    // ★修正: 横幅を倍の 80px に伸ばし、高さを少し削って 8px にする
+
+    // ==========================================
+    // ★追加: キャッシュの無限増殖を防ぐ（50色を超えたらリセット）
+    // ==========================================
+    if (particleCacheCount > 50) {
+        for (let key in particleTextureCache) {
+            particleTextureCache[key].width = 1;
+            particleTextureCache[key].height = 1; // メモリ強制解放
+        }
+        for (let key in particleTextureCache) {
+            delete particleTextureCache[key];
+        }
+        particleCacheCount = 0;
+    }
+    // ==========================================
+    
     const offscreen = document.createElement('canvas');
     offscreen.width = 80;
     offscreen.height = 10;
@@ -29,6 +45,7 @@ function getParticleTexture(color) {
     oCtx.fill();
 
     particleTextureCache[color] = offscreen;
+    particleCacheCount++; 
     return offscreen;
 }
 
@@ -108,6 +125,20 @@ function initStars() {
 }
 
 function initNebulae(forcedColor = null) {
+
+    // ==========================================
+    // ★追加: iOSクラッシュ対策（古いCanvasのメモリを強制解放）
+    // ==========================================
+    if (typeof nebulae !== 'undefined' && nebulae.length > 0) {
+        nebulae.forEach(n => {
+            if (n.image) {
+                // 1x1ピクセルにリサイズしてSafariのGPUメモリを強制破棄させる
+                n.image.width = 1;
+                n.image.height = 1;
+            }
+        });
+    }
+
     // 星雲オブジェクトを格納する配列をリセット
     nebulae = [];
 
