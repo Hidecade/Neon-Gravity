@@ -2179,6 +2179,8 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
             timer: Math.random() * 100,
             isWarping: true
         });
+
+        if (!e) return;
         
         // クラゲ特有のパラメータを直接セット
         e.prevAngle = angle;

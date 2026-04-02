@@ -684,6 +684,8 @@ function updateBattleshipAI(e) {
                     noDrop: true
                 });
 
+                if (!fighter) continue;
+
                 // fighter特有のパラメータを直接セット
                 fighter.burstCount = 0;
                 fighter.baseAngle = pToBossAngle;
