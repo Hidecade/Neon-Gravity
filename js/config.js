@@ -95,7 +95,7 @@ let currentGraphicsQuality = 'ULTRA'; // 現在の品質
 let currentLanguage = localStorage.getItem('neonGravity_language') || (window.navigator.language.startsWith('ja') ? 'ja' : 'en');
 
 // --- ステージ・難易度設定 ---
-const START_STAGE = 6;        // 開始ステージ
+const START_STAGE = 1;        // 開始ステージ
 const MAX_STAGE = 10;         // 最大ステージ
 
 // ステージごとの敵総出現数
