@@ -1245,25 +1245,27 @@ canvas {
     top: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 120px;
-    height: 50px;
+    width: 160px;  
+    height: 110px; /* ★修正: 5行入るようにさらに高さを広げる (90px -> 110px) */
     z-index: 9999;
     display: flex;
     justify-content: center;
     align-items: flex-start;
     padding-top: 6px;
     cursor: pointer;
-    -webkit-tap-highlight-color: transparent; /* タッチ時の青枠を消す */
+    -webkit-tap-highlight-color: transparent; 
 }
 
 #simple-fps-text {
     color: #0ff;
     font-family: 'Orbitron', monospace;
-    font-size: calc(14px * var(--ui-scale, 1));
+    font-size: calc(12px * var(--ui-scale, 1)); 
     font-weight: 700;
     text-shadow: 0 0 6px rgba(0, 255, 255, 0.8);
-    pointer-events: none; /* タッチ判定はzoneに任せる */
+    pointer-events: none; 
     transition: opacity 0.2s ease;
+    text-align: center;   
+    line-height: 1.3;     
 }
 
 /* ========================================================

@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.8.12"; // ゲームのバージョン（更新のたびにここを変更）
+window.GAME_VERSION = "0.8.13"; // ゲームのバージョン（更新のたびにここを変更）
 
 
 const DEBUG = {
@@ -31,7 +31,7 @@ const PI2 = Math.PI * 2;        // 定数化して計算を省く
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // ==========================================
-// ★追加: グラフィック設定のプリセット
+// グラフィック設定のプリセット
 // ==========================================
 const GRAPHICS_SETTINGS = {
     ULTRA: {
@@ -39,20 +39,42 @@ const GRAPHICS_SETTINGS = {
         explosionMag: 3.0,     
         starCount: 300,        
         nebulaeCount: 20,      
-        // ★修正: 判定ラインを 1024 から 768（PCの実質的な最低高さ）に下げる
-        resScale: (Math.min(window.innerWidth, window.innerHeight) >= 768) 
-                  ? 1.0 
-                  : Math.min(window.devicePixelRatio || 2.0, 2.5)
+        get resScale() {
+            const shortSide = Math.min(window.innerWidth, window.innerHeight);
+            const longSide = Math.max(window.innerWidth, window.innerHeight);
+            
+            // PC / iPad(横) などの大画面
+            if (shortSide >= 768) {
+                // ★追加: 長辺が1280を超える場合、1280基準で縮小し処理落ちを防ぐ
+                if (longSide > 1280) {
+                    return 1280 / longSide; // 例: 1920の場合 1280/1920 ≒ 0.66
+                }
+                return 1.0; 
+            } else {
+                // スマホ等の場合はRetinaの綺麗さを活かす
+                return Math.min(window.devicePixelRatio || 2.0, 2.5);
+            }
+        }
     },
     HIGH: {
         gridSpacing: 32,      
         explosionMag: 3.0,    
         starCount: 300,       
         nebulaeCount: 20,     
-        // ★修正: こちらも 1024 から 768 に下げる
-        resScale: (Math.min(window.innerWidth, window.innerHeight) >= 768) 
-                  ? 1.0 
-                  : Math.min(window.devicePixelRatio || 1.5, 2.0)
+        get resScale() {
+            const shortSide = Math.min(window.innerWidth, window.innerHeight);
+            const longSide = Math.max(window.innerWidth, window.innerHeight);
+            
+            if (shortSide >= 768) {
+                // ★追加: こちらも同様に1280で制限
+                if (longSide > 1280) {
+                    return 1280 / longSide;
+                }
+                return 1.0; 
+            } else {
+                return Math.min(window.devicePixelRatio || 1.5, 2.0);
+            }
+        }
     },
     MEDIUM: {
         gridSpacing: 32,

@@ -782,41 +782,43 @@ function detectResolution(screenW, screenH) {
     const ratio = screenW / screenH;
     const isPortrait = screenH > screenW;
 
-    // 縦持ち・横持ちに左右されないよう、長辺と短辺を取得
     const longSide = Math.max(screenW, screenH);
     const shortSide = Math.min(screenW, screenH);
 
     // ----------------------------------------------------
-    // 1. PC / 大画面モニター (横長かつ短辺が十分大きい)
+    // 1. PC / iPad(横) / 大画面モニター (横長かつ短辺が十分大きい)
     // ----------------------------------------------------
     if (!isPortrait && shortSide >= 768) {
-        // 4Kなど巨大すぎる画面は、アスペクト比を保ったまま長辺を1920に制限
+        // 短辺に応じてUIスケールを動的に計算 (1.0〜最大1.6)
+        let calculatedUiScale = (shortSide / 768) * 1.3; 
+        calculatedUiScale = Math.min(calculatedUiScale, 1.6);
+
         if (longSide > 1920) {
             return {
                 key: "FHD_CAPPED",
                 width: 1920,
-                height: Math.floor(1920 / ratio), // 比率を維持！
-                uiScale: 1.0
+                height: Math.floor(1920 / ratio),
+                uiScale: 1.5 
             };
         }
-        // フルHD以下のPC画面はそのままの解像度を使用
+        
         return {
             key: "PC_L",
             width: screenW,
             height: screenH,
-            uiScale: 1.0
+            uiScale: calculatedUiScale 
         };
     }
 
     // ----------------------------------------------------
-    // 2. 超小型画面 (古いスマホやVGA相当のウィンドウ)
+    // 2. 超小型画面 (VGA相当のウィンドウや古いスマホ)
     // ----------------------------------------------------
     if (longSide <= 800) {
+        // ★修正: SMALL_P / SMALL_L を VGA_P / VGA_L に変更して統一
         return {
-            key: isPortrait ? "SMALL_P" : "SMALL_L",
+            key: isPortrait ? "VGA_P" : "VGA_L",
             width: screenW,
             height: screenH,
-            // 画面が小さいのでUIが被らないように小さくする
             uiScale: 0.6 
         };
     }
@@ -824,11 +826,9 @@ function detectResolution(screenW, screenH) {
     // ----------------------------------------------------
     // 3. 一般的なスマホ / タブレット
     // ----------------------------------------------------
-    // 描画負荷とゲームバランスのため、長辺を最大1200程度に制限する
     const MAX_MOBILE_LONG_SIDE = 1200;
     let scale = 1.0;
     
-    // タブレットや大型スマホの場合のみ、比率を保って全体を縮小
     if (longSide > MAX_MOBILE_LONG_SIDE) {
         scale = MAX_MOBILE_LONG_SIDE / longSide;
     }
@@ -850,60 +850,62 @@ function resize() {
 
     currentResolution = detectResolution(vw, vh);
 
-    // 現在の画質設定から解像度倍率を取得（デフォルトは1.0）
     const qualityScale = GRAPHICS_SETTINGS[currentGraphicsQuality]?.resScale || 1.0;
 
-    // 内部解像度に倍率を適用（ここが実際の描画負荷に直結します）
     width = canvas.width = Math.floor(currentResolution.width * qualityScale);
     height = canvas.height = Math.floor(currentResolution.height * qualityScale);
 
-    // 画面上の表示サイズ（CSS）は、実画面の大きさに合わせる（引き伸ばす）
     const scale = Math.min(vw / currentResolution.width, vh / currentResolution.height);
     const displayW = Math.round(currentResolution.width * scale);
     const displayH = Math.round(currentResolution.height * scale);
 
     canvas.style.width = `${displayW}px`;
     canvas.style.height = `${displayH}px`;
-
     canvas.style.position = 'absolute';
     canvas.style.left = `${Math.floor((vw - displayW) / 2)}px`;
     canvas.style.top = `${Math.floor((vh - displayH) / 2)}px`;
 
-// アプリ全体スケール
+    // ==========================================
+    // アプリ全体スケール (baseAppScale)
+    // ==========================================
     const maxDim = Math.max(width, height);
     baseAppScale = maxDim / REFERENCE_SIZE;
 
-    // ▼ プレイ画面のズームサイズ調整（縦1.2倍、横1.1倍）
-    
     const isPortrait = vh > vw;
-    if (currentResolution.key === "HD") {
-        baseAppScale *= 0.85;
-    }
-    else{
-        if (isPortrait) {
-            baseAppScale *= 1.3;
+    
+    // プレイ画面のズームサイズ調整
+    if (isPortrait) {
+        baseAppScale *= 1.3;
+    } else {
+        // ★修正: 大画面(FHD_CAPPED, PC_L)とスマホ(MOBILE_L等)でズーム倍率を分ける
+        if (currentResolution.key === "FHD_CAPPED" || currentResolution.key === "PC_L") {
+            // PCやiPad横の場合は、1.2から1.0に下げてズームアウト（視野を広く）する
+            // ※広すぎると感じた場合は 1.05 や 1.1 に微調整してください
+            baseAppScale *= 0.75; 
         } else {
+            // スマホの横画面などは迫力を出すために1.2倍のまま
             baseAppScale *= 1.2;
         }
     }
 
-    // UIスケール
+    // ==========================================
+    // UIスケールとHUDスケール
+    // ==========================================
     globalUiScale = currentResolution.uiScale;
     document.documentElement.style.setProperty('--ui-scale', globalUiScale);
 
-    // HUD専用スケール
-    let hudScale = 1;
+    let hudScale = 1.0;
 
-    if (currentResolution.key === "HD") {
-        hudScale = 1.8;
-    } else if (
-        currentResolution.key === "VGA_L" ||
-        currentResolution.key === "VGA_P") {
+    // ★修正: 指定された6つのキーに基づいてHUDスケールを割り当て
+    if (currentResolution.key === "VGA_L" || currentResolution.key === "VGA_P") {
+        // VGAサイズ（超小型）の場合はHUDを少し小さくする
         hudScale = 0.9;
-    } else if (isPortrait) {
+    } else if (currentResolution.key === "MOBILE_P") {
+        // 縦持ちスマホ
         hudScale = 0.9;
     } else {
-        hudScale = 1.0;
+        // 横画面系（FHD_CAPPED, PC_L, MOBILE_L）はUIスケールに連動させる
+        hudScale = globalUiScale; 
     }
 
     document.documentElement.style.setProperty('--hud-scale', hudScale);
@@ -928,7 +930,6 @@ function resize() {
         if (gameState === 'ENDING' || gameState === 'ENDING_STORY') {
             initNebulae('#00ccff');
         } else if (['TITLE', 'HOWTO', 'RANKING', 'OST', 'STORY', 'GAMEOVER_UI'].includes(gameState)) {
-            // ★追加：タイトルやメニュー関連の画面ではデフォルトのシアンに固定する
             initNebulae('#00bbff');
         } else {
             initNebulae();
@@ -1166,9 +1167,24 @@ function updateDebugStats() {
         debugFrameCounter = 0;
         debugLastFpsTime = now;
         
-        // ▼ 追加: 画面上のテキストを更新
         const fpsEl = document.getElementById('simple-fps-text');
-        if (fpsEl && fpsEl.style.opacity === '1') fpsEl.innerText = `FPS: ${debugFps}`;
+        if (fpsEl && fpsEl.style.opacity === '1') {
+            
+            // 各ステータスの取得
+            const resKey = typeof currentResolution !== 'undefined' ? currentResolution.key : "UNKNOWN";
+            const resScaleVal = (typeof currentGraphicsQuality !== 'undefined' && typeof GRAPHICS_SETTINGS !== 'undefined' && GRAPHICS_SETTINGS[currentGraphicsQuality]) 
+                              ? GRAPHICS_SETTINGS[currentGraphicsQuality].resScale 
+                              : 1.0;
+            const appScaleVal = typeof baseAppScale !== 'undefined' ? baseAppScale : 1.0;
+            
+            // HUDスケールの取得
+            let hudScaleStr = document.documentElement.style.getPropertyValue('--hud-scale');
+            if (!hudScaleStr) hudScaleStr = "1.0"; 
+            else hudScaleStr = parseFloat(hudScaleStr).toFixed(2); 
+            
+            // ★修正: 5行構成でAPPも追加
+            fpsEl.innerText = `FPS: ${debugFps}\nKEY: ${resKey}\nHUD: ${hudScaleStr}\nRES: ${typeof resScaleVal === 'number' ? resScaleVal.toFixed(2) : resScaleVal}\nAPP: ${typeof appScaleVal === 'number' ? appScaleVal.toFixed(2) : appScaleVal}`;
+        }
     }
 }
 
