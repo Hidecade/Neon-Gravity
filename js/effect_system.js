@@ -612,7 +612,7 @@ function drawVisualEffects() {
             
             // 線を約1.3倍大きく（長く・太く）する
             const renderWidth = (p.size || 2) * 6.0 * G_SCALE + speed * 3.0; 
-            const renderHeight = (p.size || 2) * 3.0 * G_SCALE; // 太さ
+            const renderHeight = (p.size || 2) * 4.5 * G_SCALE; // 太さ
             
             // 【超高速化テクニック】 save/restoreを使わずに座標系を回転
             // 座標 p.x, p.y を整数化 (| 0) してサブピクセルレンダリングを回避
