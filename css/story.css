@@ -171,7 +171,7 @@
         width: 90%;
         max-width: 1100px;
         margin: 0 0 88px 0;
-        font-size: calc(17px * var(--ui-scale, 1));
+        font-size: calc(19px * var(--ui-scale, 1));
         line-height: 1.75;
     }
 
@@ -186,7 +186,7 @@
         height: calc(100vh - 18px - 88px);
         max-height: calc(100vh - 18px - 88px);
         padding: 14px 14px 16px;
-        font-size: calc(16px * var(--ui-scale, 1));
+        font-size: calc(18px * var(--ui-scale, 1));
         line-height: 1.78;
     }
 
@@ -195,7 +195,7 @@
         min-width: 124px;
         height: 40px;
         padding: 0 18px;
-        font-size: calc(16px * var(--ui-scale, 1));
+        font-size: calc(18px * var(--ui-scale, 1));
     }
 }
 
@@ -203,7 +203,7 @@
     #story-typing-msg {
         width: min(75vw, 900px);
         max-width: 900px;
-        font-size: calc(17px * var(--ui-scale, 1));
+        font-size: calc(19px * var(--ui-scale, 1));
         margin-bottom: 60px;
         line-height: 1.70;
     }
@@ -225,7 +225,7 @@
         padding: 12px 24px; 
         
         /* ★修正：文字を少し大きくする（12px → 15px） */
-        font-size: calc(16px * var(--ui-scale, 1));
+        font-size: calc(18px * var(--ui-scale, 1));
         
         /* 文字が大きくなった分、行間もわずかに広げる */
         line-height: 1.75; 
@@ -236,6 +236,6 @@
         min-width: 118px;
         height: 36px;
         padding: 0 16px;
-        font-size: calc(16px * var(--ui-scale, 1));
+        font-size: calc(18px * var(--ui-scale, 1));
     }
 }
