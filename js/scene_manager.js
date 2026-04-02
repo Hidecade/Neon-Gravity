@@ -499,13 +499,9 @@ async function showGameOver() {
     if (ui.bossContainer) ui.bossContainer.style.display = 'none';
     ui.pauseBtn.style.display = 'none';
 
-    const scoreDisplay = document.getElementById('result-score-display');
-    if (scoreDisplay) {
-        scoreDisplay.innerText = `SCORE: ${score.toLocaleString()}`;
-        // ★追加：スマホ横画面ではみ出さないように、文字サイズと下の余白を小さく上書きする
-        scoreDisplay.style.fontSize = '22px';       // 元の32pxから22pxに縮小
-        scoreDisplay.style.marginBottom = '10px';   // 下の隙間も20pxから10pxに縮める
-    }
+    // ==========================================
+    // ★修正: ここにあったスコア書き込み処理を下（表示後）に移動させました
+    // ==========================================
 
     // 全ステージ総合レポートをゲームオーバー画面に表示する
     if (typeof showFinalResultBoard === 'function') {
@@ -524,8 +520,20 @@ async function showGameOver() {
             canRegister = true; // エラー時は念のため登録許容
         }
 
+        // ★ 1. まず名前入力画面を「表示状態」にする
         ui.nameInputArea.style.display = 'flex';
 
+        // ==========================================
+        // ★ 2. 画面が表示された直後に、確実にスコアを書き込む
+        // ==========================================
+        const scoreDisplay = document.getElementById('result-score-display');
+        if (scoreDisplay) {
+            // innerText は非表示時に無視されることがあるため、より安全な textContent を使用
+            scoreDisplay.textContent = `SCORE: ${score.toLocaleString()}`;
+            // スマホ横画面ではみ出さないように、文字サイズと下の余白を小さく上書きする
+            scoreDisplay.style.fontSize = '22px';       // 元の32pxから22pxに縮小
+            scoreDisplay.style.marginBottom = '10px';   // 下の隙間も20pxから10pxに縮める
+        }
 
         const msgPara = document.querySelector("#name-input-area p");
         const nameInp = document.getElementById("player-name-input");
@@ -599,7 +607,6 @@ async function showGameOver() {
         proceedToNextMenu();
     }
 }
-
 
 // =========================================================
 // 2. メニュー・モード・ウィンドウ制御 (Menus & Modes)

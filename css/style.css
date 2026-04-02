@@ -734,8 +734,8 @@ canvas {
     max-width: 360px;
     color: #00ffff;
     font-family: monospace;
-    font-size: 12px;
-    line-height: 1.45;
+    font-size: 10px;
+    line-height: 1.25;
     background: rgba(0, 0, 0, 0.80);
     border: 1px solid rgba(0, 255, 255, 0.85);
     border-radius: 8px;
@@ -1074,6 +1074,7 @@ canvas {
     transform: translateX(-50%);
     width: 250px;  
     height: auto; 
+    min-height: 20px;
     z-index: 9999;
     display: flex;
     justify-content: center;
