@@ -663,42 +663,40 @@ function drawTadpoleEnemy(ctx, e) {
     //ctx.shadowBlur = 0;
 }
 
+
 function drawAsteroidEnemy(ctx, e) {
     ctx.save();
 
     // --- 1. 座標の決定 ---
     ctx.translate(e.x, e.y);
 
-    // ▼▼▼ 修正: 出現中のスケール計算と透明度 ▼▼▼
-    let baseScale = e.scale * G_SCALE;
+    // 共通のワープ（出現）演出の計算
     let visualAlpha = 1.0;
-
+    let warpFactor = 1.0; // ワープ中の拡大率
+    
     if (e.isWarping) {
-        // 出現率に応じて0.1倍から1.0倍まで拡大
-        const scaleFactor = 0.1 + (e.warpPercent || 0) * 0.9;
-        baseScale *= scaleFactor;
+        warpFactor = 0.1 + (e.warpPercent || 0) * 0.9;
         visualAlpha = e.warpPercent || 0;
     }
 
-    ctx.scale(baseScale, baseScale);
-    // ▲▲▲ 修正ここまで ▲▲▲
-
     if (e.variant === 'bubble') {
-        // バブル（泡）の描画
+        // =========================================================
+        // ★ バブル（泡）：e.scale を含めて Canvas ごと拡大する
+        // =========================================================
+        let baseScale = e.scale * G_SCALE * warpFactor;
+        ctx.scale(baseScale, baseScale);
+
         const time = frame * 0.02;
         const baseRadius = 22;
-
         e.bend = (e.bend || 0) * 0.92;
 
         const points = [];
         const numPoints = 8;
-
         for (let i = 0; i < numPoints; i++) {
             const ang = (Math.PI * 2 / numPoints) * i;
             const noise = Math.sin(time + i) * 1.5
                 + Math.cos(time * 1.3 + i * 1.5) * 0.8
                 + Math.sin(frame * 0.2 + i) * e.bend * 0.4;
-
             const r = baseRadius + noise;
             points.push({ x: Math.cos(ang) * r, y: Math.sin(ang) * r });
         }
@@ -707,7 +705,6 @@ function drawAsteroidEnemy(ctx, e) {
         let xc = (points[numPoints - 1].x + points[0].x) / 2;
         let yc = (points[numPoints - 1].y + points[0].y) / 2;
         ctx.moveTo(xc, yc);
-
         for (let i = 0; i < numPoints; i++) {
             const p = points[i];
             const pNext = points[(i + 1) % numPoints];
@@ -719,7 +716,7 @@ function drawAsteroidEnemy(ctx, e) {
 
         // 奥のグリッドを隠す「遮光レイヤー」
         ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = `rgba(0, 5, 20, ${0.6 * visualAlpha})`; // 透明度を考慮
+        ctx.fillStyle = `rgba(0, 5, 20, ${0.6 * visualAlpha})`;
         ctx.fill();
 
         // 輪郭とハイライトの加算合成
@@ -729,11 +726,10 @@ function drawAsteroidEnemy(ctx, e) {
         grad.addColorStop(0.4, 'rgba(0, 255, 255, 0)');
         grad.addColorStop(0.85, `rgba(0, 255, 255, ${0.4 * visualAlpha})`);
         grad.addColorStop(1, 'rgba(0, 255, 255, 0)');
-
         ctx.fillStyle = grad;
         ctx.fill();
 
-        // 輪郭線
+        // 輪郭線（元の 1.2 に戻す）
         ctx.strokeStyle = `rgba(0, 255, 255, ${0.5 * visualAlpha})`;
         ctx.lineWidth = 1.2 / baseScale;
         ctx.stroke();
@@ -751,39 +747,37 @@ function drawAsteroidEnemy(ctx, e) {
         }
 
     } else {
-        // 岩（アステロイド）の描画
+        // ==========================================
+        // ★ 岩（アステロイド）の描画
+        // ==========================================
+        
+        let drawScale = G_SCALE * warpFactor; 
+        ctx.scale(drawScale, drawScale);
+
         ctx.rotate(e.angle);
-        ctx.globalAlpha = visualAlpha;
         ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = e.color;
-        ctx.lineWidth = 1.5 / baseScale;
-
-        // 外郭パス
-        ctx.beginPath();
-        for (let i = 0; i < 8; i++) {
-            const r = 22 * (0.8 + Math.sin(i * 2.1 + e.size * 5) * 0.25);
-            const ang = (Math.PI * 2 / 8) * i;
-            if (i === 0) ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
-            else ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+        
+        // =========================================================
+        // ★ 修正: e.id が無い場合でも確実に 8種類に分ける安全策
+        // =========================================================
+        if (typeof e.typeId === 'undefined') {
+            // 初めて描画される時に、0〜7 のランダムな番号を自分に割り当てる
+            e.typeId = Math.floor(Math.random() * 8);
         }
-        ctx.closePath();
+        const typeId = e.typeId; 
+        
+        // 取得時に e.scale を渡し、「その大きさ専用のテクスチャ」をもらう
+        const tex = getAsteroidTexture(e.color, typeId, e.scale);
 
-        // 線の「光の拡散」部分を重ね書きで表現（shadowBlurの代わり）
-        ctx.globalAlpha = visualAlpha * 0.3;
-        ctx.lineWidth = 4.0 / baseScale;
-        ctx.stroke();
-
-        // 線の芯
         ctx.globalAlpha = visualAlpha;
-        ctx.lineWidth = 1.5 / baseScale;
-        ctx.stroke();
-
-        // 内部のひび割れライン
-        ctx.globalAlpha = 0.3 * visualAlpha;
-        ctx.beginPath();
-        ctx.moveTo(-10, -5);
-        ctx.lineTo(5, 8);
-        ctx.stroke();
+        
+        ctx.drawImage(
+            tex.canvas,
+            -tex.cx,
+            -tex.cy,
+            tex.logicalSize,
+            tex.logicalSize
+        );
     }
 
     ctx.restore();
