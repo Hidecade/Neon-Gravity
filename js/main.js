@@ -260,7 +260,7 @@ const createScorePopup = () => ({
 });
 
 const enemyPool = new ObjectPool(createEnemy, 240);
-const particlePool = new ObjectPool(createParticle, 800);
+const particlePool = new ObjectPool(createParticle, 1500);
 const ringPool = new ObjectPool(createRing, 100);
 const enemyBulletPool = new ObjectPool(createEnemyBullet, 500); 
 const playerBulletPool = new ObjectPool(createPlayerBullet, 100);
@@ -269,6 +269,7 @@ const scorePopupPool = new ObjectPool(createScorePopup, 50);
 // オブジェクトを受け取るヘルパー関数
 function spawnParticleObj(options) {
     const p = particlePool.get();
+    if (!p) return null;
     
     // 必須系の値（無い場合はデフォルト値を入れる安全設計）
     p.x = options.x || 0;
@@ -294,6 +295,7 @@ function spawnParticleObj(options) {
 
 function spawnRingObj(options) {
     const r = ringPool.get();
+    if (!r) return null;
     
     r.x = options.x || 0;
     r.y = options.y || 0;
@@ -317,6 +319,7 @@ function spawnRingObj(options) {
 
 function spawnEnemyBulletObj(options) {
     const eb = enemyBulletPool.get();
+    if (!eb) return null;
     
     // 基本パラメータ
     eb.x = options.x || 0;
@@ -350,6 +353,7 @@ function spawnEnemyBulletObj(options) {
 
 function spawnPlayerBulletObj(options) {
     const b = playerBulletPool.get();
+    if (!b) return null;
     
     b.x = options.x || 0;
     b.y = options.y || 0;
@@ -362,6 +366,8 @@ function spawnPlayerBulletObj(options) {
 
 function spawnScorePopupObj(options) {
     const s = scorePopupPool.get();
+    if (!s) return null;
+
     s.x = options.x || 0;
     s.y = options.y || 0;
     s.vy = options.vy !== undefined ? options.vy : -1;
