@@ -802,7 +802,7 @@ function detectResolution(screenW, screenH) {
                     key: "FHD_CAPPED",
                     width: 1920,
                     height: Math.floor(1920 / ratio),
-                    uiScale: 1.5 
+                    uiScale: 1.0 
                 };
             }
             return {
@@ -820,7 +820,7 @@ function detectResolution(screenW, screenH) {
                     key: "FHD_CAPPED_P", // 縦用のキャップキー
                     width: Math.floor(1920 * ratio),
                     height: 1920,
-                    uiScale: 1.5
+                    uiScale: 1.0
                 };
             }
             return {

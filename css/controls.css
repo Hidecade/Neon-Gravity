@@ -16,8 +16,8 @@
     position: absolute;
     width: calc(200px * var(--ui-scale, 1));
     height: calc(200px * var(--ui-scale, 1));
-    max-width: 250px;  /* ★追加: 最大サイズを制限 */
-    max-height: 250px; /* ★追加: 最大サイズを制限 */
+    max-width: 200px;  /* ★追加: 最大サイズを制限 */
+    max-height: 200px; /* ★追加: 最大サイズを制限 */
     border-radius: 50%;
     border: 1px solid rgba(0, 255, 255, 0.3);
     background: radial-gradient(circle, rgba(0, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.2) 70%);
@@ -50,8 +50,8 @@
 .knob {
     width: calc(60px * var(--ui-scale, 1));
     height: calc(60px * var(--ui-scale, 1));
-    max-width: 80px;  /* ★追加: 最大サイズを制限 */
-    max-height: 80px; /* ★追加: 最大サイズを制限 */
+    max-width: 70px;  /* ★追加: 最大サイズを制限 */
+    max-height: 70px; /* ★追加: 最大サイズを制限 */
     border-radius: 50%;
     background: rgba(0, 255, 255, 0.15);
     border: 2px solid #0ff;
@@ -81,8 +81,8 @@
     position: absolute;
     width: calc(100px * var(--ui-scale, 1));
     height: calc(100px * var(--ui-scale, 1));
-    max-width: 130px;  /* ★追加: 発射ボタンの最大サイズを制限 */
-    max-height: 130px; /* ★追加: 発射ボタンの最大サイズを制限 */
+    max-width: 100px;  /* ★追加: 発射ボタンの最大サイズを制限 */
+    max-height: 100px; /* ★追加: 発射ボタンの最大サイズを制限 */
     right: calc(30px * var(--ui-scale, 1));
     bottom: calc(230px * var(--ui-scale, 1));
     border-radius: 50%;
@@ -109,8 +109,8 @@
     position: absolute;
     width: calc(110px * var(--ui-scale, 1));
     height: calc(110px * var(--ui-scale, 1));
-    max-width: 143px;  /* ★追加: 点線枠の最大サイズを制限 (元の比率 110/100 に合わせる) */
-    max-height: 143px; /* ★追加: 点線枠の最大サイズを制限 */
+    max-width: 105px;  /* ★追加: 点線枠の最大サイズを制限 (元の比率 110/100 に合わせる) */
+    max-height: 105px; /* ★追加: 点線枠の最大サイズを制限 */
     border: 1px dashed rgba(255, 255, 0, 0.4);
     border-radius: 50%;
     animation: rotate 4s linear infinite;
