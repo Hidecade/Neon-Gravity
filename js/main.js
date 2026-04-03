@@ -787,35 +787,55 @@ function detectResolution(screenW, screenH) {
     const shortSide = Math.min(screenW, screenH);
 
     // ----------------------------------------------------
-    // 1. PC / iPad(横) / 大画面モニター (横長かつ短辺が十分大きい)
+    // 1. PC / iPad / 大画面モニター (短辺が十分大きい)
     // ----------------------------------------------------
-    if (!isPortrait && shortSide >= 768) {
+    if (shortSide >= 768) {
         // 短辺に応じてUIスケールを動的に計算 (1.0〜最大1.6)
         let calculatedUiScale = (shortSide / 768) * 1.3; 
         calculatedUiScale = Math.min(calculatedUiScale, 1.6);
 
-        if (longSide > 1920) {
+        // 横画面 (Landscape) の場合
+        if (!isPortrait) {
+            // 超大画面の制限
+            if (longSide > 1920) {
+                return {
+                    key: "FHD_CAPPED",
+                    width: 1920,
+                    height: Math.floor(1920 / ratio),
+                    uiScale: 1.5 
+                };
+            }
             return {
-                key: "FHD_CAPPED",
-                width: 1920,
-                height: Math.floor(1920 / ratio),
-                uiScale: 1.5 
+                key: "PC_L",
+                width: screenW,
+                height: screenH,
+                uiScale: calculatedUiScale 
+            };
+        } 
+        // 縦画面 (Portrait) の場合 (PC_P を追加)
+        else {
+            // 縦長の場合も、長辺が大きすぎる場合の制限を設ける（必要に応じて）
+            if (longSide > 1920) {
+                return {
+                    key: "FHD_CAPPED_P", // 縦用のキャップキー
+                    width: Math.floor(1920 * ratio),
+                    height: 1920,
+                    uiScale: 1.5
+                };
+            }
+            return {
+                key: "PC_P",
+                width: screenW,
+                height: screenH,
+                uiScale: calculatedUiScale
             };
         }
-        
-        return {
-            key: "PC_L",
-            width: screenW,
-            height: screenH,
-            uiScale: calculatedUiScale 
-        };
     }
 
     // ----------------------------------------------------
     // 2. 超小型画面 (VGA相当のウィンドウや古いスマホ)
     // ----------------------------------------------------
     if (longSide <= 800) {
-        // ★修正: SMALL_P / SMALL_L を VGA_P / VGA_L に変更して統一
         return {
             key: isPortrait ? "VGA_P" : "VGA_L",
             width: screenW,
