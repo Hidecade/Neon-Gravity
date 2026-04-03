@@ -43,7 +43,7 @@ function drawLasers() {
         ctx.translate(l.x, l.y);
         ctx.rotate(l.angle);
         ctx.globalCompositeOperation = 'lighter';
-        if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 15;
+        //if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 15;
 
         // ==========================================
         // ★状態に応じたレーザーの色と太さの設定

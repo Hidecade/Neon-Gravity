@@ -448,7 +448,7 @@ function drawWormholes() {
             ctx.save();
             ctx.translate(w.x, w.y);
             ctx.scale(scale, scale);
-            if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 30;
+            //if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 30;
             ctx.shadowColor = '#209';
             const grad = ctx.createRadialGradient(-5, -5, 2, 0, 0, 25);
             grad.addColorStop(0, '#333'); grad.addColorStop(0.2, '#000'); grad.addColorStop(0.8, '#000'); grad.addColorStop(1, '#0ff');
@@ -633,7 +633,7 @@ function drawVisualEffects() {
             ctx.globalAlpha = baseAlpha;
             ctx.strokeStyle = r.color;
             ctx.lineWidth = lw;
-            if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 15 * sizeFactor;
+            //if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 15 * sizeFactor;
             ctx.shadowColor = r.color;
 
             ctx.beginPath(); ctx.arc(r.x, r.y, currentR, 0, PI2); ctx.stroke();

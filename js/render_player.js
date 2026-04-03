@@ -234,7 +234,7 @@ function drawInvulnBarrier(ctx, p) {
     }
 
     ctx.strokeStyle = barrierColor;
-    if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = glowBlur;
+    //if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = glowBlur;
     ctx.shadowColor = barrierColor;
     ctx.lineWidth = 2.0; // 少し太くして視認性アップ
     ctx.globalCompositeOperation = 'lighter';
@@ -317,7 +317,7 @@ function drawEmeraldPhoenix(ctx, p) {
     else if (p.invuln > 0) { mainColor = '#ff0'; accentColor = '#fff'; }
     else if (p.laserTimer > 0) { mainColor = '#0ff'; accentColor = '#fff'; }
 
-    if (currentGraphicsQuality === 'HIGH')ctx.shadowBlur = 20;
+    if (currentGraphicsQuality === 'HIGH' || currentGraphicsQuality === 'ULTRA') ctx.shadowBlur = 20;
     ctx.shadowColor = mainColor;
     ctx.globalCompositeOperation = 'lighter';
 
@@ -355,7 +355,7 @@ function drawEmeraldPhoenix(ctx, p) {
         ctx.save();
         ctx.beginPath();
         ctx.strokeStyle = mainColor;
-        if (isCenter) { ctx.lineWidth = 3 * scale; ctx.shadowBlur = 25; }
+        //if (isCenter) { ctx.lineWidth = 3 * scale; ctx.shadowBlur = 25; }
         else { ctx.lineWidth = 1 * scale; ctx.globalAlpha = 0.6; }
         ctx.moveTo(-10 * scale, (i - 1) * 5 * scale);
         ctx.quadraticCurveTo(-40 * scale, tailOff * scale, -70 * scale, (tailOff + (i - 1) * 15) * scale);

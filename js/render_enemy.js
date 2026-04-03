@@ -1332,7 +1332,7 @@ function drawSentinelEnemy(ctx, e) {
     // --- 1. 本体（六角形のセンサーポッド） ---
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
-    if (currentGraphicsQuality == 'HIGH') ctx.shadowBlur = 10;
+    //if (currentGraphicsQuality == 'HIGH') ctx.shadowBlur = 10;
     ctx.shadowColor = color;
 
     ctx.beginPath();

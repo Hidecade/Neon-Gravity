@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.9.01"; // ゲームのバージョン（更新のたびにここを変更）
+window.GAME_VERSION = "0.9.02"; // ゲームのバージョン（更新のたびにここを変更）
 
 
 const DEBUG = {
@@ -45,8 +45,8 @@ const GRAPHICS_SETTINGS = {
             
             // iPad / PC などの大画面判定 (短辺768px以上)
             if (shortSide >= 768) {
-                // 基本値を 1.5 に設定
-                let baseScale = 1.5;
+                // 基本値を 2.0 に設定
+                let baseScale = 2.0;
                 
                 // 負荷軽減：解像度が非常に高い場合（例：Retina Pro等）
                 // 長辺が 2560px (1280 * 2) を超える場合は、描画負荷を抑えるため制限をかける
@@ -70,7 +70,7 @@ const GRAPHICS_SETTINGS = {
             const longSide = Math.max(window.innerWidth, window.innerHeight);
             
             if (shortSide >= 768) {
-                // HIGH設定でもiPadなら 2.0 を適用
+                // HIGH設定でもiPadなら 1.5 を適用
                 if (longSide > 1280) {
                     return (1280 * 1.5) / longSide;
                 }
