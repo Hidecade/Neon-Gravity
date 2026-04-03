@@ -879,10 +879,10 @@ function resize() {
         baseAppScale *= 1.3;
     } else {
         // ★修正: 大画面(FHD_CAPPED, PC_L)とスマホ(MOBILE_L等)でズーム倍率を分ける
-        if (currentResolution.key === "FHD_CAPPED" || currentResolution.key === "PC_L") {
-            // PCやiPad横の場合は、1.2から1.0に下げてズームアウト（視野を広く）する
-            // ※広すぎると感じた場合は 1.05 や 1.1 に微調整してください
+        if (currentResolution.key === "FHD_CAPPED") {
             baseAppScale *= 0.75; 
+        } else if (currentResolution.key === "PC_L") {
+            baseAppScale *= 1.2; 
         } else {
             // スマホの横画面などは迫力を出すために1.2倍のまま
             baseAppScale *= 1.2;
