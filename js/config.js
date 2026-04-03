@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = "0.9.00"; // ゲームのバージョン（更新のたびにここを変更）
+window.GAME_VERSION = "0.9.01"; // ゲームのバージョン（更新のたびにここを変更）
 
 
 const DEBUG = {
@@ -34,7 +34,7 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 // グラフィック設定のプリセット
 // ==========================================
 const GRAPHICS_SETTINGS = {
-    ULTRA: {
+       ULTRA: {
         gridSpacing: 32,       
         explosionMag: 3.0,     
         starCount: 300,        
@@ -43,13 +43,17 @@ const GRAPHICS_SETTINGS = {
             const shortSide = Math.min(window.innerWidth, window.innerHeight);
             const longSide = Math.max(window.innerWidth, window.innerHeight);
             
-            // PC / iPad(横) などの大画面
+            // iPad / PC などの大画面判定 (短辺768px以上)
             if (shortSide >= 768) {
-                // ★追加: 長辺が1280を超える場合、1280基準で縮小し処理落ちを防ぐ
+                // 基本値を 1.5 に設定
+                let baseScale = 1.5;
+                
+                // 負荷軽減：解像度が非常に高い場合（例：Retina Pro等）
+                // 長辺が 2560px (1280 * 2) を超える場合は、描画負荷を抑えるため制限をかける
                 if (longSide > 1280) {
-                    return 1280 / longSide; // 例: 1920の場合 1280/1920 ≒ 0.66
+                    return (1280 * 2.0) / longSide; 
                 }
-                return 1.0; 
+                return baseScale; 
             } else {
                 // スマホ等の場合はRetinaの綺麗さを活かす
                 return Math.min(window.devicePixelRatio || 2.0, 2.5);
@@ -66,11 +70,11 @@ const GRAPHICS_SETTINGS = {
             const longSide = Math.max(window.innerWidth, window.innerHeight);
             
             if (shortSide >= 768) {
-                // ★追加: こちらも同様に1280で制限
+                // HIGH設定でもiPadなら 2.0 を適用
                 if (longSide > 1280) {
-                    return 1280 / longSide;
+                    return (1280 * 1.5) / longSide;
                 }
-                return 1.0; 
+                return 1.5; 
             } else {
                 return Math.min(window.devicePixelRatio || 1.5, 1.5);
             }
