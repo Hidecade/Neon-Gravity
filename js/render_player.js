@@ -355,7 +355,7 @@ function drawEmeraldPhoenix(ctx, p) {
         ctx.save();
         ctx.beginPath();
         ctx.strokeStyle = mainColor;
-        //if (isCenter) { ctx.lineWidth = 3 * scale; ctx.shadowBlur = 25; }
+        if (isCenter) { ctx.lineWidth = 3 * scale; ctx.shadowBlur = 25; }
         else { ctx.lineWidth = 1 * scale; ctx.globalAlpha = 0.6; }
         ctx.moveTo(-10 * scale, (i - 1) * 5 * scale);
         ctx.quadraticCurveTo(-40 * scale, tailOff * scale, -70 * scale, (tailOff + (i - 1) * 15) * scale);
