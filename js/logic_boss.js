@@ -272,7 +272,7 @@ function updateBossAI(e) {
                     color: pColor, 
                     life: 1.5 + Math.random(),
                     // ★ パーティクルの太さも強さに比例させる（最低でも少し太く）
-                    size: Math.max(2.0, (2.5 + Math.random() * 3.0) * gravityRatio) 
+                    size: Math.max(2.0, (2.5 + Math.random() * 2.0) * gravityRatio) 
                 });
             }
         } 
