@@ -218,6 +218,23 @@ function drawTriangleEnemy(ctx, e) {
     ctx.fill();
 
     ctx.restore();
+
+        // ジェット噴射エフェクト
+    if (!e.isWarping && Math.random() < 0.35) {
+        const backX = Math.cos(e.angle + Math.PI);
+        const backY = Math.sin(e.angle + Math.PI);
+        const speedBase = 1.8 + Math.random() * 0.4;
+
+        spawnParticleObj({
+            x: e.x + backX * 16,
+            y: e.y + backY * 16,
+            vx: backX * speedBase,
+            vy: backY * speedBase,
+            color: e.color,
+            size: 5,
+            life: 0.45 + Math.random() * 0.08
+        });
+    }
 }
 
 function drawDragonEnemy(ctx, e) {
@@ -1687,45 +1704,23 @@ function drawLightcycle(ctx, e) {
     ctx.arc(projCoreX, projCoreY, 3.5 * pulse, 0, Math.PI * 2);
     ctx.fill();
 
-    // ==========================================
-    // 4. アフターバーナー（本体からの排気炎）★追加
-    // ==========================================
-    // 本体コアの少し後ろから、さらに後方へ勢いよく伸びるパーティクル
-    const flameCount = e.isWarping ? 18 : 12;
-    for (let k = 0; k < flameCount; k++) {
-        // コアの後ろ (-0.8) からさらに後方へ伸ばす
-        const tailPos = Math.random(); 
-        const flameDist = e.isWarping ? 4.0 : 3.0;
-        const localX = -0.8 - tailPos * flameDist; 
-        
-        // 軌跡の太線に隠れないように少し上下（Y軸）に散らす
-        const spreadMax = 0.6 + tailPos * 1.5; 
-        const localY = (Math.random() - 0.5) * spreadMax;
-        
-        // カメラのピッチを適用（コアと同じ空間に存在させる）
-        let fx2 = localX * cosP;
-        let fz2 = localX * sinP;
-        
-        const fPersp = 1 / (1 + fz2 * 0.25);
-        const projX = fx2 * size * fPersp;
-        const projY = localY * size * fPersp;
-
-        // パーティクルのサイズ（線より太く、後ろにいくほど小さく）
-        const pSize = (2.5 + Math.random() * 2.5) * (1.0 - tailPos * 0.5); 
-        
-        // 色は軌跡色・白・オレンジをランダムに混ぜて熱っぽく
-        const rndColor = Math.random();
-        ctx.fillStyle = rndColor > 0.6 ? trailColor : (rndColor > 0.3 ? '#ffffff' : neonOrange);
-        
-        const alpha = visualAlpha * (e.isWarping ? 0.9 : 0.8) * (1.0 - tailPos);
-        ctx.globalAlpha = Math.max(0.1, alpha);
-        
-        ctx.beginPath();
-        ctx.arc(projX, projY, pSize, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
     ctx.restore();
+
+    if (!e.isWarping && Math.random() < 0.35) {
+        const backX = Math.cos(e.angle + Math.PI);
+        const backY = Math.sin(e.angle + Math.PI);
+        const speedBase = 1.8 + Math.random() * 0.4;
+
+        spawnParticleObj({
+            x: e.x + backX * 16,
+            y: e.y + backY * 16,
+            vx: backX * speedBase,
+            vy: backY * speedBase,
+            color: e.color,
+            size: 8,
+            life: 0.45 + Math.random() * 0.08
+        });
+    }
 }
 function drawFighterJet(ctx, e) {
     // ★修正: 描画の基準位置を機体の座標に移動させる（必須）

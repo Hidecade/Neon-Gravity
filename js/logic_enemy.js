@@ -47,6 +47,7 @@ function updateTriangleAI(e) {
     e.rotY += 0.12;
     e.rotZ += 0.05;
 
+    /*
     // リーダーのジェット噴射エフェクト
     if (!e.isWarping && Math.random() < 0.35) {
         const backX = Math.cos(e.angle + Math.PI);
@@ -59,10 +60,11 @@ function updateTriangleAI(e) {
             vx: backX * speedBase,
             vy: backY * speedBase,
             color: e.color,
-            size: 3,
+            size: 5,
             life: 0.45 + Math.random() * 0.08
         });
     }
+        */
 }
 
 function updateTadpoleAI(e) {
@@ -2609,6 +2611,7 @@ function updateEnemies() {
                 e.rotX += 0.03; e.rotY += 0.04; 
             } else if (e.type === 'triangle') {
                 e.rotX += 0.08; e.rotY += 0.12; e.rotZ += 0.05;
+                /*
                 // 副機のジェット噴射
                 if (!e.isWarping && Math.random() < 0.35) {
                     const backX = Math.cos(e.angle + Math.PI);
@@ -2620,6 +2623,7 @@ function updateEnemies() {
                         color: e.color, size: 3, life: 0.45 + Math.random() * 0.08
                     });
                 }
+                */
             }
         } else {
             // AI（移動と射撃）の実行
