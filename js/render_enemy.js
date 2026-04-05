@@ -1528,7 +1528,7 @@ function drawLightcycle(ctx, e) {
     const mainColor = e.color || '#e0e0e0';
     const neonOrange = '#ff6600'; // コア用ネオンオレンジ
 
-  // ==========================================
+    // ==========================================
     // 1. 光の壁（軌跡）の描画
     // ==========================================
     if (e.history && e.history.length > 1) {
@@ -1536,14 +1536,11 @@ function drawLightcycle(ctx, e) {
         ctx.globalCompositeOperation = 'lighter'; 
         
         const tailLen = e.history.length;
-        const fadeLength = ENEMY_LIMITS.LIGHTCYCLE_FADE_LENGTH; 
+        const fadeLength = typeof ENEMY_LIMITS !== 'undefined' ? ENEMY_LIMITS.LIGHTCYCLE_FADE_LENGTH : 30; 
         
-        // ★ 変更点：出現中(isWarping)は実線を描画しないように設定
-        // 通常時は後ろから30個（fadeLength）を除いた分を実線にする
         const lineEndIndex = e.isWarping ? 0 : Math.max(0, tailLen - fadeLength); 
 
-        // --- A. 実線レイヤー（アウター＆インナー） ---
-        // lineEndIndex が 0 より大きい時（＝出現が終わった後）だけ描画
+        // --- A. 実線レイヤー ---
         if (lineEndIndex > 0) {
             ctx.strokeStyle = trailColor;
             ctx.lineWidth = 3.5 * currentScale;
@@ -1552,37 +1549,27 @@ function drawLightcycle(ctx, e) {
             ctx.beginPath();
             ctx.moveTo(e.history[0].x, e.history[0].y);
             for (let i = 1; i < lineEndIndex; i++) {
-                // ...（中略：既存の LineTo ロジック）...
                 ctx.lineTo(e.history[i].x, e.history[i].y); 
             }
             ctx.stroke();
 
-            // 白い芯の描画
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 1.2 * currentScale;
             ctx.globalAlpha = visualAlpha * 0.8;
             ctx.stroke();
         }
 
-        // --- B. パーティクルレイヤー（出現中、または最後尾） ---
+        // --- B. 光の壁のパーティクルレイヤー（既存） ---
         ctx.fillStyle = trailColor;
-        
-        // 出現中は「全履歴」をパーティクルにする
-        // 出現後は「最後尾の fadeLength 分」をパーティクルにする
         const pStartIndex = e.isWarping ? 0 : lineEndIndex;
         const pEndIndex = tailLen;
 
         for (let i = pStartIndex; i < pEndIndex; i++) {
             const p = e.history[i];
-            
-            // 出現中か、最後尾かでフェード率を変える
             const fadeRatio = e.isWarping ? (i / tailLen) : (i - lineEndIndex) / fadeLength;
-            
-            // 出現中は粒子を多めにして「転送中」っぽさを出す
             const particleCount = e.isWarping ? 3 : (1 + Math.floor(fadeRatio * 3));
             
             for (let k = 0; k < particleCount; k++) {
-                // 出現中は少し広めに散らす
                 const spread = (e.isWarping ? 12 : (5 + 15 * fadeRatio)) * G_SCALE; 
                 const px = p.x + (Math.random() - 0.5) * spread;
                 const py = p.y + (Math.random() - 0.5) * spread;
@@ -1601,49 +1588,145 @@ function drawLightcycle(ctx, e) {
     }
 
     // ---------------------------------
-    // 2. バイク本体の描画
+    // 2. バイク本体（4角錐）の描画
     // ---------------------------------
     ctx.translate(e.x, e.y);
-    ctx.rotate(e.angle);
+    ctx.rotate(e.angle); // 進行方向への向き
     ctx.scale(currentScale, currentScale);
 
     ctx.globalAlpha = visualAlpha;
     ctx.globalCompositeOperation = 'lighter';
 
-    const size = 12;
+    const size = 15; 
+
+    // 4角錐の頂点定義 (X軸のプラス方向が「先端」)
     const pts = [
-        { x:  2.0, y:  0.0, z:  0.0 }, // 0: 先端
-        { x: -1.5, y:  0.0, z:  1.0 }, // 1: キャノピー
-        { x: -1.5, y:  0.0, z: -0.5 }, // 2: 底面
-        { x: -1.5, y: -0.8, z:  0.2 }, // 3: 左ハブ
-        { x: -1.5, y:  0.8, z:  0.2 }, // 4: 右ハブ
-        { x:  0.0, y:  0.0, z:  0.2 }, // 5: 内部コア
-        { x: -1.5, y:  0.0, z:  0.2 }  // 6: 後部エンジン
+        { x:  1.8, y:  0.0, z:  0.0 }, // 0: 頂点
+        { x: -1.0, y: -0.4, z:  0.4 }, // 1: 底面 左上
+        { x: -1.0, y:  0.4, z:  0.4 }, // 2: 底面 右上
+        { x: -1.0, y:  0.4, z: -0.4 }, // 3: 底面 右下
+        { x: -1.0, y: -0.4, z: -0.4 }  // 4: 底面 左下
     ];
 
-    const rotX = Math.sin(frame * 0.1) * 0.1; 
-    const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+    // ① ロール回転（進行方向を軸とした回転）
+    const rollSpeed = 0.15;
+    const angleRoll = frame * rollSpeed; 
+    const cosR = Math.cos(angleRoll), sinR = Math.sin(angleRoll);
+
+    // ② カメラの傾き（ピッチ回転）
+    const pitch = 0.4; 
+    const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
+
     const proj = pts.map(p => {
-        let y2 = p.y * cosX - p.z * sinX;
-        let z2 = p.y * sinX + p.z * cosX;
-        const persp = 1 / (1 + z2 * 0.22);
-        return { x: p.x * size * persp, y: y2 * size * persp, z: z2 };
+        // 1. ロール
+        let y1 = p.y * cosR - p.z * sinR;
+        let z1 = p.y * sinR + p.z * cosR;
+        let x1 = p.x;
+
+        // 2. ピッチ
+        let x2 = x1 * cosP - z1 * sinP;
+        let z2 = x1 * sinP + z1 * cosP;
+        let y2 = y1;
+
+        // 3. パースペクティブ
+        const persp = 1 / (1 + z2 * 0.25);
+        return { 
+            x: x2 * size * persp, 
+            y: y2 * size * persp 
+        };
     });
 
-    const lines = [[0,1],[0,2],[0,3],[0,4],[1,3],[3,2],[2,4],[4,1]];
+    // 4角錐のエッジ描画
+    const lines = [
+        [0, 1], [0, 2], [0, 3], [0, 4], // 頂点から底面へ
+        [1, 2], [2, 3], [3, 4], [4, 1]  // 底面
+    ];
+
     ctx.beginPath();
     for (const [a, b] of lines) {
         ctx.moveTo(proj[a].x, proj[a].y);
         ctx.lineTo(proj[b].x, proj[b].y);
     }
+
     ctx.strokeStyle = mainColor;
-    ctx.lineWidth = 4; ctx.globalAlpha = visualAlpha * 0.3; ctx.stroke();
-    ctx.lineWidth = 1.5; ctx.globalAlpha = visualAlpha * 0.8; ctx.stroke();
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.6; ctx.globalAlpha = visualAlpha; ctx.stroke();
+    ctx.lineWidth = 3; 
+    ctx.globalAlpha = visualAlpha * 0.4; 
+    ctx.stroke();
+
+    ctx.strokeStyle = '#fff'; 
+    ctx.lineWidth = 1.0; 
+    ctx.globalAlpha = visualAlpha * 0.9; 
+    ctx.stroke();
+
+    // ==========================================
+    // 3. 内部コアの描画
+    // ==========================================
+    // コアの位置（四角錐の中心より少し後ろ）
+    const coreX = -0.3;
+    
+    // コアの投影座標を計算
+    let cx1 = coreX; let cy1 = 0; let cz1 = 0;
+    let cx2 = cx1 * cosP - cz1 * sinP;
+    let cz2 = cx1 * sinP + cz1 * cosP;
+    let cy2 = cy1;
+    const cPersp = 1 / (1 + cz2 * 0.25);
+    const projCoreX = cx2 * size * cPersp;
+    const projCoreY = cy2 * size * cPersp;
+
+    const pulse = 0.8 + Math.sin(frame * 0.15) * 0.2;
+
+    ctx.globalAlpha = visualAlpha * 0.7;
+    ctx.fillStyle = neonOrange;
+    ctx.beginPath();
+    ctx.arc(projCoreX, projCoreY, 7 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = visualAlpha * 0.9;
+    ctx.fillStyle = '#ffcc00';
+    ctx.beginPath();
+    ctx.arc(projCoreX, projCoreY, 3.5 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ==========================================
+    // 4. アフターバーナー（本体からの排気炎）★追加
+    // ==========================================
+    // 本体コアの少し後ろから、さらに後方へ勢いよく伸びるパーティクル
+    const flameCount = e.isWarping ? 18 : 12;
+    for (let k = 0; k < flameCount; k++) {
+        // コアの後ろ (-0.8) からさらに後方へ伸ばす
+        const tailPos = Math.random(); 
+        const flameDist = e.isWarping ? 4.0 : 3.0;
+        const localX = -0.8 - tailPos * flameDist; 
+        
+        // 軌跡の太線に隠れないように少し上下（Y軸）に散らす
+        const spreadMax = 0.6 + tailPos * 1.5; 
+        const localY = (Math.random() - 0.5) * spreadMax;
+        
+        // カメラのピッチを適用（コアと同じ空間に存在させる）
+        let fx2 = localX * cosP;
+        let fz2 = localX * sinP;
+        
+        const fPersp = 1 / (1 + fz2 * 0.25);
+        const projX = fx2 * size * fPersp;
+        const projY = localY * size * fPersp;
+
+        // パーティクルのサイズ（線より太く、後ろにいくほど小さく）
+        const pSize = (2.5 + Math.random() * 2.5) * (1.0 - tailPos * 0.5); 
+        
+        // 色は軌跡色・白・オレンジをランダムに混ぜて熱っぽく
+        const rndColor = Math.random();
+        ctx.fillStyle = rndColor > 0.6 ? trailColor : (rndColor > 0.3 ? '#ffffff' : neonOrange);
+        
+        const alpha = visualAlpha * (e.isWarping ? 0.9 : 0.8) * (1.0 - tailPos);
+        ctx.globalAlpha = Math.max(0.1, alpha);
+        
+        ctx.beginPath();
+        ctx.arc(projX, projY, pSize, 0, Math.PI * 2);
+        ctx.fill();
+    }
 
     ctx.restore();
 }
-
 function drawFighterJet(ctx, e) {
     // ★修正: 描画の基準位置を機体の座標に移動させる（必須）
     ctx.save();
