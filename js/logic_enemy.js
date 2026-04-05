@@ -1462,7 +1462,7 @@ function destroyEnemy(e) {
         
         // ★ULTRAの時のみ歪ませる
         if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
-            distortGrid(e.x, e.y, 60, 120);
+            distortGrid(e.x, e.y, 40, 120);
         }
 
         // 4つの三角錐パーツを独立した破片として放出
@@ -1501,7 +1501,7 @@ function destroyEnemy(e) {
 
         // ★ULTRAの時のみ歪ませる
         if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
-            distortGrid(e.x, e.y, 100, 200);
+            distortGrid(e.x, e.y, 60, 200);
         }
 
         const bitCount = 6;
@@ -1542,7 +1542,7 @@ function destroyEnemy(e) {
 
         // ★ULTRAの時のみ軽い歪みを追加
         if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
-            distortGrid(e.x, e.y, 40, 80);
+            distortGrid(e.x, e.y, 20, 80);
         }
 
         const shardCount = 3 + (currentGraphicsQuality === 'HIGH' ? Math.floor(Math.random() * 2) : 0);
@@ -1579,7 +1579,7 @@ function destroyEnemy(e) {
 
         // ★ULTRAの時のみ歪ませる
         if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
-            distortGrid(e.x, e.y, 80, 140);
+            distortGrid(e.x, e.y, 60, 140);
         }
 
         // 体節をバラバラに放出（頭 + セグメント）
@@ -1613,7 +1613,7 @@ function destroyEnemy(e) {
 
         // ★ULTRAの時のみ歪ませる
         if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
-            distortGrid(e.x, e.y, 50, 100);
+            distortGrid(e.x, e.y, 25, 100);
         }
 
         let bubbleCount = 20;
@@ -1650,7 +1650,7 @@ function destroyEnemy(e) {
         
         // ★ULTRAの時のみ、サイズに応じた軽い歪みを追加
         if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
-            distortGrid(e.x, e.y, 35 * scale, 70 * scale);
+            distortGrid(e.x, e.y, 15 * scale, 70 * scale);
         }
 
         // 破片数
@@ -1695,7 +1695,7 @@ function destroyEnemy(e) {
         
         // ★ULTRAの時のみ、その他の雑魚（CubeやTadpoleなど）でも軽い歪みを追加
         if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
-            distortGrid(e.x, e.y, 30, 60);
+            distortGrid(e.x, e.y, 12, 60);
         }
     }
 
