@@ -1456,10 +1456,14 @@ function destroyEnemy(e) {
         createExplosion(e.x, e.y, color, 1);
     }
 
-    // --- Phantom専用の特殊撃破演出 ---
+// --- Phantom専用の特殊撃破演出 ---
     if (e.type === 'phantom') {
         AudioSys.playSE('explode_medium', e.x, e.y); // 中サイズの爆発音
-        //distortGrid(e.x, e.y, 60, 120);
+        
+        // ★ULTRAの時のみ歪ませる
+        if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
+            distortGrid(e.x, e.y, 60, 120);
+        }
 
         // 4つの三角錐パーツを独立した破片として放出
         for (let i = 0; i < 4; i++) {
@@ -1494,7 +1498,11 @@ function destroyEnemy(e) {
     // --- ★追加：Eclipse専用の特殊撃破演出 ---
     else if (e.type === 'eclipse') {
         AudioSys.playSE('explode_medium', e.x, e.y);
-        //distortGrid(e.x, e.y, 100, 200);
+
+        // ★ULTRAの時のみ歪ませる
+        if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
+            distortGrid(e.x, e.y, 100, 200);
+        }
 
         const bitCount = 6;
         const orbitDist = 50 + Math.sin(frame * 0.05) * 4;
@@ -1532,6 +1540,11 @@ function destroyEnemy(e) {
     else if (e.type === 'triangle') {
         AudioSys.playSE('explode_small', e.x, e.y);
 
+        // ★ULTRAの時のみ軽い歪みを追加
+        if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
+            distortGrid(e.x, e.y, 40, 80);
+        }
+
         const shardCount = 3 + (currentGraphicsQuality === 'HIGH' ? Math.floor(Math.random() * 2) : 0);
         for (let i = 0; i < shardCount; i++) {
             const angle = (Math.PI * 2 / shardCount) * i + e.angle + (Math.random() - 0.5);
@@ -1563,7 +1576,11 @@ function destroyEnemy(e) {
     }
     else if (e.type === 'dragon') {
         AudioSys.playSE('explode_medium', e.x, e.y);
-        //distortGrid(e.x, e.y, 80, 140);
+
+        // ★ULTRAの時のみ歪ませる
+        if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
+            distortGrid(e.x, e.y, 80, 140);
+        }
 
         // 体節をバラバラに放出（頭 + セグメント）
         const allParts = [{ x: e.x, y: e.y, angle: e.angle }, ...e.segments];
@@ -1593,7 +1610,11 @@ function destroyEnemy(e) {
     // --- ★変更：JellyfishとBubble共通の特殊撃破演出 ---
     else if (e.type === 'jellyfish' || e.type === 'bubble') {
         AudioSys.playSE('explode_small', e.x, e.y); 
-        //distortGrid(e.x, e.y, 50, 100);
+
+        // ★ULTRAの時のみ歪ませる
+        if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
+            distortGrid(e.x, e.y, 50, 100);
+        }
 
         let bubbleCount = 20;
         if (e.type === 'bubble') {
@@ -1626,6 +1647,11 @@ function destroyEnemy(e) {
 
         // ★元の3段階のスケール計算に戻す
         const scale = (4 - (e.size || 2)) * 0.6;
+        
+        // ★ULTRAの時のみ、サイズに応じた軽い歪みを追加
+        if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
+            distortGrid(e.x, e.y, 35 * scale, 70 * scale);
+        }
 
         // 破片数
         const shardCount = Math.floor((2 + Math.random() * 2) * scale); 
@@ -1666,8 +1692,12 @@ function destroyEnemy(e) {
     // --- 小型（小）：その他雑魚（triangleは上で処理済み）---
     else {
         AudioSys.playSE('explode_small', e.x, e.y);
+        
+        // ★ULTRAの時のみ、その他の雑魚（CubeやTadpoleなど）でも軽い歪みを追加
+        if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
+            distortGrid(e.x, e.y, 30, 60);
+        }
     }
-
 
     // =========================================================
     // ★ 修正：スコア加算（ボスは生存時間でスコアが変動する）
