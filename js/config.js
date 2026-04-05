@@ -31,10 +31,10 @@ const PI2 = Math.PI * 2;        // 定数化して計算を省く
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // ==========================================
-// グラフィック設定のプリセット
+// グラフィック設定のプリセット（修正版）
 // ==========================================
 const GRAPHICS_SETTINGS = {
-       ULTRA: {
+    ULTRA: {
         gridSpacing: 32,       
         explosionMag: 3.0,     
         starCount: 300,        
@@ -45,17 +45,17 @@ const GRAPHICS_SETTINGS = {
             
             // iPad / PC などの大画面判定 (短辺768px以上)
             if (shortSide >= 768) {
-                // 基本値を 2.0 に設定
-                let baseScale = 2.0;
-                
-                // 負荷軽減：解像度が非常に高い場合（例：Retina Pro等）
-                // 長辺が 2560px (1280 * 2) を超える場合は、描画負荷を抑えるため制限をかける
-                if (longSide > 1280) {
-                    return (1280 * 2.0) / longSide; 
+                // 基本倍率を 1.0 に設定（1920x1080で1.0にするため）
+                const baseScale = 1.0;
+                const maxLongSide = 1920;
+
+                // 長辺が 1920px を超える場合は、1920相当になるようにスケールを下げる
+                if (longSide > maxLongSide) {
+                    return (maxLongSide * baseScale) / longSide; 
                 }
                 return baseScale; 
             } else {
-                // スマホ等の場合はRetinaの綺麗さを活かす
+                // スマホ等の場合はRetinaの綺麗さを活かす（従来通り）
                 return Math.min(window.devicePixelRatio || 2.0, 2.5);
             }
         }
@@ -70,16 +70,19 @@ const GRAPHICS_SETTINGS = {
             const longSide = Math.max(window.innerWidth, window.innerHeight);
             
             if (shortSide >= 768) {
-                // HIGH設定でもiPadなら 1.5 を適用
-                if (longSide > 1280) {
-                    return (1280 * 1.5) / longSide;
+                const baseScale = 1.0;
+                const maxLongSide = 1920;
+
+                if (longSide > maxLongSide) {
+                    return (maxLongSide * baseScale) / longSide;
                 }
-                return 1.5; 
+                return baseScale; 
             } else {
                 return Math.min(window.devicePixelRatio || 1.5, 1.5);
             }
         }
     },
+    // MEDIUM, LOW は変更なし
     MEDIUM: {
         gridSpacing: 32,
         explosionMag: 1.5,
