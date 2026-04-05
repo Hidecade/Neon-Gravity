@@ -505,7 +505,9 @@ let levelItemsDroppedInStage = 0;    // ステージ内でのレベルアイテ�
 // =========================================================
 
 const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
+// alpha: false (背景が透明でないことをブラウザに教え、合成コストを下げる)
+// desynchronized: true (低遅延レンダリングを許可し、GPUパイプラインを最適化)
+const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
 const miniMapCanvas = document.getElementById('minimap-canvas');
 const miniMapCtx = miniMapCanvas.getContext('2d');
 

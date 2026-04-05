@@ -31,6 +31,10 @@ canvas {
     left: 0;
     z-index: 1;
     outline: none;
+
+    /* 以下を追記：強制的にGPUの独立レイヤーとして処理させるハック */
+    transform: translateZ(0);
+    will-change: transform;
 }
 
 
