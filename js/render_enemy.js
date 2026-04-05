@@ -1711,9 +1711,12 @@ function drawLightcycle(ctx, e) {
         const backY = Math.sin(e.angle + Math.PI);
         const speedBase = 1.8 + Math.random() * 0.4;
 
+        // ★修正：煙幕の発生オフセットにも currentScale を適用し、常にテール位置に合わせる
+        const spawnOffset = 16 * currentScale;
+
         spawnParticleObj({
-            x: e.x + backX * 16,
-            y: e.y + backY * 16,
+            x: e.x + backX * spawnOffset,
+            y: e.y + backY * spawnOffset,
             vx: backX * speedBase,
             vy: backY * speedBase,
             color: e.color,
@@ -1722,6 +1725,7 @@ function drawLightcycle(ctx, e) {
         });
     }
 }
+
 function drawFighterJet(ctx, e) {
     // ★修正: 描画の基準位置を機体の座標に移動させる（必須）
     ctx.save();
