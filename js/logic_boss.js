@@ -63,7 +63,7 @@ function updateBossAI(e) {
                 });
             }
             if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');    // 発射音
-            if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 80, 150); // 空間を歪ませる演出
+            if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 80, 100); // 空間を歪ませる演出
         }
 
         // --- 4. 結末：自爆 ---
@@ -72,7 +72,7 @@ function updateBossAI(e) {
             e.hp = 0; // HPを0にする（updateEnemies側で爆発演出と撃破処理が行われる）
 
             // 自爆時の特大エフェクト（断末魔）
-            if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 500, 800);
+            if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 500, 500);
             if (typeof createExplosion === 'function') createExplosion(e.x, e.y, '#f00', 50);
         }
 
@@ -252,7 +252,7 @@ function updateBossAI(e) {
 
             // 空間の歪みも強さに比例させる
             if (frame % 6 === 0 && typeof distortGrid === 'function') {
-                distortGrid(e.x, e.y, -80 * gravityRatio, 1200 * gravityRatio);
+                distortGrid(e.x, e.y, -80 * gravityRatio, 800 * gravityRatio);
             }
             
             // ★ パーティクルの生成量も gravityRatio に比例させる（最大8個、最低1個）
@@ -314,7 +314,7 @@ function updateBossAI(e) {
             if (isOnScreen(e) && typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
             spawnRingObj({ x: e.x, y: e.y, r: 20, color: '#fff', life: 1.0 });
             spawnRingObj({ x: e.x, y: e.y, r: 100, color: e.color, life: 0.8 });
-            if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 150, 300);
+            if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 150, 250);
         }
     }
     // ----------------------------------------------------
@@ -505,7 +505,7 @@ function updateBossSpecialAI(e) {
                     baseScale: 0.8, scaleSpeed: 0.02
                 });
             }
-            distortGrid(e.x, e.y, 250, 400);
+            distortGrid(e.x, e.y, 250, 250);
         }
         // Index 2-4: 全方位拡散弾
         else if (e.originIdx >= 2) {

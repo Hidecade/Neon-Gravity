@@ -1459,7 +1459,7 @@ function destroyEnemy(e) {
     // --- Phantom専用の特殊撃破演出 ---
     if (e.type === 'phantom') {
         AudioSys.playSE('explode_medium', e.x, e.y); // 中サイズの爆発音
-        distortGrid(e.x, e.y, 60, 120);
+        //distortGrid(e.x, e.y, 60, 120);
 
         // 4つの三角錐パーツを独立した破片として放出
         for (let i = 0; i < 4; i++) {
@@ -1494,7 +1494,7 @@ function destroyEnemy(e) {
     // --- ★追加：Eclipse専用の特殊撃破演出 ---
     else if (e.type === 'eclipse') {
         AudioSys.playSE('explode_medium', e.x, e.y);
-        distortGrid(e.x, e.y, 100, 200);
+        //distortGrid(e.x, e.y, 100, 200);
 
         const bitCount = 6;
         const orbitDist = 50 + Math.sin(frame * 0.05) * 4;
@@ -1563,7 +1563,7 @@ function destroyEnemy(e) {
     }
     else if (e.type === 'dragon') {
         AudioSys.playSE('explode_medium', e.x, e.y);
-        distortGrid(e.x, e.y, 80, 140);
+        //distortGrid(e.x, e.y, 80, 140);
 
         // 体節をバラバラに放出（頭 + セグメント）
         const allParts = [{ x: e.x, y: e.y, angle: e.angle }, ...e.segments];
@@ -1593,7 +1593,7 @@ function destroyEnemy(e) {
     // --- ★変更：JellyfishとBubble共通の特殊撃破演出 ---
     else if (e.type === 'jellyfish' || e.type === 'bubble') {
         AudioSys.playSE('explode_small', e.x, e.y); 
-        distortGrid(e.x, e.y, 50, 100);
+        //distortGrid(e.x, e.y, 50, 100);
 
         let bubbleCount = 20;
         if (e.type === 'bubble') {

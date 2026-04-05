@@ -316,7 +316,7 @@ function updateGrid() {
     const viewW = width / cameraScale;
     const viewH = height / cameraScale;
 
-    const buffer = 15;
+    const buffer = 8;
     const startX = Math.max(0, Math.floor(camera.x / GRID_SPACING) - buffer);
     const endX = Math.min(gridPoints.length - 1, Math.ceil((camera.x + viewW) / GRID_SPACING) + buffer);
     const startY = Math.max(0, Math.floor(camera.y / GRID_SPACING) - buffer);
@@ -439,23 +439,38 @@ function updateParticlesAndRings() {
 }
 
 
+// 関数の外（上部）にキャッシュ用の変数を定義
+let cachedWormholeGrad = null;
+
 function drawWormholes() {
+    // 描画するものが無ければ即リターン
+    if (wormholes.length === 0) return;
+
+    // ★ 毎フレーム生成して捨てるのをやめ、一度だけ作成して使い回す（GC対策）
+    if (!cachedWormholeGrad) {
+        cachedWormholeGrad = ctx.createRadialGradient(-5, -5, 2, 0, 0, 25);
+        cachedWormholeGrad.addColorStop(0, '#333');
+        cachedWormholeGrad.addColorStop(0.2, '#000');
+        cachedWormholeGrad.addColorStop(0.8, '#000');
+        cachedWormholeGrad.addColorStop(1, '#0ff');
+    }
+
     wormholes.forEach(w => {
         if (w.active || w.life > -60) {
             let scale = 1;
             if (w.life > 300) scale = (400 - w.life) / 100;
             else if (w.life <= 0) scale = Math.max(0, (60 + w.life) / 60);
+            
             ctx.save();
             ctx.translate(w.x, w.y);
             ctx.scale(scale, scale);
-            //if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 30;
             ctx.shadowColor = '#209';
-            const grad = ctx.createRadialGradient(-5, -5, 2, 0, 0, 25);
-            grad.addColorStop(0, '#333'); grad.addColorStop(0.2, '#000'); grad.addColorStop(0.8, '#000'); grad.addColorStop(1, '#0ff');
-            ctx.fillStyle = grad;
-            ctx.beginPath(); ctx.arc(0, 0, 20 + Math.sin(frame * 0.1) * 2, 0, Math.PI * 2); ctx.fill();
-
-            // 外側の枠線を描画していた部分を削除
+            
+            // ★ キャッシュしたグラデーションを適用
+            ctx.fillStyle = cachedWormholeGrad;
+            ctx.beginPath(); 
+            ctx.arc(0, 0, 20 + Math.sin(frame * 0.1) * 2, 0, Math.PI * 2); 
+            ctx.fill();
 
             ctx.globalCompositeOperation = 'lighter';
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
