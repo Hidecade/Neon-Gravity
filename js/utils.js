@@ -97,6 +97,7 @@ class ObjectPool {
         this.pool = [];
         this.createFn = createFn;
         this.maxSize = Math.max(initialSize, maxSize);
+        this.currentIndex = 0; // ★ 追加：最後にチェックしたインデックス
 
         for (let i = 0; i < initialSize; i++) {
             const obj = this.createFn();
@@ -105,23 +106,28 @@ class ObjectPool {
         }
     }
 
-    // プールから空いているオブジェクトを取得する
     get() {
-        for (let i = 0; i < this.pool.length; i++) {
-            if (!this.pool[i].active) {
-                this.pool[i].active = true;
-                return this.pool[i];
+        const len = this.pool.length;
+        // currentIndexから探し始める
+        for (let i = 0; i < len; i++) {
+            // (this.currentIndex + i) を配列長で丸める
+            const index = (this.currentIndex + i) % len;
+            if (!this.pool[index].active) {
+                this.pool[index].active = true;
+                this.currentIndex = (index + 1) % len; // 次回は次の要素から探す
+                return this.pool[index];
             }
         }
 
         // 上限に達したら新規確保しない
-        if (this.pool.length >= this.maxSize) {
+        if (len >= this.maxSize) {
             return null;
         }
 
         const newObj = this.createFn();
         newObj.active = true;
         this.pool.push(newObj);
+        this.currentIndex = 0; // 追加されたら先頭に戻すなど適宜
         return newObj;
     }
 

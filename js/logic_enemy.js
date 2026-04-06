@@ -113,7 +113,7 @@ function updateTadpoleAI(e) {
     // 進行方向を向く
     e.angle = Math.atan2(e.vy, e.vx);
 
-    if (!e.history) e.history = [];
+    //if (!e.history) e.history = [];
 
     // --- 4. 軌跡の更新 ---
     e.history.unshift({ x: e.x, y: e.y });
@@ -657,7 +657,6 @@ function updateEclipseAI(e) {
 function updateJellyfishAI(e) {
     e.timer += gameSpeed;
 
-    if (e.chargeLevel === undefined) e.chargeLevel = 0;
     // 自機への角度を計算
     const dx = player.x - e.x;
     const dy = player.y - e.y;
@@ -915,7 +914,7 @@ function updateSweeperAI(e) {
 
 function updateLightcycleAI(e) {
     // history 未初期化対策
-    if (!e.history) e.history = [];
+    //if (!e.history) e.history = [];
 
     // --- ライトサイクルのワープ（出現）更新ロジック ---
     if (e.isWarping) {
@@ -1847,7 +1846,7 @@ function updateEnemiesForDying() {
             if (e.history.length > 60) e.history.pop();
         }
         if (e.type === 'lightcycle') {
-            if (!e.history) e.history = [];
+            //if (!e.history) e.history = [];
             e.history.unshift({ x: e.x, y: e.y });
             if (e.history.length > ENEMY_LIMITS.LIGHTCYCLE_TAIL_LENGTH) e.history.pop();
         }
@@ -2473,7 +2472,7 @@ function updateEnemies() {
 
         // ▼▼▼ ここから追加: ワープイン演出（拡大・フェードイン）の進行 ▼▼▼
         if (e.isWarping) {
-            if (e.warpPercent === undefined) e.warpPercent = 0;
+            //if (e.warpPercent === undefined) e.warpPercent = 0;
             
             // 30フレーム（約0.5秒）かけて 0.0 から 1.0 に増やす
             e.warpPercent += 1.0 / 30; 
