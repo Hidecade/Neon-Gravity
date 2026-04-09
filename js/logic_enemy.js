@@ -156,7 +156,8 @@ function updateDragonAI(e) {
     let leaderY = e.y;
     const spacing = 18;
 
-    e.segments.forEach((s, i) => {
+    for (let i = 0; i < e.segments.length; i++) {
+        const s = e.segments[i];
         const sDx = leaderX - s.x;
         const sDy = leaderY - s.y;
         const distance = Math.hypot(sDx, sDy) || 0.001;
@@ -173,7 +174,7 @@ function updateDragonAI(e) {
             }
         }
         leaderX = s.x; leaderY = s.y;
-    });
+    }
 
     // 3. 弾の発射 (変更なし)
     e.fireTimer++;
