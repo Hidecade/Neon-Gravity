@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = globalThis.NEON_GRAVITY_VERSION || "0.9.09";
+window.GAME_VERSION = globalThis.NEON_GRAVITY_VERSION || "0.9.13";
 
 
 const DEBUG = {

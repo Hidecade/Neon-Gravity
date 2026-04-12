@@ -1746,6 +1746,7 @@ function updateDying() {
  */
 function updateWarpProcess() {
     playerBulletPool.clearAll(); lasers = []; homingLasers = []; player.history = [];
+    enemyBulletPool.clearAll();
 
     if (player.warpTimer === undefined) player.warpTimer = 0;
     player.warpTimer++;
