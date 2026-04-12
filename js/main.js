@@ -154,7 +154,6 @@ function updateExtremeTimeAttack() {
             type: 'warning',
             duration: 2400
         });
-        if (typeof AudioSys !== 'undefined') AudioSys.playSE('warning');
     }
 
     if (!extremeTimeAttackState.timeoutTriggered && extremeTimeAttackState.survivalFrames >= extremeTimeAttackState.targetFrames) {

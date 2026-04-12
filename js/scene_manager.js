@@ -491,6 +491,9 @@ function checkStageClear() {
     if (!isStageClear && isClearCondition) {
         isStageClear = true;
         stageClearTimer = 0;
+        if (typeof window.playStats !== 'undefined' && !window.playStats.endTime) {
+            window.playStats.endTime = performance.now();
+        }
 
         // クリア演出中は操作UIを隠す
         if (ui.pauseBtn) ui.pauseBtn.style.display = 'none';
@@ -2332,8 +2335,8 @@ window.showStageResultBoard = function() {
 
     const stats = window.playStats;
 
-    const now = performance.now();
-    const totalSeconds = Math.floor((now - stats.startTime) / 1000);
+    const endTime = stats.endTime || performance.now();
+    const totalSeconds = Math.floor((endTime - stats.startTime) / 1000);
     const m = Math.floor(totalSeconds / 60);
     const s = totalSeconds % 60;
     const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
