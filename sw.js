@@ -1,5 +1,7 @@
-// ★更新するたびに、ここのバージョン番号を書き換えてください（v1 -> v2 -> v3...）
-const CACHE_NAME = 'neon-gravity-v0.9.09'; 
+importScripts('./js/version.js');
+
+// version.js の値をキャッシュ名にも使う
+const CACHE_NAME = `neon-gravity-v${self.NEON_GRAVITY_VERSION || '0.9.09'}`;
 
 // キャッシュするファイルのリスト
 const ASSETS_TO_CACHE = [
@@ -18,6 +20,7 @@ const ASSETS_TO_CACHE = [
 
     './js/audio.js',
     './js/config.js',
+    './js/version.js',
     './js/control_player.js',
     './js/effect_system.js',
     './js/firebase_manager.js',

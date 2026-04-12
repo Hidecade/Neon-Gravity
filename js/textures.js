@@ -511,3 +511,44 @@ function getParticleTexture(color) {
     particleTextureCache[limitedColor] = offscreen;
     return offscreen;
 }
+
+/**
+ * 起動時や画質変更時に、よく使うテクスチャを事前生成して初回描画の負荷を平準化する
+ * @param {Object} [options]
+ * @param {boolean} [options.includeAsteroids=true] - アステロイド系も事前生成するか
+ */
+function prewarmTextureCaches(options = {}) {
+    const includeAsteroids = options.includeAsteroids !== false;
+
+    initItemTextures();
+    getPlayerBulletTexture();
+    getEnemyBulletTextures();
+
+    const laserMissileColors = ['#0ff', '#f00', '#fff', '#ff00ff', '#f05'];
+    for (let i = 0; i < laserMissileColors.length; i++) {
+        getLaserMissileTexture(laserMissileColors[i]);
+    }
+
+    const starColors = ['#fff', '#0ff', '#aaf0ff', '#88ddff'];
+    for (let i = 0; i < starColors.length; i++) {
+        getStarTexture(starColors[i]);
+    }
+
+    const particleColors = ['#ffffff', '#00ffff', '#00ff88', '#ff8800', '#ff0055'];
+    for (let i = 0; i < particleColors.length; i++) {
+        getParticleTexture(particleColors[i]);
+    }
+
+    if (includeAsteroids) {
+        const asteroidColors = ['#bbbbbb', '#e0e0e0'];
+        const asteroidScales = [1.0, 0.8, 0.6];
+
+        for (let c = 0; c < asteroidColors.length; c++) {
+            for (let typeId = 0; typeId < 5; typeId++) {
+                for (let s = 0; s < asteroidScales.length; s++) {
+                    getAsteroidTexture(asteroidColors[c], typeId, asteroidScales[s]);
+                }
+            }
+        }
+    }
+}

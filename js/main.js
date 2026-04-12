@@ -700,7 +700,15 @@ function applyGraphicsQuality(quality) {
     localStorage.setItem('neonGravity_graphics', quality);
 
     // UIの表示状態を更新
-    setQuality(quality);        
+    setQuality(quality);
+
+    // 画質変更時はアイテム系の見た目が変わるため、関連テクスチャを再生成しておく
+    // 起動直後の初回適用だけは、重いアステロイド群も含めて先に温める
+    if (typeof prewarmTextureCaches === 'function') {
+        const isFirstPrewarm = !window._didInitialTexturePrewarm;
+        prewarmTextureCaches({ includeAsteroids: isFirstPrewarm });
+        if (isFirstPrewarm) window._didInitialTexturePrewarm = true;
+    }
 }
 
 // 言語品質設定の適用と保存

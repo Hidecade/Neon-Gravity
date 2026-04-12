@@ -623,6 +623,7 @@
 
     <script type="module" src="js/firebase_manager.js"></script>
 
+    <script src="js/version.js"></script>
     <script src="js/config.js"></script>
     <script src="js/textures.js"></script>
     <script src="js/story_data.js"></script>
@@ -657,7 +658,8 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 // バージョン付きで登録
-                navigator.serviceWorker.register('./sw.js?v=1.0.1')
+                const swVersion = window.NEON_GRAVITY_VERSION || '0.9.09';
+                navigator.serviceWorker.register(`./sw.js?v=${encodeURIComponent(swVersion)}`)
                     .then(reg => {
                         console.log('SW registered:', reg);
 
