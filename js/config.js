@@ -136,7 +136,7 @@ const PLAYER_BASE_SHIELD = 100;     // シールド最大値
 const MAX_WEAPON_LEVEL = 7;         // ショット最大レベル
 const DEFAULT_WEAPON_LEVEL = 1;     // 初期レベル
 const MAX_SATELLITES = 12;          // サテライトの最大保有数
-const SHIELD_HEAL_AMOUNT = 2;       // シールド回復量
+const SHIELD_HEAL_AMOUNT = 1;       // シールド回復量
 
 // --- 敵（エネミー）設定 ---
 // 敵の基本移動速度
