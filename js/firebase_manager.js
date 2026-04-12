@@ -78,13 +78,6 @@ window.firebaseOps = {
         return await getDocs(q);
     },
     
-    // 旧ランキング取得（表示専用）
-    getOldRanking: async () => {
-        // 古いコレクション名（neon_gravity_scores）を直接指定して読み込む
-        const q = query(collection(db, "neon_gravity_scores"), orderBy("score", "desc"), limit(RANKING_LIMIT));
-        return await getDocs(q);
-    },
-
     // 10位以内かどうかの判定用
     checkRankIn: async (currentScore, mode = MODE_NORMAL) => {
         const targetCollection = getScoresCollection(mode);
@@ -120,15 +113,11 @@ window.firebaseOps = {
     }
 };
 
-window.showRanking = async function (onClose = null, isOld = false, modeOverride = null) {
+window.showRanking = async function (onClose = null, modeOverride = null) {
     if (!rankingOverlay) return;
 
     if (modeOverride) {
         rankingMode = normalizeMode(modeOverride);
-    }
-
-    if (rankingMode === MODE_EXTREME) {
-        isOld = false;
     }
 
     // 他のオーバーレイを閉じる
@@ -143,7 +132,6 @@ window.showRanking = async function (onClose = null, isOld = false, modeOverride
 
     // タイトルと切り替えボタンのテキストを変更
     const titleMain = document.querySelector("#ranking-overlay .overlay-title-main");
-    const toggleBtn = document.getElementById("toggle-ranking-btn");
     const modeBtn = document.getElementById("toggle-ranking-mode-btn");
     
     if (titleMain) {
@@ -151,7 +139,7 @@ window.showRanking = async function (onClose = null, isOld = false, modeOverride
         if (rankingMode === MODE_EXTREME) {
             titleMain.innerText = "EXTREME TIME ATTACK";
         } else {
-            titleMain.innerText = isOld ? "OLD RECORDS" : "TOP COMMANDERS";
+            titleMain.innerText = "TOP COMMANDERS";
         }
     }
 
@@ -159,17 +147,8 @@ window.showRanking = async function (onClose = null, isOld = false, modeOverride
         modeBtn.innerText = rankingMode === MODE_EXTREME ? "MODE: EXTREME" : "MODE: NORMAL";
         modeBtn.onclick = () => {
             const nextMode = rankingMode === MODE_EXTREME ? MODE_NORMAL : MODE_EXTREME;
-            window.showRanking(onClose, false, nextMode);
+            window.showRanking(onClose, nextMode);
         };
-    }
-    
-    if (toggleBtn) {
-        // ボタンのテキストを反転させる
-        toggleBtn.innerText = rankingMode === MODE_EXTREME ? "EXTREME" : (isOld ? "CURRENT" : "OLD");
-        toggleBtn.style.opacity = rankingMode === MODE_EXTREME ? "0.45" : "1";
-        toggleBtn.style.pointerEvents = rankingMode === MODE_EXTREME ? "none" : "auto";
-        // ボタンを押したら、現在とは逆（!isOld）のランキングを再読み込みする
-        toggleBtn.onclick = () => window.showRanking(onClose, !isOld, rankingMode);
     }
 
     if (loadingEl) {
@@ -188,9 +167,7 @@ window.showRanking = async function (onClose = null, isOld = false, modeOverride
     onRankingCloseAction = onClose;
 
     try {
-        const snapshot = isOld 
-            ? await window.firebaseOps.getOldRanking() 
-            : await window.firebaseOps.getRanking(rankingMode);
+        const snapshot = await window.firebaseOps.getRanking(rankingMode);
 
         if (rankingBody) {
             if (!snapshot || snapshot.empty) {
@@ -234,7 +211,7 @@ window.showRanking = async function (onClose = null, isOld = false, modeOverride
                         stageText = stageVal;
                     }
 
-                    if ((data.mode || MODE_NORMAL) === MODE_EXTREME && !isOld) {
+                    if ((data.mode || MODE_NORMAL) === MODE_EXTREME) {
                         const sec = Number(data.surviveSeconds || 0);
                         stageText = `${sec}s`;
                     }
@@ -304,7 +281,7 @@ function hideRanking() {
 }
 
 const btnRanking = document.getElementById("btn-ranking");
-if (btnRanking) btnRanking.onclick = () => window.showRanking(null, false, MODE_NORMAL);
+if (btnRanking) btnRanking.onclick = () => window.showRanking(null, MODE_NORMAL);
 
 if (closeRankingBtn) closeRankingBtn.onclick = hideRanking;
 

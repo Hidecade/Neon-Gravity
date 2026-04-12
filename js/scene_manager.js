@@ -239,12 +239,51 @@ function startStage() {
 
     // 4. ▼ 演出分岐（通常プレイ vs トレーニング） ▼
     if (!isTrainingMode) {
-        // --- A. ストーリーモード（イントロ演出開始） ---
-        gameState = 'STAGE_INTRO';
-        introPhase = 1;
-        introTimer = 0;
-        introAlpha = 0;
-        introBgScroll = 0;
+        const isExtremeMode = (typeof isExtremeTimeAttackMode === 'function') && isExtremeTimeAttackMode();
+
+        if (isExtremeMode) {
+            // Time Attackは導入演出をスキップして即プレイ開始
+            gameState = 'PLAYING';
+            hideGameMessage(true);
+            if (typeof resetStoryTypingState === 'function') resetStoryTypingState();
+            introPhase = 0;
+            introTimer = 0;
+            introAlpha = 0;
+            introBgScroll = 0;
+
+            if (hud) {
+                hud.style.display = 'flex';
+                hud.style.opacity = '1';
+            }
+
+            const miniMapContainer = document.getElementById('minimap-container');
+            if (miniMapContainer) {
+                miniMapContainer.style.display = 'block';
+                miniMapContainer.style.opacity = '1';
+            }
+
+            if (ui.controls) {
+                ui.controls.style.display = isConnected ? 'none' : 'block';
+                ui.controls.style.opacity = isConnected ? '0' : '1';
+            }
+            if (ui.launchBtn) {
+                ui.launchBtn.style.display = isConnected ? 'none' : 'flex';
+                ui.launchBtn.style.opacity = isConnected ? '0' : '1';
+            }
+
+            ui.pauseBtn.style.display = isConnected ? 'none' : 'flex';
+            ui.pauseBtn.style.opacity = isConnected ? '0' : '1';
+
+            player.visualScale = 1.0;
+            player.visualYOffset = 0;
+        } else {
+            // --- A. ストーリーモード（イントロ演出開始） ---
+            gameState = 'STAGE_INTRO';
+            introPhase = 1;
+            introTimer = 0;
+            introAlpha = 0;
+            introBgScroll = 0;
+        }
 
         const skipContainer = document.getElementById('story-typing-container');
         if (skipContainer) {
@@ -276,21 +315,22 @@ function startStage() {
         const glowColor = themeHex;
 
         // 表示
-        if (typeof isExtremeTimeAttackMode === 'function' && isExtremeTimeAttackMode()) {
-            showGameMessage({
-                kicker: 'EXTREME TIME ATTACK',
-                main: 'HOSTILE GRID SATURATION',
-                sub: isJa ? '全敵種混成宙域' : 'ALL HOSTILE TYPES INBOUND',
-                textColor: textBodyColor,
-                glowColor: glowColor
-            });
-        } else {
+        if (!isExtremeMode) {
             showGameMessage({
                 kicker: `STAGE ${stage}`,
                 main: data.en,
                 sub: isJa ? data.ja : "",
                 textColor: textBodyColor,
                 glowColor: glowColor
+            });
+        } else {
+            showGameMessage({
+                kicker: 'EXTREME TIME ATTACK',
+                main: 'HOSTILE GRID SATURATION',
+                sub: isJa ? '全敵種混成宙域' : 'ALL HOSTILE TYPES INBOUND',
+                textColor: textBodyColor,
+                glowColor: glowColor,
+                duration: 1400
             });
         }
 
@@ -555,6 +595,7 @@ async function showGameOver() {
             ? Math.floor((extState.survivalFrames || 0) / 60)
             : 0;
         const isExtremeClear = !!(isExtreme && extState && extState.cleared);
+        const isExtremeTimeout = !!(isExtreme && extState && extState.timeoutTriggered && !isExtremeClear);
 
         // ランキング圏内チェック
         let canRegister = false;
@@ -611,7 +652,19 @@ async function showGameOver() {
         // ==========================================
         // ★修正: 全てのテキストの準備が整ってから、画面を表示する
         // ==========================================
+        if (isExtremeTimeout) {
+            // TIME OUT 表示から Enter Name への間を作る
+            hideGameMessage();
+            await new Promise(resolve => setTimeout(resolve, 520));
+        }
+
         ui.nameInputArea.style.display = 'flex';
+        ui.nameInputArea.style.opacity = '0';
+        ui.nameInputArea.style.transition = 'opacity 0.45s ease';
+
+        requestAnimationFrame(() => {
+            ui.nameInputArea.style.opacity = '1';
+        });
         
         // 画面が表示された直後にフォーカスを当てる
         if (canRegister && nameInp) {
@@ -650,7 +703,7 @@ async function showGameOver() {
                 if (typeof AudioSys !== 'undefined') AudioSys.currentSrc = null;
 
                 if (window.showRanking) {
-                    window.showRanking(() => proceedToNextMenu(), false, currentMode);
+                    window.showRanking(() => proceedToNextMenu(), currentMode);
                 } else {
                     proceedToNextMenu();
                 }
@@ -934,7 +987,7 @@ function returnToTitle() {
         ui.btnRanking.style.color = '';
         ui.btnRanking.style.background = '';
         ui.btnRanking.style.transform = '';
-        ui.btnRanking.onclick = () => window.showRanking(null, false, GAME_MODES.NORMAL);
+        ui.btnRanking.onclick = () => window.showRanking(null, GAME_MODES.NORMAL);
     }
 
     const menuButtons = document.getElementById('menu-buttons-container');
@@ -1219,7 +1272,7 @@ function updateIntro() {
                 // ここでストーリー開始と同時にSKIPボタンが出るようになります
                 (async () => {
                     await waitWithPause(500, () => isSkippingStory);
-                    if (!isSkippingStory && gameState !== 'TITLE') {
+                    if (!isSkippingStory && gameState === 'STAGE_INTRO' && introPhase === 2) {
                         playStoryTyping(storyText); // この中でボタンが表示されます
                     }
                 })();
@@ -1713,6 +1766,21 @@ function updateWarpProcess() {
                 el.classList.add('fade-out-now');
             }
         });
+
+        // ワープアウト開始時に残存敵を自爆させる（スコア加算なし）
+        enemyPool.pool.forEach(e => {
+            if (!e || !e.active || e.isDead || e.isDying) return;
+
+            const burst = (e.type === 'boss' || e.type === 'battleship') ? 35 : 10;
+            if (typeof createExplosion === 'function') {
+                createExplosion(e.x, e.y, e.color || '#fff', burst);
+            }
+
+            e.hp = 0;
+            e.isDying = false;
+            e.isDead = true;
+            e.active = false;
+        });
     }
 
     player.angle = -Math.PI / 2; // 上向き固定
@@ -1845,6 +1913,17 @@ function updateWarpProcess() {
                         el.classList.remove('fade-out-now'); // クラスを外して元に戻す
                     }
                 });
+
+                const extState = (typeof getExtremeTimeAttackState === 'function') ? getExtremeTimeAttackState() : null;
+                const isExtremeTimeoutWarp =
+                    (typeof isExtremeTimeAttackMode === 'function') &&
+                    isExtremeTimeAttackMode() &&
+                    !!(extState && extState.timeoutTriggered && !extState.cleared);
+
+                if (isExtremeTimeoutWarp) {
+                    showGameOver();
+                    return;
+                }
 
                 // エンディング or 次のステージへ
                 if (stage === MAX_STAGE) {

@@ -41,7 +41,10 @@ let extremeTimeAttackState = {
     targetFrames: 0,
     survivalFrames: 0,
     gaugeFrames: 0,
-    maxGaugeFrames: 0
+    maxGaugeFrames: 0,
+    warningShown: false,
+    timeoutTriggered: false,
+    timeoutMessageShown: false
 };
 
 // --- 演出・モード制御フラグ ---
@@ -89,7 +92,10 @@ function resetExtremeTimeAttackState() {
         targetFrames: Math.floor(EXTREME_TIME_ATTACK_CONFIG.TARGET_TIME_SECONDS * 60),
         survivalFrames: 0,
         gaugeFrames: 0,
-        maxGaugeFrames: Math.floor(EXTREME_TIME_ATTACK_CONFIG.INITIAL_GAUGE_SECONDS * 60)
+        maxGaugeFrames: Math.floor(EXTREME_TIME_ATTACK_CONFIG.INITIAL_GAUGE_SECONDS * 60),
+        warningShown: false,
+        timeoutTriggered: false,
+        timeoutMessageShown: false
     };
 }
 
@@ -123,17 +129,59 @@ function updateExtremeTimeAttack() {
 
     extremeTimeAttackState.survivalFrames++;
 
-    if (extremeTimeAttackState.survivalFrames >= extremeTimeAttackState.targetFrames && !extremeTimeAttackState.cleared) {
-        extremeTimeAttackState.cleared = true;
-        extremeTimeAttackState.active = false;
+    const warningFrames = Math.floor((EXTREME_TIME_ATTACK_CONFIG.WARNING_TIME_SECONDS || 10) * 60);
+    const remainFrames = Math.max(0, extremeTimeAttackState.targetFrames - extremeTimeAttackState.survivalFrames);
+    const timeoutPreviewFrames = 60;
+
+    if (!extremeTimeAttackState.warningShown && remainFrames > 0 && remainFrames <= warningFrames) {
+        extremeTimeAttackState.warningShown = true;
         showGameMessage({
-            main: 'TARGET REACHED',
-            sub: 'EXTREME TIME ATTACK CLEAR',
-            type: 'gold',
-            duration: 1800
+            kicker: 'WARNING',
+            main: '10 SECONDS LEFT',
+            sub: 'TIME LIMIT APPROACHING',
+            type: 'warning',
+            duration: 2000
         });
-        if (typeof showGameOver === 'function') {
-            showGameOver();
+        if (typeof AudioSys !== 'undefined') AudioSys.playSE('warning');
+    }
+
+    if (!extremeTimeAttackState.timeoutMessageShown && remainFrames > 0 && remainFrames <= timeoutPreviewFrames) {
+        extremeTimeAttackState.timeoutMessageShown = true;
+        showGameMessage({
+            kicker: 'WARNING',
+            main: 'TIME OUT',
+            sub: 'MISSION TERMINATED',
+            type: 'warning',
+            duration: 2400
+        });
+    }
+
+    if (!extremeTimeAttackState.timeoutTriggered && extremeTimeAttackState.survivalFrames >= extremeTimeAttackState.targetFrames) {
+        extremeTimeAttackState.timeoutTriggered = true;
+        extremeTimeAttackState.active = false;
+        player.invuln = Math.max(player.invuln || 0, 9999);
+        if (typeof enemyBulletPool !== 'undefined' && enemyBulletPool && typeof enemyBulletPool.clearAll === 'function') {
+            enemyBulletPool.clearAll();
+        }
+        if (!extremeTimeAttackState.timeoutMessageShown) {
+            showGameMessage({
+                kicker: 'WARNING',
+                main: 'TIME OUT',
+                sub: 'MISSION TERMINATED',
+                type: 'warning',
+                duration: 2400
+            });
+            extremeTimeAttackState.timeoutMessageShown = true;
+        }
+        if (typeof isWarpingOut !== 'undefined') {
+            setTimeout(() => {
+                if (gameState !== 'PLAYING') return;
+                isWarpingOut = true;
+                player.warpTimer = 0;
+                player.warpSoundPlayed = false;
+                player.hasExitedScreen = false;
+                player.exitTimer = 0;
+            }, 1800);
         }
         return;
     }
