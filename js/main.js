@@ -137,7 +137,7 @@ function updateExtremeTimeAttack() {
         extremeTimeAttackState.warningShown = true;
         showGameMessage({
             kicker: 'WARNING',
-            main: '10 SECONDS LEFT',
+            main: '6 SECONDS LEFT',
             sub: 'TIME LIMIT APPROACHING',
             type: 'warning',
             duration: 2000
@@ -154,6 +154,7 @@ function updateExtremeTimeAttack() {
             type: 'warning',
             duration: 2400
         });
+        if (typeof AudioSys !== 'undefined') AudioSys.playSE('warning');
     }
 
     if (!extremeTimeAttackState.timeoutTriggered && extremeTimeAttackState.survivalFrames >= extremeTimeAttackState.targetFrames) {

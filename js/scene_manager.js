@@ -76,6 +76,7 @@ function startGame() {
     player.warpTimer = 0;
     player.warpSoundPlayed = false;
     isWarpingOut = false; // グローバル変数の初期化も確実に行う
+    gameSpeed = 1.0;    // スロー演出のリセット
 
     // 4. 入力・カメラ・UIのリセット
     if (typeof clearInputState === 'function') clearInputState();
@@ -418,9 +419,10 @@ function resetGame() {
     player.vx = 0; player.vy = 0;
     player.shield = PLAYER_BASE_SHIELD;
     player.weaponLevel = DEFAULT_WEAPON_LEVEL;
-    player.invuln = 0; player.laserTimer = 0;
+    player.invuln = 0; player.laserTimer = 0; player.overdriveTimer = 0;
     player.satellites = [];
     player.history = [];
+    gameSpeed = 1.0;
 
     if (typeof clearInputState === 'function') clearInputState();
 

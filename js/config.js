@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = globalThis.NEON_GRAVITY_VERSION || "0.9.14";
+window.GAME_VERSION = globalThis.NEON_GRAVITY_VERSION || "0.9.16";
 
 
 const DEBUG = {
@@ -34,7 +34,7 @@ const GAME_MODES = {
 // --- Extreme Time Attack 設定 ---
 const EXTREME_TIME_ATTACK_CONFIG = {
     TARGET_TIME_SECONDS: 180,
-    WARNING_TIME_SECONDS: 10,
+    WARNING_TIME_SECONDS: 6,
     INITIAL_GAUGE_SECONDS: 20,
     GAUGE_DECAY_PER_SECOND: 1.05,
     DECAY_MULT_60S: 1.25,
