@@ -325,7 +325,7 @@ function startStage() {
             });
         } else {
             showGameMessage({
-                kicker: 'EXTREME TIME ATTACK',
+                kicker: 'TIME ATTACK',
                 main: 'HOSTILE GRID SATURATION',
                 sub: isJa ? '全敵種混成宙域' : 'ALL HOSTILE TYPES INBOUND',
                 textColor: textBodyColor,
@@ -625,7 +625,7 @@ async function showGameOver() {
         if (canRegister) {
             if (msgPara) {
                 msgPara.innerHTML = isExtreme
-                    ? "EXTREME RECORD! REGISTER TO EXTREME RANKING?"
+                    ? "TIME ATTACK RECORD! REGISTER TO TIME ATTACK RANKING?"
                     : "NEW RECORD! REGISTER TO WORLD RANKING?";
                 msgPara.style.color = "#0ff";
             }
@@ -638,7 +638,7 @@ async function showGameOver() {
         } else {
             if (msgPara) {
                 msgPara.innerHTML = isExtreme
-                    ? "EXTREME RANKING OUT (TOP 20 ONLY)"
+                    ? "TIME ATTACK RANKING OUT (TOP 20 ONLY)"
                     : "RANKING OUT (TOP 10 ONLY)";
                 msgPara.style.color = "#f44";
             }

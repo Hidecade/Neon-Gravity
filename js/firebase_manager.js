@@ -137,14 +137,14 @@ window.showRanking = async function (onClose = null, modeOverride = null) {
     if (titleMain) {
         // 古い方を見ている時はタイトルを変える
         if (rankingMode === MODE_EXTREME) {
-            titleMain.innerText = "EXTREME TIME ATTACK";
+            titleMain.innerText = "TIME ATTACK";
         } else {
             titleMain.innerText = "TOP COMMANDERS";
         }
     }
 
     if (modeBtn) {
-        modeBtn.innerText = rankingMode === MODE_EXTREME ? "MODE: EXTREME" : "MODE: NORMAL";
+        modeBtn.innerText = rankingMode === MODE_EXTREME ? "MODE: TIME ATTACK" : "MODE: NORMAL";
         modeBtn.onclick = () => {
             const nextMode = rankingMode === MODE_EXTREME ? MODE_NORMAL : MODE_EXTREME;
             window.showRanking(onClose, nextMode);
