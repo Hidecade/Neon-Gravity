@@ -14,6 +14,23 @@
  * (タイトル画面から「START GAME」を押した時に呼ばれる)
  */
 function startGame() {
+    const requestedMode = (typeof queuedGameMode !== 'undefined' && queuedGameMode)
+        ? queuedGameMode
+        : GAME_MODES.NORMAL;
+    const isExtremeMode = requestedMode === GAME_MODES.EXTREME_TIME_ATTACK;
+
+    if (typeof setCurrentGameMode === 'function') {
+        setCurrentGameMode(requestedMode);
+    }
+    if (typeof queueGameModeStart === 'function') {
+        queueGameModeStart(GAME_MODES.NORMAL);
+    }
+    if (typeof isExtremeTimeAttackMode === 'function' && isExtremeTimeAttackMode()) {
+        if (typeof initExtremeTimeAttackState === 'function') initExtremeTimeAttackState();
+    } else {
+        if (typeof resetExtremeTimeAttackState === 'function') resetExtremeTimeAttackState();
+    }
+
     // 1. タイトルUIのフェードアウト（クリック防止とフォーカス維持）
     ui.titleOverlay.style.transition = 'opacity 0.2s';
     ui.titleOverlay.style.opacity = '0';
@@ -36,9 +53,9 @@ function startGame() {
 
     // 2. グローバル変数の初期化
     score = 0;
-    stage = START_STAGE;
+    stage = isExtremeMode ? 8 : START_STAGE;
     frame = 0;
-    currentStage = START_STAGE;
+    currentStage = stage;
 
     // 3. プレイヤー状態のリセット
     player.x = worldSize / 2;
@@ -259,16 +276,32 @@ function startStage() {
         const glowColor = themeHex;
 
         // 表示
-        showGameMessage({
-            kicker: `STAGE ${stage}`,
-            main: data.en,
-            sub: isJa ? data.ja : "",
-            textColor: textBodyColor,
-            glowColor: glowColor
-        });
+        if (typeof isExtremeTimeAttackMode === 'function' && isExtremeTimeAttackMode()) {
+            showGameMessage({
+                kicker: 'EXTREME TIME ATTACK',
+                main: 'HOSTILE GRID SATURATION',
+                sub: isJa ? '全敵種混成宙域' : 'ALL HOSTILE TYPES INBOUND',
+                textColor: textBodyColor,
+                glowColor: glowColor
+            });
+        } else {
+            showGameMessage({
+                kicker: `STAGE ${stage}`,
+                main: data.en,
+                sub: isJa ? data.ja : "",
+                textColor: textBodyColor,
+                glowColor: glowColor
+            });
+        }
 
         // ノルマと初期ワームホールの配置
-        if (stage === 9 || stage === 10) {
+        if (typeof isExtremeTimeAttackMode === 'function' && isExtremeTimeAttackMode()) {
+            enemiesToSpawn = 999999;
+            const whCount = 3;
+            for (let i = 0; i < whCount; i++) {
+                if (typeof spawnWormhole === 'function') spawnWormhole();
+            }
+        } else if (stage === 9 || stage === 10) {
             enemiesToSpawn = 9999;
         } else {
             enemiesToSpawn = (stage <= STAGE_ENEMY_COUNTS.length)
@@ -368,6 +401,12 @@ function resetGame() {
 
     ui.pauseBtn.style.display = 'flex';
     if (ui.bossContainer) ui.bossContainer.style.display = 'none';
+
+    if (typeof isExtremeTimeAttackMode === 'function' && isExtremeTimeAttackMode()) {
+        if (typeof initExtremeTimeAttackState === 'function') initExtremeTimeAttackState();
+    } else {
+        if (typeof resetExtremeTimeAttackState === 'function') resetExtremeTimeAttackState();
+    }
 
     // UIオーバーレイのゴースト化消去
     ui.titleOverlay.style.transition = 'opacity 0.2s';
@@ -507,10 +546,20 @@ async function showGameOver() {
     try {
         await waitForFirebase();
 
+        const currentMode = (typeof getCurrentGameMode === 'function')
+            ? getCurrentGameMode()
+            : GAME_MODES.NORMAL;
+        const isExtreme = currentMode === GAME_MODES.EXTREME_TIME_ATTACK;
+        const extState = (typeof getExtremeTimeAttackState === 'function') ? getExtremeTimeAttackState() : null;
+        const survivedSeconds = isExtreme && extState
+            ? Math.floor((extState.survivalFrames || 0) / 60)
+            : 0;
+        const isExtremeClear = !!(isExtreme && extState && extState.cleared);
+
         // ランキング圏内チェック
         let canRegister = false;
         try {
-            canRegister = await window.firebaseOps.checkRankIn(score);
+            canRegister = await window.firebaseOps.checkRankIn(score, currentMode, survivedSeconds);
         } catch (e) {
             console.error("Rank check failed:", e);
             canRegister = true; // エラー時は念のため登録許容
@@ -521,7 +570,9 @@ async function showGameOver() {
         // ==========================================
         const scoreDisplay = document.getElementById('result-score-display');
         if (scoreDisplay) {
-            scoreDisplay.innerHTML = `SCORE: ${score.toLocaleString()}`;
+            const baseText = `SCORE: ${score.toLocaleString()}`;
+            const modeText = isExtreme ? `<br>TIME: ${survivedSeconds}s` : '';
+            scoreDisplay.innerHTML = `${baseText}${modeText}`;
             scoreDisplay.style.display = "flex";
             scoreDisplay.style.textAlign = "center";
         }
@@ -532,7 +583,9 @@ async function showGameOver() {
 
         if (canRegister) {
             if (msgPara) {
-                msgPara.innerHTML = "NEW RECORD! REGISTER TO WORLD RANKING?";
+                msgPara.innerHTML = isExtreme
+                    ? "EXTREME RECORD! REGISTER TO EXTREME RANKING?"
+                    : "NEW RECORD! REGISTER TO WORLD RANKING?";
                 msgPara.style.color = "#0ff";
             }
             if (nameInp) nameInp.style.display = "block";
@@ -543,7 +596,9 @@ async function showGameOver() {
             
         } else {
             if (msgPara) {
-                msgPara.innerHTML = "RANKING OUT (TOP 10 ONLY)";
+                msgPara.innerHTML = isExtreme
+                    ? "EXTREME RANKING OUT (TOP 20 ONLY)"
+                    : "RANKING OUT (TOP 10 ONLY)";
                 msgPara.style.color = "#f44";
             }
             if (nameInp) nameInp.style.display = "none";
@@ -574,19 +629,28 @@ async function showGameOver() {
             const name = nameInp.value.trim() || "PILOT";
 
             let displayStage = stage;
-            if (stage === 10 && isStageClear) {
+            if (isExtreme) {
+                displayStage = isExtremeClear ? "XTA-CLEAR" : "XTA";
+            } else if (stage === 10 && isStageClear) {
                 displayStage = "CLEAR";
             }
 
             try {
-                await window.firebaseOps.submitAndCleanup(score, displayStage, name);
+                await window.firebaseOps.submitAndCleanup(
+                    score,
+                    displayStage,
+                    name,
+                    currentMode,
+                    survivedSeconds,
+                    isExtremeClear
+                );
                 localStorage.setItem("neonGravity_last_name", name);
                 ui.nameInputArea.style.display = "none";
 
                 if (typeof AudioSys !== 'undefined') AudioSys.currentSrc = null;
 
                 if (window.showRanking) {
-                    window.showRanking(() => proceedToNextMenu());
+                    window.showRanking(() => proceedToNextMenu(), false, currentMode);
                 } else {
                     proceedToNextMenu();
                 }
@@ -712,6 +776,7 @@ function proceedToNextMenu() {
 
         // 不要なボタンを隠す
         if (ui.btnHowto) ui.btnHowto.style.display = 'none';
+        if (ui.btnExtremeTa) ui.btnExtremeTa.style.display = 'none';
         if (ui.btnRanking) ui.btnRanking.style.display = 'none';
         if (ui.btnOst) ui.btnOst.style.display = 'none';
         if (ui.btnStory) ui.btnStory.style.display = 'none';
@@ -847,6 +912,14 @@ function returnToTitle() {
         ui.btnHowto.style.transform = '';
     }
 
+    if (ui.btnExtremeTa) {
+        ui.btnExtremeTa.style.display = 'block';
+        ui.btnExtremeTa.style.borderColor = '';
+        ui.btnExtremeTa.style.color = '';
+        ui.btnExtremeTa.style.background = '';
+        ui.btnExtremeTa.style.transform = '';
+    }
+
     if (ui.btnStory) {
         ui.btnStory.style.display = 'block';
         ui.btnStory.style.borderColor = '';
@@ -861,7 +934,7 @@ function returnToTitle() {
         ui.btnRanking.style.color = '';
         ui.btnRanking.style.background = '';
         ui.btnRanking.style.transform = '';
-        ui.btnRanking.onclick = () => window.showRanking(null);
+        ui.btnRanking.onclick = () => window.showRanking(null, false, GAME_MODES.NORMAL);
     }
 
     const menuButtons = document.getElementById('menu-buttons-container');
@@ -1001,6 +1074,13 @@ function hideHowTo() {
             window.refreshMenuButtons();
         }
     }, 300);
+}
+
+function startExtremeTimeAttack() {
+    if (typeof queueGameModeStart === 'function') {
+        queueGameModeStart(GAME_MODES.EXTREME_TIME_ATTACK);
+    }
+    startGame();
 }
 
 /**

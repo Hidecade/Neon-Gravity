@@ -742,6 +742,7 @@ function initInputHandlers() {
     bindBtn('btn-story', openStory);
     bindBtn('btn-story-back', closeStory);
     bindBtn('btn-howto-back', hideHowTo);
+    bindBtn('btn-extreme-ta', startExtremeTimeAttack);
     bindBtn('btn-howto-next', startTraining);
     bindBtn('btn-training-exit', returnToTitleFromTraining);
     bindBtn('btn-settings', openSetting);

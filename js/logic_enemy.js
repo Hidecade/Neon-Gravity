@@ -778,70 +778,6 @@ function updateJellyfishAI(e) {
     }
 }
 
-function updateSentinelAI(e) {
-    e.timer += gameSpeed;
-    const cycleTime = e.timer % 240;
-
-    let targetAngle = e.angle; // 旋回する目標の角度
-
-    if (cycleTime < 150) {
-        // --- 周回モード (Orbit) ---
-        e.state = 'orbit';
-        const currentAngle = Math.atan2(e.y - player.y, e.x - player.x);
-        const nextAngle = currentAngle + (0.02 * e.orbitDir * gameSpeed);
-
-        const tx = player.x + Math.cos(nextAngle) * e.orbitDist;
-        const ty = player.y + Math.sin(nextAngle) * e.orbitDist;
-
-        // ★修正：0.9 だとワープするので、0.05 に下げて滑らかに追従させる
-        e.vx = (tx - e.x) * 0.1;
-        e.vy = (ty - e.y) * 0.1;
-
-        // 目標角度：進行方向を向く
-        targetAngle = Math.atan2(e.vy, e.vx);
-
-    } else if (cycleTime < 210) {
-        // --- スキャンモード (Scan) ---
-        e.state = 'scan';
-        e.vx *= 0.9; // その場で停止して狙う
-        e.vy *= 0.9;
-
-        // 目標角度：プレイヤー（自機）の方を向く
-        targetAngle = Math.atan2(player.y - e.y, player.x - e.x);
-
-    } else if (cycleTime >= 210 && cycleTime < 220) {
-        // --- 発射 (Fire) ---
-        // 目標角度：発射中もプレイヤーの方を向いたまま
-        targetAngle = Math.atan2(player.y - e.y, player.x - e.x);
-
-        if (e.state !== 'fire') {
-            e.state = 'fire';
-            // 高速弾を発射
-            const bSpd = 22 * SPEED_SCALE;
-            spawnEnemyBulletObj({
-                x: e.x, y: e.y,
-                vx: Math.cos(e.angle) * bSpd, // 現在向いている方向に撃つ
-                vy: Math.sin(e.angle) * bSpd,
-                life: 180, color: e.color, isLaserMissile: true
-            });
-            if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
-            if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 30, 80);
-        }
-    }
-
-    // --- 向きの滑らかな旋回処理 ---
-    let diff = targetAngle - e.angle;
-    while (diff <= -Math.PI) diff += Math.PI * 2;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-
-    // スキャン時は素早く自機を向き、移動中は自然な速度で向く
-    const turnSpeed = (e.state === 'scan' || e.state === 'fire') ? 0.15 : 0.08;
-    e.angle += diff * turnSpeed * gameSpeed;
-
-    e.x += e.vx * gameSpeed;
-    e.y += e.vy * gameSpeed;
-}
-
 function updateSweeperAI(e) {
     // --- 汎用的な加速処理 ---
     const accel = 0.20 * SPEED_SCALE; 
@@ -1729,6 +1665,12 @@ function destroyEnemy(e) {
 
     score += pts;
     ui.score.innerText = score.toString().padStart(6, '0');
+
+    if (typeof addExtremeTimeAttackGaugeSeconds === 'function' && typeof isExtremeTimeAttackMode === 'function' && isExtremeTimeAttackMode()) {
+        const bonusMap = EXTREME_TIME_ATTACK_CONFIG.KILL_BONUS_SECONDS;
+        const gain = bonusMap[e.type] || bonusMap.default || 0;
+        addExtremeTimeAttackGaugeSeconds(gain);
+    }
     
     // ボス撃破時は文字を少し強調する（alphaを高く、寿命を長く）
     const isBossClass = (e.type === 'boss' || e.type === 'battleship');
@@ -1862,20 +1804,28 @@ wormholes.forEach((w) => {
         w.life--;
         if (w.active) {
             if (stage !== 9 && stage !== 10 && w.life > 60 && w.life % SPAWN_SETTINGS.SPAWN_INTERVAL === 0) {
-                
-                // ★修正：escaped を含めて remaining（残りノルマ） を正しく計算
-                const escaped = window.enemiesEscaped || 0;
-                const remaining = enemiesToSpawn - (enemiesKilled + escaped);
-                
-                if (!isBossSpawned && (remaining <= enemiesToSpawn * 0.2 || spawnedCount >= enemiesToSpawn)) {
-                    triggerBossEncounter();
-                    isBossSpawned = true;
+                const isExtremeMode = (typeof isExtremeTimeAttackMode === 'function') && isExtremeTimeAttackMode();
+
+                if (isExtremeMode) {
+                    const pool = getExtremeTimeAttackSpawnPool();
+                    const type = pool[Math.floor(Math.random() * pool.length)];
+                    spawnEnemy(w.x, w.y, type);
                 } else {
-                    const bossEx = enemyPool.pool.some(e => e.active && e.type === 'boss');
-                    if (spawnedCount < enemiesToSpawn || bossEx) {
-                        const pool = STAGE_ENEMIES[stage] || STAGE_ENEMIES[7];
-                        const type = Math.random() < 0.15 ? 'cube' : pool[Math.floor(Math.random() * pool.length)];
-                        spawnEnemy(w.x, w.y, type);
+                
+                    // ★修正：escaped を含めて remaining（残りノルマ） を正しく計算
+                    const escaped = window.enemiesEscaped || 0;
+                    const remaining = enemiesToSpawn - (enemiesKilled + escaped);
+                    
+                    if (!isBossSpawned && (remaining <= enemiesToSpawn * 0.2 || spawnedCount >= enemiesToSpawn)) {
+                        triggerBossEncounter();
+                        isBossSpawned = true;
+                    } else {
+                        const bossEx = enemyPool.pool.some(e => e.active && e.type === 'boss');
+                        if (spawnedCount < enemiesToSpawn || bossEx) {
+                            const pool = STAGE_ENEMIES[stage] || STAGE_ENEMIES[7];
+                            const type = Math.random() < 0.15 ? 'cube' : pool[Math.floor(Math.random() * pool.length)];
+                            spawnEnemy(w.x, w.y, type);
+                        }
                     }
                 }
             }
@@ -1896,6 +1846,20 @@ wormholes.forEach((w) => {
         }
     });
     wormholes = wormholes.filter(w => w.life > -60);
+}
+
+function getExtremeTimeAttackSpawnPool() {
+    const state = (typeof getExtremeTimeAttackState === 'function') ? getExtremeTimeAttackState() : null;
+    const survivedSeconds = state ? Math.floor((state.survivalFrames || 0) / 60) : 0;
+    const pool = [];
+
+    EXTREME_TIME_ATTACK_SPAWN_TIERS.forEach((tier) => {
+        if (survivedSeconds >= tier.unlockAtSeconds) {
+            pool.push(...tier.pool);
+        }
+    });
+
+    return pool.length > 0 ? pool : ['triangle', 'tadpole', 'cube'];
 }
 
 // =========================================================
@@ -2235,19 +2199,6 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
         
         spawnedCount++;
 
-    } else if (type === 'sentinel') {
-        spawnEnemyObj({
-            x: x, y: y, vx: 0, vy: 0,
-            hp: ENEMY_HP.sentinel + Math.floor(hpMag),
-            speed: ENEMY_SPEEDS.SENTINEL * spd * stageMag,
-            color: '#ff3366', type: 'sentinel', angle: 0,
-            drop: dropType, scale: 1.1,
-            timer: Math.random() * 100,
-            orbitDist: 200 + Math.random() * 100,
-            orbitDir: Math.random() > 0.5 ? 1 : -1,
-            state: 'orbit'
-        });
-        spawnedCount++;
     } else if (type === 'sweeper') {
         const viewW = width / cameraScale;
         const viewH = height / cameraScale;
@@ -2499,7 +2450,7 @@ function updateEnemies() {
         if (e.gridLife === undefined) {
             if (e.type === 'boss' || e.type === 'battleship') {
                 e.gridLife = Infinity; 
-            } else if (e.type === 'cube' || e.type === 'asteroid' || e.type === 'bubble' || e.type === 'sentinel' || e.type === 'sweeper') {
+            } else if (e.type === 'cube' || e.type === 'asteroid' || e.type === 'bubble' || e.type === 'sweeper') {
                 e.gridLife = 1200; 
             } else if (e.type === 'hunter' || e.type === 'phantom' || e.type === 'eclipse' || e.type === 'fighter') {
                 e.gridLife = 600;  
@@ -2668,7 +2619,6 @@ function updateEnemies() {
                 case 'phantom': updatePhantomAI(e); break;
                 case 'eclipse': updateEclipseAI(e); break;
                 case 'jellyfish': updateJellyfishAI(e); break;
-                case 'sentinel': updateSentinelAI(e); break;
                 case 'sweeper': updateSweeperAI(e); break;
                 case 'lightcycle' : updateLightcycleAI(e); break;
 
@@ -2787,6 +2737,8 @@ function updateFormationMovement(e) {
 }
 
 function updateSpawnLogic() {
+    const isExtremeMode = (typeof isExtremeTimeAttackMode === 'function') && isExtremeTimeAttackMode();
+
     if (stage === 9) {
         // --- Stage 9: ボスラッシュ ---
         const bossExists = enemyPool.pool.some(e => e.active && e.type === 'boss');
@@ -2901,7 +2853,7 @@ function updateSpawnLogic() {
         const bossExists = enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
 
         // 修正：ノルマに達していない、またはボス戦中ならスポーン可能
-        const canSpawn = (spawnedCount < enemiesToSpawn) || (isBossSpawned && bossExists);
+        const canSpawn = isExtremeMode || (spawnedCount < enemiesToSpawn) || (isBossSpawned && bossExists);
 
         const currentEnemyCount = enemyPool.getActiveCount();
 
@@ -2927,7 +2879,7 @@ function updateSpawnLogic() {
         const escaped = window.enemiesEscaped || 0; // ★追加
         const remaining = enemiesToSpawn - (enemiesKilled + escaped); // ★修正
         
-        if (gameState === 'PLAYING' && !isBossSpawned && !isBossWarning && activeWh === 0 && currentEnemyCount === 0) {
+        if (!isExtremeMode && gameState === 'PLAYING' && !isBossSpawned && !isBossWarning && activeWh === 0 && currentEnemyCount === 0) {
             if (remaining <= enemiesToSpawn * 0.2 || spawnedCount >= enemiesToSpawn) {
                 console.log("Safety Net: Triggering Boss Encounter");
                 triggerBossEncounter();

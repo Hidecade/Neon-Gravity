@@ -33,6 +33,17 @@ let gameState = 'TITLE';        // 現在の状態 ('TITLE', 'PLAYING', 'PAUSED'
 let previousGameState = '';     // ポーズ前の状態保存用
 let stageClearTimer = 0;        // ステージクリア後の待機タイマー
 
+let currentGameMode = GAME_MODES.NORMAL;
+let queuedGameMode = GAME_MODES.NORMAL;
+let extremeTimeAttackState = {
+    active: false,
+    cleared: false,
+    targetFrames: 0,
+    survivalFrames: 0,
+    gaugeFrames: 0,
+    maxGaugeFrames: 0
+};
+
 // --- 演出・モード制御フラグ ---
 let isTrainingMode = false;     // トレーニングモード判定
 let titleIdleTimer = 0;         // タイトル画面の放置タイマー
@@ -54,6 +65,105 @@ let isSkippingStory = false;
 let isSkipComplete = false;
 
 let bgFadeAlpha = 1.0;          // エンディング背景(星など)の透明度制御用
+
+function queueGameModeStart(mode) {
+    queuedGameMode = mode || GAME_MODES.NORMAL;
+}
+
+function setCurrentGameMode(mode) {
+    currentGameMode = mode || GAME_MODES.NORMAL;
+}
+
+function getCurrentGameMode() {
+    return currentGameMode;
+}
+
+function isExtremeTimeAttackMode() {
+    return currentGameMode === GAME_MODES.EXTREME_TIME_ATTACK;
+}
+
+function resetExtremeTimeAttackState() {
+    extremeTimeAttackState = {
+        active: false,
+        cleared: false,
+        targetFrames: Math.floor(EXTREME_TIME_ATTACK_CONFIG.TARGET_TIME_SECONDS * 60),
+        survivalFrames: 0,
+        gaugeFrames: 0,
+        maxGaugeFrames: Math.floor(EXTREME_TIME_ATTACK_CONFIG.INITIAL_GAUGE_SECONDS * 60)
+    };
+}
+
+function initExtremeTimeAttackState() {
+    resetExtremeTimeAttackState();
+    extremeTimeAttackState.active = true;
+    extremeTimeAttackState.gaugeFrames = extremeTimeAttackState.maxGaugeFrames;
+}
+
+function getExtremeTimeAttackState() {
+    return extremeTimeAttackState;
+}
+
+function addExtremeTimeAttackGaugeSeconds(seconds) {
+    if (!isExtremeTimeAttackMode() || !extremeTimeAttackState.active) return;
+    const frames = Math.floor(Math.max(0, seconds) * 60);
+    extremeTimeAttackState.gaugeFrames = Math.min(
+        extremeTimeAttackState.maxGaugeFrames,
+        extremeTimeAttackState.gaugeFrames + frames
+    );
+}
+
+function applyExtremeTimeAttackHitPenalty(seconds) {
+    if (!isExtremeTimeAttackMode() || !extremeTimeAttackState.active) return;
+    const frames = Math.floor(Math.max(0, seconds) * 60);
+    extremeTimeAttackState.gaugeFrames = Math.max(0, extremeTimeAttackState.gaugeFrames - frames);
+}
+
+function updateExtremeTimeAttack() {
+    if (!isExtremeTimeAttackMode() || !extremeTimeAttackState.active || gameState !== 'PLAYING') return;
+
+    extremeTimeAttackState.survivalFrames++;
+
+    if (extremeTimeAttackState.survivalFrames >= extremeTimeAttackState.targetFrames && !extremeTimeAttackState.cleared) {
+        extremeTimeAttackState.cleared = true;
+        extremeTimeAttackState.active = false;
+        showGameMessage({
+            main: 'TARGET REACHED',
+            sub: 'EXTREME TIME ATTACK CLEAR',
+            type: 'gold',
+            duration: 1800
+        });
+        if (typeof showGameOver === 'function') {
+            showGameOver();
+        }
+        return;
+    }
+
+    const graceFrames = Math.floor(EXTREME_TIME_ATTACK_CONFIG.START_GRACE_SECONDS * 60);
+    if (extremeTimeAttackState.survivalFrames <= graceFrames) return;
+
+    let decay = EXTREME_TIME_ATTACK_CONFIG.GAUGE_DECAY_PER_SECOND;
+    if (extremeTimeAttackState.survivalFrames >= 120 * 60) {
+        decay *= EXTREME_TIME_ATTACK_CONFIG.DECAY_MULT_120S;
+    } else if (extremeTimeAttackState.survivalFrames >= 60 * 60) {
+        decay *= EXTREME_TIME_ATTACK_CONFIG.DECAY_MULT_60S;
+    }
+
+    extremeTimeAttackState.gaugeFrames -= decay;
+    if (extremeTimeAttackState.gaugeFrames <= 0) {
+        extremeTimeAttackState.gaugeFrames = 0;
+        if (gameState === 'PLAYING') {
+            player.shield = 0;
+            if (typeof damage === 'function') damage(0);
+        }
+    }
+}
+
+window.queueGameModeStart = queueGameModeStart;
+window.getCurrentGameMode = getCurrentGameMode;
+window.isExtremeTimeAttackMode = isExtremeTimeAttackMode;
+window.getExtremeTimeAttackState = getExtremeTimeAttackState;
+window.addExtremeTimeAttackGaugeSeconds = addExtremeTimeAttackGaugeSeconds;
+window.applyExtremeTimeAttackHitPenalty = applyExtremeTimeAttackHitPenalty;
 
 // =========================================================
 // 2. ステージ・進行管理変数
@@ -540,6 +650,7 @@ const ui = {
     stickL: document.getElementById('stick-left'),
     stickR: document.getElementById('stick-right'),
     btnStart: document.getElementById('btn-start'),
+    btnExtremeTa: document.getElementById('btn-extreme-ta'),
     btnTitle: document.getElementById('btn-title'),
     btnBackTitle: document.getElementById('btn-back-to-title'),
     btnNextResult: document.getElementById('btn-next-result'),
@@ -623,6 +734,8 @@ window.updateMenuSelectionUI = function () {
  * アプリケーションの初期化
  */
 function init() {
+
+    resetExtremeTimeAttackState();
 
 
     // 1. 【最優先】最初に解像度・画面サイズを設定する！
@@ -1091,6 +1204,10 @@ function loop() {
  */
 function update() {
     if (gameState === 'PAUSED') return;
+
+    if (typeof updateExtremeTimeAttack === 'function') {
+        updateExtremeTimeAttack();
+    }
 
     if (spawnWaitTimer > 0) {
         spawnWaitTimer--;

@@ -1,6 +1,9 @@
 ﻿
 
 function updateUI() {
+    const isExtremeMode = (typeof isExtremeTimeAttackMode === 'function') && isExtremeTimeAttackMode();
+    const extremeState = (typeof getExtremeTimeAttackState === 'function') ? getExtremeTimeAttackState() : null;
+
     // ==========================================
     // 1. BOSS & BATTLESHIP ゲージ
     // ==========================================
@@ -60,7 +63,18 @@ function updateUI() {
     ui.enemyBar.style.background = '';
     ui.enemyBar.style.boxShadow = '';
 
-    if (stage === 9) {
+    if (isExtremeMode && extremeState) {
+        const gaugePct = extremeState.maxGaugeFrames > 0
+            ? Math.max(0, Math.min(100, (extremeState.gaugeFrames / extremeState.maxGaugeFrames) * 100))
+            : 0;
+        const targetSec = Math.floor((extremeState.targetFrames || 0) / 60);
+        const survivedSec = Math.floor((extremeState.survivalFrames || 0) / 60);
+        const remainSec = Math.max(0, targetSec - survivedSec);
+
+        ui.enemyBar.style.width = `${gaugePct}%`;
+        document.querySelector('.bar-label.enemy').innerText = `CORE: ${Math.max(0, extremeState.gaugeFrames / 60).toFixed(1)}s`;
+        ui.stage.innerText = `XTA ${remainSec}s`;
+    } else if (stage === 9) {
         const progress = rushBossIndex / 8;
         ui.enemyBar.style.width = `${(1 - progress) * 100}%`;
         document.querySelector('.bar-label.enemy').innerText = `BOSS RUSH: ${rushBossIndex}/8`;
@@ -77,6 +91,7 @@ function updateUI() {
         
         ui.enemyBar.style.width = `${(enemyRemains / enemiesToSpawn) * 100}%`;
         document.querySelector('.bar-label.enemy').innerText = `ENEMY: ${enemyRemains}`;
+        ui.stage.innerText = stage;
     }
 
 

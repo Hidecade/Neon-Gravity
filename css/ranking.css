@@ -157,6 +157,26 @@
 #ranking-table td.col-score {
     width: 118px;
     text-align: right;
+    font-family: 'Orbitron', monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+    white-space: nowrap;
+}
+
+#ranking-table td.ranking-score-cell {
+    letter-spacing: 0.25px;
+}
+
+.ranking-score-digit {
+    display: inline-block;
+    min-width: 0.85em;
+    text-align: center;
+}
+
+.ranking-score-comma {
+    min-width: 0.35em;
+    text-align: center;
+    margin-right: 0.08em;
 }
 
 /* top ranks */

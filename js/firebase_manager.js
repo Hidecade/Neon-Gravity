@@ -20,8 +20,20 @@ const fullVersion = window.GAME_VERSION || "1.0.0";
 // ドットで区切って最初の数字(メジャーバージョン)だけを取り出す (例: "1")
 const majorVersion = fullVersion.split('.')[0];
 
-// コレクション名にメジャーバージョンを結合 (例: "neon_gravity_scores_v1")
-const SCORES_COLLECTION = `neon_gravity_scores_v${majorVersion}`;
+const MODE_NORMAL = 'NORMAL';
+const MODE_EXTREME = 'EXTREME_TIME_ATTACK';
+
+function normalizeMode(mode) {
+    return mode === MODE_EXTREME ? MODE_EXTREME : MODE_NORMAL;
+}
+
+function getScoresCollection(mode) {
+    const normalized = normalizeMode(mode);
+    if (normalized === MODE_EXTREME) {
+        return `neon_gravity_scores_v${majorVersion}_xta`;
+    }
+    return `neon_gravity_scores_v${majorVersion}`;
+}
 
 // HTML要素の取得
 const rankingOverlay = document.getElementById("ranking-overlay");
@@ -35,10 +47,24 @@ const RANKING_LIMIT = 20; // ランキングの表示・保持件数
 
 // 閉じた後の動作を保存する変数
 let onRankingCloseAction = null;
+let rankingMode = MODE_NORMAL;
 
 function escapeHtml(str) {
     if (!str) return "";
     return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+function formatRankingScore(score) {
+    return Number(score || 0)
+        .toLocaleString()
+        .split("")
+        .map((char) => {
+            if (char === ",") {
+                return `<span class="ranking-score-digit ranking-score-comma">${char}</span>`;
+            }
+            return `<span class="ranking-score-digit">${char}</span>`;
+        })
+        .join("");
 }
 
 // --- ゲーム側から呼び出すための「窓口」オブジェクト ---
@@ -46,8 +72,9 @@ window.firebaseOps = {
     isReady: true, // 準備完了フラグ
 
     // ランキング取得（表示用）
-    getRanking: async () => {
-        const q = query(collection(db, SCORES_COLLECTION), orderBy("score", "desc"), limit(RANKING_LIMIT));
+    getRanking: async (mode = MODE_NORMAL) => {
+        const targetCollection = getScoresCollection(mode);
+        const q = query(collection(db, targetCollection), orderBy("score", "desc"), limit(RANKING_LIMIT));
         return await getDocs(q);
     },
     
@@ -59,8 +86,9 @@ window.firebaseOps = {
     },
 
     // 10位以内かどうかの判定用
-    checkRankIn: async (currentScore) => {
-        const q = query(collection(db, SCORES_COLLECTION), orderBy("score", "desc"), limit(RANKING_LIMIT));
+    checkRankIn: async (currentScore, mode = MODE_NORMAL) => {
+        const targetCollection = getScoresCollection(mode);
+        const q = query(collection(db, targetCollection), orderBy("score", "desc"), limit(RANKING_LIMIT));
         const snapshot = await getDocs(q);
 
         // データがRANKING_LIMIT件未満なら無条件でランクイン
@@ -75,19 +103,33 @@ window.firebaseOps = {
     },
 
     // 送信 ＆ 11位以下の削除処理
-    submitAndCleanup: async (score, stage, name) => {
+    submitAndCleanup: async (score, stage, name, mode = MODE_NORMAL, surviveSeconds = 0, isClear = false) => {
+        const normalizedMode = normalizeMode(mode);
+        const targetCollection = getScoresCollection(normalizedMode);
+
         // 1. スコアの追加（ここは確実に実行させる）
-        await addDoc(collection(db, SCORES_COLLECTION), {
+        await addDoc(collection(db, targetCollection), {
             name: name,
             score: score,
             stage: stage,
+            mode: normalizedMode,
+            surviveSeconds: surviveSeconds,
+            clear: !!isClear,
             timestamp: serverTimestamp()
         });
     }
 };
 
-window.showRanking = async function (onClose = null, isOld = false) {
+window.showRanking = async function (onClose = null, isOld = false, modeOverride = null) {
     if (!rankingOverlay) return;
+
+    if (modeOverride) {
+        rankingMode = normalizeMode(modeOverride);
+    }
+
+    if (rankingMode === MODE_EXTREME) {
+        isOld = false;
+    }
 
     // 他のオーバーレイを閉じる
     if (ui.titleOverlay) ui.titleOverlay.style.display = "none";
@@ -102,17 +144,32 @@ window.showRanking = async function (onClose = null, isOld = false) {
     // タイトルと切り替えボタンのテキストを変更
     const titleMain = document.querySelector("#ranking-overlay .overlay-title-main");
     const toggleBtn = document.getElementById("toggle-ranking-btn");
+    const modeBtn = document.getElementById("toggle-ranking-mode-btn");
     
     if (titleMain) {
         // 古い方を見ている時はタイトルを変える
-        titleMain.innerText = isOld ? "OLD RECORDS" : "TOP COMMANDERS";
+        if (rankingMode === MODE_EXTREME) {
+            titleMain.innerText = "EXTREME TIME ATTACK";
+        } else {
+            titleMain.innerText = isOld ? "OLD RECORDS" : "TOP COMMANDERS";
+        }
+    }
+
+    if (modeBtn) {
+        modeBtn.innerText = rankingMode === MODE_EXTREME ? "MODE: EXTREME" : "MODE: NORMAL";
+        modeBtn.onclick = () => {
+            const nextMode = rankingMode === MODE_EXTREME ? MODE_NORMAL : MODE_EXTREME;
+            window.showRanking(onClose, false, nextMode);
+        };
     }
     
     if (toggleBtn) {
         // ボタンのテキストを反転させる
-        toggleBtn.innerText = isOld ? "CURRENT" : "OLD";
+        toggleBtn.innerText = rankingMode === MODE_EXTREME ? "EXTREME" : (isOld ? "CURRENT" : "OLD");
+        toggleBtn.style.opacity = rankingMode === MODE_EXTREME ? "0.45" : "1";
+        toggleBtn.style.pointerEvents = rankingMode === MODE_EXTREME ? "none" : "auto";
         // ボタンを押したら、現在とは逆（!isOld）のランキングを再読み込みする
-        toggleBtn.onclick = () => window.showRanking(onClose, !isOld);
+        toggleBtn.onclick = () => window.showRanking(onClose, !isOld, rankingMode);
     }
 
     if (loadingEl) {
@@ -133,7 +190,7 @@ window.showRanking = async function (onClose = null, isOld = false) {
     try {
         const snapshot = isOld 
             ? await window.firebaseOps.getOldRanking() 
-            : await window.firebaseOps.getRanking();
+            : await window.firebaseOps.getRanking(rankingMode);
 
         if (rankingBody) {
             if (!snapshot || snapshot.empty) {
@@ -173,13 +230,20 @@ window.showRanking = async function (onClose = null, isOld = false) {
                         stageClass = "stage-all-clear";
                     } else if (typeof stageVal === "number" || !isNaN(stageVal)) {
                         stageText = "ST." + stageVal;
+                    } else if (typeof stageVal === 'string' && stageVal.startsWith('XTA')) {
+                        stageText = stageVal;
+                    }
+
+                    if ((data.mode || MODE_NORMAL) === MODE_EXTREME && !isOld) {
+                        const sec = Number(data.surviveSeconds || 0);
+                        stageText = `${sec}s`;
                     }
 
                     tr.innerHTML = `
                         <td class="col-rank ${rankClass}">${rankText}</td>
                         <td class="col-name">${escapeHtml(data.name || "NO NAME")}</td>
                         <td class="col-stage ${stageClass}">${stageText}</td>
-                        <td class="col-score">${Number(data.score || 0).toLocaleString()}</td>
+                        <td class="col-score ranking-score-cell">${formatRankingScore(data.score)}</td>
                     `;
 
                     rankingBody.appendChild(tr);
@@ -240,7 +304,7 @@ function hideRanking() {
 }
 
 const btnRanking = document.getElementById("btn-ranking");
-if (btnRanking) btnRanking.onclick = () => window.showRanking(null);
+if (btnRanking) btnRanking.onclick = () => window.showRanking(null, false, MODE_NORMAL);
 
 if (closeRankingBtn) closeRankingBtn.onclick = hideRanking;
 

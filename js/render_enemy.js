@@ -39,7 +39,6 @@ function drawWarpingOutEnemy(ctx, e) {
     else if (e.type === 'phantom') drawPhantomEnemy(rasterCtx, e);
     else if (e.type === 'eclipse') drawEclipseEnemy(rasterCtx, e);
     else if (e.type === 'jellyfish') drawJellyfishEnemy(rasterCtx, e);
-    else if (e.type === 'sentinel') drawSentinelEnemy(rasterCtx, e);
     else if (e.type === 'sweeper') drawSweeperEnemy(rasterCtx, e);
     else if (e.type === 'lightcycle') drawLightcycle(rasterCtx, e);
     else if (e.type === 'fighter') drawFighterJet(rasterCtx, e);
@@ -105,7 +104,6 @@ function drawEnemies() {
         else if (e.type === 'phantom') drawPhantomEnemy(ctx, e);
         else if (e.type === 'eclipse') drawEclipseEnemy(ctx, e);
         else if (e.type === 'jellyfish') drawJellyfishEnemy(ctx, e);
-        else if (e.type === 'sentinel') drawSentinelEnemy(ctx, e);
         else if (e.type === 'sweeper') drawSweeperEnemy(ctx, e);
         else if (e.type === 'lightcycle') drawLightcycle(ctx, e);
         else if (e.type === 'fighter') drawFighterJet(ctx, e);
@@ -1332,72 +1330,6 @@ function drawJellyfishEnemy(ctx, e) {
     // ▲▲▲ 修正ここまで ▲▲▲
 
     e.prevAngle = e.angle;
-    ctx.restore();
-}
-
-function drawSentinelEnemy(ctx, e) {
-    ctx.save();
-    ctx.translate(e.x, e.y);
-    ctx.rotate(e.angle);
-    const s = G_SCALE * e.scale;
-    ctx.scale(s, s);
-
-    ctx.globalCompositeOperation = 'lighter';
-    const isScan = (e.state === 'scan');
-    const color = isScan && frame % 4 < 2 ? '#fff' : e.color;
-
-    // --- 1. 本体（六角形のセンサーポッド） ---
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    //if (currentGraphicsQuality == 'HIGH') ctx.shadowBlur = 10;
-    ctx.shadowColor = color;
-
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-        const ang = (Math.PI * 2 / 6) * i;
-        const r = i % 2 === 0 ? 15 : 10;
-        ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
-    }
-    ctx.closePath();
-    ctx.stroke();
-
-    // --- 2. 左右のスタビライザー ---
-    ctx.beginPath();
-    ctx.moveTo(0, 8); ctx.lineTo(-15, 15);
-    ctx.moveTo(0, -8); ctx.lineTo(-15, -15);
-    ctx.stroke();
-
-    // --- 3. スキャン演出（自機までの長さに制限） ---
-    if (isScan) {
-        const scanPulse = Math.sin(frame * 0.5) * 0.5 + 0.5;
-
-        // ★ 自機までの実際の距離を計算
-        const distToPlayer = Math.hypot(player.x - e.x, player.y - e.y);
-
-        // ★ スケール(s)で割ることで、描画上の長さを正確に合わせる
-        const lineLength = distToPlayer / s;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.setLineDash([5, 10]);
-        ctx.lineDashOffset = -frame * 2; // レーザーが流れるアニメーション
-        ctx.strokeStyle = `rgba(255, 50, 100, ${0.3 + scanPulse * 0.4})`;
-
-        ctx.moveTo(15, 0);
-        ctx.lineTo(lineLength, 0); // 自機の位置でピタッと止まる
-        ctx.stroke();
-
-
-
-        ctx.restore();
-    }
-
-    // --- 4. コア ---
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(5, 0, 3, 0, Math.PI * 2);
-    ctx.fill();
-
     ctx.restore();
 }
 

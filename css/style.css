@@ -74,10 +74,14 @@ canvas {
 }
 
 #score-display {
+    font-family: 'Orbitron', monospace;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
     font-size: calc(22px * var(--hud-scale)); 
     color: #ffffff; /* 白ベースにシアンの光 */
     text-shadow: 0 0 8px rgba(0, 255, 255, 0.8);
-    letter-spacing: calc(2px * var(--hud-scale));
+    letter-spacing: calc(1px * var(--hud-scale));
     margin-bottom: 0;
     line-height: 1;
     /* 下に細いホログラム風のラインを引く */
@@ -681,6 +685,10 @@ canvas {
 }
 
 #result-score-display {
+    font-family: 'Orbitron', monospace;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
     /* ▼ 確実な中央揃えのためのFlex指定とボックス計算の修正 */
     display: flex;
     justify-content: center;

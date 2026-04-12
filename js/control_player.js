@@ -393,6 +393,10 @@ function damage(v) {
     player.shield -= v;
     player.invuln = 60;
 
+    if (v > 0 && typeof applyExtremeTimeAttackHitPenalty === 'function') {
+        applyExtremeTimeAttackHitPenalty(EXTREME_TIME_ATTACK_CONFIG.DAMAGE_PENALTY_SECONDS);
+    }
+
     const shieldPercent = Math.max(0, (player.shield / PLAYER_BASE_SHIELD) * 100);
     ui.shieldBar.style.width = shieldPercent + "%";
 
@@ -527,6 +531,9 @@ function checkPlayerCollision(e) {
             }
 
             player.shield -= damageAmount; // 計算したダメージを適用
+            if (typeof applyExtremeTimeAttackHitPenalty === 'function') {
+                applyExtremeTimeAttackHitPenalty(EXTREME_TIME_ATTACK_CONFIG.DAMAGE_PENALTY_SECONDS);
+            }
             player.invuln = 10;
             createExplosion(player.x, player.y, '#f00', 5);
             if (typeof AudioSys !== 'undefined') AudioSys.playSE('damage');
