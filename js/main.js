@@ -159,6 +159,9 @@ function updateExtremeTimeAttack() {
     if (!extremeTimeAttackState.timeoutTriggered && extremeTimeAttackState.survivalFrames >= extremeTimeAttackState.targetFrames) {
         extremeTimeAttackState.timeoutTriggered = true;
         extremeTimeAttackState.active = false;
+        if (typeof window !== 'undefined' && window.playStats && !window.playStats.endTime) {
+            window.playStats.endTime = performance.now();
+        }
         player.invuln = Math.max(player.invuln || 0, 9999);
         if (typeof enemyBulletPool !== 'undefined' && enemyBulletPool && typeof enemyBulletPool.clearAll === 'function') {
             enemyBulletPool.clearAll();
