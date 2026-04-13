@@ -688,7 +688,7 @@ async function showGameOver() {
 
             let displayStage = stage;
             if (isExtreme) {
-                displayStage = isExtremeClear ? "XTA-CLEAR" : "XTA";
+                displayStage = isExtremeClear ? "TA-CLEAR" : "TA";
             } else if (stage === 10 && isStageClear) {
                 displayStage = "CLEAR";
             }

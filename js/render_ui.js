@@ -73,7 +73,7 @@ function updateUI() {
 
         ui.enemyBar.style.width = `${gaugePct}%`;
         document.querySelector('.bar-label.enemy').innerText = `CORE: ${Math.max(0, extremeState.gaugeFrames / 60).toFixed(1)}s`;
-        ui.stage.innerText = `XTA ${remainSec}s`;
+        ui.stage.innerText = `TA ${remainSec}s`;
     } else if (stage === 9) {
         const progress = rushBossIndex / 8;
         ui.enemyBar.style.width = `${(1 - progress) * 100}%`;

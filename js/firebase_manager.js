@@ -207,7 +207,7 @@ window.showRanking = async function (onClose = null, modeOverride = null) {
                         stageClass = "stage-all-clear";
                     } else if (typeof stageVal === "number" || !isNaN(stageVal)) {
                         stageText = "ST." + stageVal;
-                    } else if (typeof stageVal === 'string' && stageVal.startsWith('XTA')) {
+                    } else if (typeof stageVal === 'string' && stageVal.startsWith('TA')) {
                         stageText = stageVal;
                     }
 
