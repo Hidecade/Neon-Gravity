@@ -155,8 +155,9 @@ function startStage() {
 // ==========================================
     // ステージごとの成績リセットと、過去ステージの合算
     // ==========================================
-    if (stage === 1 || typeof window.pastPlayStats === 'undefined') {
-        // 最初から遊ぶ時は、合計用データもゼロにする
+    const _isXTA = typeof isExtremeTimeAttackMode === 'function' && isExtremeTimeAttackMode();
+    if (stage === 1 || typeof window.pastPlayStats === 'undefined' || _isXTA) {
+        // 最初から遊ぶ時・XTAモードは毎回合計データをゼロにする
         window.pastPlayStats = {
             totalTime: 0,
             enemiesSpawned: 0,
@@ -2487,11 +2488,20 @@ window.showStageResultBoard = function() {
 window.showFinalResultBoard = function() {
     if (typeof window.playStats === 'undefined' || typeof window.pastPlayStats === 'undefined') return;
 
-    window.playStats.endTime = window.playStats.endTime || performance.now();
-    const currentStageTime = window.playStats.endTime - window.playStats.startTime;
+    // XTAモードはフレーム数から直接計算（performance.now()の誤差・再生成問題を回避）
+    const _isXTA = typeof isExtremeTimeAttackMode === 'function' && isExtremeTimeAttackMode();
+    const _xtaState = typeof getExtremeTimeAttackState === 'function' ? getExtremeTimeAttackState() : null;
+    let totalTimeMs;
+    if (_isXTA && _xtaState && _xtaState.survivalFrames > 0) {
+        totalTimeMs = Math.round(_xtaState.survivalFrames / 60) * 1000;
+    } else {
+        window.playStats.endTime = window.playStats.endTime || performance.now();
+        const currentStageTime = window.playStats.endTime - window.playStats.startTime;
+        totalTimeMs = window.pastPlayStats.totalTime + currentStageTime;
+    }
 
     const total = {
-        totalTime: window.pastPlayStats.totalTime + currentStageTime,
+        totalTime: totalTimeMs,
         enemiesSpawned: window.pastPlayStats.enemiesSpawned + window.playStats.enemiesSpawned,
         enemiesKilled: window.pastPlayStats.enemiesKilled + window.playStats.enemiesKilled,
         items: {}

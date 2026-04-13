@@ -269,9 +269,11 @@ const input = {
     aim: { x: 0, y: 0, active: false },  // 右スティック
     keys: {},                            // キーボード入力状態
     padAPressed: false,                  // ゲームパッド状態
+    padBPressed: false,
     padBombPressed: false,
     padDirPressed: false,
-    padStartPressed: false
+    padStartPressed: false,
+    padSkipLatch: false
 };
 
 let camera = { x: 0, y: 0 };
@@ -730,32 +732,43 @@ window.refreshMenuButtons = function (resetIndex = true) {
     currentMenuButtons = [];
     if (resetIndex) selectedMenuIndex = 0;
 
-    const rOverlay = document.getElementById("ranking-overlay");
-    const cBtn = document.getElementById("close-ranking-btn");
+    const pushVisibleButtons = (selector) => {
+        document.querySelectorAll(selector).forEach(btn => {
+            if (window.getComputedStyle(btn).display !== 'none') currentMenuButtons.push(btn);
+        });
+    };
 
-    if (rOverlay && rOverlay.style.display === 'flex') {
-        currentMenuButtons = [cBtn];
+    const rankingOverlay = document.getElementById('ranking-overlay');
+    const gameoverOverlay = document.getElementById('gameover-overlay');
+    const storyOverlay = document.getElementById('story-overlay');
+    const howtoOverlay = document.getElementById('howto-overlay');
+    const settingsOverlay = document.getElementById('settings-overlay');
+    const ostOverlay = document.getElementById('ost-overlay');
+    const trainingGuide = document.getElementById('training-guide');
+
+    if (rankingOverlay && rankingOverlay.style.display === 'flex') {
+        pushVisibleButtons('#ranking-overlay .menu-btn');
     } else if (gameState === 'PAUSED') {
         document.querySelectorAll('#pause-overlay .menu-btn').forEach(btn => currentMenuButtons.push(btn));
     } else if (ui.nameInputArea.style.display === 'flex') {
-        document.querySelectorAll('#name-input-area .menu-btn').forEach(btn => {
-            if (window.getComputedStyle(btn).display !== 'none') currentMenuButtons.push(btn);
-        });
-    } else if (gameState === 'TITLE' || gameState === 'GAMEOVER_UI') {
-        document.querySelectorAll('#title-overlay .menu-btn').forEach(btn => {
-            if (window.getComputedStyle(btn).display !== 'none') currentMenuButtons.push(btn);
-        });
-    } else if (gameState === 'OST') {
+        pushVisibleButtons('#name-input-area .menu-btn');
+    } else if (gameoverOverlay && gameoverOverlay.style.display !== 'none') {
+        pushVisibleButtons('#gameover-buttons-container .menu-btn');
+    } else if (ostOverlay && ostOverlay.style.display === 'flex') {
         document.querySelectorAll('#ost-overlay .track-item, #ost-overlay .menu-btn').forEach(btn => currentMenuButtons.push(btn));
-    } else if (gameState === 'STORY') {
+    } else if (storyOverlay && storyOverlay.style.display === 'flex') {
         const backBtn = document.getElementById('btn-story-back');
         if (backBtn) currentMenuButtons.push(backBtn);
-    } else if (gameState === 'HOWTO') {
-        document.querySelectorAll('#howto-overlay .menu-btn').forEach(btn => currentMenuButtons.push(btn));
-    } else if (gameState === 'SETTINGS') {
-        document.querySelectorAll('#settings-overlay .menu-btn').forEach(btn => currentMenuButtons.push(btn));
+    } else if (howtoOverlay && howtoOverlay.style.display === 'flex') {
+        pushVisibleButtons('#howto-overlay .menu-btn');
+    } else if (settingsOverlay && settingsOverlay.style.display === 'flex') {
+        pushVisibleButtons('#settings-overlay .menu-btn');
+    } else if (trainingGuide && trainingGuide.style.display !== 'none') {
+        pushVisibleButtons('#training-guide .menu-btn');
     } else if (gameState === 'ENDING') {
-        document.querySelectorAll('#ending-msg .menu-btn').forEach(btn => currentMenuButtons.push(btn));
+        pushVisibleButtons('#ending-msg .menu-btn');
+    } else if (ui.titleOverlay && ui.titleOverlay.style.display !== 'none') {
+        pushVisibleButtons('#title-overlay .menu-btn');
     }
 
     window.updateMenuSelectionUI();

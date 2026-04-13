@@ -17,9 +17,11 @@ function clearInputState() {
     input.keys = {};
 
     input.padAPressed = false;
+    input.padBPressed = false;
     input.padBombPressed = false;
     input.padDirPressed = false;
     input.padStartPressed = false;
+    input.padSkipLatch = false;
 
     // UIスティックの見た目もリセット
     if (ui.knobL) ui.knobL.style.transform = 'translate(0,0)';
@@ -307,9 +309,10 @@ function handleGamepadInput() {
     const isOstOpen = document.getElementById('ost-overlay')?.style.display === 'flex';
     const isStoryOpen = document.getElementById('story-overlay')?.style.display === 'flex';
     const isHowToOpen = document.getElementById('howto-overlay')?.style.display === 'flex';
+    const isSettingsOpen = document.getElementById('settings-overlay')?.style.display === 'flex';
     
     // どれかのサブメニューが開いているか
-    const isSubMenuOpen = isRankingOpen || isOstOpen || isStoryOpen || isHowToOpen;
+    const isSubMenuOpen = isRankingOpen || isOstOpen || isStoryOpen || isHowToOpen || isSettingsOpen;
 
     // 1. STARTボタン専用のアクション (ゲーム開始、ポーズ、リトライなど)
     if (startBtn && !input.padStartPressed && !isSubMenuOpen) {
@@ -342,6 +345,11 @@ function handleGamepadInput() {
             const btn = document.getElementById('btn-howto-back');
             if (btn) btn.click();
             else if (typeof hideHowTo === 'function') hideHowTo();
+        }
+        else if (isSettingsOpen || gameState === 'SETTINGS') {
+            const btn = document.getElementById('btn-settings-back');
+            if (btn) btn.click();
+            else if (typeof closeSetting === 'function') closeSetting();
         }
         else if (isSubMenuOpen || ['STORY', 'RANKING', 'OST'].includes(gameState)) {
             // 各画面の固有の「戻る」ボタンをシミュレートクリックして安全に閉じる
@@ -747,6 +755,8 @@ function initInputHandlers() {
     bindBtn('btn-training-exit', returnToTitleFromTraining);
     bindBtn('btn-settings', openSetting);
     bindBtn('btn-settings-back', closeSetting);
+    bindBtn('btn-retry', resetGame);
+    bindBtn('btn-gameover-title', returnToTitle);
 
 // -----------------------------------------------------
     // F. SETTINGS（画質設定）メニューのバインド
