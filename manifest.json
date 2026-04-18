@@ -8,7 +8,7 @@
   "orientation": "landscape",
   "icons": [
     {
-      "src": "NeonGravity.png",
+      "src": "img/NeonGravity.png",
       "sizes": "2047x2048",
       "type": "image/png"
     }

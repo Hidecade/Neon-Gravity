@@ -12,6 +12,7 @@ const ASSETS_TO_CACHE = [
     './css/overlay.css',
     './css/title.css',
     './css/ranking.css',
+    './css/controls.css',
     './css/ost.css',
     './css/howto.css',
     './css/story.css',
@@ -37,6 +38,9 @@ const ASSETS_TO_CACHE = [
     './js/render_projectile.js',
     './js/render_ui.js',
     './js/scene_manager.js',
+    './js/setting.js',
+    './js/story_data.js',
+    './js/textures.js',
     './js/utils.js',
 
 

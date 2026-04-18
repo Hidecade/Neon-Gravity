@@ -88,9 +88,14 @@ function updateUI() {
         const escaped = window.enemiesEscaped || 0;
         const rawRemains = enemiesToSpawn - (enemiesKilled + escaped);
         const enemyRemains = Math.max(0, Math.ceil(rawRemains));
-        
-        ui.enemyBar.style.width = `${(enemyRemains / enemiesToSpawn) * 100}%`;
-        document.querySelector('.bar-label.enemy').innerText = `ENEMY: ${enemyRemains}`;
+
+        if (isTrainingMode || enemiesToSpawn <= 0) {
+            ui.enemyBar.style.width = '0%';
+            document.querySelector('.bar-label.enemy').innerText = isTrainingMode ? 'TRAINING' : 'ENEMY: 0';
+        } else {
+            ui.enemyBar.style.width = `${(enemyRemains / enemiesToSpawn) * 100}%`;
+            document.querySelector('.bar-label.enemy').innerText = `ENEMY: ${enemyRemains}`;
+        }
         ui.stage.innerText = stage;
     }
 

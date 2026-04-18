@@ -645,7 +645,7 @@ async function showGameOver() {
             if (msgPara) {
                 msgPara.innerHTML = isExtreme
                     ? "TIME ATTACK RANKING OUT (TOP 20 ONLY)"
-                    : "RANKING OUT (TOP 10 ONLY)";
+                    : "RANKING OUT (TOP 20 ONLY)";
                 msgPara.style.color = "#f44";
             }
             if (nameInp) nameInp.style.display = "none";
