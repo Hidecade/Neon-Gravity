@@ -853,31 +853,40 @@ const AudioSys = {
         
         this.bgmSource = this.ctx.createBufferSource();
         this.bgmSource.buffer = buffer;
+        const source = this.bgmSource;
 
         // ループ判定のロジックを継承
         const isOST = (typeof window.gameState !== "undefined" && window.gameState === "OST");
         const noLoopKeys = ["ending", "clear", "all_clear", "name"];
-        this.bgmSource.loop = !(isOST || noLoopKeys.includes(key));
+        source.loop = !(isOST || noLoopKeys.includes(key));
 
         this.bgmGain = this.ctx.createGain();
         this.bgmGain.gain.value = this.bgmVolume;
 
-        this.bgmSource.connect(this.bgmGain);
+        source.connect(this.bgmGain);
         this.bgmGain.connect(this.ctx.destination);
 
         // オフセット位置から再生
-        this.bgmSource.start(0, offset);
+        source.start(0, offset);
         
         // 再生開始基準時間を記録（オフセット分を引いて計算）
         this.bgmStartTime = this.ctx.currentTime - offset;
         this.isBgmFadingOut = false;
 
         // 再生終了時の処理（ループしない曲やOST用）
-        this.bgmSource.onended = () => {
-            if (!this.isBgmPaused && !this.isBgmFadingOut && !this.bgmSource.loop) {
-                if (window.gameState === "OST" && typeof window.playNextOST === "function") {
-                    window.playNextOST();
-                }
+        source.onended = () => {
+            const isCurrentSource = this.bgmSource === source;
+
+            if (isCurrentSource) {
+                this.bgmSource = null;
+            }
+
+            if (!isCurrentSource || this.isBgmPaused || this.isBgmFadingOut || source.loop) {
+                return;
+            }
+
+            if (window.gameState === "OST" && typeof window.playNextOST === "function") {
+                window.playNextOST();
             }
         };
     },
@@ -944,6 +953,7 @@ const AudioSys = {
             // 現在の再生位置(経過秒数)を保存
             this.bgmOffset = this.ctx.currentTime - this.bgmStartTime;
             
+            this.bgmSource.onended = null;
             try { this.bgmSource.stop(); } catch(e){}
             try { this.bgmSource.disconnect(); } catch(e){}
             this.bgmSource = null;
