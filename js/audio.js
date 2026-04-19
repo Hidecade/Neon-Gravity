@@ -856,7 +856,7 @@ const AudioSys = {
         const source = this.bgmSource;
 
         // ループ判定のロジックを継承
-        const isOST = (typeof window.gameState !== "undefined" && window.gameState === "OST");
+        const isOST = (typeof gameState !== "undefined" && gameState === "OST");
         const noLoopKeys = ["ending", "clear", "all_clear", "name"];
         source.loop = !(isOST || noLoopKeys.includes(key));
 
@@ -885,7 +885,7 @@ const AudioSys = {
                 return;
             }
 
-            if (window.gameState === "OST" && typeof window.playNextOST === "function") {
+            if (typeof gameState !== "undefined" && gameState === "OST" && typeof window.playNextOST === "function") {
                 window.playNextOST();
             }
         };
