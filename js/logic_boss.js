@@ -433,21 +433,28 @@ function updateBossSpecialAI(e) {
     const dy = player.y - e.y;
     const dist = Math.hypot(dx, dy) || 1.0;
 
-    // 前半(Index 0-1)はゆったり、後半は鋭く追尾
+    // 前半(Index 0-1)は少し大きめの弧、後半は鋭く食いつく
     const isSlowMover = e.originIdx <= 1;
 
+    const maxCycle = 280;
+    const brakeStart = 160;
+    const fireTime = 220;
     const cycle = e.fireTimer || 0;
-    const isBurstWindow = cycle < 160;
+    const isSpreadLaserPattern = (e.originIdx <= 1 || e.attackPattern === 0) && cycle < 160;
+    const shouldHoldForLaser = isSpreadLaserPattern && cycle % 12 >= 9;
+    const isChargePhase = cycle >= brakeStart && cycle < fireTime;
 
     updateBossCombatMovement(e, {
-        desiredRadius: isSlowMover ? 430 : 240,
-        radiusTolerance: isSlowMover ? 110 : 90,
-        approachAccel: (isSlowMover ? 0.024 : 0.04) * angerFactor,
-        strafeAccel: (isBurstWindow ? 0.075 : 0.05) * angerFactor,
-        retreatAccel: (isSlowMover ? 0.024 : 0.03) * angerFactor,
-        friction: isSlowMover ? 0.976 : 0.968,
-        maxSpeed: e.speed * (isSlowMover ? 3.0 : 4.4) * angerFactor,
-        margin: 135
+        desiredRadius: isSlowMover ? 340 : 260,
+        radiusTolerance: isSlowMover ? 100 : 80,
+        approachAccel: (isSlowMover ? 0.09 : 0.12) * angerFactor,
+        strafeAccel: (isSlowMover ? 0.11 : 0.16) * angerFactor,
+        retreatAccel: (isSlowMover ? 0.08 : 0.1) * angerFactor,
+        friction: 0.99,
+        maxSpeed: e.speed * (isSlowMover ? 6.8 : 8.2) * angerFactor,
+        margin: 135,
+        holdPosition: shouldHoldForLaser,
+        forceApproach: isChargePhase
     });
 
     // --- カウンター攻撃 (15%の確率) ---
@@ -464,9 +471,6 @@ function updateBossSpecialAI(e) {
     // 3. 攻撃サイクル (通常ボスに準拠した強化版)
     // ==========================================
     e.fireTimer++;
-    const maxCycle = 280;
-    const brakeStart = 160;
-    const fireTime = 220;
 
     // --- フェーズ1: メイン攻撃 ---
     if (e.fireTimer < brakeStart) {
