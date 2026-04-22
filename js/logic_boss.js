@@ -2,6 +2,67 @@
 // BOSS AI
 // ==========================================
 
+function updateBossCombatMovement(e, options = {}) {
+    const dx = player.x - e.x;
+    const dy = player.y - e.y;
+    const dist = Math.hypot(dx, dy) || 1.0;
+
+    const orbitDir = e.orbitDir || 1;
+    const desiredRadius = options.desiredRadius || 360;
+    const radiusTolerance = options.radiusTolerance || 95;
+    const approachAccel = options.approachAccel || 0.024;
+    const strafeAccel = options.strafeAccel || 0.045;
+    const retreatAccel = options.retreatAccel || 0.02;
+    const friction = options.friction || 0.972;
+    const maxSpeed = options.maxSpeed || (e.speed * 2.2);
+    const margin = options.margin || 110;
+
+    let moveNx = dx / dist;
+    let moveNy = dy / dist;
+
+    const holdPosition = !!options.holdPosition;
+    const forceApproach = !!options.forceApproach;
+
+    if (holdPosition) {
+        e.vx *= 0.7;
+        e.vy *= 0.7;
+        e.x += e.vx * gameSpeed;
+        e.y += e.vy * gameSpeed;
+        e.x = Math.max(margin, Math.min(worldSize - margin, e.x));
+        e.y = Math.max(margin, Math.min(worldSize - margin, e.y));
+        return;
+    }
+
+    const tx = -moveNy * orbitDir;
+    const ty = moveNx * orbitDir;
+
+    if (forceApproach || dist > desiredRadius + radiusTolerance) {
+        e.vx += moveNx * approachAccel * SPEED_SCALE * gameSpeed;
+        e.vy += moveNy * approachAccel * SPEED_SCALE * gameSpeed;
+    } else if (dist < desiredRadius - radiusTolerance) {
+        e.vx -= moveNx * retreatAccel * SPEED_SCALE * gameSpeed;
+        e.vy -= moveNy * retreatAccel * SPEED_SCALE * gameSpeed;
+    }
+
+    e.vx += tx * strafeAccel * SPEED_SCALE * gameSpeed;
+    e.vy += ty * strafeAccel * SPEED_SCALE * gameSpeed;
+
+    e.vx *= friction;
+    e.vy *= friction;
+
+    const currentSpeed = Math.hypot(e.vx, e.vy) || 0.001;
+    if (currentSpeed > maxSpeed) {
+        e.vx = (e.vx / currentSpeed) * maxSpeed;
+        e.vy = (e.vy / currentSpeed) * maxSpeed;
+    }
+
+    e.x += e.vx * gameSpeed;
+    e.y += e.vy * gameSpeed;
+
+    e.x = Math.max(margin, Math.min(worldSize - margin, e.x));
+    e.y = Math.max(margin, Math.min(worldSize - margin, e.y));
+}
+
 function updateBossAI(e) {
     // =========================================================
     // 1. 出現演出 (Spawn Sequence)
@@ -93,50 +154,40 @@ function updateBossAI(e) {
         angerFactor = 1.0 + Math.min(1.5, (e.aliveTimer - 1800) * 0.001);
     }
 
+    if (e.orbitDir === undefined) {
+        e.orbitDir = Math.random() < 0.5 ? -1 : 1;
+    }
+    if (e.aliveTimer % 240 === 0) {
+        e.orbitDir *= -1;
+    }
+
     // --- B. 移動ロジック ---
     // 座標がNaNにならないよう安全策
     if (!Number.isFinite(e.x)) e.x = e.spawnX || worldSize / 2;
     if (!Number.isFinite(e.y)) e.y = e.spawnY || worldSize / 2;
 
+    const cycle = e.fireTimer || 0;
+    const isPressurePhase = cycle < 140;
+    const isSpreadLaserPattern = e.attackPattern === 0 && cycle < 140;
+    const shouldHoldForLaser = isSpreadLaserPattern && cycle % 20 >= 16;
+    const isGravityPhase = cycle >= 140 && cycle < 260;
+
+    updateBossCombatMovement(e, {
+        desiredRadius: isPressurePhase ? 250 : 460,
+        radiusTolerance: 110,
+        approachAccel: (isPressurePhase ? 0.12 : 0.085) * angerFactor,
+        strafeAccel: (isPressurePhase ? 0.2 : 0.14) * angerFactor,
+        retreatAccel: (isPressurePhase ? 0.08 : 0.1) * angerFactor,
+        friction: 0.99,
+        maxSpeed: e.speed * (isPressurePhase ? 8.5 : 7.0) * angerFactor,
+        margin: 95,
+        holdPosition: shouldHoldForLaser,
+        forceApproach: isGravityPhase
+    });
+
     const dx = player.x - e.x;
     const dy = player.y - e.y;
     const dist = Math.hypot(dx, dy) || 1.0;
-
-    // 距離に応じた速度倍率を決定
-    let distanceMultiplier = 1.0;
-    if (dist > 600) {
-        distanceMultiplier = 3.5 * angerFactor; // 遠距離：怒ると超高速で詰める
-    } else if (dist > 350) {
-        distanceMultiplier = 1.5 * angerFactor; // 中距離
-    } else {
-        distanceMultiplier = 1.0 * angerFactor; // 近距離：怒ると減速せず突っ込む
-    }
-
-    // 加速度の適用
-    const accel = 0.02 * SPEED_SCALE * gameSpeed * distanceMultiplier;
-    e.vx += (dx / dist) * accel;
-    e.vy += (dy / dist) * accel;
-
-    // 摩擦（慣性を残す）
-    e.vx *= 0.96;
-    e.vy *= 0.96;
-
-    // 最高速度の制限（怒り時は上限も解放される）
-    const currentSpeed = Math.hypot(e.vx, e.vy);
-    const maxSpeed = e.speed * distanceMultiplier;
-    if (currentSpeed > maxSpeed) {
-        e.vx = (e.vx / currentSpeed) * maxSpeed;
-        e.vy = (e.vy / currentSpeed) * maxSpeed;
-    }
-
-    // 座標更新
-    e.x += e.vx * gameSpeed;
-    e.y += e.vy * gameSpeed;
-
-    // 画面端から出ないように制限
-    const margin = 100;
-    e.x = Math.max(margin, Math.min(worldSize - margin, e.x));
-    e.y = Math.max(margin, Math.min(worldSize - margin, e.y));
 
     // --- C. 攻撃サイクル ---
     e.fireTimer++;
@@ -368,6 +419,13 @@ function updateBossSpecialAI(e) {
         angerFactor = 1.0 + Math.min(2.0, (e.aliveTimer - 1800) * 0.001);
     }
 
+    if (e.orbitDir === undefined) {
+        e.orbitDir = (e.originIdx % 2 === 0) ? 1 : -1;
+    }
+    if (e.aliveTimer % 180 === 0) {
+        e.orbitDir *= -1;
+    }
+
     // ==========================================
     // 2. 移動ロジック (距離連動・強化追尾)
     // ==========================================
@@ -378,38 +436,19 @@ function updateBossSpecialAI(e) {
     // 前半(Index 0-1)はゆったり、後半は鋭く追尾
     const isSlowMover = e.originIdx <= 1;
 
-    let distMult = 1.0;
-    if (dist > 500) {
-        // 遠距離：怒り時は超高速接近
-        distMult = (isSlowMover ? 1.8 : 3.5) * angerFactor;
-    } else if (dist > 300) {
-        distMult = (isSlowMover ? 1.2 : 1.8) * angerFactor;
-    } else {
-        // 近距離：怒り時は速度を落とさず張り付く
-        distMult = 1.0 * angerFactor;
-    }
+    const cycle = e.fireTimer || 0;
+    const isBurstWindow = cycle < 160;
 
-    const baseAccel = isSlowMover ? 0.02 : 0.035;
-    // 加速度に倍率を適用
-    const accel = baseAccel * SPEED_SCALE * gameSpeed * distMult;
-
-    e.vx += (dx / dist) * accel;
-    e.vy += (dy / dist) * accel;
-    e.vx *= 0.96; e.vy *= 0.96;
-
-    // 最高速度リミットも倍率に応じて引き上げ
-    const maxSpd = e.speed * distMult * 1.2;
-    const curSpd = Math.hypot(e.vx, e.vy);
-    if (curSpd > maxSpd) {
-        e.vx = (e.vx / curSpd) * maxSpd;
-        e.vy = (e.vy / curSpd) * maxSpd;
-    }
-    e.x += e.vx * gameSpeed;
-    e.y += e.vy * gameSpeed;
-
-    const margin = 150;
-    e.x = Math.max(margin, Math.min(worldSize - margin, e.x));
-    e.y = Math.max(margin, Math.min(worldSize - margin, e.y));
+    updateBossCombatMovement(e, {
+        desiredRadius: isSlowMover ? 430 : 240,
+        radiusTolerance: isSlowMover ? 110 : 90,
+        approachAccel: (isSlowMover ? 0.024 : 0.04) * angerFactor,
+        strafeAccel: (isBurstWindow ? 0.075 : 0.05) * angerFactor,
+        retreatAccel: (isSlowMover ? 0.024 : 0.03) * angerFactor,
+        friction: isSlowMover ? 0.976 : 0.968,
+        maxSpeed: e.speed * (isSlowMover ? 3.0 : 4.4) * angerFactor,
+        margin: 135
+    });
 
     // --- カウンター攻撃 (15%の確率) ---
     if (e.prevHp && e.hp < e.prevHp && Math.random() < 0.15) {

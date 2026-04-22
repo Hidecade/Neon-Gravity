@@ -135,7 +135,6 @@ window.showRanking = async function (onClose = null, modeOverride = null) {
     const modeBtn = document.getElementById("toggle-ranking-mode-btn");
     
     if (titleMain) {
-        // 古い方を見ている時はタイトルを変える
         if (rankingMode === MODE_EXTREME) {
             titleMain.innerText = "TIME ATTACK";
         } else {
@@ -144,7 +143,11 @@ window.showRanking = async function (onClose = null, modeOverride = null) {
     }
 
     if (modeBtn) {
-        modeBtn.innerText = rankingMode === MODE_EXTREME ? "MODE: TIME ATTACK" : "MODE: NORMAL";
+        if (rankingMode === MODE_EXTREME) {
+            modeBtn.innerText = "MODE: TIME ATTACK";
+        } else {
+            modeBtn.innerText = "MODE: NORMAL";
+        }
         modeBtn.onclick = () => {
             const nextMode = rankingMode === MODE_EXTREME ? MODE_NORMAL : MODE_EXTREME;
             window.showRanking(onClose, nextMode);
