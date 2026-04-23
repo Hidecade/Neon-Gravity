@@ -1,6 +1,44 @@
 ﻿// =========================================================
 // 個別敵機AI (Specific Enemy AIs)
 // =========================================================
+let enemyFxBudgetFrame = -1;
+let enemyAttackDistortCount = 0;
+let enemyDeathDistortCount = 0;
+let enemySeCount = 0;
+
+function resetEnemyFxBudget() {
+    if (enemyFxBudgetFrame === frame) return;
+    enemyFxBudgetFrame = frame;
+    enemyAttackDistortCount = 0;
+    enemyDeathDistortCount = 0;
+    enemySeCount = 0;
+}
+
+function tryPlayEnemyFxSe(name, ...args) {
+    if (typeof AudioSys === 'undefined') return false;
+    resetEnemyFxBudget();
+    if (enemySeCount >= 3) return false;
+    enemySeCount++;
+    AudioSys.playSE(name, ...args);
+    return true;
+}
+
+function tryEnemyFxDistort(kind, x, y, force, radius) {
+    if (typeof distortGrid !== 'function') return false;
+    resetEnemyFxBudget();
+
+    if (kind === 'death') {
+        if (enemyDeathDistortCount >= 1) return false;
+        enemyDeathDistortCount++;
+    } else {
+        if (enemyAttackDistortCount >= 1) return false;
+        enemyAttackDistortCount++;
+    }
+
+    distortGrid(x, y, force, radius);
+    return true;
+}
+
 function updateTriangleAI(e) {
     // ★ 削除: ここにあった e.scale を変更する処理（if (e.isWarping) { ... }）を丸ごと消します。
     // 描画側の drawTriangleEnemy がワープアニメーションを自動でやってくれるため不要です。
@@ -568,8 +606,8 @@ function updateEclipseAI(e) {
                         life: 300, color: e.color
                     });
                 }
-                if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
-                distortGrid(e.x, e.y, 80, 150);
+                tryPlayEnemyFxSe('shoot');
+                tryEnemyFxDistort('attack', e.x, e.y, 80, 150);
             }
             
             // ==========================================
@@ -578,7 +616,7 @@ function updateEclipseAI(e) {
             else if (cycle > 150 && cycle < 220) {
 
                 if (cycle === 151) {
-                    if (typeof AudioSys !== 'undefined') AudioSys.playSE('gravity', e.x, e.y);
+                    tryPlayEnemyFxSe('gravity', e.x, e.y);
                 }
 
                 const pullDx = e.x - player.x;
@@ -597,7 +635,7 @@ function updateEclipseAI(e) {
                 // --- 視覚演出の軽量化 ---
                 // ★軽量化1: グリッドの歪みは6フレームに1回に間引く（見た目の違和感はゼロです）
                 if (frame % 6 === 0) {
-                    if (typeof distortGrid === 'function') distortGrid(e.x, e.y, -40, 400);
+                    tryEnemyFxDistort('attack', e.x, e.y, -40, 400);
                 }
 
                 // ★軽量化2: パーティクルの生成を「2フレームに1回」に間引く
@@ -729,8 +767,8 @@ function updateJellyfishAI(e) {
             //spawnRingObj({ x: e.x, y: e.y, r: 10, color: '#ff0000', life: 1.5 });
             //spawnRingObj({ x: e.x, y: e.y, r: 40, color: '#ff8800', life: 1.0 });
 
-            if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
-            distortGrid(e.x, e.y, 80, 150);
+            tryPlayEnemyFxSe('laser');
+            tryEnemyFxDistort('attack', e.x, e.y, 80, 150);
 
             // ★ 変更：自機に向かって飛んでいく衝撃波を生成
             const bSpd = 12 * SPEED_SCALE; // 弾の速度
@@ -1394,12 +1432,15 @@ function destroyEnemy(e) {
 
 // --- Phantom専用の特殊撃破演出 ---
     if (e.type === 'phantom') {
-        AudioSys.playSE('explode_medium', e.x, e.y); // 中サイズの爆発音
+        tryPlayEnemyFxSe('explode_medium', e.x, e.y); // 中サイズの爆発音
         
         // ★ULTRAの時のみ歪ませる
-        if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
-            distortGrid(e.x, e.y, 40, 120);
+        if (currentGraphicsQuality === 'ULTRA') {
+            tryEnemyFxDistort('death', e.x, e.y, 40, 120);
         }
+
+        const phantomPartExplosionStride = currentGraphicsQuality === 'ULTRA' ? 1 : 2;
+        const phantomCoreExplosionCount = currentGraphicsQuality === 'ULTRA' ? 20 : 14;
 
         // 4つの三角錐パーツを独立した破片として放出
         for (let i = 0; i < 4; i++) {
@@ -1425,23 +1466,27 @@ function destroyEnemy(e) {
             });
 
             // 各パーツの根元でも小さな爆発
-            createExplosion(partX, partY, e.color, 5);
+            if (i % phantomPartExplosionStride === 0) {
+                createExplosion(partX, partY, e.color, 4);
+            }
         }
 
         // 中心コアの爆発
-        createExplosion(e.x, e.y, '#fff', 20);
+        createExplosion(e.x, e.y, '#fff', phantomCoreExplosionCount);
     }
     // --- ★追加：Eclipse専用の特殊撃破演出 ---
     else if (e.type === 'eclipse') {
-        AudioSys.playSE('explode_medium', e.x, e.y);
+        tryPlayEnemyFxSe('explode_medium', e.x, e.y);
 
         // ★ULTRAの時のみ歪ませる
-        if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
-            distortGrid(e.x, e.y, 60, 200);
+        if (currentGraphicsQuality === 'ULTRA') {
+            tryEnemyFxDistort('death', e.x, e.y, 60, 200);
         }
 
         const bitCount = 6;
         const orbitDist = 50 + Math.sin(frame * 0.05) * 4;
+        const eclipseBitExplosionStride = currentGraphicsQuality === 'ULTRA' ? 1 : 2;
+        const eclipseCoreExplosionCount = currentGraphicsQuality === 'ULTRA' ? 30 : 20;
 
         for (let i = 0; i < bitCount; i++) {
             // 現在の回転角からビットの正確な位置を算出
@@ -1466,19 +1511,21 @@ function destroyEnemy(e) {
             });
 
             // 各ビットの根元で小さな爆発
-            createExplosion(partX, partY, e.color, 3);
+            if (i % eclipseBitExplosionStride === 0) {
+                createExplosion(partX, partY, e.color, 3);
+            }
         }
 
         // 中心（ブラックホール）の崩壊エフェクト
-        createExplosion(e.x, e.y, '#fff', 30);
+        createExplosion(e.x, e.y, '#fff', eclipseCoreExplosionCount);
     }
     // --- Triangle専用の特殊撃破演出（サイズ微調整版） ---
     else if (e.type === 'triangle') {
-        AudioSys.playSE('explode_small', e.x, e.y);
+        tryPlayEnemyFxSe('explode_small', e.x, e.y);
 
         // ★ULTRAの時のみ軽い歪みを追加
-        if (currentGraphicsQuality === 'ULTRA' && typeof distortGrid === 'function') {
-            distortGrid(e.x, e.y, 20, 80);
+        if (currentGraphicsQuality === 'ULTRA') {
+            tryEnemyFxDistort('death', e.x, e.y, 20, 80);
         }
 
         const shardCount = 3 + (currentGraphicsQuality === 'HIGH' ? Math.floor(Math.random() * 2) : 0);

@@ -79,6 +79,7 @@ function updateBossAI(e) {
             e.isSpawning = false;
             e.attackPattern = 0;  // 最初の攻撃パターン
             e.aliveTimer = 0;     // ★生存タイマーを0リセット
+            e.orbitDir = Math.random() < 0.5 ? -1 : 1;
         }
         return; // 出現中はこれ以上の処理をしない
     }
@@ -406,6 +407,7 @@ function updateBossSpecialAI(e) {
             e.originIdx = rushBossIndex;
             e.attackPattern = 0;
             e.aliveTimer = 0; // ★生存タイマー初期化
+            e.orbitDir = Math.random() < 0.5 ? -1 : 1;
         }
         return;
     }
@@ -420,7 +422,7 @@ function updateBossSpecialAI(e) {
     }
 
     if (e.orbitDir === undefined) {
-        e.orbitDir = (e.originIdx % 2 === 0) ? 1 : -1;
+        e.orbitDir = Math.random() < 0.5 ? -1 : 1;
     }
     if (e.aliveTimer % 180 === 0) {
         e.orbitDir *= -1;
