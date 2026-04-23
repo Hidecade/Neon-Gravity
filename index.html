@@ -658,6 +658,16 @@
         // Service Workerの登録と更新ロジック
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
+                const hostname = window.location.hostname;
+                const isLocalDev = hostname === '127.0.0.1' || hostname === 'localhost';
+
+                if (isLocalDev) {
+                    navigator.serviceWorker.getRegistrations().then((registrations) => {
+                        registrations.forEach((registration) => registration.unregister());
+                    });
+                    console.log('Service Worker skipped on local development host.');
+                    return;
+                }
                 // バージョン付きで登録
                 const swVersion = window.NEON_GRAVITY_VERSION || '0.9.09';
                 navigator.serviceWorker.register(`./sw.js?v=${encodeURIComponent(swVersion)}`)

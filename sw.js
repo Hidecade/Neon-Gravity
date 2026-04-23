@@ -1,9 +1,9 @@
 importScripts('./js/version.js');
 
-// version.js の値をキャッシュ名にも使う
+// version.js をキャッシュ名の単一ソースとして使う
 const CACHE_NAME = `neon-gravity-v${self.NEON_GRAVITY_VERSION || '0.9.09'}`;
 
-// キャッシュするファイルのリスト
+// キャッシュ対象のファイル一覧
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -43,7 +43,6 @@ const ASSETS_TO_CACHE = [
     './js/textures.js',
     './js/utils.js',
 
-
     './img/NeonGravity.png',
     './img/NeonGravity.ico',
 
@@ -52,7 +51,7 @@ const ASSETS_TO_CACHE = [
     './audio/Neon_Gravity_All_Clear.mp3',
     './audio/Neon_Gravity_Boss.mp3',
     './audio/Neon_Gravity_Last.mp3',
-    './audio/Neon_Gravity_Name.mp3', 
+    './audio/Neon_Gravity_Name.mp3',
     './audio/Neon_Gravity_Ending.mp3',
 
     './audio/Neon_Gravity_01.mp3',
@@ -65,7 +64,6 @@ const ASSETS_TO_CACHE = [
     './audio/Neon_Gravity_08.mp3'
 ];
 
-// インストール処理
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
@@ -73,35 +71,58 @@ self.addEventListener('install', (event) => {
             return cache.addAll(ASSETS_TO_CACHE);
         })
     );
-    // 待機せずにすぐにアクティブにする
+
     self.skipWaiting();
 });
 
-// アクティベート処理（ここで古いキャッシュを消す！）
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keyList) => {
             return Promise.all(
                 keyList.map((key) => {
-                    // 現在のCACHE_NAMEと異なるキー（＝古いバージョンのキャッシュ）は削除
                     if (key !== CACHE_NAME) {
                         console.log('[Service Worker] Removing old cache:', key);
                         return caches.delete(key);
                     }
+
+                    return undefined;
                 })
             );
         })
     );
-    // すべてのクライアント（タブ）を制御下に置く
+
     return self.clients.claim();
 });
 
-// フェッチ処理（キャッシュがあればそれを使い、なければネットに取りに行く）
 self.addEventListener('fetch', (event) => {
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
+    const requestUrl = new URL(event.request.url);
+    const isDevHost = requestUrl.hostname === '127.0.0.1' || requestUrl.hostname === 'localhost';
+    const isDevToolAsset = requestUrl.pathname.includes('/fiveserver.js');
+
+    if (isDevHost && isDevToolAsset) {
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request).then((response) => {
-            // キャッシュヒットならそれを返す、なければネットワークへ
-            return response || fetch(event.request);
+            if (response) {
+                return response;
+            }
+
+            return fetch(event.request).catch(() => {
+                if (event.request.mode === 'navigate') {
+                    return caches.match('./index.html');
+                }
+
+                return new Response('', {
+                    status: 504,
+                    statusText: 'Gateway Timeout'
+                });
+            });
         })
     );
 });
