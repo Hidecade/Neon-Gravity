@@ -1,2 +1,2 @@
-// すべてのバージョン管理の単一ソース
-globalThis.NEON_GRAVITY_VERSION = '0.9.28';
+// Single source of truth for cache-busting and version display.
+globalThis.NEON_GRAVITY_VERSION = '0.9.29';
