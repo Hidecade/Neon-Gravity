@@ -216,7 +216,13 @@ function createWallImpact(x, y, color) {
 }
 
 function createExplosion(x, y, baseColor, n) {
-    const count = Math.floor(n * EXPLOSION_COUNT_MAG);
+    let qualityMult = 1.0;
+    if (typeof currentGraphicsQuality !== 'undefined') {
+        if (currentGraphicsQuality === 'LOW') qualityMult = 0.35;
+        else if (currentGraphicsQuality === 'MEDIUM') qualityMult = 0.6;
+        else if (currentGraphicsQuality === 'HIGH') qualityMult = 0.85;
+    }
+    const count = Math.max(1, Math.floor(n * EXPLOSION_COUNT_MAG * qualityMult));
     for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
         const speed = (Math.random() * 8 + 2) * EXPLOSION_SPEED_MAG;
@@ -268,6 +274,12 @@ function triggerRandomFireworkLoop() {
 }
 
 function distortGrid(x, y, force, radius) {
+    if (typeof currentGraphicsQuality !== 'undefined') {
+        if (currentGraphicsQuality === 'LOW' && Math.random() < 0.7) return;
+        if (currentGraphicsQuality === 'MEDIUM' && Math.random() < 0.35) return;
+        if (currentGraphicsQuality === 'HIGH' && Math.random() < 0.15) return;
+    }
+
     const cx = Math.floor(x / GRID_SPACING);
     const cy = Math.floor(y / GRID_SPACING);
     const r = Math.ceil(radius / GRID_SPACING);

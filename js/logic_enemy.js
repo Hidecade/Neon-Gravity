@@ -1721,6 +1721,7 @@ function destroyEnemy(e) {
 }
 
 function applySeparation(e) {
+    if (frame % 2 !== 0) return;
     enemyPool.pool.forEach(other => {
         // 非アクティブ、自分自身、死亡している敵は無視
         if (!other.active || e === other || other.hp <= 0) return;

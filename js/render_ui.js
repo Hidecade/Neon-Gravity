@@ -1,5 +1,46 @@
 ﻿
 
+let cachedWeaponBlocks = null;
+let cachedWeaponTimerFrame = null;
+let cachedWeaponTimerFill = null;
+
+function ensureWeaponUiCache() {
+    if (!ui.weaponDisplay) return;
+    if (cachedWeaponBlocks && cachedWeaponBlocks.length === MAX_WEAPON_LEVEL) return;
+
+    ui.weaponDisplay.innerHTML = '';
+    cachedWeaponBlocks = [];
+    for (let i = 1; i <= MAX_WEAPON_LEVEL; i++) {
+        const block = document.createElement('div');
+        block.className = 'w-block';
+        ui.weaponDisplay.appendChild(block);
+        cachedWeaponBlocks.push(block);
+    }
+    cachedWeaponTimerFrame = null;
+    cachedWeaponTimerFill = null;
+}
+
+function ensureWeaponTimerUi(borderColor) {
+    if (!ui.weaponDisplay) return null;
+    if (!cachedWeaponTimerFrame || !cachedWeaponTimerFill) {
+        ui.weaponDisplay.innerHTML = '';
+        cachedWeaponBlocks = null;
+
+        const frameDiv = document.createElement('div');
+        frameDiv.className = 'laser-bar-frame';
+        const fillDiv = document.createElement('div');
+        fillDiv.className = 'laser-bar-fill';
+
+        frameDiv.appendChild(fillDiv);
+        ui.weaponDisplay.appendChild(frameDiv);
+        cachedWeaponTimerFrame = frameDiv;
+        cachedWeaponTimerFill = fillDiv;
+    }
+
+    cachedWeaponTimerFrame.style.borderColor = borderColor;
+    return cachedWeaponTimerFill;
+}
+
 function updateUI() {
     const isExtremeMode = (typeof isExtremeTimeAttackMode === 'function') && isExtremeTimeAttackMode();
     const extremeState = (typeof getExtremeTimeAttackState === 'function') ? getExtremeTimeAttackState() : null;
@@ -72,15 +113,15 @@ function updateUI() {
         const remainSec = Math.max(0, targetSec - survivedSec);
 
         ui.enemyBar.style.width = `${gaugePct}%`;
-        document.querySelector('.bar-label.enemy').innerText = `CORE: ${Math.max(0, extremeState.gaugeFrames / 60).toFixed(1)}s`;
+        if (ui.enemyLabel) ui.enemyLabel.innerText = `CORE: ${Math.max(0, extremeState.gaugeFrames / 60).toFixed(1)}s`;
         ui.stage.innerText = `TA ${remainSec}s`;
     } else if (stage === 9) {
         const progress = rushBossIndex / 8;
         ui.enemyBar.style.width = `${(1 - progress) * 100}%`;
-        document.querySelector('.bar-label.enemy').innerText = `BOSS RUSH: ${rushBossIndex}/8`;
+        if (ui.enemyLabel) ui.enemyLabel.innerText = `BOSS RUSH: ${rushBossIndex}/8`;
     } else if (stage === 10) {
         ui.enemyBar.style.width = "100%";
-        document.querySelector('.bar-label.enemy').innerText = `ENEMY: ∞`;
+        if (ui.enemyLabel) ui.enemyLabel.innerText = `ENEMY: ∞`;
     } else {
         // ==========================================
         // ★修正：倒した数と逃げられた数を合計して、残り数を計算する
@@ -91,10 +132,10 @@ function updateUI() {
 
         if (isTrainingMode || enemiesToSpawn <= 0) {
             ui.enemyBar.style.width = '0%';
-            document.querySelector('.bar-label.enemy').innerText = isTrainingMode ? 'TRAINING' : 'ENEMY: 0';
+            if (ui.enemyLabel) ui.enemyLabel.innerText = isTrainingMode ? 'TRAINING' : 'ENEMY: 0';
         } else {
             ui.enemyBar.style.width = `${(enemyRemains / enemiesToSpawn) * 100}%`;
-            document.querySelector('.bar-label.enemy').innerText = `ENEMY: ${enemyRemains}`;
+            if (ui.enemyLabel) ui.enemyLabel.innerText = `ENEMY: ${enemyRemains}`;
         }
         ui.stage.innerText = stage;
     }
@@ -138,8 +179,7 @@ function updateUI() {
     // ==========================================
     // 4. WEAPON / OVERDRIVE ゲージ
     // ==========================================
-    const weaponLabel = document.getElementById('weapon-label');
-    ui.weaponDisplay.innerHTML = '';
+    const weaponLabel = ui.weaponLabel;
 
     if (player.overdriveTimer > 0) {
         if (weaponLabel) {
@@ -156,19 +196,13 @@ function updateUI() {
         if (isNaN(pct)) pct = 100; // 万が一計算エラーになっても100%で表示させる
         pct = Math.min(100, Math.max(0, pct)); // 0〜100の間に収める
         
-        const frameDiv = document.createElement('div');
-        frameDiv.className = 'laser-bar-frame';
-        frameDiv.style.borderColor = 'rgba(255, 136, 0, 0.4)';
-
-        const fillDiv = document.createElement('div');
-        fillDiv.className = 'laser-bar-fill';
-        fillDiv.style.width = pct + '%'; // ここに計算結果が入る
-        fillDiv.style.background = "linear-gradient(90deg, rgba(255, 136, 0, 0.4), rgb(255, 136, 0))";
-        fillDiv.style.boxShadow = "0 0 calc(8px * var(--hud-scale, 1)) rgb(255, 136, 0)";
-
-        if (player.overdriveTimer < 120 && Math.floor(frame / 4) % 2 === 0) fillDiv.style.opacity = 0.3;
-        frameDiv.appendChild(fillDiv);
-        ui.weaponDisplay.appendChild(frameDiv);
+        const fillDiv = ensureWeaponTimerUi('rgba(255, 136, 0, 0.4)');
+        if (fillDiv) {
+            fillDiv.style.width = pct + '%';
+            fillDiv.style.background = "linear-gradient(90deg, rgba(255, 136, 0, 0.4), rgb(255, 136, 0))";
+            fillDiv.style.boxShadow = "0 0 calc(8px * var(--hud-scale, 1)) rgb(255, 136, 0)";
+            fillDiv.style.opacity = (player.overdriveTimer < 120 && Math.floor(frame / 4) % 2 === 0) ? 0.3 : 1.0;
+        }
 
     } else if (player.laserTimer > 0) {
         if (weaponLabel) {
@@ -178,20 +212,13 @@ function updateUI() {
         }
         const pct = Math.min(100, Math.max(0, (player.laserTimer / LASER_DURATION) * 100));
         
-        const frameDiv = document.createElement('div');
-        frameDiv.className = 'laser-bar-frame';
-        frameDiv.style.borderColor = 'rgba(0, 255, 255, 0.4)';
-
-        const fillDiv = document.createElement('div');
-        fillDiv.className = 'laser-bar-fill';
-        fillDiv.style.width = pct + '%';
-        // ★ LASERのシアン色はCSS側に .laser-bar-fill として定義済みなのでJSは手出ししない！
-        fillDiv.style.background = '';
-        fillDiv.style.boxShadow = '';
-
-        if (player.laserTimer < 120 && Math.floor(frame / 4) % 2 === 0) fillDiv.style.opacity = 0.3;
-        frameDiv.appendChild(fillDiv);
-        ui.weaponDisplay.appendChild(frameDiv);
+        const fillDiv = ensureWeaponTimerUi('rgba(0, 255, 255, 0.4)');
+        if (fillDiv) {
+            fillDiv.style.width = pct + '%';
+            fillDiv.style.background = '';
+            fillDiv.style.boxShadow = '';
+            fillDiv.style.opacity = (player.laserTimer < 120 && Math.floor(frame / 4) % 2 === 0) ? 0.3 : 1.0;
+        }
 
     } else {
         if (weaponLabel) {
@@ -199,11 +226,11 @@ function updateUI() {
             weaponLabel.style.color = "rgba(200, 240, 255, 0.9)"; // CSSのデフォルト色に戻す
             weaponLabel.style.textShadow = "none";
         }
-        for (let i = 1; i <= MAX_WEAPON_LEVEL; i++) {
-            const block = document.createElement('div');
-            block.className = 'w-block';
-            if (i <= player.weaponLevel) block.classList.add('active');
-            ui.weaponDisplay.appendChild(block);
+        ensureWeaponUiCache();
+        if (cachedWeaponBlocks) {
+            for (let i = 0; i < cachedWeaponBlocks.length; i++) {
+                cachedWeaponBlocks[i].classList.toggle('active', i < player.weaponLevel);
+            }
         }
     }
 
@@ -227,7 +254,6 @@ function updateUI() {
         ui.invulnWrapper.style.display = 'none';
     }
 
-    if (typeof drawMiniMap === 'function') drawMiniMap();
 }
 
 function drawMiniMap() {

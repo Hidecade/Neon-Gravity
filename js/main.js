@@ -689,6 +689,7 @@ const ui = {
     shieldBar: document.getElementById('shield-bar'),
     shieldVal: document.getElementById('shield-val'),
     enemyBar: document.getElementById('enemy-bar'),
+    enemyLabel: document.querySelector('.bar-label.enemy'),
     invulnWrapper: document.getElementById('invuln-wrapper'),
     invulnBar: document.getElementById('invuln-bar'),
     bossContainer: document.getElementById('boss-ui-container'),
@@ -716,6 +717,7 @@ const ui = {
     btnStory: document.getElementById('btn-story'),
     btnRanking: document.getElementById('btn-ranking'),
     btnSettings: document.getElementById('btn-settings'),
+    weaponLabel: document.getElementById('weapon-label'),
 };
 
 let currentMenuButtons = [];
@@ -1347,7 +1349,6 @@ function update() {
     // ==========================================
 
     if (typeof updateScorePopups === 'function') updateScorePopups();
-    if (typeof checkStageClear === 'function') checkStageClear();
     if (typeof updateCamera === 'function') updateCamera();
     if (typeof updateUI === 'function') updateUI();
 
@@ -1538,7 +1539,7 @@ function draw() {
     if (typeof drawDebugWorldOverlay === 'function') drawDebugWorldOverlay();
 
     // UI要素描画
-    if ((gameState === 'PLAYING' || gameState === 'DYING' || gameState === 'STAGE_INTRO') && frame % 3 === 0) {
+    if ((gameState === 'PLAYING' || gameState === 'DYING' || gameState === 'STAGE_INTRO') && frame % 2 === 0) {
         if (typeof drawMiniMap === 'function') drawMiniMap();
     }
     if (typeof drawScorePopups === 'function') drawScorePopups();
