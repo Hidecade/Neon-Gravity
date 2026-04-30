@@ -24,25 +24,26 @@ function drawPlayerBullets() {
         const drawLen = Math.max(4, 20 * lifeRatio); 
         const drawThick = 12; // 描画する太さ
 
-        ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(angle);
-        
+
         // 画像の中心（先端を現在地にしたい場合はX座標をずらす）
         // x位置は -drawLen(後方へ伸ばす), y位置は -drawThick/2(中心合わせ)
         ctx.drawImage(tex, -drawLen, -drawThick / 2, drawLen, drawThick);
-        
-        ctx.restore();
+
+        ctx.rotate(-angle);
+        ctx.translate(-b.x, -b.y);
     }
     ctx.restore();
 }
 
 function drawLasers() {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
     lasers.forEach(l => {
-        ctx.save();
         ctx.translate(l.x, l.y);
         ctx.rotate(l.angle);
-        ctx.globalCompositeOperation = 'lighter';
         //if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 15;
 
         // ==========================================
@@ -96,9 +97,11 @@ function drawLasers() {
             ctx.fill();
         }
 
-        ctx.restore();
+        ctx.rotate(-l.angle);
+        ctx.translate(-l.x, -l.y);
     });
-    ctx.globalCompositeOperation = 'source-over';
+
+    ctx.restore();
 }
 
 function drawHomingLasers() {
@@ -137,7 +140,6 @@ function drawHomingLasers() {
         }
 
      // --- 2. ミサイル先端（レーザーの頭）の描画 ---
-        ctx.save();
         ctx.translate(m.x, m.y);
         const angle = Math.atan2(m.vy, m.vx);
         ctx.rotate(angle);
@@ -166,8 +168,9 @@ function drawHomingLasers() {
         ctx.moveTo(-headLen * 0.5, 0);
         ctx.lineTo(headLen * 0.5, 0);
         ctx.stroke();
-        
-        ctx.restore();
+
+        ctx.rotate(-angle);
+        ctx.translate(-m.x, -m.y);
     });
 
     ctx.restore();
