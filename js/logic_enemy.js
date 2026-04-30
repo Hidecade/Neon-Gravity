@@ -1895,7 +1895,7 @@ wormholes.forEach((w) => {
             }
         }
     });
-    wormholes = wormholes.filter(w => w.life > -60);
+    compactLiveArray(wormholes, keepWormholeVisible);
 }
 
 function getExtremeTimeAttackSpawnPool() {
@@ -2902,7 +2902,7 @@ function updateSpawnLogic() {
             // --- ★追加：lightcycleの出現制限ロジック ---
             const LC_LIMIT = 2; // 最大生存数
             // 現在画面にいる lightcycle の数をカウント
-            const currentLCCount = enemyPool.pool.filter(e => e.active && e.type === 'lightcycle' && e.hp > 0).length;
+            const currentLCCount = countActiveLightcycles();
 
             // 30%の確率で lightcycle を抽選するが、すでに3機以上いる場合は別の敵にする
             if (Math.random() < 0.3) {
@@ -2950,7 +2950,7 @@ function updateSpawnLogic() {
     } else {
         // --- 通常ステージ ---
         let maxW = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage * 1.5;
-        const activeWh = wormholes.filter(w => w.active).length;
+        const activeWh = countActiveWormholes();
         
         // ★修正：基本の最大数を取得
         let screenMax = STAGE_MAX_ON_SCREEN[stage - 1] || 40;

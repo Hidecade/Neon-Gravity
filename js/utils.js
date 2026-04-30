@@ -89,6 +89,44 @@ function isOnScreen(obj, margin = 50) {
     );
 }
 
+function compactLiveArray(list, predicate) {
+    let write = 0;
+    for (let read = 0; read < list.length; read++) {
+        const item = list[read];
+        if (predicate(item)) {
+            list[write++] = item;
+        }
+    }
+    list.length = write;
+    return list;
+}
+
+function keepLifePositive(item) {
+    return item.life > 0;
+}
+
+function keepWormholeVisible(item) {
+    return item.life > -60;
+}
+
+function countActiveWormholes() {
+    let count = 0;
+    for (let i = 0; i < wormholes.length; i++) {
+        if (wormholes[i].active) count++;
+    }
+    return count;
+}
+
+function countActiveLightcycles() {
+    let count = 0;
+    const pool = enemyPool.pool;
+    for (let i = 0; i < pool.length; i++) {
+        const e = pool[i];
+        if (e.active && e.type === 'lightcycle' && e.hp > 0) count++;
+    }
+    return count;
+}
+
 // =========================================================
 // オブジェクトプールシステム (Object Pool)
 // =========================================================

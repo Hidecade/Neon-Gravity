@@ -5,6 +5,15 @@
 const PROJECTILE_COLLISION_CELL_SIZE = 160;
 const PROJECTILE_COLLISION_QUERY_RADIUS = 180;
 let projectileCollisionQueryId = 0;
+let cachedProjectileEnemyGridFrame = -1;
+const projectileCollisionQueryResult = [];
+const projectileEnemyGridCache = {
+    cellSize: PROJECTILE_COLLISION_CELL_SIZE,
+    cols: 0,
+    rows: 0,
+    buckets: [],
+    specialEnemies: []
+};
 
 function getEnemyHitRadius(e) {
     let hitRadius = 30 * e.scale;
@@ -20,8 +29,19 @@ function getEnemyHitRadius(e) {
 
 function buildProjectileEnemyGrid() {
     const cellSize = PROJECTILE_COLLISION_CELL_SIZE;
-    const grid = new Map();
-    const specialEnemies = [];
+    const cols = Math.ceil(worldSize / cellSize) + 2;
+    const rows = cols;
+    const cache = projectileEnemyGridCache;
+    if (cache.cols !== cols || cache.rows !== rows) {
+        cache.cols = cols;
+        cache.rows = rows;
+        cache.buckets.length = cols * rows;
+    }
+    for (let i = 0; i < cache.buckets.length; i++) {
+        if (cache.buckets[i]) cache.buckets[i].length = 0;
+    }
+    cache.specialEnemies.length = 0;
+
     const enemyPoolList = enemyPool.pool;
 
     for (let j = 0; j < enemyPoolList.length; j++) {
@@ -30,26 +50,37 @@ function buildProjectileEnemyGrid() {
         if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) continue;
 
         if (e.type === 'lightcycle') {
-            specialEnemies.push(e);
+            cache.specialEnemies.push(e);
             continue;
         }
 
         const cx = Math.floor(e.x / cellSize);
         const cy = Math.floor(e.y / cellSize);
-        const key = `${cx},${cy}`;
-        let bucket = grid.get(key);
+        if (cx < 0 || cy < 0 || cx >= cols || cy >= rows) continue;
+
+        const index = cx + cy * cols;
+        let bucket = cache.buckets[index];
         if (!bucket) {
             bucket = [];
-            grid.set(key, bucket);
+            cache.buckets[index] = bucket;
         }
         bucket.push(e);
     }
 
-    return { cellSize, grid, specialEnemies };
+    return cache;
+}
+
+function getProjectileEnemyGridForFrame() {
+    if (cachedProjectileEnemyGridFrame !== frame) {
+        buildProjectileEnemyGrid();
+        cachedProjectileEnemyGridFrame = frame;
+    }
+    return projectileEnemyGridCache;
 }
 
 function queryProjectileEnemyGrid(enemyGrid, x, y, radius = PROJECTILE_COLLISION_QUERY_RADIUS) {
-    const result = [];
+    const result = projectileCollisionQueryResult;
+    result.length = 0;
     const mark = ++projectileCollisionQueryId;
     const minCx = Math.floor((x - radius) / enemyGrid.cellSize);
     const maxCx = Math.floor((x + radius) / enemyGrid.cellSize);
@@ -57,8 +88,10 @@ function queryProjectileEnemyGrid(enemyGrid, x, y, radius = PROJECTILE_COLLISION
     const maxCy = Math.floor((y + radius) / enemyGrid.cellSize);
 
     for (let cy = minCy; cy <= maxCy; cy++) {
+        if (cy < 0 || cy >= enemyGrid.rows) continue;
         for (let cx = minCx; cx <= maxCx; cx++) {
-            const bucket = enemyGrid.grid.get(`${cx},${cy}`);
+            if (cx < 0 || cx >= enemyGrid.cols) continue;
+            const bucket = enemyGrid.buckets[cx + cy * enemyGrid.cols];
             if (!bucket) continue;
             for (let i = 0; i < bucket.length; i++) {
                 const e = bucket[i];
@@ -80,7 +113,8 @@ function queryProjectileEnemyGrid(enemyGrid, x, y, radius = PROJECTILE_COLLISION
 }
 
 function queryProjectileEnemyGridRect(enemyGrid, minX, minY, maxX, maxY) {
-    const result = [];
+    const result = projectileCollisionQueryResult;
+    result.length = 0;
     const mark = ++projectileCollisionQueryId;
     const minCx = Math.floor((minX - PROJECTILE_COLLISION_QUERY_RADIUS) / enemyGrid.cellSize);
     const maxCx = Math.floor((maxX + PROJECTILE_COLLISION_QUERY_RADIUS) / enemyGrid.cellSize);
@@ -88,8 +122,10 @@ function queryProjectileEnemyGridRect(enemyGrid, minX, minY, maxX, maxY) {
     const maxCy = Math.floor((maxY + PROJECTILE_COLLISION_QUERY_RADIUS) / enemyGrid.cellSize);
 
     for (let cy = minCy; cy <= maxCy; cy++) {
+        if (cy < 0 || cy >= enemyGrid.rows) continue;
         for (let cx = minCx; cx <= maxCx; cx++) {
-            const bucket = enemyGrid.grid.get(`${cx},${cy}`);
+            if (cx < 0 || cx >= enemyGrid.cols) continue;
+            const bucket = enemyGrid.buckets[cx + cy * enemyGrid.cols];
             if (!bucket) continue;
             for (let i = 0; i < bucket.length; i++) {
                 const e = bucket[i];
@@ -117,7 +153,7 @@ function updatePlayerBullets() {
     const margin = 50; // 画面外50pxまで飛んだら消す
 
     const pPool = playerBulletPool.pool; // プールを参照
-    const enemyGrid = buildProjectileEnemyGrid();
+    const enemyGrid = getProjectileEnemyGridForFrame();
 
     for (let i = 0; i < pPool.length; i++) {
         const b = pPool[i];
@@ -259,7 +295,7 @@ function updateLasers() {
 
     // ★修正1: 最大長の2乗を事前に計算（比較用）
     const dynamicMaxLenSq = dynamicMaxLen * dynamicMaxLen;
-    const enemyGrid = buildProjectileEnemyGrid();
+    const enemyGrid = getProjectileEnemyGridForFrame();
 
     lasers.forEach(l => {
         l.life -= gameSpeed;
@@ -311,8 +347,9 @@ function updateLasers() {
             Math.max(p1x, p2x),
             Math.max(p1y, p2y)
         );
-        hitEnemies.forEach(e => {
-            if (!e.active || e.hp <= 0) return;
+        for (let j = 0; j < hitEnemies.length; j++) {
+            const e = hitEnemies[j];
+            if (!e.active || e.hp <= 0) continue;
 
             const dx = e.x - p1x;
             const dy = e.y - p1y;
@@ -367,7 +404,7 @@ function updateLasers() {
                     });
                 }
             }
-        });
+        }
 
         // 最終的な描画長さを保存
         l.renderLen = currentLen;
@@ -414,7 +451,7 @@ function updateLasers() {
             }
         }
     });
-    lasers = lasers.filter(l => l.life > 0);
+    compactLiveArray(lasers, keepLifePositive);
 }
 
 function updateEnemyBullets() {
@@ -715,7 +752,7 @@ function updateHomingLasers() {
     });
 
     // 寿命切れを削除
-    homingLasers = homingLasers.filter(m => m.life > 0);
+    compactLiveArray(homingLasers, keepLifePositive);
 }
 
 function updateCrystals() {
@@ -769,7 +806,7 @@ function updateCrystals() {
     });
 
     // 寿命切れを削除
-    crystals = crystals.filter(c => c.life > 0);
+    compactLiveArray(crystals, keepLifePositive);
 }
 
 function updatePowerups() {
@@ -965,7 +1002,7 @@ function updatePowerups() {
         }
     });
     // 取得済み(life=0)または時間切れのものを削除
-    powerups = powerups.filter(p => p.life > 0);
+    compactLiveArray(powerups, keepLifePositive);
 }
 
 function updateScorePopups() {
