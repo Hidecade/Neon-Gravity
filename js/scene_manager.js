@@ -2037,38 +2037,6 @@ async function startEndingSequence() {
         skipBtn.style.animation = 'blink-anim 1.2s infinite';
         skipBtn.classList.add('ending-next');
     }
-
-    const bgmEl = (typeof AudioSys !== 'undefined') ? AudioSys.bgmEl : null;
-
-    const advanceToResult = () => {
-        if (gameState !== 'ENDING_STORY' || isSkipComplete) return;
-        isSkipComplete = true;
-
-        if (bgmEl) {
-            bgmEl.removeEventListener('ended', advanceToResult);
-        }
-
-        showGameOver();
-    };
-
-    if (!bgmEl) {
-        advanceToResult();
-        return;
-    }
-
-    // 念のためエンディングBGMはループ禁止
-    bgmEl.loop = false;
-
-    // すでに終了済みなら即遷移
-    if (bgmEl.ended) {
-        advanceToResult();
-        return;
-    }
-
-    // paused でも ended ではないなら再生失敗の可能性があるので即遷移しない
-    // ended のみで判定する
-    bgmEl.removeEventListener('ended', advanceToResult);
-    bgmEl.addEventListener('ended', advanceToResult, { once: true });
 }
 
 /**
