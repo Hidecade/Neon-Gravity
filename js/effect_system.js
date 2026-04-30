@@ -417,7 +417,7 @@ function updateParticlesAndRings() {
 
         // ★ 削除（Pop）の代わりに、非アクティブ状態にしてプールへ返却するだけ
         if (p.life <= 0) {
-            p.active = false;
+            particlePool.release(p);
         }
     }
 
@@ -445,7 +445,7 @@ function updateParticlesAndRings() {
 
         // ★ リングも同様に、非アクティブ状態にするだけ
         if (r.life <= 0) {
-            r.active = false;
+            ringPool.release(r);
         }
     }
 }
@@ -514,128 +514,130 @@ function drawVisualEffects() {
     // ★ バッチ処理用の変数は不要になったので削除
 
     const pPoolArray = particlePool.pool;
-    const activeParticleCount = particlePool.getActiveCount ? particlePool.getActiveCount() : 0;
+    const activeParticleCount = particlePool.activeCount || 0;
     const particleLightMode = activeParticleCount > PARTICLE_ULTRA_LIGHT_MODE_THRESHOLD ? 2
         : activeParticleCount > PARTICLE_LIGHT_MODE_THRESHOLD ? 1
             : 0;
 
-    for (let i = 0; i < pPoolArray.length; i++) {
-        const p = pPoolArray[i];
+    if (activeParticleCount > 0) {
+        for (let i = 0; i < pPoolArray.length; i++) {
+            const p = pPoolArray[i];
 
-        if (!p.active) continue;
-        if (!isOnScreen(p, 50)) continue;
+            if (!p.active) continue;
+            if (!isOnScreen(p, 50)) continue;
 
-        // A. 特殊パーティクル（破片、泡）の個別描画
-        if (p.isShard || p.isBubble) {
-            ctx.save();
-            ctx.globalAlpha = Math.min(1, p.life);
+            // A. 特殊パーティクル（破片、泡）の個別描画
+            if (p.isShard || p.isBubble) {
+                ctx.save();
+                ctx.globalAlpha = Math.min(1, p.life);
 
-            if (p.isShard) {
-                ctx.translate(p.x, p.y);
-                ctx.rotate(p.angle || 0);
-                const opacity = Math.min(1.0, p.life);
-                const smoothAlpha = Math.pow(opacity, 0.7);
-                const s = (p.size || 1.0) * G_SCALE * (0.6 + opacity * 0.4);
-                ctx.scale(s, s);
-                ctx.strokeStyle = p.color;
-                ctx.lineWidth = 1.5;
-                ctx.globalCompositeOperation = 'lighter';
+                if (p.isShard) {
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.angle || 0);
+                    const opacity = Math.min(1.0, p.life);
+                    const smoothAlpha = Math.pow(opacity, 0.7);
+                    const s = (p.size || 1.0) * G_SCALE * (0.6 + opacity * 0.4);
+                    ctx.scale(s, s);
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = 1.5;
+                    ctx.globalCompositeOperation = 'lighter';
 
-                if (p.shardType === 'eclipseBit') {
-                    const pts = [{ x: 14, y: 0, z: 0 }, { x: -7, y: 7, z: 4 }, { x: -7, y: -7, z: 4 }, { x: -7, y: 0, z: -8 }];
-                    const lines = [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]];
-                    ctx.beginPath();
-                    lines.forEach(l => {
-                        const tilt = 0.4;
-                        const p1y = pts[l[0]].y * Math.cos(tilt) - pts[l[0]].z * Math.sin(tilt);
-                        const p2y = pts[l[1]].y * Math.cos(tilt) - pts[l[1]].z * Math.sin(tilt);
-                        ctx.moveTo(pts[l[0]].x, p1y); ctx.lineTo(pts[l[1]].x, p2y);
-                    });
-                    ctx.globalAlpha = smoothAlpha; ctx.stroke();
-                    ctx.fillStyle = p.color; ctx.globalAlpha = smoothAlpha * 0.2; ctx.fill();
-                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5; ctx.globalAlpha = smoothAlpha * 0.5; ctx.stroke();
-                } else if (p.shardType === 'dragonSeg') {
-                    const w = 12, h = 18;
-                    ctx.beginPath(); ctx.moveTo(w, -h / 2); ctx.lineTo(w, h / 2); ctx.lineTo(-w * 0.9, h * 0.35); ctx.lineTo(-w * 0.9, -h * 0.35); ctx.closePath();
-                    ctx.fillStyle = p.color; ctx.globalAlpha = smoothAlpha * 0.3; ctx.fill();
-                    ctx.globalAlpha = smoothAlpha; ctx.stroke();
-                } else if (p.shardType === 'tri') {
-                    ctx.lineWidth = 1.0 / s;
-                    ctx.beginPath();
-                    if (p.vertices) { ctx.moveTo(p.vertices[0].x, p.vertices[0].y); ctx.lineTo(p.vertices[1].x, p.vertices[1].y); ctx.lineTo(p.vertices[2].x, p.vertices[2].y); }
-                    else { ctx.moveTo(0, -10); ctx.lineTo(8, 8); ctx.lineTo(-8, 8); }
-                    ctx.closePath(); ctx.stroke();
-                    ctx.fillStyle = p.color; ctx.globalAlpha = opacity * 0.3; ctx.fill();
-                } else if (p.shardType === 'rock') {
-                    ctx.lineWidth = 1.0 / s;
-                    ctx.beginPath(); ctx.moveTo(-8, -6); ctx.lineTo(6, -4); ctx.lineTo(8, 5); ctx.lineTo(-5, 7); ctx.closePath();
-                    ctx.fillStyle = p.color || '#777'; ctx.globalAlpha = smoothAlpha * 0.55; ctx.fill();
-                    ctx.globalAlpha = smoothAlpha; ctx.stroke();
+                    if (p.shardType === 'eclipseBit') {
+                        const pts = [{ x: 14, y: 0, z: 0 }, { x: -7, y: 7, z: 4 }, { x: -7, y: -7, z: 4 }, { x: -7, y: 0, z: -8 }];
+                        const lines = [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1]];
+                        ctx.beginPath();
+                        lines.forEach(l => {
+                            const tilt = 0.4;
+                            const p1y = pts[l[0]].y * Math.cos(tilt) - pts[l[0]].z * Math.sin(tilt);
+                            const p2y = pts[l[1]].y * Math.cos(tilt) - pts[l[1]].z * Math.sin(tilt);
+                            ctx.moveTo(pts[l[0]].x, p1y); ctx.lineTo(pts[l[1]].x, p2y);
+                        });
+                        ctx.globalAlpha = smoothAlpha; ctx.stroke();
+                        ctx.fillStyle = p.color; ctx.globalAlpha = smoothAlpha * 0.2; ctx.fill();
+                        ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5; ctx.globalAlpha = smoothAlpha * 0.5; ctx.stroke();
+                    } else if (p.shardType === 'dragonSeg') {
+                        const w = 12, h = 18;
+                        ctx.beginPath(); ctx.moveTo(w, -h / 2); ctx.lineTo(w, h / 2); ctx.lineTo(-w * 0.9, h * 0.35); ctx.lineTo(-w * 0.9, -h * 0.35); ctx.closePath();
+                        ctx.fillStyle = p.color; ctx.globalAlpha = smoothAlpha * 0.3; ctx.fill();
+                        ctx.globalAlpha = smoothAlpha; ctx.stroke();
+                    } else if (p.shardType === 'tri') {
+                        ctx.lineWidth = 1.0 / s;
+                        ctx.beginPath();
+                        if (p.vertices) { ctx.moveTo(p.vertices[0].x, p.vertices[0].y); ctx.lineTo(p.vertices[1].x, p.vertices[1].y); ctx.lineTo(p.vertices[2].x, p.vertices[2].y); }
+                        else { ctx.moveTo(0, -10); ctx.lineTo(8, 8); ctx.lineTo(-8, 8); }
+                        ctx.closePath(); ctx.stroke();
+                        ctx.fillStyle = p.color; ctx.globalAlpha = opacity * 0.3; ctx.fill();
+                    } else if (p.shardType === 'rock') {
+                        ctx.lineWidth = 1.0 / s;
+                        ctx.beginPath(); ctx.moveTo(-8, -6); ctx.lineTo(6, -4); ctx.lineTo(8, 5); ctx.lineTo(-5, 7); ctx.closePath();
+                        ctx.fillStyle = p.color || '#777'; ctx.globalAlpha = smoothAlpha * 0.55; ctx.fill();
+                        ctx.globalAlpha = smoothAlpha; ctx.stroke();
+                    }
+                } else if (p.isBubble) {
+                    ctx.translate(p.x, p.y);
+                    const fade = Math.min(1.0, p.life) * 0.6;
+                    ctx.globalAlpha = fade;
+                    const r = p.size * G_SCALE;
+                    ctx.beginPath(); ctx.arc(0, 0, r, 0, PI2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.fill();
+                    ctx.strokeStyle = p.color; ctx.lineWidth = 1.5; ctx.stroke();
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.beginPath(); ctx.arc(-r * 0.4, -r * 0.4, r * 0.25, 0, PI2); ctx.fill();
                 }
-            } else if (p.isBubble) {
-                ctx.translate(p.x, p.y);
-                const fade = Math.min(1.0, p.life) * 0.6;
-                ctx.globalAlpha = fade;
-                const r = p.size * G_SCALE;
-                ctx.beginPath(); ctx.arc(0, 0, r, 0, PI2);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.fill();
-                ctx.strokeStyle = p.color; ctx.lineWidth = 1.5; ctx.stroke();
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.beginPath(); ctx.arc(-r * 0.4, -r * 0.4, r * 0.25, 0, PI2); ctx.fill();
+                ctx.restore();
+
+            } else {
+                // ==========================================
+                // B. 通常火花のスタンプ描画（スピード線版）
+                // ==========================================
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.globalAlpha = Math.max(0, Math.min(1.0, p.life));
+
+                if (particleLightMode > 0) {
+                    if (particleLightMode > 1 && ((i + frame) & 1)) continue;
+
+                    const px = p.x | 0;
+                    const py = p.y | 0;
+                    const tailScale = particleLightMode > 1 ? 1.4 : 2.0;
+                    const lineWidth = Math.max(1, (p.size || 2) * G_SCALE * (particleLightMode > 1 ? 0.8 : 1.1));
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = lineWidth;
+                    ctx.beginPath();
+                    ctx.moveTo(px, py);
+                    ctx.lineTo((px - p.vx * tailScale) | 0, (py - p.vy * tailScale) | 0);
+                    ctx.stroke();
+                    continue;
+                }
+
+                const texture = getParticleTexture(p.color);
+
+                // 飛んでいる方向（角度）とスピードを計算
+                const angle = Math.atan2(p.vy, p.vx);
+                const speed = Math.hypot(p.vx, p.vy);
+
+                // 線を約1.3倍大きく（長く・太く）する
+                const renderWidth = (p.size || 2) * 6.0 * G_SCALE + speed * 3.0;
+                const renderHeight = (p.size || 2) * 4.5 * G_SCALE; // 太さ
+
+                // 【超高速化テクニック】 save/restoreを使わずに座標系を回転
+                // 座標 p.x, p.y を整数化 (| 0) してサブピクセルレンダリングを回避
+                ctx.translate(p.x | 0, p.y | 0);
+                ctx.rotate(angle);
+
+                // 先頭（右端）が現在位置になるように、左へずらしてスタンプ
+                // 描画座標とサイズもすべて整数化 (| 0) して爆速にする
+                ctx.drawImage(
+                    texture,
+                    (-renderWidth) | 0,
+                    (-renderHeight / 2) | 0,
+                    renderWidth | 0,
+                    renderHeight | 0
+                );
+
+                // 回転と移動を逆に行って元に戻す
+                ctx.rotate(-angle);
+                ctx.translate(-(p.x | 0), -(p.y | 0));
             }
-            ctx.restore();
-
-        } else {
-            // ==========================================
-            // B. 通常火花のスタンプ描画（スピード線版）
-            // ==========================================
-            ctx.globalCompositeOperation = 'lighter';
-            ctx.globalAlpha = Math.max(0, Math.min(1.0, p.life));
-
-            if (particleLightMode > 0) {
-                if (particleLightMode > 1 && ((i + frame) & 1)) continue;
-
-                const px = p.x | 0;
-                const py = p.y | 0;
-                const tailScale = particleLightMode > 1 ? 1.4 : 2.0;
-                const lineWidth = Math.max(1, (p.size || 2) * G_SCALE * (particleLightMode > 1 ? 0.8 : 1.1));
-                ctx.strokeStyle = p.color;
-                ctx.lineWidth = lineWidth;
-                ctx.beginPath();
-                ctx.moveTo(px, py);
-                ctx.lineTo((px - p.vx * tailScale) | 0, (py - p.vy * tailScale) | 0);
-                ctx.stroke();
-                continue;
-            }
-
-            const texture = getParticleTexture(p.color);
-
-            // 飛んでいる方向（角度）とスピードを計算
-            const angle = Math.atan2(p.vy, p.vx);
-            const speed = Math.hypot(p.vx, p.vy);
-
-            // 線を約1.3倍大きく（長く・太く）する
-            const renderWidth = (p.size || 2) * 6.0 * G_SCALE + speed * 3.0;
-            const renderHeight = (p.size || 2) * 4.5 * G_SCALE; // 太さ
-
-            // 【超高速化テクニック】 save/restoreを使わずに座標系を回転
-            // 座標 p.x, p.y を整数化 (| 0) してサブピクセルレンダリングを回避
-            ctx.translate(p.x | 0, p.y | 0);
-            ctx.rotate(angle);
-
-            // 先頭（右端）が現在位置になるように、左へずらしてスタンプ
-            // 描画座標とサイズもすべて整数化 (| 0) して爆速にする
-            ctx.drawImage(
-                texture,
-                (-renderWidth) | 0,
-                (-renderHeight / 2) | 0,
-                renderWidth | 0,
-                renderHeight | 0
-            );
-
-            // 回転と移動を逆に行って元に戻す
-            ctx.rotate(-angle);
-            ctx.translate(-(p.x | 0), -(p.y | 0));
         }
     }
     // ★ 分類した通常火花を一括描画（for (const key in batches)...）のブロックは丸ごと消去します
@@ -647,15 +649,24 @@ function drawVisualEffects() {
 
     // ★ リングも同様にプールの配列を参照し、forループにする
     const rPoolArray = ringPool.pool;
-    const lightRingMode = ringPool.getActiveCount && ringPool.getActiveCount() > RING_LIGHT_MODE_THRESHOLD;
-    for (let i = 0; i < rPoolArray.length; i++) {
+    const activeRingCount = ringPool.activeCount || 0;
+    const lightRingMode = activeRingCount > RING_LIGHT_MODE_THRESHOLD;
+    const ringViewW = width / cameraScale;
+    const ringViewH = height / cameraScale;
+    for (let i = 0; i < rPoolArray.length && activeRingCount > 0; i++) {
         const r = rPoolArray[i];
 
         // ★ 休んでいる波紋は無視！
         if (!r.active) continue;
 
         // ★ forEachの return を continue に変更
-        if (!isOnScreen({ x: r.x, y: r.y }, r.r * G_SCALE + 50)) continue;
+        const ringMargin = r.r * G_SCALE + 50;
+        if (
+            r.x <= camera.x - ringMargin ||
+            r.x >= camera.x + ringViewW + ringMargin ||
+            r.y <= camera.y - ringMargin ||
+            r.y >= camera.y + ringViewH + ringMargin
+        ) continue;
 
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
@@ -701,5 +712,3 @@ function drawVisualEffects() {
         ctx.restore();
     }
 }
-
-

@@ -410,7 +410,8 @@ function resetGame() {
     enemyPool.clearAll();
     enemyBulletPool.clearAll();
     particlePool.clearAll();
-    ringPool.clearAll();     
+    ringPool.clearAll();
+    crystalPool.clearAll();
     crystals = []; homingLasers = []; powerups = [];
     wormholes = []; 
     scorePopupPool.clearAll();
@@ -963,6 +964,7 @@ function returnToTitle() {
     enemyBulletPool.clearAll();
     particlePool.clearAll(); 
     ringPool.clearAll();     
+    crystalPool.clearAll();
     crystals = []; homingLasers = []; powerups = [];
     wormholes = []; 
     scorePopupPool.clearAll();
@@ -1885,7 +1887,7 @@ function updateWarpProcess() {
             e.hp = 0;
             e.isDying = false;
             e.isDead = true;
-            e.active = false;
+            enemyPool.release(e);
         });
     }
 

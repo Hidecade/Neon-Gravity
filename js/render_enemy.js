@@ -77,22 +77,24 @@ function drawWarpingOutEnemy(ctx, e) {
 }
 
 function drawEnemies() {
-    enemyPool.pool.forEach(e => {
+    const enemies = enemyPool.pool;
+    const prevAlpha = ctx.globalAlpha;
+    for (let i = 0; i < enemies.length; i++) {
+        const e = enemies[i];
         // ★追加: 非アクティブ（プール内待機中）のオブジェクトは描画しない
-        if (!e.active) return;
+        if (!e.active) continue;
 
         // ==========================================
         // ★追加：ワープアウト（消失）中の特別描画
         // ==========================================
         if (e.isWarpingOut) {
             drawWarpingOutEnemy(ctx, e);
-            return; // 通常描画はスキップ
+            continue; // 通常描画はスキップ
         }
-        
-        const margin = (e.type === 'boss' || e.type === 'dragon' || e.type === 'battleship') ? 350 : 100;
-        if (!isOnScreen(e, margin)) return;
 
-        ctx.save();
+        const margin = (e.type === 'boss' || e.type === 'dragon' || e.type === 'battleship') ? 350 : 100;
+        if (!isOnScreen(e, margin)) continue;
+
         ctx.globalAlpha = e.isWarping ? (e.warpPercent || 0) : 1.0;
 
         if (e.type === 'dragon') drawDragonEnemy(ctx, e);
@@ -111,8 +113,8 @@ function drawEnemies() {
         else if (e.type === 'boss') drawBossEnemy(ctx, e);
         else if (e.type === 'battleship') drawBattleshipBoss(ctx, e);
 
-        ctx.restore();
-    });
+        ctx.globalAlpha = prevAlpha;
+    }
 }
 
 // ENEMY

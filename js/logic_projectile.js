@@ -166,7 +166,7 @@ function updatePlayerBullets() {
         // --- 1. 画面外または寿命による消滅 ---
         if (b.x < camera.x - margin || b.x > camera.x + viewW + margin ||
             b.y < camera.y - margin || b.y > camera.y + viewH + margin || b.life <= 0) {
-            b.active = false;
+            playerBulletPool.release(b);
             b.life = 0;
             continue; 
         }
@@ -177,7 +177,7 @@ function updatePlayerBullets() {
             const impactX = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, b.x));
             const impactY = Math.max(WALL_MARGIN, Math.min(worldSize - WALL_MARGIN, b.y));
             createWallImpact(impactX, impactY, '#0f8');
-            b.active = false;
+            playerBulletPool.release(b);
             b.life = 0;
             continue;
         }
@@ -281,7 +281,7 @@ function updatePlayerBullets() {
 
         // 何かに当たった場合は弾を消去
         if (hitSomething) {
-            b.active = false;
+            playerBulletPool.release(b);
             b.life = 0;
         }
     }
@@ -433,7 +433,7 @@ function updateLasers() {
             // 当たり判定：横幅(dist)がレーザー幅以内、かつ長さ(dot)が0〜レーザー長の間
             if (dist < hitWidth && dot > 0 && dot < currentLen) {
                 // 敵弾を消去
-                eb.active = false; // ★プールへ返却
+                enemyBulletPool.release(eb); // ★プールへ返却
                 eb.life = 0;
                 
                 // スコア加算
@@ -481,7 +481,7 @@ function updateEnemyBullets() {
                 distortGrid(impactX, impactY, 15, 30);
             }
 
-            eb.active = false; // ★プール返却
+            enemyBulletPool.release(eb); // ★プール返却
             eb.life = 0;
             continue;
         }
@@ -492,7 +492,7 @@ function updateEnemyBullets() {
             const wave = (Math.sin(frame * 1.0) + 1) / 2;
             eb.alpha = eb.baseAlpha * wave;
             if (eb.baseAlpha <= 0) {
-                eb.active = false; // ★プール返却
+                enemyBulletPool.release(eb); // ★プール返却
                 eb.life = 0;
             }
             continue; 
@@ -508,7 +508,7 @@ function updateEnemyBullets() {
                 if (typeof AudioSys !== 'undefined') AudioSys.playSE('enemy_hit', 0.5);
                 continue;
             } else {
-                eb.active = false; // ★プール返却
+                enemyBulletPool.release(eb); // ★プール返却
                 eb.life = 0;
                 continue;
             }
@@ -529,7 +529,7 @@ function updateEnemyBullets() {
                 const dx = rock.x - eb.x;
                 const dy = rock.y - eb.y;
                 if (dx * dx + dy * dy < rockRadius * rockRadius) {
-                    eb.active = false; // ★プール返却
+                    enemyBulletPool.release(eb); // ★プール返却
                     eb.life = 0;
                     createExplosion(eb.x, eb.y, '#fff', 3);
                     break;
@@ -577,9 +577,9 @@ function updateEnemyBullets() {
                 if (bdx * bdx + bdy * bdy < hitDist * hitDist) {
                     createExplosion(eb.x, eb.y, eb.color, 8);
                     if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_small');
-                    eb.active = false; 
+                    enemyBulletPool.release(eb);
                     eb.life = 0;
-                    b.active = false; 
+                    playerBulletPool.release(b);
                     b.life = 0;
                     score += 50;
                     break; 
@@ -603,7 +603,7 @@ function updateEnemyBullets() {
             }
 
             if (distSq < collisionRadius * collisionRadius) {
-                eb.active = false; // ★プール返却
+                enemyBulletPool.release(eb); // ★プール返却
                 eb.life = 0;
                 createExplosion(player.x, player.y, eb.color || '#f00', 10);
                 damage(15);
@@ -756,7 +756,8 @@ function updateHomingLasers() {
 }
 
 function updateCrystals() {
-    crystals.forEach(c => {
+    for (let i = 0; i < crystals.length; i++) {
+        const c = crystals[i];
         c.life -= gameSpeed;
 
         // --- 1. 初速（飛び散り）の適用 ---
@@ -803,9 +804,12 @@ function updateCrystals() {
                 });
             }
         }
-    });
+    }
 
     // 寿命切れを削除
+    for (let i = 0; i < crystals.length; i++) {
+        if (crystals[i].life <= 0) crystalPool.release(crystals[i]);
+    }
     compactLiveArray(crystals, keepLifePositive);
 }
 
@@ -1027,7 +1031,7 @@ function updateScorePopups() {
             s.x < camera.x - margin || s.x > camera.x + viewW + margin ||
             s.y < camera.y - margin || s.y > camera.y + viewH + margin) {
             
-            s.active = false;
+            scorePopupPool.release(s);
             s.life = 0;
         }
     }

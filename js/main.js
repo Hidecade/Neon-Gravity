@@ -400,9 +400,14 @@ const createPlayerBullet = () => ({
     active: false
 });
 
+const createCrystal = () => ({
+    x: 0, y: 0, vx: 0, vy: 0, life: 0,
+    active: false
+});
+
 const createScorePopup = () => ({
-    x: 0, y: 0, vy: 0, text: '', life: 0, alpha: 1, 
-    isBoss: false, active: false, color: '#ffffff' 
+    x: 0, y: 0, vy: 0, text: '', life: 0, alpha: 1,
+    isBoss: false, active: false, color: '#ffffff'
 });
 
 const enemyPool = new ObjectPool(createEnemy, 400, 520);
@@ -410,6 +415,7 @@ const particlePool = new ObjectPool(createParticle, 1500, 2400);
 const ringPool = new ObjectPool(createRing, 100, 140);
 const enemyBulletPool = new ObjectPool(createEnemyBullet, 500, 700);
 const playerBulletPool = new ObjectPool(createPlayerBullet, 100, 140);
+const crystalPool = new ObjectPool(createCrystal, 120, 240);
 const scorePopupPool = new ObjectPool(createScorePopup, 50, 80);
 
 // オブジェクトを受け取るヘルパー関数
@@ -508,6 +514,20 @@ function spawnPlayerBulletObj(options) {
     b.life = options.life || 0;
 
     return b;
+}
+
+function spawnCrystalObj(options) {
+    const c = crystalPool.get();
+    if (!c) return null;
+
+    c.x = options.x || 0;
+    c.y = options.y || 0;
+    c.vx = options.vx || 0;
+    c.vy = options.vy || 0;
+    c.life = options.life || ITEM_LIFE;
+
+    crystals.push(c);
+    return c;
 }
 
 function spawnScorePopupObj(options) {

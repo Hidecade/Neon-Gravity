@@ -1363,7 +1363,7 @@ function destroyEnemy(e) {
                     createExplosion(eb.x, eb.y, eb.color || '#fff', 3);
                     
                     // ★重要：オブジェクトプールに返却
-                    eb.active = false;
+                    enemyBulletPool.release(eb);
                     eb.life = 0;
                 }
             }
@@ -1755,7 +1755,7 @@ function destroyEnemy(e) {
     if (finalDropType === 'level') powerups.push({ ...itemProps, type: 'level', life: ITEM_LIFE * 2 });
     else if (finalDropType === 'laser') powerups.push({ ...itemProps, type: 'laser', life: ITEM_LIFE });
     else if (finalDropType === 'invincible') powerups.push({ ...itemProps, type: 'invincible', life: ITEM_LIFE });
-    else if (finalDropType === 'crystal') crystals.push({ ...itemProps, life: ITEM_LIFE });
+    else if (finalDropType === 'crystal') spawnCrystalObj({ ...itemProps, life: ITEM_LIFE });
     else if (finalDropType === 'shield') powerups.push({ ...itemProps, type: 'shield', life: ITEM_LIFE });
     else if (finalDropType === 'point') powerups.push({ ...itemProps, type: 'point', life: ITEM_LIFE });
 
@@ -2479,7 +2479,7 @@ function updateEnemies() {
                     const remainSeconds = Math.ceil(remainFrames / 60);
                     const bonus = remainSeconds * (EXTREME_TIME_ATTACK_CONFIG.TIME_BONUS_SCORE_PER_SECOND || 0);
                     enemyPool.pool.forEach(other => {
-                        if (other !== e) other.active = false;
+                        if (other !== e) enemyPool.release(other);
                     });
                     if (typeof finishExtremeTimeAttackSequence === 'function') {
                         finishExtremeTimeAttackSequence({ cleared: true, bonus, remainSeconds });
@@ -2572,7 +2572,7 @@ function updateEnemies() {
                 // アニメーション完了で完全に消す
                 e.hp = 0;
                 e.isDead = true;
-                e.active = false;
+                enemyPool.release(e);
                 e.isWarpingOut = false; 
             }
             return; // 消失中は以降の処理（移動など）をすべてスキップ
@@ -2676,7 +2676,7 @@ function updateEnemies() {
                 executeRealDeath(e);
             }
             // 死亡演出中は以降の処理を行わない
-            if (e.isDead) e.active = false; // ★追加: プールへ返却
+            if (e.isDead) enemyPool.release(e); // ★追加: プールへ返却
             return;
         }
 
@@ -2761,7 +2761,7 @@ function updateEnemies() {
         if (e.x < -1000 || e.x > worldSize + 1000 || e.y < -1000 || e.y > worldSize + 1000) {
             e.hp = 0;
             e.isDead = true; 
-            e.active = false; // ★追加: プールへ返却
+            enemyPool.release(e); // ★追加: プールへ返却
             return; // これ以上の判定は行わずスキップ
         }
 
@@ -2801,7 +2801,7 @@ function updateEnemies() {
 
         // ★追加: 完全に死んだ敵はプールへ返却する
         if (e.isDead) {
-            e.active = false;
+            enemyPool.release(e);
         }
     });
 }

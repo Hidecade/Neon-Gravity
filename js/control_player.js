@@ -360,7 +360,7 @@ function launchSatellites() {
             createExplosion(eb.x, eb.y, eb.color || '#fff', 2);
             
             // ★重要：削除の代わりに非アクティブにする
-            eb.active = false;
+            enemyBulletPool.release(eb);
             eb.life = 0; // 念のため寿命も0にしておく
         }
     }

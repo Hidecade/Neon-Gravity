@@ -136,6 +136,7 @@ class ObjectPool {
         this.createFn = createFn;
         this.maxSize = Math.max(initialSize, maxSize);
         this.currentIndex = 0; // ★ 追加：最後にチェックしたインデックス
+        this.activeCount = 0;
 
         for (let i = 0; i < initialSize; i++) {
             const obj = this.createFn();
@@ -152,6 +153,7 @@ class ObjectPool {
             const index = (this.currentIndex + i) % len;
             if (!this.pool[index].active) {
                 this.pool[index].active = true;
+                this.activeCount++;
                 this.currentIndex = (index + 1) % len; // 次回は次の要素から探す
                 return this.pool[index];
             }
@@ -164,24 +166,27 @@ class ObjectPool {
 
         const newObj = this.createFn();
         newObj.active = true;
+        this.activeCount++;
         this.pool.push(newObj);
         this.currentIndex = 0; // 追加されたら先頭に戻すなど適宜
         return newObj;
+    }
+
+    release(obj) {
+        if (obj && obj.active) {
+            obj.active = false;
+            if (this.activeCount > 0) this.activeCount--;
+        }
     }
 
     clearAll() {
         for (let i = 0; i < this.pool.length; i++) {
             this.pool[i].active = false;
         }
+        this.activeCount = 0;
     }
 
     getActiveCount() {
-        let count = 0;
-        for (let i = 0; i < this.pool.length; i++) {
-            if (this.pool[i].active) {
-                count++;
-            }
-        }
-        return count;
+        return this.activeCount;
     }
 }
