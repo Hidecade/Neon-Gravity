@@ -2,11 +2,11 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = globalThis.NEON_GRAVITY_VERSION || "0.9.34";
+window.GAME_VERSION = globalThis.NEON_GRAVITY_VERSION || "0.9.37";
 
 
 const DEBUG = {
-    enabled: true,
+    enabled: false,
     showOverlay: false,
     showHitboxes: false,
     showEnemyTargetLines: false,
@@ -107,7 +107,7 @@ const GRAPHICS_SETTINGS = {
                 return baseScale; 
             } else {
                 // スマホ等の場合はRetinaの綺麗さを活かす（従来通り）
-                return Math.min(window.devicePixelRatio || 2.0, 2.5);
+                return Math.min(window.devicePixelRatio || 1.5, 1.75);
             }
         }
     },
@@ -129,7 +129,7 @@ const GRAPHICS_SETTINGS = {
                 }
                 return baseScale; 
             } else {
-                return Math.min(window.devicePixelRatio || 1.5, 1.5);
+                return Math.min(window.devicePixelRatio || 1.25, 1.35);
             }
         }
     },

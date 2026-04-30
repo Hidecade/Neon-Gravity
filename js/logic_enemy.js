@@ -1154,12 +1154,17 @@ function applyWorldBoundary(e) {
 
 function applyAsteroidCollisions(e) {
     if (e.type !== 'asteroid' && e.type !== 'bubble') return;
+    if (!e.inActiveRange) return;
 
     enemyPool.pool.forEach(other => {
-        // 非アクティブ（プール内待機中）のオブジェクトは無視する
-        if (!other.active) return;
-        
-        if (e === other || other.hp <= 0 || (other.type !== 'asteroid' && other.type !== 'bubble')) return;
+        // 自分自身、非アクティブ、HPなし、画面外、対象外タイプは無視
+        if (
+            e === other ||
+            !other.active ||
+            !other.inActiveRange ||
+            other.hp <= 0 ||
+            (other.type !== 'asteroid' && other.type !== 'bubble')
+        ) return;
 
         const dx = other.x - e.x;
         const dy = other.y - e.y;
@@ -1170,10 +1175,9 @@ function applyAsteroidCollisions(e) {
         const r2 = hitRadius * other.scale * G_SCALE;
         const minDist = r1 + r2;
 
-        // 二乗同士で比較
         if (distSq < minDist * minDist) {
-            const dist = Math.sqrt(distSq) || 0.001; // 衝突が確定した場合のみ計算
-            // --- 1. 重なり解消（少し強めに押し出す） ---
+            const dist = Math.sqrt(distSq) || 0.001;
+
             const overlap = minDist - dist;
             const nx = dx / dist;
             const ny = dy / dist;
@@ -1182,25 +1186,22 @@ function applyAsteroidCollisions(e) {
             const ratioE = other.scale / totalScale;
             const ratioOther = e.scale / totalScale;
 
-            // overlap に 1.05 程度を掛けて「重なりをわずかに超えて」引き離す
             const separation = overlap * 1.05;
+
             e.x -= nx * separation * ratioE;
             e.y -= ny * separation * ratioE;
             other.x += nx * separation * ratioOther;
             other.y += ny * separation * ratioOther;
 
-            // --- 2. 反射処理 ---
             const rvx = other.vx - e.vx;
             const rvy = other.vy - e.vy;
             const velAlongNormal = rvx * nx + rvy * ny;
 
             if (velAlongNormal > 0) return;
 
-            const isAnyBubble = (e.type === 'bubble' || other.type === 'bubble');
-            // 反発係数を上げる。泡なら1.0（エネルギー減衰なし）
+            const isAnyBubble = e.type === 'bubble' || other.type === 'bubble';
             const restitution = isAnyBubble ? 1.0 : 0.8;
 
-            // ★最低反発速度を保証する（ゆっくり近づいた時も確実に弾き飛ばす）
             const minBounceVelocity = -1.5;
             const effectiveVel = Math.min(velAlongNormal, minBounceVelocity);
 
@@ -1211,10 +1212,7 @@ function applyAsteroidCollisions(e) {
             other.vx += j * nx * ratioOther;
             other.vy += j * ny * ratioOther;
 
-            // ==========================================
-            // ★追加：物理暴走を防ぐための速度リミッター（安全装置）
-            // ==========================================
-            const maxSpeedE = (e.speed || 5) * 4.0; // 通常の4倍程度を絶対上限とする
+            const maxSpeedE = (e.speed || 5) * 4.0;
             const cvE = Math.hypot(e.vx, e.vy);
             if (cvE > maxSpeedE) {
                 e.vx = (e.vx / cvE) * maxSpeedE;
@@ -1227,15 +1225,14 @@ function applyAsteroidCollisions(e) {
                 other.vx = (other.vx / cvOther) * maxSpeedOther;
                 other.vy = (other.vy / cvOther) * maxSpeedOther;
             }
-            // ==========================================
 
-            // --- 3. 演出 ---
             if (Math.abs(effectiveVel) > 0.5) {
                 const midX = (e.x + other.x) / 2;
                 const midY = (e.y + other.y) / 2;
+
                 if (isAnyBubble) {
                     if (frame % 3 === 0) createExplosion(midX, midY, '#0ff', 1);
-                    if (e.type === 'bubble') e.bend = 15; // 衝撃の見た目も強く
+                    if (e.type === 'bubble') e.bend = 15;
                     if (other.type === 'bubble') other.bend = 15;
                 }
             }
@@ -1769,14 +1766,14 @@ function destroyEnemy(e) {
 
 function applySeparation(e) {
     if (frame % 2 !== 0) return;
-    enemyPool.pool.forEach(other => {
-        // 非アクティブ、自分自身、死亡している敵は無視
-        if (!other.active || e === other || other.hp <= 0) return;
+    if (!e.inActiveRange) return;
 
-        // ★追加: 同じ編隊グループ（リーダー・フォロワーの関係）なら反発処理をキャンセル
-        const isSameFormation = 
-            (e.leader && e.leader === other) || 
-            (other.leader && other.leader === e) || 
+    enemyPool.pool.forEach(other => {
+        if (!other.active || !other.inActiveRange || e === other || other.hp <= 0) return;
+
+        const isSameFormation =
+            (e.leader && e.leader === other) ||
+            (other.leader && other.leader === e) ||
             (e.leader && other.leader && e.leader === other.leader);
 
         if (isSameFormation) return;
@@ -1785,9 +1782,8 @@ function applySeparation(e) {
         const ody = e.y - other.y;
         const distSq = odx * odx + ody * ody;
 
-        // 距離が30未満(二乗で900未満)の場合
         if (distSq > 0 && distSq < 900) {
-            const od = Math.sqrt(distSq); // 衝突が確定した場合のみ平方根を計算
+            const od = Math.sqrt(distSq);
             const push = (30 - od) * 0.05;
             e.x += (odx / od) * push;
             e.y += (ody / od) * push;
