@@ -17,6 +17,8 @@ let frame = 0;                  // 経過フレームカウント
 let debugFps = 0;
 let debugFrameCounter = 0;
 let debugLastFpsTime = performance.now();   // ロジック処理にかかった時間（ミリ秒）を保存する変数
+let debugLastFrameTime = debugLastFpsTime;
+let debugMinFpsInSecond = Infinity;
 let debugLogicTime = 0;         // ロジック時間
 let debugDrawTime = 0;          // 描画にかかった時間
 let debugTotalTime = 0;
@@ -818,12 +820,8 @@ function init() {
         const initAudioOnFirstInteract = () => {
             if (!AudioSys.ctx) {
                 AudioSys.init();
-                // 非同期関数を避け、同期的にAudioContextのロック解除を強制実行
-                if (AudioSys.ctx && AudioSys.ctx.state !== "running") {
-                    AudioSys.ctx.resume().catch(() => {});
-                }
-                AudioSys._unlockAudio();
             }
+            AudioSys.resume(true).catch(() => {});
             // 一度実行されたらイベントリスナーを削除（メモリ節約）
             window.removeEventListener('mousedown', initAudioOnFirstInteract);
             window.removeEventListener('touchstart', initAudioOnFirstInteract);
@@ -1377,13 +1375,23 @@ function updateDebugStats() {
 
     debugFrameCounter++;
     const now = performance.now();
+    const frameElapsed = now - debugLastFrameTime;
+    if (frameElapsed > 0) {
+        const instantFps = 1000 / frameElapsed;
+        debugMinFpsInSecond = Math.min(debugMinFpsInSecond, instantFps);
+    }
+    debugLastFrameTime = now;
+
     const elapsed = now - debugLastFpsTime;
 
     if (elapsed >= 1000) {
-        debugFps = Math.round((debugFrameCounter * 1000) / elapsed);
+        debugFps = Number.isFinite(debugMinFpsInSecond)
+            ? Math.round(debugMinFpsInSecond)
+            : Math.round((debugFrameCounter * 1000) / elapsed);
         debugFrameCounter = 0;
         debugLastFpsTime = now;
-        
+        debugMinFpsInSecond = Infinity;
+
         const fpsEl = document.getElementById('simple-fps-text');
         if (fpsEl && fpsEl.style.opacity === '1') {
             

@@ -551,11 +551,39 @@ const SE_LIBRARY = {
     },
 };
 
+const PCM_SE_CONFIG = {
+    gravity: { duration: 1.2 },
+    shoot: { duration: 0.1 },
+    laser: { duration: 0.15 },
+    homing: { duration: 0.15, variants: 3 },
+    warning: { duration: 5.4 },
+    explode_small: { duration: 0.4, variants: 3 },
+    explode_medium: { duration: 2.0, variants: 2 },
+    explode_large: { duration: 5.0, variants: 2 },
+    target_ping: { duration: 0.05 },
+    launch: { duration: 1.5 },
+    powerup: { duration: 0.2 },
+    damage: { duration: 0.2 },
+    invincible: { duration: 0.5 },
+    boss_hit: { duration: 0.18, variants: 4 },
+    enemy_hit: { duration: 0.12, variants: 3 },
+    lc_engine: { duration: 1.5 },
+    select: { duration: 0.05 },
+    warp: { duration: 1.2 },
+    warp_in: { duration: 2.2 },
+    coin: { duration: 0.45 },
+    coin_cyber: { duration: 0.3 },
+    point: { duration: 0.1 }
+};
+
 // --- 2. メインのオーディオシステム (Web Audio API リファクタリング版) ---
 
 const AudioSys = {
     ctx: null,
     noiseBuffer: null,
+    seBuffers: {},
+    seBuffersReady: false,
+    seBuffersPreparing: false,
     activeNodes: [],
     lastPlayed: {},
     isUnlocking: false,
@@ -591,7 +619,7 @@ const AudioSys = {
                 if (AC) {
                     this.ctx = new AC({ sampleRate: 44100 });
                     this.createNoise();
-                    this._unlockAudio();
+                    this.prepareSEBuffers();
                 }
             } catch (e) {
                 console.error("Audio init error:", e);
@@ -606,11 +634,11 @@ const AudioSys = {
 
         try {
             if (this.ctx.state !== "running") {
-                await this.ctx.resume();
-            }
-            if (this.ctx.state !== "running" && fromUserGesture) {
-                this._unlockAudio();
+                if (!fromUserGesture) return false;
                 await this.ctx.resume().catch(() => { });
+            }
+            if (this.ctx.state === "running" && fromUserGesture) {
+                this._unlockAudio();
             }
             return this.ctx.state === "running";
         } catch (e) {
@@ -620,6 +648,7 @@ const AudioSys = {
 
     _unlockAudio() {
         if (!this.ctx || this.isUnlocking) return;
+        if (this.ctx.state !== "running") return;
         if (this.ctx.state === "running" && this.keepAliveNode) return;
 
         this.isUnlocking = true;
@@ -642,9 +671,7 @@ const AudioSys = {
             source.connect(this.ctx.destination);
             source.start(0);
 
-            this.ctx.resume()
-                .then(() => { this.isUnlocking = false; })
-                .catch(() => { this.isUnlocking = false; });
+            this.isUnlocking = false;
         } catch (e) {
             this.isUnlocking = false;
         }
@@ -654,15 +681,93 @@ const AudioSys = {
         return await this.ensureAudioReady(fromUserGesture);
     },
 
-    createNoise() {
-        if (!this.ctx) return;
-        const bSize = this.ctx.sampleRate * 2;
-        const buf = this.ctx.createBuffer(1, bSize, this.ctx.sampleRate);
+    createNoiseBufferForContext(targetCtx, seconds = 2) {
+        const bSize = Math.max(1, Math.floor(targetCtx.sampleRate * seconds));
+        const buf = targetCtx.createBuffer(1, bSize, targetCtx.sampleRate);
         const data = buf.getChannelData(0);
         for (let i = 0; i < bSize; i++) {
             data[i] = Math.random() * 2 - 1;
         }
-        this.noiseBuffer = buf;
+        return buf;
+    },
+
+    createNoise() {
+        if (!this.ctx) return;
+        this.noiseBuffer = this.createNoiseBufferForContext(this.ctx, 2);
+    },
+
+    async prepareSEBuffers() {
+        if (!this.ctx || this.seBuffersPreparing || this.seBuffersReady) return;
+
+        const OfflineAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        if (!OfflineAC) return;
+
+        this.seBuffersPreparing = true;
+        const renderedBuffers = {};
+
+        try {
+            for (const [name, config] of Object.entries(PCM_SE_CONFIG)) {
+                if (!SE_LIBRARY[name]) continue;
+
+                const variants = Math.max(1, config.variants || 1);
+                renderedBuffers[name] = [];
+
+                for (let i = 0; i < variants; i++) {
+                    const buffer = await this.renderSEBuffer(name, config.duration, OfflineAC);
+                    if (buffer) renderedBuffers[name].push(buffer);
+                }
+
+                if (renderedBuffers[name].length === 0) {
+                    delete renderedBuffers[name];
+                }
+            }
+
+            this.seBuffers = renderedBuffers;
+            this.seBuffersReady = true;
+        } catch (e) {
+            console.warn("SE PCM cache build failed:", e);
+        } finally {
+            this.seBuffersPreparing = false;
+        }
+    },
+
+    async renderSEBuffer(name, duration, OfflineAC) {
+        const sampleRate = this.ctx ? this.ctx.sampleRate : 44100;
+        const renderDuration = Math.max(0.05, duration + 0.05);
+        const frameCount = Math.ceil(sampleRate * renderDuration);
+        const offlineCtx = new OfflineAC(1, frameCount, sampleRate);
+        const g = offlineCtx.createGain();
+        g.connect(offlineCtx.destination);
+
+        try {
+            const noise = this.createNoiseBufferForContext(offlineCtx, Math.max(2, renderDuration));
+            const effect = SE_LIBRARY[name](offlineCtx, 0, g, noise, 1.0);
+
+            if (effect && effect.osc) {
+                effect.osc.connect(g);
+                effect.osc.start(0);
+                effect.osc.stop(effect.duration);
+            }
+
+            return await offlineCtx.startRendering();
+        } catch (e) {
+            console.warn(`SE PCM render failed: ${name}`, e);
+            return null;
+        }
+    },
+
+    playCachedSE(name, masterGain) {
+        const variants = this.seBuffers[name];
+        if (!variants || variants.length === 0) return false;
+
+        const source = this.ctx.createBufferSource();
+        source.buffer = variants[Math.floor(Math.random() * variants.length)];
+        source.connect(masterGain);
+        source.start(this.ctx.currentTime);
+
+        const cleanupTime = Math.max(2000, source.buffer.duration * 1000 + 100);
+        this.registerNode(name, masterGain, cleanupTime);
+        return true;
     },
 
     installLifecycleHooks() {
@@ -688,16 +793,12 @@ const AudioSys = {
         // 完全同期ジェスチャーハンドラ (async/await不使用)
         const resumeFromGestureSync = () => {
             if (this.ctx && this.ctx.state !== "running") {
-                // iOSの「別アプリ(YouTube等)からの復帰後」対策
-                // ただ resume() するだけでなく、同期的に空のバッファを生成・再生して
-                // OSレベルのオーディオセッション（再生権限）を強奪し返す
-                const buffer = this.ctx.createBuffer(1, 1, 22050);
-                const source = this.ctx.createBufferSource();
-                source.buffer = buffer;
-                source.connect(this.ctx.destination);
-                source.start(0);
-
                 this.ctx.resume().catch(() => {});
+                return;
+            }
+
+            if (this.ctx && this.ctx.state === "running") {
+                this._unlockAudio();
             }
         };
 
@@ -737,7 +838,8 @@ const AudioSys = {
         if (document.hidden) return;
 
         if (this.ctx.state !== "running") {
-            this.ensureAudioReady(true).catch(() => {});
+            this.ensureAudioReady(false).catch(() => {});
+            return;
         }
 
         const realNow = performance.now();
@@ -774,9 +876,13 @@ const AudioSys = {
             masterGain.connect(this.ctx.destination);
         }
 
+        if (this.seBuffersReady && customParam === 1.0 && this.playCachedSE(name, masterGain)) {
+            return;
+        }
+
         const t = this.ctx.currentTime;
         const g = this.ctx.createGain();
-        g.connect(masterGain); 
+        g.connect(masterGain);
 
         try {
             // ==========================================
