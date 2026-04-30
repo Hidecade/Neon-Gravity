@@ -2,6 +2,114 @@
 // ロジック（計算・当たり判定）
 // ==========================================
 
+const PROJECTILE_COLLISION_CELL_SIZE = 160;
+const PROJECTILE_COLLISION_QUERY_RADIUS = 180;
+let projectileCollisionQueryId = 0;
+
+function getEnemyHitRadius(e) {
+    let hitRadius = 30 * e.scale;
+    if (e.type === 'asteroid' || e.type === 'bubble') hitRadius = 25 * e.scale;
+    else if (e.type === 'dragon') hitRadius = ENEMY_HITBOX.DRAGON;
+    else if (e.type === 'triangle') hitRadius = ENEMY_HITBOX.TRIANGLE;
+    else if (e.type === 'cube') hitRadius = ENEMY_HITBOX.CUBE;
+    else if (e.type === 'tadpole') hitRadius = ENEMY_HITBOX.TADPOLE;
+    else if (e.type === 'hunter') hitRadius = ENEMY_HITBOX.HUNTER;
+    else if (e.type === 'boss') hitRadius = ENEMY_HITBOX.BOSS;
+    return hitRadius;
+}
+
+function buildProjectileEnemyGrid() {
+    const cellSize = PROJECTILE_COLLISION_CELL_SIZE;
+    const grid = new Map();
+    const specialEnemies = [];
+    const enemyPoolList = enemyPool.pool;
+
+    for (let j = 0; j < enemyPoolList.length; j++) {
+        const e = enemyPoolList[j];
+        if (!e.active || e.hp <= 0 || !e.inActiveRange) continue;
+        if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) continue;
+
+        if (e.type === 'lightcycle') {
+            specialEnemies.push(e);
+            continue;
+        }
+
+        const cx = Math.floor(e.x / cellSize);
+        const cy = Math.floor(e.y / cellSize);
+        const key = `${cx},${cy}`;
+        let bucket = grid.get(key);
+        if (!bucket) {
+            bucket = [];
+            grid.set(key, bucket);
+        }
+        bucket.push(e);
+    }
+
+    return { cellSize, grid, specialEnemies };
+}
+
+function queryProjectileEnemyGrid(enemyGrid, x, y, radius = PROJECTILE_COLLISION_QUERY_RADIUS) {
+    const result = [];
+    const mark = ++projectileCollisionQueryId;
+    const minCx = Math.floor((x - radius) / enemyGrid.cellSize);
+    const maxCx = Math.floor((x + radius) / enemyGrid.cellSize);
+    const minCy = Math.floor((y - radius) / enemyGrid.cellSize);
+    const maxCy = Math.floor((y + radius) / enemyGrid.cellSize);
+
+    for (let cy = minCy; cy <= maxCy; cy++) {
+        for (let cx = minCx; cx <= maxCx; cx++) {
+            const bucket = enemyGrid.grid.get(`${cx},${cy}`);
+            if (!bucket) continue;
+            for (let i = 0; i < bucket.length; i++) {
+                const e = bucket[i];
+                if (e._projectileQueryMark === mark) continue;
+                e._projectileQueryMark = mark;
+                result.push(e);
+            }
+        }
+    }
+
+    for (let i = 0; i < enemyGrid.specialEnemies.length; i++) {
+        const e = enemyGrid.specialEnemies[i];
+        if (e._projectileQueryMark === mark) continue;
+        e._projectileQueryMark = mark;
+        result.push(e);
+    }
+
+    return result;
+}
+
+function queryProjectileEnemyGridRect(enemyGrid, minX, minY, maxX, maxY) {
+    const result = [];
+    const mark = ++projectileCollisionQueryId;
+    const minCx = Math.floor((minX - PROJECTILE_COLLISION_QUERY_RADIUS) / enemyGrid.cellSize);
+    const maxCx = Math.floor((maxX + PROJECTILE_COLLISION_QUERY_RADIUS) / enemyGrid.cellSize);
+    const minCy = Math.floor((minY - PROJECTILE_COLLISION_QUERY_RADIUS) / enemyGrid.cellSize);
+    const maxCy = Math.floor((maxY + PROJECTILE_COLLISION_QUERY_RADIUS) / enemyGrid.cellSize);
+
+    for (let cy = minCy; cy <= maxCy; cy++) {
+        for (let cx = minCx; cx <= maxCx; cx++) {
+            const bucket = enemyGrid.grid.get(`${cx},${cy}`);
+            if (!bucket) continue;
+            for (let i = 0; i < bucket.length; i++) {
+                const e = bucket[i];
+                if (e._projectileQueryMark === mark) continue;
+                e._projectileQueryMark = mark;
+                result.push(e);
+            }
+        }
+    }
+
+    for (let i = 0; i < enemyGrid.specialEnemies.length; i++) {
+        const e = enemyGrid.specialEnemies[i];
+        if (e._projectileQueryMark === mark) continue;
+        e._projectileQueryMark = mark;
+        result.push(e);
+    }
+
+    return result;
+}
+
 function updatePlayerBullets() {
     // 現在のカメラの表示範囲を計算
     const viewW = width / cameraScale;
@@ -9,14 +117,7 @@ function updatePlayerBullets() {
     const margin = 50; // 画面外50pxまで飛んだら消す
 
     const pPool = playerBulletPool.pool; // プールを参照
-    const hitEnemies = [];
-    const enemyPoolList = enemyPool.pool;
-    for (let j = 0; j < enemyPoolList.length; j++) {
-        const e = enemyPoolList[j];
-        if (!e.active || e.hp <= 0 || !e.inActiveRange) continue;
-        if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) continue;
-        hitEnemies.push(e);
-    }
+    const enemyGrid = buildProjectileEnemyGrid();
 
     for (let i = 0; i < pPool.length; i++) {
         const b = pPool[i];
@@ -57,6 +158,7 @@ function updatePlayerBullets() {
         const damage = basePower * powerRatio; // 基本威力 × 減衰率
 
         // --- 3. 敵との当たり判定 (Lightcycle特殊判定を含む) ---
+        const hitEnemies = queryProjectileEnemyGrid(enemyGrid, b.x, b.y);
         for (let j = 0; j < hitEnemies.length; j++) {
             const e = hitEnemies[j];
             if (e.hp <= 0 || !e.active) continue;
@@ -102,14 +204,7 @@ function updatePlayerBullets() {
             }
             // --- B. その他の敵の通常判定 ---
             else {
-                let hitRadius = 30 * e.scale;
-                if (e.type === 'asteroid' || e.type === 'bubble') hitRadius = 25 * e.scale;
-                else if (e.type === 'dragon') hitRadius = ENEMY_HITBOX.DRAGON;
-                else if (e.type === 'triangle') hitRadius = ENEMY_HITBOX.TRIANGLE;
-                else if (e.type === 'cube') hitRadius = ENEMY_HITBOX.CUBE;
-                else if (e.type === 'tadpole') hitRadius = ENEMY_HITBOX.TADPOLE;
-                else if (e.type === 'hunter') hitRadius = ENEMY_HITBOX.HUNTER;
-                else if (e.type === 'boss') hitRadius = ENEMY_HITBOX.BOSS;
+                const hitRadius = getEnemyHitRadius(e);
 
                 const dx = b.x - e.x;
                 const dy = b.y - e.y;
@@ -164,14 +259,7 @@ function updateLasers() {
 
     // ★修正1: 最大長の2乗を事前に計算（比較用）
     const dynamicMaxLenSq = dynamicMaxLen * dynamicMaxLen;
-    const hitEnemies = [];
-    const enemyPoolList = enemyPool.pool;
-    for (let j = 0; j < enemyPoolList.length; j++) {
-        const e = enemyPoolList[j];
-        if (!e.active || e.hp <= 0 || !e.inActiveRange) continue;
-        if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) continue;
-        hitEnemies.push(e);
-    }
+    const enemyGrid = buildProjectileEnemyGrid();
 
     lasers.forEach(l => {
         l.life -= gameSpeed;
@@ -214,6 +302,15 @@ function updateLasers() {
         const p1y = l.y;
 
     // --- 敵との衝突判定 ---
+        const p2x = p1x + cos * currentLen;
+        const p2y = p1y + sin * currentLen;
+        const hitEnemies = queryProjectileEnemyGridRect(
+            enemyGrid,
+            Math.min(p1x, p2x),
+            Math.min(p1y, p2y),
+            Math.max(p1x, p2x),
+            Math.max(p1y, p2y)
+        );
         hitEnemies.forEach(e => {
             if (!e.active || e.hp <= 0) return;
 

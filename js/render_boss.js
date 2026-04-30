@@ -1,5 +1,81 @@
 ﻿// BOSS
+const bossFrameTextureCache = new Map();
+
+function createBossFrameCanvas(size) {
+    const canvas = typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(size, size)
+        : document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    return canvas;
+}
+
+function getBossFrameTexture(key, logicalSize, drawVector, e, vectorScale) {
+    const cacheKey = `${key}:v1`;
+    if (bossFrameTextureCache.has(cacheKey)) return bossFrameTextureCache.get(cacheKey);
+
+    const textureScale = 2;
+    const pixelSize = Math.ceil(logicalSize * textureScale);
+    const canvas = createBossFrameCanvas(pixelSize);
+    const tCtx = canvas.getContext('2d');
+    tCtx.save();
+    tCtx.scale(textureScale, textureScale);
+    tCtx.translate(logicalSize / 2, logicalSize / 2);
+    drawVector(tCtx, {
+        ...e,
+        x: 0,
+        y: 0,
+        angle: 0,
+        scale: vectorScale,
+        opacity: 1,
+        flashTimer: 0,
+        isSpawning: false,
+        bossRenderLayer: 'frame'
+    });
+    tCtx.restore();
+
+    const texture = { canvas, logicalSize };
+    bossFrameTextureCache.set(cacheKey, texture);
+    return texture;
+}
+
+function applyBossFrameTransform(ctx, e, baseScale) {
+    const baseAlpha = e.opacity !== undefined ? e.opacity : 1.0;
+    if (e.isSpawning) {
+        const t = e.spawnTimer / e.spawnMax;
+        const easeOut = 1 - Math.pow(1 - t, 4);
+        ctx.globalAlpha = t * baseAlpha;
+        const spawnScale = 0.1 + 0.9 * easeOut;
+        ctx.scale(spawnScale, spawnScale);
+        ctx.globalCompositeOperation = 'lighter';
+    } else {
+        ctx.globalAlpha = baseAlpha;
+    }
+
+    ctx.rotate(e.angle);
+    ctx.scale(e.scale * baseScale, e.scale * baseScale);
+}
+
 function drawBossEnemy(ctx, e) {
+    const isDmg = e.flashTimer > 0;
+    if (isDmg) e.flashTimer--;
+    const texture = getBossFrameTexture(`boss:${e.variant.name}:${e.variant.sides}:${e.color}`, 260, drawBossEnemyVector, e, 1 / G_SCALE);
+
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    applyBossFrameTransform(ctx, e, G_SCALE);
+    if (isDmg) ctx.filter = 'brightness(1.45) saturate(1.35)';
+    ctx.drawImage(texture.canvas, -texture.logicalSize / 2, -texture.logicalSize / 2, texture.logicalSize, texture.logicalSize);
+    if (isDmg) ctx.filter = 'none';
+    ctx.restore();
+
+    drawBossEnemyVector(ctx, { ...e, flashTimer: isDmg ? 1 : 0, bossRenderLayer: 'color' });
+}
+
+function drawBossEnemyVector(ctx, e) {
+    const renderLayer = e.bossRenderLayer || 'all';
+    const drawFrameLayer = renderLayer !== 'color';
+    const drawColorLayer = renderLayer !== 'frame';
     ctx.save();
     ctx.translate(e.x, e.y);
 
@@ -27,15 +103,16 @@ function drawBossEnemy(ctx, e) {
     // パラメータ
     const sides = e.variant.sides;
     const baseColor = e.color;
-    const mainStroke = isDmg ? '#ffffff' : baseColor;
-    const reactorColor = isDmg ? '#ffffff' : '#cc0000';
+    const mainStroke = isDmg ? '#ffcc33' : baseColor;
+    const reactorColor = isDmg ? '#ffdd44' : '#cc0000';
 
     // ★追加：書き込み用の極細線色（薄い白）
-    const detailStroke = isDmg ? 'rgba(255,255,255,0.4)' : 'rgba(255, 255, 255, 0.2)';
+    const detailStroke = isDmg ? 'rgba(255, 210, 64, 0.45)' : 'rgba(255, 255, 255, 0.2)';
 
     const baseRadius = 45;
 
     // --- 4. 中層：土台・トラス構造 ---
+    if (drawFrameLayer) {
     ctx.save();
     ctx.globalAlpha = baseAlpha;
     // ★変更：塗りつぶしを削除し、線のみにする
@@ -66,10 +143,12 @@ function drawBossEnemy(ctx, e) {
     ctx.stroke();
 
     ctx.restore();
+    }
 
     // --- 4.5. 内装フレーム ---
-    ctx.save();
     const innerFrameRad = baseRadius * 0.85;
+    if (drawFrameLayer) {
+    ctx.save();
     ctx.strokeStyle = mainStroke;
     ctx.lineWidth = 0.8;
     ctx.globalAlpha = 0.5 * baseAlpha;
@@ -102,6 +181,7 @@ function drawBossEnemy(ctx, e) {
     ctx.stroke();
 
     ctx.restore();
+    }
 
     // 砲台の塗りつぶしグラデーションも一旦削除して線画中心にする方針だが、
     // ここは「構造物」としての実体感を残すため、元のまま維持する。
@@ -118,6 +198,7 @@ function drawBossEnemy(ctx, e) {
         ctx.translate(0, -baseRadius + 5);
         ctx.scale(0.5, 0.5);
 
+        if (drawFrameLayer) {
         // A. 側面装甲（維持）
         ctx.fillStyle = '#050000';
         ctx.beginPath();
@@ -134,16 +215,22 @@ function drawBossEnemy(ctx, e) {
         ctx.moveTo(5, -28); ctx.lineTo(5, 25);
         ctx.stroke();
 
-        // B. 天面（維持）
+        }
+
         ctx.translate(0, -3);
+
+        if (drawFrameLayer) {
+        // B. 天面（維持）
         ctx.fillStyle = modGrad;
         ctx.beginPath();
         ctx.moveTo(-12, -35); ctx.lineTo(12, -35); ctx.lineTo(14, 15);
         ctx.lineTo(8, 25); ctx.lineTo(-8, 25); ctx.lineTo(-14, 15);
         ctx.closePath(); ctx.fill();
         ctx.strokeStyle = mainStroke; ctx.lineWidth = 1; ctx.stroke();
+        }
 
         // C. リアクター（維持）
+        if (drawColorLayer) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         const energyPulse = Math.sin(frame * 0.3 + i) * 0.3 + 0.7;
@@ -155,7 +242,9 @@ function drawBossEnemy(ctx, e) {
             ctx.fillRect(-w / 2 - 1, y - 1, w + 2, 4);
         }
         ctx.restore();
+        }
 
+        if (drawFrameLayer) {
         // D. 砲身（維持）
         ctx.strokeStyle = mainStroke;
         ctx.lineWidth = 1;
@@ -166,11 +255,13 @@ function drawBossEnemy(ctx, e) {
         ctx.stroke();
         ctx.fillStyle = mainStroke;
         ctx.beginPath(); ctx.arc(0, 50, 1.5, 0, Math.PI * 2); ctx.fill();
+        }
 
         ctx.restore();
     }
 
     // --- 6. 多層外殻フレーム ---
+    if (drawFrameLayer) {
     ctx.save();
     const layers = 4;
     const outerRad = baseRadius + 28;
@@ -219,9 +310,11 @@ function drawBossEnemy(ctx, e) {
     }
     ctx.stroke();
     ctx.restore();
+    }
 
     // --- 7. コア・ソケット（変更なし） ---
     const socketRad = baseRadius * 0.45;
+    if (drawFrameLayer) {
     ctx.save();
     ctx.globalAlpha = baseAlpha;
     ctx.fillStyle = '#080808'; ctx.strokeStyle = mainStroke; ctx.lineWidth = 1.5;
@@ -235,8 +328,10 @@ function drawBossEnemy(ctx, e) {
         ctx.fill(); ctx.restore();
     }
     ctx.restore();
+    }
 
     // --- 8. 立体ダイヤモンド・コア（変更なし） ---
+    if (drawColorLayer) {
     ctx.save();
     const pulse = Math.sin(frame * 0.1);
     const coreSize = socketRad * 0.6 + pulse * 1.5;
@@ -278,9 +373,10 @@ function drawBossEnemy(ctx, e) {
     ctx.globalAlpha = 1.0 * baseAlpha;
     ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
     ctx.restore(); // コア終了
+    }
 
     // --- 9. ダメージエフェクト（変更なし） ---
-    if (isDmg && !e.isSpawning) {
+    if (drawColorLayer && isDmg && !e.isSpawning) {
         for (let i = 0; i < 4; i++) {
             const ang = Math.random() * Math.PI * 2;
             const spd = 4 + Math.random() * 10;
@@ -296,6 +392,25 @@ function drawBossEnemy(ctx, e) {
 
 // --- 巨大戦艦（ラスボス）の描画 ---
 function drawBattleshipBoss(ctx, e) {
+    const isDmg = e.flashTimer > 0;
+    if (isDmg) e.flashTimer--;
+    const texture = getBossFrameTexture('battleship:genesis-ark', 420, drawBattleshipBossVector, e, 1 / (G_SCALE * 1.5));
+
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    applyBossFrameTransform(ctx, e, G_SCALE * 1.5);
+    if (isDmg) ctx.filter = 'brightness(1.45) saturate(1.35)';
+    ctx.drawImage(texture.canvas, -texture.logicalSize / 2, -texture.logicalSize / 2, texture.logicalSize, texture.logicalSize);
+    if (isDmg) ctx.filter = 'none';
+    ctx.restore();
+
+    drawBattleshipBossVector(ctx, { ...e, flashTimer: isDmg ? 1 : 0, bossRenderLayer: 'color' });
+}
+
+function drawBattleshipBossVector(ctx, e) {
+    const renderLayer = e.bossRenderLayer || 'all';
+    const drawFrameLayer = renderLayer !== 'color';
+    const drawColorLayer = renderLayer !== 'frame';
     ctx.save();
     ctx.translate(e.x, e.y);
 
@@ -327,15 +442,16 @@ function drawBattleshipBoss(ctx, e) {
     const colorCyan = '#00ffff';
     const colorDeepRed = '#aa0000';
     const colorRedNeon = '#ff0022';
-    const colorHighLight = '#ffaaaa';
+    const colorHighLight = isDmg ? '#ffe066' : '#ffaaaa';
 
-    const mainStroke = isDmg ? '#ffffff' : colorCyan;
-    const subStroke = isDmg ? '#ffffff' : colorRedNeon;
-    const reactorColor = isDmg ? '#ffffff' : '#cc0000';
+    const mainStroke = isDmg ? '#ffcc33' : colorCyan;
+    const subStroke = isDmg ? '#ff6a2a' : colorRedNeon;
+    const reactorColor = isDmg ? '#ffdd44' : '#cc0000';
 
     const baseRadius = 90;
 
     // --- 4. 中層：土台・トラス構造 ---
+    if (drawFrameLayer) {
     ctx.save();
     ctx.globalAlpha = baseAlpha; // ★追加
     ctx.fillStyle = 'rgba(5, 10, 15, 0.95)';
@@ -353,10 +469,12 @@ function drawBattleshipBoss(ctx, e) {
     }
     ctx.stroke();
     ctx.restore();
+    }
 
     // --- 4.5. 内装フレーム ---
-    ctx.save();
     const innerFrameRad = baseRadius * 0.85;
+    if (drawFrameLayer) {
+    ctx.save();
     ctx.strokeStyle = mainStroke;
     ctx.lineWidth = 0.8;
     ctx.globalAlpha = 0.5 * baseAlpha; // ★ baseAlpha を掛ける
@@ -374,6 +492,7 @@ function drawBattleshipBoss(ctx, e) {
     drawPolygonPath(ctx, innerFrameRad * 0.3, sides);
     ctx.stroke();
     ctx.restore();
+    }
 
     const modGrad = ctx.createLinearGradient(-10, -20, 10, 20);
     modGrad.addColorStop(0, 'rgba(30, 0, 5, 0.95)');
@@ -388,6 +507,7 @@ function drawBattleshipBoss(ctx, e) {
         ctx.translate(0, -baseRadius + 12);
         ctx.scale(0.8, 0.8);
 
+        if (drawFrameLayer) {
         ctx.fillStyle = '#050000';
         ctx.beginPath();
         ctx.moveTo(-16, -28); ctx.lineTo(16, -28); ctx.lineTo(14, 25);
@@ -398,7 +518,11 @@ function drawBattleshipBoss(ctx, e) {
         ctx.lineWidth = 1;
         ctx.stroke();
 
+        }
+
         ctx.translate(0, -3);
+
+        if (drawFrameLayer) {
         ctx.fillStyle = modGrad;
         ctx.beginPath();
         ctx.moveTo(-12, -35); ctx.lineTo(12, -35); ctx.lineTo(14, 15);
@@ -408,7 +532,9 @@ function drawBattleshipBoss(ctx, e) {
         ctx.strokeStyle = mainStroke;
         ctx.lineWidth = 0.8;
         ctx.stroke();
+        }
 
+        if (drawColorLayer) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         const energyPulse = Math.sin(frame * 0.3 + i) * 0.3 + 0.7;
@@ -420,7 +546,9 @@ function drawBattleshipBoss(ctx, e) {
             ctx.fillRect(-w / 2 - 1, y - 1, w + 2, 4);
         }
         ctx.restore();
+        }
 
+        if (drawFrameLayer) {
         ctx.strokeStyle = mainStroke;
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -431,10 +559,12 @@ function drawBattleshipBoss(ctx, e) {
 
         ctx.fillStyle = mainStroke;
         ctx.beginPath(); ctx.arc(0, 50, 1.5, 0, Math.PI * 2); ctx.fill();
+        }
         ctx.restore();
     }
 
     // --- 6. 多層外殻フレーム ---
+    if (drawFrameLayer) {
     ctx.save();
     const layers = 5;
     const outerRad = baseRadius + 40;
@@ -464,9 +594,11 @@ function drawBattleshipBoss(ctx, e) {
     }
     ctx.stroke();
     ctx.restore();
+    }
 
     // --- 7. コア・ソケット ---
     const socketRad = baseRadius * 0.45;
+    if (drawFrameLayer) {
     ctx.save();
     ctx.globalAlpha = baseAlpha; // ★追加
     ctx.fillStyle = '#080000';
@@ -494,8 +626,10 @@ function drawBattleshipBoss(ctx, e) {
         ctx.restore();
     }
     ctx.restore();
+    }
 
     // --- 8. 立体ダイヤモンド・コア ---
+    if (drawColorLayer) {
     ctx.save();
     const pulse = Math.sin(frame * 0.1);
     const coreSize = socketRad * 0.6 + pulse * 1.5;
@@ -504,7 +638,7 @@ function drawBattleshipBoss(ctx, e) {
     //if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = isDmg ? 60 : 30;
     ctx.shadowColor = colorRedNeon;
 
-    ctx.fillStyle = colorDeepRed;
+    ctx.fillStyle = isDmg ? '#ffb000' : colorDeepRed;
     ctx.globalAlpha = baseAlpha; // ★追加
     ctx.beginPath(); drawPolygonPath(ctx, coreSize, sides); ctx.fill();
 
@@ -514,8 +648,8 @@ function drawBattleshipBoss(ctx, e) {
         const alpha3d = 0.4 + (l * 0.15);
         ctx.save();
         ctx.rotate(frame * (0.01 + l * 0.005) * (l % 2 === 0 ? 1 : -1));
-        ctx.strokeStyle = `rgba(255, 200, 200, ${alpha3d})`;
-        ctx.fillStyle = `rgba(255, 0, 50, ${alpha3d * 0.2})`;
+        ctx.strokeStyle = isDmg ? `rgba(255, 230, 90, ${alpha3d})` : `rgba(255, 200, 200, ${alpha3d})`;
+        ctx.fillStyle = isDmg ? `rgba(255, 180, 0, ${alpha3d * 0.24})` : `rgba(255, 0, 50, ${alpha3d * 0.2})`;
         ctx.globalAlpha = baseAlpha; // ★ rgba のアルファとは別に全体に掛ける
         ctx.lineWidth = 1.0;
         ctx.shadowBlur = 0;
@@ -555,9 +689,10 @@ function drawBattleshipBoss(ctx, e) {
     ctx.moveTo(flareSize, -flareSize); ctx.lineTo(-flareSize, flareSize);
     ctx.stroke();
     ctx.restore();
+    }
 
     // --- 9. ダメージエフェクト ---
-    if (isDmg && !e.isSpawning) {
+    if (drawColorLayer && isDmg && !e.isSpawning) {
         for (let i = 0; i < 4; i++) {
             const ang = Math.random() * Math.PI * 2;
             const spd = 4 + Math.random() * 10;
