@@ -655,8 +655,94 @@
     <script src="js/main.js"></script>
 
     <script>
-        // Service Workerの登録と更新ロジック
+        window.__autoUpdateManaged = true;
+        let neonGravityReloadingForUpdate = false;
+
+        async function clearNeonGravityCaches() {
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(registrations.map((registration) => registration.unregister()));
+            }
+
+            if ('caches' in window) {
+                const keys = await caches.keys();
+                await Promise.all(keys.map((key) => caches.delete(key)));
+            }
+        }
+
+        async function reloadForNeonGravityUpdate(reason) {
+            if (neonGravityReloadingForUpdate) return;
+            neonGravityReloadingForUpdate = true;
+            console.log(`Neon Gravity update found: ${reason}`);
+            await clearNeonGravityCaches();
+            window.location.reload();
+        }
+
+        async function checkNeonGravityRemoteVersion() {
+            const currentVersion = window.NEON_GRAVITY_VERSION || '';
+            if (!currentVersion) return;
+
+            try {
+                const response = await fetch(`./js/version.js?update=${Date.now()}`, { cache: 'no-store' });
+                if (!response.ok) return;
+
+                const text = await response.text();
+                const match = text.match(/NEON_GRAVITY_VERSION\s*=\s*['"]([^'"]+)['"]/);
+                const remoteVersion = match && match[1];
+                if (remoteVersion && remoteVersion !== currentVersion) {
+                    await reloadForNeonGravityUpdate(`${currentVersion} -> ${remoteVersion}`);
+                }
+            } catch (err) {
+                console.log('Neon Gravity version check failed:', err);
+            }
+        }
+
         if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const hostname = window.location.hostname;
+                const isLocalDev = hostname === '127.0.0.1' || hostname === 'localhost';
+
+                if (isLocalDev) {
+                    navigator.serviceWorker.getRegistrations().then((registrations) => {
+                        registrations.forEach((registration) => registration.unregister());
+                    });
+                    console.log('Service Worker skipped on local development host.');
+                    return;
+                }
+
+                checkNeonGravityRemoteVersion();
+
+                const swVersion = window.NEON_GRAVITY_VERSION || '0.9.09';
+                navigator.serviceWorker.register(`./sw.js?v=${encodeURIComponent(swVersion)}`)
+                    .then((reg) => {
+                        console.log('SW registered:', reg);
+
+                        document.addEventListener('visibilitychange', () => {
+                            if (document.visibilityState === 'visible') {
+                                checkNeonGravityRemoteVersion();
+                                reg.update();
+                            }
+                        });
+
+                        reg.onupdatefound = () => {
+                            const installingWorker = reg.installing;
+                            if (!installingWorker) return;
+
+                            installingWorker.onstatechange = () => {
+                                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    reloadForNeonGravityUpdate('service worker update');
+                                }
+                            };
+                        };
+                    })
+                    .catch((err) => console.log('SW failed', err));
+            });
+        }
+    </script>
+
+    <script>
+        // Service Workerの登録と更新ロジック
+        if (!window.__autoUpdateManaged && 'serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 const hostname = window.location.hostname;
                 const isLocalDev = hostname === '127.0.0.1' || hostname === 'localhost';
