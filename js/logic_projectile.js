@@ -9,6 +9,15 @@ function updatePlayerBullets() {
     const margin = 50; // 画面外50pxまで飛んだら消す
 
     const pPool = playerBulletPool.pool; // プールを参照
+    const hitEnemies = [];
+    const enemyPoolList = enemyPool.pool;
+    for (let j = 0; j < enemyPoolList.length; j++) {
+        const e = enemyPoolList[j];
+        if (!e.active || e.hp <= 0 || !e.inActiveRange) continue;
+        if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) continue;
+        hitEnemies.push(e);
+    }
+
     for (let i = 0; i < pPool.length; i++) {
         const b = pPool[i];
         if (!b.active) continue; // ★未使用の弾はスキップ
@@ -48,15 +57,9 @@ function updatePlayerBullets() {
         const damage = basePower * powerRatio; // 基本威力 × 減衰率
 
         // --- 3. 敵との当たり判定 (Lightcycle特殊判定を含む) ---
-        const pool = enemyPool.pool;
-        for (let j = 0; j < pool.length; j++) {
-            const e = pool[j];
-            
-            // ★追加: 非アクティブ（プール内待機中）のオブジェクトは処理をスキップ
-            if (!e.active) continue;
-            
-            if (e.hp <= 0 || !e.inActiveRange) continue;
-            if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) continue;
+        for (let j = 0; j < hitEnemies.length; j++) {
+            const e = hitEnemies[j];
+            if (e.hp <= 0 || !e.active) continue;
 
             // --- A. Lightcycle の特殊判定 ---
             if (e.type === 'lightcycle') {
@@ -161,6 +164,14 @@ function updateLasers() {
 
     // ★修正1: 最大長の2乗を事前に計算（比較用）
     const dynamicMaxLenSq = dynamicMaxLen * dynamicMaxLen;
+    const hitEnemies = [];
+    const enemyPoolList = enemyPool.pool;
+    for (let j = 0; j < enemyPoolList.length; j++) {
+        const e = enemyPoolList[j];
+        if (!e.active || e.hp <= 0 || !e.inActiveRange) continue;
+        if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) continue;
+        hitEnemies.push(e);
+    }
 
     lasers.forEach(l => {
         l.life -= gameSpeed;
@@ -203,12 +214,8 @@ function updateLasers() {
         const p1y = l.y;
 
     // --- 敵との衝突判定 ---
-        enemyPool.pool.forEach(e => {
-            // ★追加: 非アクティブ（プール内待機中）のオブジェクトは無視する
-            if (!e.active) return;
-            
-            if (e.hp <= 0 || !e.inActiveRange) return;
-            if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) return;
+        hitEnemies.forEach(e => {
+            if (!e.active || e.hp <= 0) return;
 
             const dx = e.x - p1x;
             const dy = e.y - p1y;

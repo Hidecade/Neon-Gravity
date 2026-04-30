@@ -5,6 +5,7 @@ let enemyFxBudgetFrame = -1;
 let enemyAttackDistortCount = 0;
 let enemyDeathDistortCount = 0;
 let enemySeCount = 0;
+let enemyCrowdLevel = 0;
 
 function resetEnemyFxBudget() {
     if (enemyFxBudgetFrame === frame) return;
@@ -1155,6 +1156,8 @@ function applyWorldBoundary(e) {
 function applyAsteroidCollisions(e) {
     if (e.type !== 'asteroid' && e.type !== 'bubble') return;
     if (!e.inActiveRange) return;
+    if (enemyCrowdLevel >= 2 && ((frame + (e.spawnId || 0)) % 2 !== 0)) return;
+    if (enemyCrowdLevel >= 3 && ((frame + (e.spawnId || 0)) % 3 !== 0)) return;
 
     enemyPool.pool.forEach(other => {
         // 自分自身、非アクティブ、HPなし、画面外、対象外タイプは無視
@@ -1767,6 +1770,9 @@ function destroyEnemy(e) {
 function applySeparation(e) {
     if (frame % 2 !== 0) return;
     if (!e.inActiveRange) return;
+    if (enemyCrowdLevel >= 3 && ((frame + (e.spawnId || 0)) % 6 !== 0)) return;
+    if (enemyCrowdLevel >= 2 && ((frame + (e.spawnId || 0)) % 4 !== 0)) return;
+    if (enemyCrowdLevel >= 1 && ((frame + (e.spawnId || 0)) % 3 !== 0)) return;
 
     enemyPool.pool.forEach(other => {
         if (!other.active || !other.inActiveRange || e === other || other.hp <= 0) return;
@@ -2413,6 +2419,8 @@ function updateEnemies() {
 
     // 攻撃や当たり判定を許可するマージン（画面外200pxまで）
     const ACTIVE_MARGIN = 200;
+    const activeEnemyCount = enemyPool.pool.reduce((count, e) => count + (e.active ? 1 : 0), 0);
+    enemyCrowdLevel = activeEnemyCount > 220 ? 3 : activeEnemyCount > 150 ? 2 : activeEnemyCount > 90 ? 1 : 0;
 
     // ========================================================
     // ★本来の撃破処理をまとめた関数
@@ -2669,6 +2677,15 @@ function updateEnemies() {
             }
             // 死亡演出中は以降の処理を行わない
             if (e.isDead) e.active = false; // ★追加: プールへ返却
+            return;
+        }
+
+        const isBossClass = e.type === 'boss' || e.type === 'battleship';
+        const canThrottleOffscreen = enemyCrowdLevel >= 2 && !inActiveRange && !isBossClass && e.type !== 'lightcycle';
+        if (canThrottleOffscreen && ((frame + (e.spawnId || 0)) % 3 !== 0)) {
+            e.x += e.vx * gameSpeed;
+            e.y += e.vy * gameSpeed;
+            if (e.variant !== 'sweeper') applyWorldBoundary(e);
             return;
         }
 
