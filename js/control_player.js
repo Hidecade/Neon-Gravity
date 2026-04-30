@@ -546,8 +546,8 @@ function checkPlayerCollision(e) {
 }
 
 function checkSatelliteCollision(e) {
-    // 出現中のボスは当たり判定なし（すり抜ける）
-    if (e.type === 'boss' && e.isSpawning) return;
+    // 出現中のボス・戦艦は当たり判定なし（すり抜ける）
+    if ((e.type === 'boss' || e.type === 'battleship') && e.isSpawning) return;
 
     // ★修正1: 判定半径(25)の2乗を定数として定義 (25 * 25 = 625)
     const HIT_RADIUS_SQ = 625;
@@ -564,10 +564,10 @@ function checkSatelliteCollision(e) {
         if (distSq < HIT_RADIUS_SQ) {
 
             // --- 以下、衝突時の処理 (変更なし) ---
-            if (e.type === 'boss' || e.type === 'dragon') {
+            if (e.type === 'boss' || e.type === 'battleship' || e.type === 'dragon') {
                 e.hp -= 20;
 
-                if (e.type === 'boss') e.flashTimer = 5;
+                if (e.type === 'boss' || e.type === 'battleship') e.flashTimer = 5;
                 if (typeof AudioSys !== 'undefined') AudioSys.playSE('boss_hit');
 
                 if (typeof createExplosion === 'function') {
