@@ -14,12 +14,6 @@ const ONE_SHOT_SE = [
     'invincible', 'boss_hit', 'gravity'
 ];
 
-const SE_ECHO_CONFIG = {
-    delayTime: 0.16,
-    feedback: 0.28,
-    wet: 0.18
-};
-
 const BGM_FILES = {
     title: 'audio/Neon_Gravity_Title.mp3',
     clear: 'audio/Neon_Gravity_Clear.mp3',
@@ -595,10 +589,6 @@ const AudioSys = {
     isUnlocking: false,
     _lifecycleHooksInstalled: false,
     keepAliveNode: null,
-    seEchoInput: null,
-    seEchoDelay: null,
-    seEchoFeedback: null,
-    seEchoWet: null,
 
     // BGM管理用プロパティ
     bgmBuffers: {},       // デコード済みのAudioBufferをキャッシュ
@@ -629,7 +619,6 @@ const AudioSys = {
                 if (AC) {
                     this.ctx = new AC({ sampleRate: 44100 });
                     this.createNoise();
-                    this.setupSEEchoBus();
                     this.prepareSEBuffers();
                 }
             } catch (e) {
@@ -707,29 +696,8 @@ const AudioSys = {
         this.noiseBuffer = this.createNoiseBufferForContext(this.ctx, 2);
     },
 
-    setupSEEchoBus() {
-        if (!this.ctx || this.seEchoInput) return;
-
-        const t = this.ctx.currentTime;
-        this.seEchoInput = this.ctx.createGain();
-        this.seEchoDelay = this.ctx.createDelay(0.6);
-        this.seEchoFeedback = this.ctx.createGain();
-        this.seEchoWet = this.ctx.createGain();
-
-        this.seEchoDelay.delayTime.setValueAtTime(SE_ECHO_CONFIG.delayTime, t);
-        this.seEchoFeedback.gain.setValueAtTime(SE_ECHO_CONFIG.feedback, t);
-        this.seEchoWet.gain.setValueAtTime(SE_ECHO_CONFIG.wet, t);
-
-        this.seEchoInput.connect(this.seEchoDelay);
-        this.seEchoDelay.connect(this.seEchoFeedback);
-        this.seEchoFeedback.connect(this.seEchoDelay);
-        this.seEchoDelay.connect(this.seEchoWet);
-        this.seEchoWet.connect(this.ctx.destination);
-    },
-
     connectSEOutput(inputNode, x = null, y = null) {
         if (!this.ctx) return inputNode;
-        this.setupSEEchoBus();
 
         let outputNode = inputNode;
         if (x !== null && y !== null && typeof player !== 'undefined' && typeof width !== 'undefined' && this.ctx.createStereoPanner) {
@@ -743,7 +711,6 @@ const AudioSys = {
         }
 
         outputNode.connect(this.ctx.destination);
-        if (this.seEchoInput) outputNode.connect(this.seEchoInput);
         return outputNode;
     },
 
