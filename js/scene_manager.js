@@ -2634,9 +2634,22 @@ const html = `
             /* 既存のstyleの中身はそのまま */
             @media screen and (max-height: 500px) {
                 #final-report-panel { 
-                    font-size: 0.65rem !important; 
-                    padding: 0.6em !important; 
-                    margin-top: 5px !important;
+                    font-size: 0.56rem !important; 
+                    padding: 0.45em 0.55em !important; 
+                    margin-top: 2px !important;
+                }
+                #final-report-panel > div:first-child {
+                    margin-bottom: 0.35em !important;
+                    padding-bottom: 0.2em !important;
+                }
+                #final-report-panel .result-item-icon {
+                    width: 20px !important;
+                    height: 20px !important;
+                    min-width: 20px !important;
+                    min-height: 20px !important;
+                    max-width: 20px !important;
+                    max-height: 20px !important;
+                    font-size: 11px !important;
                 }
             }
             .result-item-icon {

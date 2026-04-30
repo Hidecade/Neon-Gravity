@@ -14,6 +14,12 @@ const ONE_SHOT_SE = [
     'invincible', 'boss_hit', 'gravity'
 ];
 
+const SE_ECHO_CONFIG = {
+    delayTime: 0.16,
+    feedback: 0.28,
+    wet: 0.18
+};
+
 const BGM_FILES = {
     title: 'audio/Neon_Gravity_Title.mp3',
     clear: 'audio/Neon_Gravity_Clear.mp3',
@@ -589,6 +595,10 @@ const AudioSys = {
     isUnlocking: false,
     _lifecycleHooksInstalled: false,
     keepAliveNode: null,
+    seEchoInput: null,
+    seEchoDelay: null,
+    seEchoFeedback: null,
+    seEchoWet: null,
 
     // BGM管理用プロパティ
     bgmBuffers: {},       // デコード済みのAudioBufferをキャッシュ
@@ -619,6 +629,7 @@ const AudioSys = {
                 if (AC) {
                     this.ctx = new AC({ sampleRate: 44100 });
                     this.createNoise();
+                    this.setupSEEchoBus();
                     this.prepareSEBuffers();
                 }
             } catch (e) {
@@ -696,6 +707,46 @@ const AudioSys = {
         this.noiseBuffer = this.createNoiseBufferForContext(this.ctx, 2);
     },
 
+    setupSEEchoBus() {
+        if (!this.ctx || this.seEchoInput) return;
+
+        const t = this.ctx.currentTime;
+        this.seEchoInput = this.ctx.createGain();
+        this.seEchoDelay = this.ctx.createDelay(0.6);
+        this.seEchoFeedback = this.ctx.createGain();
+        this.seEchoWet = this.ctx.createGain();
+
+        this.seEchoDelay.delayTime.setValueAtTime(SE_ECHO_CONFIG.delayTime, t);
+        this.seEchoFeedback.gain.setValueAtTime(SE_ECHO_CONFIG.feedback, t);
+        this.seEchoWet.gain.setValueAtTime(SE_ECHO_CONFIG.wet, t);
+
+        this.seEchoInput.connect(this.seEchoDelay);
+        this.seEchoDelay.connect(this.seEchoFeedback);
+        this.seEchoFeedback.connect(this.seEchoDelay);
+        this.seEchoDelay.connect(this.seEchoWet);
+        this.seEchoWet.connect(this.ctx.destination);
+    },
+
+    connectSEOutput(inputNode, x = null, y = null) {
+        if (!this.ctx) return inputNode;
+        this.setupSEEchoBus();
+
+        let outputNode = inputNode;
+        if (x !== null && y !== null && typeof player !== 'undefined' && typeof width !== 'undefined' && this.ctx.createStereoPanner) {
+            const dx = x - player.x;
+            const camScale = (typeof cameraScale !== 'undefined') ? cameraScale : 1.0;
+            const panLimit = (width / camScale) * 0.45;
+            const panner = this.ctx.createStereoPanner();
+            panner.pan.value = Math.max(-1.0, Math.min(1.0, dx / panLimit));
+            inputNode.connect(panner);
+            outputNode = panner;
+        }
+
+        outputNode.connect(this.ctx.destination);
+        if (this.seEchoInput) outputNode.connect(this.seEchoInput);
+        return outputNode;
+    },
+
     async prepareSEBuffers() {
         if (!this.ctx || this.seBuffersPreparing || this.seBuffersReady) return;
 
@@ -756,7 +807,7 @@ const AudioSys = {
         }
     },
 
-    playCachedSE(name, masterGain) {
+    playCachedSE(name, masterGain, outputNode = masterGain) {
         const variants = this.seBuffers[name];
         if (!variants || variants.length === 0) return false;
 
@@ -766,7 +817,7 @@ const AudioSys = {
         source.start(this.ctx.currentTime);
 
         const cleanupTime = Math.max(2000, source.buffer.duration * 1000 + 100);
-        this.registerNode(name, masterGain, cleanupTime);
+        this.registerNode(name, masterGain, cleanupTime, outputNode);
         return true;
     },
 
@@ -809,21 +860,21 @@ const AudioSys = {
         window.addEventListener("keydown", resumeFromGestureSync, { passive: true, capture: true });
     },
 
-    registerNode(type, node, durationMs) {
+    registerNode(type, node, durationMs, disconnectNode = node) {
         if (ONE_SHOT_SE.includes(type)) {
             setTimeout(() => {
-                try { node.disconnect(); } catch (e) { }
+                try { disconnectNode.disconnect(); } catch (e) { }
             }, durationMs);
             return;
         }
 
-        const nodeRef = { type, node };
+        const nodeRef = { type, node, disconnectNode };
         this.activeNodes.push(nodeRef);
 
         setTimeout(() => {
             const index = this.activeNodes.indexOf(nodeRef);
             if (index > -1) {
-                try { node.disconnect(); } catch (e) { }
+                try { disconnectNode.disconnect(); } catch (e) { }
                 this.activeNodes.splice(index, 1);
             }
         }, durationMs);
@@ -849,7 +900,7 @@ const AudioSys = {
         const masterGain = this.ctx.createGain();
         masterGain.gain.value = 2.5;
 
-        // --- 距離とパン(左右)の計算 ---
+        // --- 距離の計算 ---
         if (x !== null && y !== null && typeof player !== 'undefined' && typeof width !== 'undefined') {
             const dx = x - player.x;
             const dy = y - player.y;
@@ -862,21 +913,11 @@ const AudioSys = {
             let volMult = 1.0 - (dist / maxDist);
             volMult = Math.max(0.4, Math.min(1.0, volMult));
             masterGain.gain.value *= Math.pow(volMult, 0.6); 
-
-            if (this.ctx.createStereoPanner) {
-                const panner = this.ctx.createStereoPanner();
-                const panLimit = (width / camScale) * 0.45; 
-                panner.pan.value = Math.max(-1.0, Math.min(1.0, dx / panLimit));
-                masterGain.connect(panner);
-                panner.connect(this.ctx.destination);
-            } else {
-                masterGain.connect(this.ctx.destination);
-            }
-        } else {
-            masterGain.connect(this.ctx.destination);
         }
 
-        if (this.seBuffersReady && customParam === 1.0 && this.playCachedSE(name, masterGain)) {
+        const outputNode = this.connectSEOutput(masterGain, x, y);
+
+        if (this.seBuffersReady && customParam === 1.0 && this.playCachedSE(name, masterGain, outputNode)) {
             return;
         }
 
@@ -896,7 +937,7 @@ const AudioSys = {
                 effect.osc.stop(t + effect.duration);
             }
             const cleanupTime = Math.max(2000, effect.duration * 1000 + 500);
-            this.registerNode(name, g, cleanupTime);
+            this.registerNode(name, g, cleanupTime, outputNode);
         } catch (e) { 
             console.error("SE Error:", e);
         }
@@ -907,20 +948,20 @@ const AudioSys = {
         const t = this.ctx.currentTime;
         this.activeNodes = this.activeNodes.filter(item => {
             if (!targetType || item.type === targetType) {
-                this.fadeAndDisconnect(item.node, t);
+                this.fadeAndDisconnect(item.node, item.disconnectNode, t);
                 return false;
             }
             return true;
         });
     },
 
-    fadeAndDisconnect(gainNode, time) {
+    fadeAndDisconnect(gainNode, disconnectNode, time) {
         try {
             gainNode.gain.cancelScheduledValues(time);
             gainNode.gain.setValueAtTime(gainNode.gain.value, time);
             gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
             setTimeout(() => {
-                try { gainNode.disconnect(); } catch (e) { }
+                try { (disconnectNode || gainNode).disconnect(); } catch (e) { }
             }, 100);
         } catch (e) { }
     },

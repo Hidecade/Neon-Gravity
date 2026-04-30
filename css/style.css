@@ -1145,6 +1145,7 @@ canvas {
     #name-input-area #result-score-display {
         font-size: 18px !important; 
         margin-bottom: 4px !important; 
+        padding: 6px 10px !important;
     }
 
     /* 「REGISTER TO WORLD RANKING?」のテキスト */
