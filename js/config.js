@@ -2,7 +2,7 @@
 // Game Configuration & Constants
 // =========================================================
 
-window.GAME_VERSION = globalThis.NEON_GRAVITY_VERSION || "0.9.21";
+window.GAME_VERSION = globalThis.NEON_GRAVITY_VERSION || "0.9.34";
 
 
 const DEBUG = {
@@ -158,10 +158,10 @@ const MAX_STAGE = 10;         // 最大ステージ
 
 // ステージごとの敵総出現数
 const STAGE_ENEMY_COUNTS = [
-    60,  // Stage 1
-    80,  // Stage 2
-    70,  // Stage 3
-    120, // Stage 4
+    100,  // Stage 1
+    120,  // Stage 2
+    140,  // Stage 3
+    160, // Stage 4
     180, // Stage 5
     200, // Stage 6
     250, // Stage 7

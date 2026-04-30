@@ -16,25 +16,54 @@ function updateBossCombatMovement(e, options = {}) {
     const friction = options.friction || 0.972;
     const maxSpeed = options.maxSpeed || (e.speed * 2.2);
     const margin = options.margin || 110;
+    const radiusCorrectionAccel = options.radiusCorrectionAccel || 0.0009;
 
     let moveNx = dx / dist;
     let moveNy = dy / dist;
 
     const holdPosition = !!options.holdPosition;
     const forceApproach = !!options.forceApproach;
+    const brakePosition = !!options.brakePosition;
 
     if (holdPosition) {
-        e.vx *= 0.7;
-        e.vy *= 0.7;
+        const clampedX = Math.max(margin, Math.min(worldSize - margin, e.x));
+        const clampedY = Math.max(margin, Math.min(worldSize - margin, e.y));
+        if (clampedX !== e.x || clampedY !== e.y) {
+            e.orbitDir = -(e.orbitDir || 1);
+        }
+        e.vx = 0;
+        e.vy = 0;
+        e.x = clampedX;
+        e.y = clampedY;
+        return;
+    }
+
+    if (brakePosition) {
+        const brakeFriction = options.brakeFriction || 0.94;
+        e.vx *= brakeFriction;
+        e.vy *= brakeFriction;
         e.x += e.vx * gameSpeed;
         e.y += e.vy * gameSpeed;
-        e.x = Math.max(margin, Math.min(worldSize - margin, e.x));
-        e.y = Math.max(margin, Math.min(worldSize - margin, e.y));
+
+        const clampedX = Math.max(margin, Math.min(worldSize - margin, e.x));
+        const clampedY = Math.max(margin, Math.min(worldSize - margin, e.y));
+        if (clampedX !== e.x || clampedY !== e.y) {
+            e.orbitDir = -(e.orbitDir || 1);
+            if (clampedX !== e.x) e.vx = 0;
+            if (clampedY !== e.y) e.vy = 0;
+        }
+        e.x = clampedX;
+        e.y = clampedY;
         return;
     }
 
     const tx = -moveNy * orbitDir;
     const ty = moveNx * orbitDir;
+    const radiusError = dist - desiredRadius;
+    const radiusCorrection = Math.max(-1, Math.min(1, radiusError / Math.max(1, radiusTolerance))) * radiusCorrectionAccel;
+
+    e.vx += moveNx * radiusCorrection * SPEED_SCALE * gameSpeed;
+    e.vy += moveNy * radiusCorrection * SPEED_SCALE * gameSpeed;
 
     if (forceApproach || dist > desiredRadius + radiusTolerance) {
         e.vx += moveNx * approachAccel * SPEED_SCALE * gameSpeed;
@@ -59,8 +88,15 @@ function updateBossCombatMovement(e, options = {}) {
     e.x += e.vx * gameSpeed;
     e.y += e.vy * gameSpeed;
 
-    e.x = Math.max(margin, Math.min(worldSize - margin, e.x));
-    e.y = Math.max(margin, Math.min(worldSize - margin, e.y));
+    const clampedX = Math.max(margin, Math.min(worldSize - margin, e.x));
+    const clampedY = Math.max(margin, Math.min(worldSize - margin, e.y));
+    if (clampedX !== e.x || clampedY !== e.y) {
+        e.orbitDir = -orbitDir;
+        if (clampedX !== e.x) e.vx *= -0.45;
+        if (clampedY !== e.y) e.vy *= -0.45;
+    }
+    e.x = clampedX;
+    e.y = clampedY;
 }
 
 function updateBossAI(e) {
@@ -158,9 +194,6 @@ function updateBossAI(e) {
     if (e.orbitDir === undefined) {
         e.orbitDir = Math.random() < 0.5 ? -1 : 1;
     }
-    if (e.aliveTimer % 240 === 0) {
-        e.orbitDir *= -1;
-    }
 
     // --- B. 移動ロジック ---
     // 座標がNaNにならないよう安全策
@@ -170,20 +203,22 @@ function updateBossAI(e) {
     const cycle = e.fireTimer || 0;
     const isPressurePhase = cycle < 140;
     const isSpreadLaserPattern = e.attackPattern === 0 && cycle < 140;
-    const shouldHoldForLaser = isSpreadLaserPattern && cycle % 20 >= 16;
+    const shouldHoldForLaser = isSpreadLaserPattern;
     const isGravityPhase = cycle >= 140 && cycle < 260;
 
     updateBossCombatMovement(e, {
-        desiredRadius: isPressurePhase ? 250 : 460,
+        desiredRadius: 360,
         radiusTolerance: 110,
         approachAccel: (isPressurePhase ? 0.12 : 0.085) * angerFactor,
         strafeAccel: (isPressurePhase ? 0.2 : 0.14) * angerFactor,
         retreatAccel: (isPressurePhase ? 0.08 : 0.1) * angerFactor,
+        radiusCorrectionAccel: (isPressurePhase ? 0.12 : 0.08) * angerFactor,
         friction: 0.99,
         maxSpeed: e.speed * (isPressurePhase ? 8.5 : 7.0) * angerFactor,
         margin: 95,
         holdPosition: shouldHoldForLaser,
-        forceApproach: isGravityPhase
+        brakePosition: isGravityPhase,
+        brakeFriction: 0.94
     });
 
     const dx = player.x - e.x;
@@ -333,13 +368,17 @@ function updateBossAI(e) {
     // [フェーズ3] 必殺技発射
     // ----------------------------------------------------
     else if (e.fireTimer >= fireTime && e.fireTimer < restartTime) {
-        if (e.fireTimer === fireTime) {
+        const isHomingAttack = e.attackPattern === 0 || stage < 4;
+        const isHomingVolleyTime = isHomingAttack && (e.fireTimer === fireTime || e.fireTimer === fireTime + 12);
+
+        if (e.fireTimer === fireTime || isHomingVolleyTime) {
 
             // 必殺A: ホーミングミサイル (Pattern 0 または 低ステージ)
-            if (e.attackPattern === 0 || stage < 4) {
+            if (isHomingAttack) {
                 const sides = e.variant.sides;
+                const volleyOffset = e.fireTimer === fireTime ? 0 : Math.PI / sides;
                 for (let i = 0; i < sides; i++) {
-                    const a = e.angle + (Math.PI * 2 / sides) * i;
+                    const a = e.angle + volleyOffset + (Math.PI * 2 / sides) * i;
                     spawnEnemyBulletObj({
                         x: e.x + Math.cos(a) * 60, y: e.y + Math.sin(a) * 60,
                         vx: Math.cos(a) * (BULLET_CONFIG.BOSS_HOMING.SPEED * SPEED_SCALE),
@@ -350,7 +389,7 @@ function updateBossAI(e) {
                 }
             }
             // 必殺B: 衝撃波リング (高ステージ)
-            else {
+            else if (e.fireTimer === fireTime) {
                 const ringCount = 12;
                 for (let i = 0; i < ringCount; i++) {
                     const a = (Math.PI * 2 / ringCount) * i;
@@ -424,9 +463,6 @@ function updateBossSpecialAI(e) {
     if (e.orbitDir === undefined) {
         e.orbitDir = Math.random() < 0.5 ? -1 : 1;
     }
-    if (e.aliveTimer % 180 === 0) {
-        e.orbitDir *= -1;
-    }
 
     // ==========================================
     // 2. 移動ロジック (距離連動・強化追尾)
@@ -443,8 +479,7 @@ function updateBossSpecialAI(e) {
     const fireTime = 220;
     const cycle = e.fireTimer || 0;
     const isSpreadLaserPattern = (e.originIdx <= 1 || e.attackPattern === 0) && cycle < 160;
-    const shouldHoldForLaser = isSpreadLaserPattern && cycle % 12 >= 9;
-    const isChargePhase = cycle >= brakeStart && cycle < fireTime;
+    const shouldHoldForLaser = isSpreadLaserPattern;
 
     updateBossCombatMovement(e, {
         desiredRadius: isSlowMover ? 340 : 260,
@@ -452,11 +487,11 @@ function updateBossSpecialAI(e) {
         approachAccel: (isSlowMover ? 0.09 : 0.12) * angerFactor,
         strafeAccel: (isSlowMover ? 0.11 : 0.16) * angerFactor,
         retreatAccel: (isSlowMover ? 0.08 : 0.1) * angerFactor,
+        radiusCorrectionAccel: (isSlowMover ? 0.08 : 0.11) * angerFactor,
         friction: 0.99,
         maxSpeed: e.speed * (isSlowMover ? 6.8 : 8.2) * angerFactor,
         margin: 135,
-        holdPosition: shouldHoldForLaser,
-        forceApproach: isChargePhase
+        holdPosition: shouldHoldForLaser
     });
 
     // --- カウンター攻撃 (15%の確率) ---
@@ -536,7 +571,7 @@ function updateBossSpecialAI(e) {
         }
     }
     // --- フェーズ3: 必殺技 (Indexに準拠) ---
-    else if (e.fireTimer === fireTime) {
+    else if (e.fireTimer === fireTime || (e.originIdx <= 1 && e.fireTimer === fireTime + 12)) {
 
         // Index 5-7: 衝撃波リング
         if (e.originIdx >= 5) {
@@ -563,8 +598,9 @@ function updateBossSpecialAI(e) {
         // Index 0-1: ホーミングミサイル斉射
         else {
             const sides = e.variant.sides;
+            const volleyOffset = e.fireTimer === fireTime ? 0 : Math.PI / sides;
             for (let i = 0; i < sides; i++) {
-                const a = e.angle + (Math.PI * 2 / sides) * i;
+                const a = e.angle + volleyOffset + (Math.PI * 2 / sides) * i;
                 spawnEnemyBulletObj({
                     x: e.x + Math.cos(a) * 60, y: e.y + Math.sin(a) * 60,
                     vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
