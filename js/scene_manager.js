@@ -744,41 +744,38 @@ async function showGameOver() {
 
 function runExtremeTimeAttackReportFade(durationMs = 1800) {
     return new Promise(resolve => {
-        let overlay = document.getElementById('extreme-report-fade-overlay');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'extreme-report-fade-overlay';
-            Object.assign(overlay.style, {
-                position: 'fixed',
-                inset: '0',
-                background: '#000',
-                opacity: '0',
-                pointerEvents: 'none',
-                zIndex: '500',
-                transition: `opacity ${durationMs}ms ease-in-out`
-            });
-            document.body.appendChild(overlay);
+        const start = performance.now();
+        const animate = (now) => {
+            const progress = Math.min(1, (now - start) / durationMs);
+            window.extremeReportFadeAlpha = progress;
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+                return;
+            }
+            resolve();
+        };
+
+        if (typeof window.extremeReportFadeAlpha !== 'number') {
+            window.extremeReportFadeAlpha = 0;
         }
-
-        requestAnimationFrame(() => {
-            overlay.style.opacity = '1';
-        });
-
-        setTimeout(() => resolve(overlay), durationMs + 80);
+        requestAnimationFrame(animate);
     });
 }
 
-function revealExtremeTimeAttackReportFade(overlay) {
-    if (!overlay) return;
+function revealExtremeTimeAttackReportFade(durationMs = 650) {
+    const startAlpha = window.extremeReportFadeAlpha || 0;
+    const start = performance.now();
+    const animate = (now) => {
+        const progress = Math.min(1, (now - start) / durationMs);
+        window.extremeReportFadeAlpha = startAlpha * (1 - progress);
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+            return;
+        }
+        window.extremeReportFadeAlpha = 0;
+    };
 
-    overlay.style.transition = 'opacity 650ms ease-out';
-    requestAnimationFrame(() => {
-        overlay.style.opacity = '0';
-    });
-
-    setTimeout(() => {
-        if (overlay.parentNode) overlay.remove();
-    }, 720);
+    requestAnimationFrame(animate);
 }
 
 function finishExtremeTimeAttackSequence({ cleared = false, bonus = 0, remainSeconds = 0 } = {}) {
@@ -832,9 +829,9 @@ function finishExtremeTimeAttackSequence({ cleared = false, bonus = 0, remainSec
         window.isFireworksActive = false;
         if (typeof hideGameMessage === 'function') hideGameMessage();
 
-        const overlay = await runExtremeTimeAttackReportFade(1800);
+        await runExtremeTimeAttackReportFade(1800);
         if (gameState !== 'GAMEOVER_UI') await showGameOver();
-        revealExtremeTimeAttackReportFade(overlay);
+        revealExtremeTimeAttackReportFade();
     }, cleared ? 3600 : 2600);
 }
 

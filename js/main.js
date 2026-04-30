@@ -56,6 +56,7 @@ let isTrainingMode = false;     // トレーニングモード判定
 let titleIdleTimer = 0;         // タイトル画面の放置タイマー
 let isFadingOut = false;        // 画面フェードアウト中フラグ
 let fadeAlpha = 0.0;            // フェードアウトの透明度
+window.extremeReportFadeAlpha = 0.0;
 let msgHideTimeout = null;      // UIメッセージ消去用タイマー
 let typingTimer = null;         // テキストタイピング演出用タイマー
 
@@ -1237,6 +1238,8 @@ function loop() {
         else if (gameState === 'GAMEOVER_UI') {
             fade = 0.7;
         }
+
+        fade = Math.max(fade, window.extremeReportFadeAlpha || 0);
 
         if (fade > 0) {
             ctx.fillStyle = `rgba(0, 0, 0, ${fade})`;
