@@ -2943,12 +2943,8 @@ function updateSpawnLogic() {
             screenMax = Math.floor(screenMax * 0.80);
         }
 
-        const bossExists = enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
         const battleshipExists = enemyPool.pool.some(e => e.active && e.type === 'battleship');
-        if (isExtremeMode && bossExists) {
-            maxW = Math.max(1, Math.floor(maxW * 0.5));
-            screenMax = Math.max(1, Math.floor(screenMax * 0.5));
-        }
+        const bossExists = enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
 
         // 修正：ノルマに達していない、またはボス戦中ならスポーン可能
         const canSpawn = (isExtremeMode && !battleshipExists) || (spawnedCount < enemiesToSpawn) || (isBossSpawned && bossExists);
