@@ -521,8 +521,8 @@ canvas {
    ========================================================= */
 .menu-btn {
     /* サイズと基本レイアウト */
-    min-width: min(78vw, 320px);
-    padding: 12px 20px;
+    min-width: min(78vw, max(320px, calc(320px * var(--ui-scale, 1))));
+    padding: max(12px, calc(12px * var(--ui-scale, 1))) max(20px, calc(20px * var(--ui-scale, 1)));
     box-sizing: border-box;
 
     /* ★文字をセンターに配置するための重要設定 */
@@ -533,7 +533,7 @@ canvas {
 
     /* フォント設定 */
     font-family: 'Orbitron', monospace;
-    font-size: clamp(14px, 1.3vw, 17px);
+    font-size: clamp(14px, calc(14px * var(--ui-scale, 1)), 22px);
     font-weight: 700;
     letter-spacing: 0.16em;
     /* letter-spacingを入れると右に寄るため、同じ分だけ左パディングを微調整 */
@@ -590,16 +590,16 @@ canvas {
     flex-direction: row;
     justify-content: center;
     align-items: center;
-    gap: 30px;
-    margin-top: 14px;
+    gap: max(30px, calc(30px * var(--ui-scale, 1)));
+    margin-top: max(14px, calc(14px * var(--ui-scale, 1)));
     flex-wrap: nowrap;
 }
 
 /* 小さなボタン（BACK, NEXTなど）用 */
 .menu-btn.btn-small {
-    min-width: 140px;
-    padding: 8px 16px;
-    font-size: 13px;
+    min-width: max(140px, calc(140px * var(--ui-scale, 1)));
+    padding: max(8px, calc(8px * var(--ui-scale, 1))) max(16px, calc(16px * var(--ui-scale, 1)));
+    font-size: clamp(13px, calc(13px * var(--ui-scale, 1)), 20px);
 }
 
 /* 特殊：提出・決定ボタン（ゴールド） */
@@ -835,7 +835,7 @@ canvas {
     .btn-small {
         min-width: 0;
         width: calc((100vw - 48px) / 2);
-        max-width: 150px;
+        max-width: max(150px, calc(150px * var(--ui-scale, 1)));
     }
 }
 
@@ -875,8 +875,8 @@ canvas {
     }
 
     .menu-btn {
-        min-width: min(46vw, 220px);
-        padding: 10px 18px;
+        min-width: min(46vw, max(220px, calc(220px * var(--ui-scale, 1))));
+        padding: max(10px, calc(10px * var(--ui-scale, 1))) max(18px, calc(18px * var(--ui-scale, 1)));
     }
 
     #menu-footer {

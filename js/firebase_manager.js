@@ -215,8 +215,14 @@ window.showRanking = async function (onClose = null, modeOverride = null) {
                     }
 
                     if ((data.mode || MODE_NORMAL) === MODE_EXTREME) {
-                        const sec = Number(data.surviveSeconds || 0);
-                        stageText = `${sec}s`;
+                        const isExtremeClear = !!data.clear || stageVal === "TA-CLEAR" || stageVal === "ALL" || stageVal === "CLEAR";
+                        if (isExtremeClear) {
+                            stageText = "ALL";
+                            stageClass = "stage-all-clear";
+                        } else {
+                            const sec = Number(data.surviveSeconds || 0);
+                            stageText = `${sec}s`;
+                        }
                     }
 
                     tr.innerHTML = `

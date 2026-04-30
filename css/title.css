@@ -58,14 +58,74 @@
     }
 
     #menu-buttons-container .menu-btn {
-        min-width: min(42vw, 280px);
-        padding: 8px 16px;
-        font-size: clamp(12px, 1vw, 14px);
+        min-width: min(42vw, max(280px, calc(280px * var(--ui-scale, 1))));
+        padding: max(8px, calc(8px * var(--ui-scale, 1))) max(16px, calc(16px * var(--ui-scale, 1)));
+        font-size: clamp(12px, calc(12px * var(--ui-scale, 1)), 20px);
     }
 
     #menu-footer {
         margin-top: 12px;
         font-size: clamp(10px, 0.85vw, 12px);
         line-height: 1.5;
+    }
+}
+
+@media (orientation: portrait) and (min-width: 700px) {
+    #menu-buttons-container {
+        gap: max(12px, calc(12px * var(--ui-scale, 1)));
+    }
+
+    #menu-buttons-container .menu-btn {
+        padding: max(12px, calc(12px * var(--ui-scale, 1))) max(20px, calc(20px * var(--ui-scale, 1)));
+        font-size: clamp(13px, calc(13px * var(--ui-scale, 1)), 21px);
+    }
+}
+
+/* ---------- height-aware title buttons ---------- */
+@media (orientation: landscape) and (max-height: 700px) {
+    #menu-buttons-container {
+        gap: clamp(6px, 1.1vh, 10px);
+    }
+
+    #menu-buttons-container .menu-btn {
+        min-width: min(42vw, max(240px, calc(260px * var(--ui-scale, 1))));
+        padding: clamp(7px, 1.1vh, 10px) max(14px, calc(15px * var(--ui-scale, 1)));
+        font-size: clamp(12px, calc(11px * var(--ui-scale, 1)), 16px);
+    }
+}
+
+@media (orientation: landscape) and (min-height: 900px) {
+    #menu-buttons-container {
+        gap: max(12px, calc(14px * var(--ui-scale, 1)));
+    }
+
+    #menu-buttons-container .menu-btn {
+        min-width: min(44vw, max(340px, calc(300px * var(--ui-scale, 1))));
+        padding: max(12px, calc(11px * var(--ui-scale, 1))) max(22px, calc(20px * var(--ui-scale, 1)));
+        font-size: clamp(14px, calc(13px * var(--ui-scale, 1)), 22px);
+    }
+}
+
+@media (orientation: portrait) and (max-height: 760px) {
+    #menu-buttons-container {
+        gap: clamp(7px, 1.1vh, 10px);
+    }
+
+    #menu-buttons-container .menu-btn {
+        padding-top: clamp(8px, 1.1vh, 11px);
+        padding-bottom: clamp(8px, 1.1vh, 11px);
+        font-size: clamp(13px, 2.7vw, 16px);
+    }
+}
+
+@media (orientation: portrait) and (min-height: 1000px) {
+    #menu-buttons-container {
+        gap: max(14px, calc(14px * var(--ui-scale, 1)));
+    }
+
+    #menu-buttons-container .menu-btn {
+        padding-top: max(14px, calc(14px * var(--ui-scale, 1)));
+        padding-bottom: max(14px, calc(14px * var(--ui-scale, 1)));
+        font-size: clamp(15px, calc(14px * var(--ui-scale, 1)), 22px);
     }
 }

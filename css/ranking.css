@@ -145,6 +145,9 @@
 #ranking-table th.col-name,
 #ranking-table td.col-name {
     text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #ranking-table th.col-stage,
@@ -273,6 +276,35 @@
     }
 }
 
+/* ---------- tablet / desktop portrait ---------- */
+@media (orientation: portrait) and (min-width: 700px) {
+    #ranking-panel {
+        width: min(86vw, 760px);
+        padding: 14px 16px 12px;
+    }
+
+    #ranking-table th,
+    #ranking-table td {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    #ranking-table th.col-rank,
+    #ranking-table td.col-rank {
+        width: 72px;
+    }
+
+    #ranking-table th.col-stage,
+    #ranking-table td.col-stage {
+        width: 92px;
+    }
+
+    #ranking-table th.col-score,
+    #ranking-table td.col-score {
+        width: 170px;
+    }
+}
+
 /* ---------- landscape ---------- */
 @media (orientation: landscape) {
     #ranking-overlay {
@@ -322,5 +354,60 @@
     #ranking-table th.col-score,
     #ranking-table td.col-score {
         width: 92px;
+    }
+}
+
+/* ---------- tablet / desktop landscape ---------- */
+@media (orientation: landscape) and (min-width: 900px) {
+    #ranking-panel {
+        width: min(72vw, 650px);
+        padding: 12px 14px 12px;
+    }
+
+    #ranking-table {
+        font-size: calc(16px * var(--ui-scale, 1));
+    }
+
+    #ranking-table th,
+    #ranking-table td {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    #ranking-table th.col-rank,
+    #ranking-table td.col-rank {
+        width: 70px;
+    }
+
+    #ranking-table th.col-stage,
+    #ranking-table td.col-stage {
+        width: 88px;
+    }
+
+    #ranking-table th.col-score,
+    #ranking-table td.col-score {
+        width: 150px;
+    }
+}
+
+/* ---------- full HD landscape ---------- */
+@media (orientation: landscape) and (min-width: 1400px) {
+    #ranking-panel {
+        width: min(54vw, 820px);
+    }
+
+    #ranking-table th.col-rank,
+    #ranking-table td.col-rank {
+        width: 76px;
+    }
+
+    #ranking-table th.col-stage,
+    #ranking-table td.col-stage {
+        width: 98px;
+    }
+
+    #ranking-table th.col-score,
+    #ranking-table td.col-score {
+        width: 220px;
     }
 }
