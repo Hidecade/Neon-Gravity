@@ -63,7 +63,7 @@ function startGame() {
     player.vx = 0;
     player.vy = 0;
     player.shield = PLAYER_BASE_SHIELD;
-    player.weaponLevel = DEFAULT_WEAPON_LEVEL;
+    player.weaponLevel = isExtremeMode ? MAX_WEAPON_LEVEL : DEFAULT_WEAPON_LEVEL;
     player.satellites = [];
     player.invuln = 0;
     player.laserTimer = 0;
@@ -419,7 +419,9 @@ function resetGame() {
     player.x = worldSize / 2; player.y = worldSize / 2;
     player.vx = 0; player.vy = 0;
     player.shield = PLAYER_BASE_SHIELD;
-    player.weaponLevel = DEFAULT_WEAPON_LEVEL;
+    player.weaponLevel = (typeof isExtremeTimeAttackMode === 'function' && isExtremeTimeAttackMode())
+        ? MAX_WEAPON_LEVEL
+        : DEFAULT_WEAPON_LEVEL;
     player.invuln = 0; player.laserTimer = 0; player.overdriveTimer = 0;
     player.satellites = [];
     player.history = [];
@@ -584,6 +586,9 @@ async function showGameOver() {
     if (ui.bossContainer) ui.bossContainer.style.display = 'none';
     ui.pauseBtn.style.display = 'none';
 
+    const stageBoard = document.getElementById('stage-result-board');
+    if (stageBoard) stageBoard.style.display = 'none';
+
     // 全ステージ総合レポートをゲームオーバー画面に表示する
     if (typeof showFinalResultBoard === 'function') {
         showFinalResultBoard();
@@ -734,6 +739,107 @@ async function showGameOver() {
         if (typeof AudioSys !== 'undefined') AudioSys.currentSrc = null;
         proceedToNextMenu();
     }
+}
+
+function runExtremeTimeAttackReportFade(durationMs = 1800) {
+    return new Promise(resolve => {
+        let overlay = document.getElementById('extreme-report-fade-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'extreme-report-fade-overlay';
+            Object.assign(overlay.style, {
+                position: 'fixed',
+                inset: '0',
+                background: '#000',
+                opacity: '0',
+                pointerEvents: 'none',
+                zIndex: '500',
+                transition: `opacity ${durationMs}ms ease-in-out`
+            });
+            document.body.appendChild(overlay);
+        }
+
+        requestAnimationFrame(() => {
+            overlay.style.opacity = '1';
+        });
+
+        setTimeout(() => resolve(overlay), durationMs + 80);
+    });
+}
+
+function revealExtremeTimeAttackReportFade(overlay) {
+    if (!overlay) return;
+
+    overlay.style.transition = 'opacity 650ms ease-out';
+    requestAnimationFrame(() => {
+        overlay.style.opacity = '0';
+    });
+
+    setTimeout(() => {
+        if (overlay.parentNode) overlay.remove();
+    }, 720);
+}
+
+function finishExtremeTimeAttackSequence({ cleared = false, bonus = 0, remainSeconds = 0 } = {}) {
+    if (gameState !== 'PLAYING') return;
+
+    enemyBulletPool.clearAll();
+    playerBulletPool.clearAll();
+    lasers = [];
+    homingLasers = [];
+    wormholes = [];
+    isStageClear = true;
+    stageClearTimer = 0;
+
+    const extState = (typeof getExtremeTimeAttackState === 'function') ? getExtremeTimeAttackState() : null;
+    if (extState) {
+        extState.active = false;
+        extState.cleared = !!cleared;
+        extState.timeoutTriggered = !cleared;
+    }
+    if (typeof window.playStats !== 'undefined' && !window.playStats.endTime) {
+        window.playStats.endTime = performance.now();
+    }
+
+    if (cleared) {
+        if (bonus > 0) {
+            score += bonus;
+            ui.score.innerText = score.toString().padStart(6, '0');
+        }
+
+        window.isFireworksActive = true;
+        if (typeof triggerRandomFireworkLoop === 'function') triggerRandomFireworkLoop();
+
+        showGameMessage({
+            kicker: 'TIME ATTACK CLEAR',
+            main: `TIME BONUS +${bonus.toLocaleString()}`,
+            sub: `${remainSeconds}s REMAINING`,
+            type: 'gold',
+            duration: 3200
+        });
+    } else {
+        showGameMessage({
+            kicker: 'TIME ATTACK',
+            main: 'TIME OVER',
+            sub: 'MISSION TERMINATED',
+            type: 'warning',
+            duration: 2400
+        });
+    }
+
+    setTimeout(async () => {
+        window.isFireworksActive = false;
+        if (typeof hideGameMessage === 'function') hideGameMessage();
+
+        if (cleared) {
+            const overlay = await runExtremeTimeAttackReportFade(1800);
+            if (gameState !== 'GAMEOVER_UI') await showGameOver();
+            revealExtremeTimeAttackReportFade(overlay);
+            return;
+        }
+
+        if (gameState !== 'GAMEOVER_UI') showGameOver();
+    }, cleared ? 3600 : 2600);
 }
 
 // =========================================================
@@ -2042,13 +2148,15 @@ async function startEndingSequence() {
 /**
  * ボス出現時の警告演出を発火
  */
-function triggerBossEncounter() {
+function triggerBossEncounter(bossType = 'boss') {
     if (isTrainingMode) return;
 
     if (isBossWarning) return;
 
     isBossWarning = true;
-    if (typeof AudioSys !== 'undefined') AudioSys.playSE('warning');
+    if (typeof AudioSys !== 'undefined') {
+        AudioSys.playSE('warning');
+    }
 
     // ==========================================
     // ★追加: HTMLオーバーレイでWARNINGを表示する
@@ -2074,6 +2182,7 @@ function triggerBossEncounter() {
     const margin = 300;
     nextBossSpawnX = Math.max(margin, Math.min(worldSize - margin, tx));
     nextBossSpawnY = Math.max(margin, Math.min(worldSize - margin, ty));
+    nextBossSpawnType = bossType;
 
     gameSpeed = 1;
     warningTimer = 180;
@@ -2116,7 +2225,7 @@ function updateMessageAndBossWarning() {
                 });
 
                 if (typeof spawnEnemy === 'function') {
-                    spawnEnemy(nextBossSpawnX, nextBossSpawnY, 'boss');
+                    spawnEnemy(nextBossSpawnX, nextBossSpawnY, nextBossSpawnType || 'boss');
                 }
 
                 if (typeof distortGrid === 'function') {

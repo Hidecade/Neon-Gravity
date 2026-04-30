@@ -41,6 +41,8 @@ const EXTREME_TIME_ATTACK_CONFIG = {
     DECAY_MULT_120S: 1.55,
     DAMAGE_PENALTY_SECONDS: 2.5,
     START_GRACE_SECONDS: 5,
+    BOSS_SPAWN_SECONDS: [40, 120],
+    TIME_BONUS_SCORE_PER_SECOND: 1000,
     KILL_BONUS_SECONDS: {
         default: 0.6,
         dragon: 1.5,
@@ -59,19 +61,19 @@ const EXTREME_TIME_ATTACK_SPAWN_TIERS = [
         pool: ['triangle', 'triangle', 'tadpole', 'tadpole', 'cube']
     },
     {
-        unlockAtSeconds: 30,
+        unlockAtSeconds: 20,
         pool: ['bubble', 'bubble', 'jellyfish', 'spark_jelly', 'cube']
     },
     {
-        unlockAtSeconds: 60,
+        unlockAtSeconds: 40,
         pool: ['dragon', 'hunter', 'asteroid', 'asteroid', 'sweeper']
     },
     {
-        unlockAtSeconds: 90,
+        unlockAtSeconds: 60,
         pool: ['phantom', 'lightcycle', 'hunter', 'sweeper']
     },
     {
-        unlockAtSeconds: 120,
+        unlockAtSeconds: 90,
         pool: ['eclipse', 'phantom', 'lightcycle', 'dragon', 'spark_jelly']
     }
 ];

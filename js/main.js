@@ -44,6 +44,8 @@ let extremeTimeAttackState = {
     survivalFrames: 0,
     gaugeFrames: 0,
     maxGaugeFrames: 0,
+    bossSpawnIndex: 0,
+    lastCountdownSecond: null,
     warningShown: false,
     timeoutTriggered: false,
     timeoutMessageShown: false
@@ -95,6 +97,8 @@ function resetExtremeTimeAttackState() {
         survivalFrames: 0,
         gaugeFrames: 0,
         maxGaugeFrames: Math.floor(EXTREME_TIME_ATTACK_CONFIG.INITIAL_GAUGE_SECONDS * 60),
+        bossSpawnIndex: 0,
+        lastCountdownSecond: null,
         warningShown: false,
         timeoutTriggered: false,
         timeoutMessageShown: false
@@ -144,7 +148,14 @@ function updateExtremeTimeAttack() {
             type: 'warning',
             duration: 2000
         });
-        if (typeof AudioSys !== 'undefined') AudioSys.playSE('warning');
+    }
+
+    if (remainFrames > 0 && remainFrames <= warningFrames) {
+        const countdownSecond = Math.ceil(remainFrames / 60);
+        if (countdownSecond !== extremeTimeAttackState.lastCountdownSecond) {
+            extremeTimeAttackState.lastCountdownSecond = countdownSecond;
+            if (typeof AudioSys !== 'undefined') AudioSys.playSE('target_ping');
+        }
     }
 
     if (!extremeTimeAttackState.timeoutMessageShown && remainFrames > 0 && remainFrames <= timeoutPreviewFrames) {
@@ -161,6 +172,7 @@ function updateExtremeTimeAttack() {
     if (!extremeTimeAttackState.timeoutTriggered && extremeTimeAttackState.survivalFrames >= extremeTimeAttackState.targetFrames) {
         extremeTimeAttackState.timeoutTriggered = true;
         extremeTimeAttackState.active = false;
+        extremeTimeAttackState.cleared = false;
         if (typeof window !== 'undefined' && window.playStats && !window.playStats.endTime) {
             window.playStats.endTime = performance.now();
         }
@@ -168,25 +180,8 @@ function updateExtremeTimeAttack() {
         if (typeof enemyBulletPool !== 'undefined' && enemyBulletPool && typeof enemyBulletPool.clearAll === 'function') {
             enemyBulletPool.clearAll();
         }
-        if (!extremeTimeAttackState.timeoutMessageShown) {
-            showGameMessage({
-                kicker: 'WARNING',
-                main: 'TIME OUT',
-                sub: 'MISSION TERMINATED',
-                type: 'warning',
-                duration: 2400
-            });
-            extremeTimeAttackState.timeoutMessageShown = true;
-        }
-        if (typeof isWarpingOut !== 'undefined') {
-            setTimeout(() => {
-                if (gameState !== 'PLAYING') return;
-                isWarpingOut = true;
-                player.warpTimer = 0;
-                player.warpSoundPlayed = false;
-                player.hasExitedScreen = false;
-                player.exitTimer = 0;
-            }, 1800);
+        if (typeof finishExtremeTimeAttackSequence === 'function') {
+            finishExtremeTimeAttackSequence({ cleared: false });
         }
         return;
     }
@@ -660,6 +655,7 @@ let warningTimer = 0;                // 警告演出タイマー
 let stageMessageTimer = 0;           // ステージ開始メッセージ用
 let nextBossSpawnX = 0;              // 出現予定座標X
 let nextBossSpawnY = 0;              // 出現予定座標Y
+let nextBossSpawnType = 'boss';      // 出現予定ボスタイプ
 let bossAngerMinionSpeedMag = 1.0;   // 怒り状態の敵速度補正
 let isBossRageWarningVisible = false;
 
@@ -1278,7 +1274,8 @@ function update() {
     }
 
     // ステージクリア後の待機シーケンス
-    if (isStageClear && !isWarpingOut) {
+    const isExtremeClearFlow = (typeof isExtremeTimeAttackMode === 'function') && isExtremeTimeAttackMode();
+    if (isStageClear && !isWarpingOut && !isExtremeClearFlow) {
         stageClearTimer++;
 
         // 1. 通常ステージ：約2.5秒（150フレーム）経過で成績ボード表示

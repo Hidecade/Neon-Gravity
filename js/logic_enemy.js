@@ -1906,6 +1906,29 @@ function getExtremeTimeAttackSpawnPool() {
     return pool.length > 0 ? pool : ['triangle', 'tadpole', 'cube'];
 }
 
+function updateExtremeTimeAttackBossSpawn() {
+    if (gameState !== 'PLAYING') return;
+    if (typeof isExtremeTimeAttackMode !== 'function' || !isExtremeTimeAttackMode()) return;
+    if (isBossWarning) return;
+
+    const state = (typeof getExtremeTimeAttackState === 'function') ? getExtremeTimeAttackState() : null;
+    if (!state || !state.active) return;
+
+    const schedule = EXTREME_TIME_ATTACK_CONFIG.BOSS_SPAWN_SECONDS || [];
+    const nextIndex = state.bossSpawnIndex || 0;
+    const nextSecond = schedule[nextIndex];
+    if (nextSecond === undefined) return;
+
+    const bossExists = enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
+    if (bossExists) return;
+
+    if ((state.survivalFrames || 0) >= nextSecond * 60) {
+        const bossType = nextIndex === 1 ? 'battleship' : 'boss';
+        triggerBossEncounter(bossType);
+        state.bossSpawnIndex = nextIndex + 1;
+    }
+}
+
 // =========================================================
 // 7. 敵機生成と共通AI (Enemy Spawning & Common AI)
 // =========================================================
@@ -2395,6 +2418,8 @@ function updateEnemies() {
     // ★本来の撃破処理をまとめた関数
     // ========================================================
     const executeRealDeath = (e) => {
+        const isExtremeMode = (typeof isExtremeTimeAttackMode === 'function') && isExtremeTimeAttackMode();
+
         // ラスボス撃破演出
         if (e.type === 'battleship') {
             gameSpeed = 0.05; // 完全撃破時にさらに超スローにする
@@ -2433,10 +2458,33 @@ function updateEnemies() {
 
             if (typeof AudioSys !== 'undefined') {
                 AudioSys.playSE('explode_large');
-                if (AudioSys.bgmEl) {
+                if (!isExtremeMode && AudioSys.bgmEl) {
                     AudioSys.bgmEl.pause();
                 }
-                AudioSys.playBGM('clear');
+                if (!isExtremeMode) AudioSys.playBGM('clear');
+            }
+
+            if (isExtremeMode) {
+                const extState = (typeof getExtremeTimeAttackState === 'function') ? getExtremeTimeAttackState() : null;
+                if (extState && !extState.cleared) {
+                    const remainFrames = Math.max(0, (extState.targetFrames || 0) - (extState.survivalFrames || 0));
+                    const remainSeconds = Math.ceil(remainFrames / 60);
+                    const bonus = remainSeconds * (EXTREME_TIME_ATTACK_CONFIG.TIME_BONUS_SCORE_PER_SECOND || 0);
+                    enemyPool.pool.forEach(other => {
+                        if (other !== e) other.active = false;
+                    });
+                    if (typeof finishExtremeTimeAttackSequence === 'function') {
+                        finishExtremeTimeAttackSequence({ cleared: true, bonus, remainSeconds });
+                    }
+                }
+            }
+        }
+
+        if (isExtremeMode && e.type === 'boss') {
+            const extState = (typeof getExtremeTimeAttackState === 'function') ? getExtremeTimeAttackState() : null;
+            if (extState && extState.active && !extState.cleared && !isBossWarning) {
+                extState.bossSpawnIndex = Math.max(extState.bossSpawnIndex || 0, 2);
+                triggerBossEncounter('battleship');
             }
         }
 
@@ -2782,6 +2830,7 @@ function updateFormationMovement(e) {
 
 function updateSpawnLogic() {
     const isExtremeMode = (typeof isExtremeTimeAttackMode === 'function') && isExtremeTimeAttackMode();
+    if (isExtremeMode) updateExtremeTimeAttackBossSpawn();
 
     if (stage === 9) {
         // --- Stage 9: ボスラッシュ ---
@@ -2883,7 +2932,7 @@ function updateSpawnLogic() {
         }
     } else {
         // --- 通常ステージ ---
-        const maxW = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage * 1.5;
+        let maxW = SPAWN_SETTINGS.MAX_WORMHOLES_BASE + stage * 1.5;
         const activeWh = wormholes.filter(w => w.active).length;
         
         // ★修正：基本の最大数を取得
@@ -2895,9 +2944,14 @@ function updateSpawnLogic() {
         }
 
         const bossExists = enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
+        const battleshipExists = enemyPool.pool.some(e => e.active && e.type === 'battleship');
+        if (isExtremeMode && bossExists) {
+            maxW = Math.max(1, Math.floor(maxW * 0.5));
+            screenMax = Math.max(1, Math.floor(screenMax * 0.5));
+        }
 
         // 修正：ノルマに達していない、またはボス戦中ならスポーン可能
-        const canSpawn = isExtremeMode || (spawnedCount < enemiesToSpawn) || (isBossSpawned && bossExists);
+        const canSpawn = (isExtremeMode && !battleshipExists) || (spawnedCount < enemiesToSpawn) || (isBossSpawned && bossExists);
 
         const currentEnemyCount = enemyPool.getActiveCount();
 
