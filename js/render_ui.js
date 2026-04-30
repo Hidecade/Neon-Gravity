@@ -114,7 +114,7 @@ function updateUI() {
 
         ui.enemyBar.style.width = `${gaugePct}%`;
         if (ui.enemyLabel) ui.enemyLabel.innerText = `CORE: ${Math.max(0, extremeState.gaugeFrames / 60).toFixed(1)}s`;
-        ui.stage.innerText = `TA ${remainSec}s`;
+        ui.stage.innerText = extremeState.cleared ? 'ALL' : `TA ${remainSec}s`;
     } else if (stage === 9) {
         const progress = rushBossIndex / 8;
         ui.enemyBar.style.width = `${(1 - progress) * 100}%`;

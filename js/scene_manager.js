@@ -676,7 +676,8 @@ async function showGameOver() {
         requestAnimationFrame(() => {
             ui.nameInputArea.style.opacity = '1';
         });
-        
+        if (window.refreshMenuButtons) window.refreshMenuButtons(true);
+
         // 画面が表示された直後にフォーカスを当てる
         if (canRegister && nameInp) {
             setTimeout(() => nameInp.focus(), 50);
@@ -831,14 +832,9 @@ function finishExtremeTimeAttackSequence({ cleared = false, bonus = 0, remainSec
         window.isFireworksActive = false;
         if (typeof hideGameMessage === 'function') hideGameMessage();
 
-        if (cleared) {
-            const overlay = await runExtremeTimeAttackReportFade(1800);
-            if (gameState !== 'GAMEOVER_UI') await showGameOver();
-            revealExtremeTimeAttackReportFade(overlay);
-            return;
-        }
-
-        if (gameState !== 'GAMEOVER_UI') showGameOver();
+        const overlay = await runExtremeTimeAttackReportFade(1800);
+        if (gameState !== 'GAMEOVER_UI') await showGameOver();
+        revealExtremeTimeAttackReportFade(overlay);
     }, cleared ? 3600 : 2600);
 }
 
@@ -2174,10 +2170,10 @@ function triggerBossEncounter(bossType = 'boss') {
     const dy = centerY - player.y;
     const distToCenter = Math.hypot(dx, dy) || 1;
 
-    // プレイヤーから中央側に少し寄った位置に出現
+    // ラスボスは通常Stage 10と同じく中央から出現
     const spawnDist = 300;
-    let tx = player.x + (dx / distToCenter) * spawnDist;
-    let ty = player.y + (dy / distToCenter) * spawnDist;
+    let tx = bossType === 'battleship' ? centerX : player.x + (dx / distToCenter) * spawnDist;
+    let ty = bossType === 'battleship' ? centerY : player.y + (dy / distToCenter) * spawnDist;
 
     const margin = 300;
     nextBossSpawnX = Math.max(margin, Math.min(worldSize - margin, tx));

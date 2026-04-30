@@ -137,36 +137,20 @@ function updateExtremeTimeAttack() {
 
     const warningFrames = Math.floor((EXTREME_TIME_ATTACK_CONFIG.WARNING_TIME_SECONDS || 10) * 60);
     const remainFrames = Math.max(0, extremeTimeAttackState.targetFrames - extremeTimeAttackState.survivalFrames);
-    const timeoutPreviewFrames = 60;
-
-    if (!extremeTimeAttackState.warningShown && remainFrames > 0 && remainFrames <= warningFrames) {
-        extremeTimeAttackState.warningShown = true;
-        showGameMessage({
-            kicker: 'WARNING',
-            main: '6 SECONDS LEFT',
-            sub: 'TIME LIMIT APPROACHING',
-            type: 'warning',
-            duration: 2000
-        });
-    }
 
     if (remainFrames > 0 && remainFrames <= warningFrames) {
         const countdownSecond = Math.ceil(remainFrames / 60);
         if (countdownSecond !== extremeTimeAttackState.lastCountdownSecond) {
             extremeTimeAttackState.lastCountdownSecond = countdownSecond;
             if (typeof AudioSys !== 'undefined') AudioSys.playSE('target_ping');
+            showGameMessage({
+                kicker: 'WARNING',
+                main: `${countdownSecond}`,
+                sub: countdownSecond === 1 ? 'SECOND LEFT' : 'SECONDS LEFT',
+                type: 'warning',
+                duration: 900
+            });
         }
-    }
-
-    if (!extremeTimeAttackState.timeoutMessageShown && remainFrames > 0 && remainFrames <= timeoutPreviewFrames) {
-        extremeTimeAttackState.timeoutMessageShown = true;
-        showGameMessage({
-            kicker: 'WARNING',
-            main: 'TIME OUT',
-            sub: 'MISSION TERMINATED',
-            type: 'warning',
-            duration: 2400
-        });
     }
 
     if (!extremeTimeAttackState.timeoutTriggered && extremeTimeAttackState.survivalFrames >= extremeTimeAttackState.targetFrames) {
@@ -734,7 +718,10 @@ window.refreshMenuButtons = function (resetIndex = true) {
 
     const pushVisibleButtons = (selector) => {
         document.querySelectorAll(selector).forEach(btn => {
-            if (window.getComputedStyle(btn).display !== 'none') currentMenuButtons.push(btn);
+            if (window.getComputedStyle(btn).display !== 'none') {
+                btn.tabIndex = 0;
+                currentMenuButtons.push(btn);
+            }
         });
     };
 
@@ -785,6 +772,9 @@ window.updateMenuSelectionUI = function () {
         const activeBtn = currentMenuButtons[selectedMenuIndex];
         if (activeBtn) {
             activeBtn.classList.add('selected');
+            if (['GAMEOVER_UI', 'TITLE', 'PAUSED', 'ENDING'].includes(gameState)) {
+                activeBtn.focus({ preventScroll: true });
+            }
             activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         }
     }

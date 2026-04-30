@@ -412,6 +412,10 @@ function handleGamepadInput() {
 
         if (currentMenuButtons.length > 0 && shouldMoveCursor) {
             if (!input.padDirPressed) {
+                const nameInput = document.getElementById('player-name-input');
+                if (gameState === 'GAMEOVER_UI' && document.activeElement === nameInput) {
+                    nameInput.blur();
+                }
                 if (isUp || isLeft) selectedMenuIndex--;
                 if (isDown || isRight) selectedMenuIndex++;
                 if (typeof window.updateMenuSelectionUI === 'function') window.updateMenuSelectionUI();
