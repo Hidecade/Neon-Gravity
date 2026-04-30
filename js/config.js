@@ -160,14 +160,14 @@ const MAX_STAGE = 10;         // 最大ステージ
 
 // ステージごとの敵総出現数
 const STAGE_ENEMY_COUNTS = [
-    100,  // Stage 1
-    120,  // Stage 2
-    140,  // Stage 3
-    160, // Stage 4
-    180, // Stage 5
-    200, // Stage 6
-    250, // Stage 7
-    360  // Stage 8 (Final)
+    6, // Stage 1
+    8, // Stage 2
+    8, // Stage 3
+    12, // Stage 4
+    18, // Stage 5
+    20, // Stage 6
+    25, // Stage 7
+    36 // Stage 8 (Final)
 ];
 
 // 画面内に同時に存在できる敵の最大数
@@ -322,15 +322,15 @@ const SPAWN_SETTINGS = {
 
 // --- ボス設定 ---
 const BOSS_VARIANTS = [
-    { name: 'TRI-FORTRESS', sides: 3, color: '#f0f', hp: 100, bulletCount: 3, speedFactor: 1.5 },
-    { name: 'DIAMOND-CORE', sides: 4, color: '#ffff00', hp: 140, bulletCount: 4, speedFactor: 1.3 },
-    { name: 'PENTA-BASE', sides: 5, color: '#0ff', hp: 150, bulletCount: 5, speedFactor: 1.1 },
-    { name: 'HEXAGON-NEST', sides: 6, color: '#0cc', hp: 160, bulletCount: 6, speedFactor: 1.0 },
-    { name: 'HEPTA-GATE', sides: 7, color: '#44f', hp: 108, bulletCount: 7, speedFactor: 0.9 },
-    { name: 'OCTAGON-COMMAND', sides: 8, color: '#f40', hp: 200, bulletCount: 8, speedFactor: 0.8 },
-    { name: 'NONA-REVEALER', sides: 9, color: '#f08', hp: 220, bulletCount: 9, speedFactor: 0.7 },
-    { name: 'DECA-DECIMATOR', sides: 10, color: '#fff', hp: 300, bulletCount: 10, speedFactor: 0.6 },
-    { name: 'GENESIS-ARK', sides: 12, color: '#00ffff', hp: 1000, bulletCount: 12, speedFactor: 0.3 }
+    { name: 'TRI-FORTRESS', sides: 3, color: '#f0f', hp: 200, bulletCount: 3, speedFactor: 1.50 },
+    { name: 'DIAMOND-CORE', sides: 4, color: '#ffff00', hp: 220, bulletCount: 4, speedFactor: 1.44 },
+    { name: 'PENTA-BASE', sides: 5, color: '#0ff', hp: 240, bulletCount: 5, speedFactor: 1.38 },
+    { name: 'HEXAGON-NEST', sides: 6, color: '#0cc', hp: 260, bulletCount: 6, speedFactor: 1.33 },
+    { name: 'HEPTA-GATE', sides: 7, color: '#44f', hp: 280, bulletCount: 7, speedFactor: 1.29 },
+    { name: 'OCTAGON-COMMAND', sides: 8, color: '#f40', hp: 300, bulletCount: 8, speedFactor: 1.25 },
+    { name: 'NONA-REVEALER', sides: 9, color: '#f08', hp: 320, bulletCount: 9, speedFactor: 1.22 },
+    { name: 'DECA-DECIMATOR', sides: 10, color: '#fff', hp: 400, bulletCount: 10, speedFactor: 1.19 },
+    { name: 'GENESIS-ARK', sides: 12, color: '#00ffff', hp: 1000, bulletCount: 12, speedFactor: 1.10 }
 ];
 
 // --- 弾丸設定 ---
