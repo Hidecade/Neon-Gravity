@@ -33,7 +33,7 @@ function initStars() {
 
     // --- B. 星の生成ループ ---
     const starNum = window.currentStarCount !== undefined ? window.currentStarCount : 300;
-    
+
     // ★追加：星の数に応じたサイズ倍率の計算
     // 300個を基準のサイズ(1.0倍)とします。
     // 例: 600個なら0.5倍（小さめ）、100個なら約2.0倍（大きめ）になります。
@@ -59,8 +59,8 @@ function initStars() {
         const randomColor = starColors[Math.floor(Math.random() * starColors.length)];
 
         // グラフィック設定による解像度スケール
-        const scale = (typeof currentGraphicsQuality !== 'undefined' && GRAPHICS_SETTINGS[currentGraphicsQuality]) 
-                      ? GRAPHICS_SETTINGS[currentGraphicsQuality].resScale 
+        const scale = (typeof currentGraphicsQuality !== 'undefined' && GRAPHICS_SETTINGS[currentGraphicsQuality])
+                      ? GRAPHICS_SETTINGS[currentGraphicsQuality].resScale
                       : 1.0;
 
         // ★変更点：基準サイズに対して、星の数による倍率を掛け合わせる
@@ -72,7 +72,7 @@ function initStars() {
             size: finalSize,
             brightness: Math.random(),
             parallax: 0.2 + Math.random() * 0.3,
-            color: randomColor 
+            color: randomColor
         });
     }
 }
@@ -391,11 +391,11 @@ function updateParticlesAndRings() {
     // --- パーティクルの更新 ---
     // プールの配列を直接参照します
     const pPoolArray = particlePool.pool;
-    
+
     // Swap & Pop をやめるため、配列の後ろから回す必要がなくなり、普通の順方向ループでOKになります
     for (let i = 0; i < pPoolArray.length; i++) {
         const p = pPoolArray[i];
-        
+
         // ★ 休んでいる（未使用の）オブジェクトは計算をスキップ
         if (!p.active) continue;
 
@@ -412,9 +412,9 @@ function updateParticlesAndRings() {
             p.vy += 0.005 * gameSpeed;
             p.life -= 0.02 * gameSpeed;
         }
-        
+
         if (p.rotV) p.angle += p.rotV * gameSpeed;
-        
+
         // ★ 削除（Pop）の代わりに、非アクティブ状態にしてプールへ返却するだけ
         if (p.life <= 0) {
             p.active = false;
@@ -423,7 +423,7 @@ function updateParticlesAndRings() {
 
     // --- リングの更新 ---
     const rPoolArray = ringPool.pool;
-    
+
     for (let i = 0; i < rPoolArray.length; i++) {
         const r = rPoolArray[i];
 
@@ -453,6 +453,9 @@ function updateParticlesAndRings() {
 
 // 関数の外（上部）にキャッシュ用の変数を定義
 let cachedWormholeGrad = null;
+const PARTICLE_LIGHT_MODE_THRESHOLD = 700;
+const PARTICLE_ULTRA_LIGHT_MODE_THRESHOLD = 1200;
+const RING_LIGHT_MODE_THRESHOLD = 45;
 
 function drawWormholes() {
     // 描画するものが無ければ即リターン
@@ -472,16 +475,16 @@ function drawWormholes() {
             let scale = 1;
             if (w.life > 300) scale = (400 - w.life) / 100;
             else if (w.life <= 0) scale = Math.max(0, (60 + w.life) / 60);
-            
+
             ctx.save();
             ctx.translate(w.x, w.y);
             ctx.scale(scale, scale);
             ctx.shadowColor = '#209';
-            
+
             // ★ キャッシュしたグラデーションを適用
             ctx.fillStyle = cachedWormholeGrad;
-            ctx.beginPath(); 
-            ctx.arc(0, 0, 20 + Math.sin(frame * 0.1) * 2, 0, Math.PI * 2); 
+            ctx.beginPath();
+            ctx.arc(0, 0, 20 + Math.sin(frame * 0.1) * 2, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.globalCompositeOperation = 'lighter';
@@ -511,6 +514,11 @@ function drawVisualEffects() {
     // ★ バッチ処理用の変数は不要になったので削除
 
     const pPoolArray = particlePool.pool;
+    const activeParticleCount = particlePool.getActiveCount ? particlePool.getActiveCount() : 0;
+    const particleLightMode = activeParticleCount > PARTICLE_ULTRA_LIGHT_MODE_THRESHOLD ? 2
+        : activeParticleCount > PARTICLE_LIGHT_MODE_THRESHOLD ? 1
+            : 0;
+
     for (let i = 0; i < pPoolArray.length; i++) {
         const p = pPoolArray[i];
 
@@ -521,7 +529,7 @@ function drawVisualEffects() {
         if (p.isShard || p.isBubble) {
             ctx.save();
             ctx.globalAlpha = Math.min(1, p.life);
-            
+
             if (p.isShard) {
                 ctx.translate(p.x, p.y);
                 ctx.rotate(p.angle || 0);
@@ -569,10 +577,10 @@ function drawVisualEffects() {
                 const fade = Math.min(1.0, p.life) * 0.6;
                 ctx.globalAlpha = fade;
                 const r = p.size * G_SCALE;
-                ctx.beginPath(); ctx.arc(0, 0, r, 0, PI2); 
+                ctx.beginPath(); ctx.arc(0, 0, r, 0, PI2);
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.fill();
                 ctx.strokeStyle = p.color; ctx.lineWidth = 1.5; ctx.stroke();
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; 
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
                 ctx.beginPath(); ctx.arc(-r * 0.4, -r * 0.4, r * 0.25, 0, PI2); ctx.fill();
             }
             ctx.restore();
@@ -583,32 +591,48 @@ function drawVisualEffects() {
             // ==========================================
             ctx.globalCompositeOperation = 'lighter';
             ctx.globalAlpha = Math.max(0, Math.min(1.0, p.life));
-            
+
+            if (particleLightMode > 0) {
+                if (particleLightMode > 1 && ((i + frame) & 1)) continue;
+
+                const px = p.x | 0;
+                const py = p.y | 0;
+                const tailScale = particleLightMode > 1 ? 1.4 : 2.0;
+                const lineWidth = Math.max(1, (p.size || 2) * G_SCALE * (particleLightMode > 1 ? 0.8 : 1.1));
+                ctx.strokeStyle = p.color;
+                ctx.lineWidth = lineWidth;
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo((px - p.vx * tailScale) | 0, (py - p.vy * tailScale) | 0);
+                ctx.stroke();
+                continue;
+            }
+
             const texture = getParticleTexture(p.color);
-            
+
             // 飛んでいる方向（角度）とスピードを計算
             const angle = Math.atan2(p.vy, p.vx);
             const speed = Math.hypot(p.vx, p.vy);
-            
+
             // 線を約1.3倍大きく（長く・太く）する
-            const renderWidth = (p.size || 2) * 6.0 * G_SCALE + speed * 3.0; 
+            const renderWidth = (p.size || 2) * 6.0 * G_SCALE + speed * 3.0;
             const renderHeight = (p.size || 2) * 4.5 * G_SCALE; // 太さ
-            
+
             // 【超高速化テクニック】 save/restoreを使わずに座標系を回転
             // 座標 p.x, p.y を整数化 (| 0) してサブピクセルレンダリングを回避
             ctx.translate(p.x | 0, p.y | 0);
             ctx.rotate(angle);
-            
+
             // 先頭（右端）が現在位置になるように、左へずらしてスタンプ
             // 描画座標とサイズもすべて整数化 (| 0) して爆速にする
             ctx.drawImage(
-                texture, 
-                (-renderWidth) | 0, 
-                (-renderHeight / 2) | 0, 
-                renderWidth | 0, 
+                texture,
+                (-renderWidth) | 0,
+                (-renderHeight / 2) | 0,
+                renderWidth | 0,
                 renderHeight | 0
             );
-            
+
             // 回転と移動を逆に行って元に戻す
             ctx.rotate(-angle);
             ctx.translate(-(p.x | 0), -(p.y | 0));
@@ -623,6 +647,7 @@ function drawVisualEffects() {
 
     // ★ リングも同様にプールの配列を参照し、forループにする
     const rPoolArray = ringPool.pool;
+    const lightRingMode = ringPool.getActiveCount && ringPool.getActiveCount() > RING_LIGHT_MODE_THRESHOLD;
     for (let i = 0; i < rPoolArray.length; i++) {
         const r = rPoolArray[i];
 
@@ -665,7 +690,7 @@ function drawVisualEffects() {
 
             ctx.beginPath(); ctx.arc(r.x, r.y, currentR, 0, PI2); ctx.stroke();
 
-            if (lw > 2) {
+            if (!lightRingMode && lw > 2) {
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = lw * 0.3;
                 ctx.shadowBlur = 0;
