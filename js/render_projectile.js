@@ -255,7 +255,8 @@ function drawBossHomingLaser(ctx, eb) {
 
     const maxLife = (typeof BULLET_CONFIG !== 'undefined' && BULLET_CONFIG.BOSS_LASER) ? BULLET_CONFIG.BOSS_LASER.LIFE : 180;
     const lifeRatio = Math.max(0, Math.min(1, eb.life / maxLife));
-    const headLen = Math.max(3, 16 * G_SCALE * lifeRatio);
+    const lengthScale = eb.lockedDirection ? (2 / 3) : 1;
+    const headLen = Math.max(3, 16 * G_SCALE * lifeRatio * lengthScale);
 
     ctx.strokeStyle = color;
     ctx.lineWidth = 6 * G_SCALE;

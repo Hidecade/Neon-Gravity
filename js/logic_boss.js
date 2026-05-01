@@ -225,10 +225,15 @@ function updateBossAI(e, options = {}) {
     const isPressurePhase = cycle < 140;
     const isGravityEnabledForStage = enableGravity && stage >= 5;
     const isChargePhase = isGravityEnabledForStage && cycle >= 140 && cycle < 260;
+    const isIPhoneView = typeof currentResolution !== 'undefined' &&
+        currentResolution.key &&
+        currentResolution.key.includes('iPhone');
+    const desiredBossRadius = isIPhoneView ? 300 : 360;
+    const bossRadiusTolerance = isIPhoneView ? 85 : 110;
 
     updateBossCombatMovement(e, {
-        desiredRadius: 360,
-        radiusTolerance: 110,
+        desiredRadius: desiredBossRadius,
+        radiusTolerance: bossRadiusTolerance,
         approachAccel: (isPressurePhase ? 0.12 : 0.085) * angerFactor * movementSpeedMult,
         strafeAccel: (isPressurePhase ? 0.2 : 0.14) * angerFactor * movementSpeedMult,
         retreatAccel: (isPressurePhase ? 0.08 : 0.1) * angerFactor * movementSpeedMult,

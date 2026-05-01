@@ -364,6 +364,7 @@ const createEnemyBullet = () => ({
     homingTimer: 0, trail: null,             // ミサイル用
     age: 0, lockTimer: 0, accelTimer: 0,
     turnRate: 0, targetSpeed: 0, accelRate: 0,
+    lockedDirection: false,
     baseScale: 1, scaleSpeed: 0.02,          // 衝撃波用
     active: false
 });
@@ -471,6 +472,7 @@ function spawnEnemyBulletObj(options) {
     eb.turnRate = options.turnRate || 0;
     eb.targetSpeed = options.targetSpeed || 0;
     eb.accelRate = options.accelRate || 0;
+    eb.lockedDirection = false;
     if (eb.isMissile || eb.isBossHomingLaser) {
         if (!eb.trail) eb.trail = []; // 最初だけ作る
         eb.trail.length = 0;          // 中身だけリセットして再利用！

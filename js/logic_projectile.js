@@ -483,6 +483,15 @@ function updateEnemyBullets() {
                 eb.vx = Math.cos(nextAngle) * speed;
                 eb.vy = Math.sin(nextAngle) * speed;
             } else if (eb.age <= eb.lockTimer + eb.accelTimer) {
+                if (!eb.lockedDirection) {
+                    const dx = player.x - eb.x;
+                    const dy = player.y - eb.y;
+                    const lockAngle = Math.atan2(dy, dx);
+                    const speed = Math.hypot(eb.vx, eb.vy) || 0.001;
+                    eb.vx = Math.cos(lockAngle) * speed;
+                    eb.vy = Math.sin(lockAngle) * speed;
+                    eb.lockedDirection = true;
+                }
                 const speed = Math.hypot(eb.vx, eb.vy) || 0.001;
                 const nextSpeed = Math.min(eb.targetSpeed, speed + eb.accelRate * gameSpeed);
                 eb.vx = (eb.vx / speed) * nextSpeed;
@@ -495,7 +504,7 @@ function updateEnemyBullets() {
 
         if (eb.isBossHomingLaser && eb.trail) {
             eb.trail.unshift({ x: eb.x, y: eb.y });
-            const maxTrail = 12;
+            const maxTrail = eb.lockedDirection ? 8 : 12;
             while (eb.trail.length > maxTrail) eb.trail.pop();
         }
 
