@@ -2297,8 +2297,9 @@ function updateCamera() {
     let focusY = player.y;
 
     const boss = enemyPool.pool.find(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
+    const isIPhoneView = typeof currentResolution !== 'undefined' && currentResolution.key && currentResolution.key.includes('iPhone');
 
-    if (boss && Number.isFinite(boss.x) && Number.isFinite(boss.y)) {
+    if (isIPhoneView && boss && Number.isFinite(boss.x) && Number.isFinite(boss.y)) {
         const smoothMax = (boss.spawnMax || 100) + 20;
         if (boss.cameraLerpTimer === undefined) boss.cameraLerpTimer = 0;
 
