@@ -19,6 +19,7 @@ let debugFrameCounter = 0;
 let debugLastFpsTime = performance.now();   // ロジック処理にかかった時間（ミリ秒）を保存する変数
 let debugLastFrameTime = debugLastFpsTime;
 let debugMinFpsInSecond = Infinity;
+let debugMaxCpuInSecond = 0;
 let debugLogicTime = 0;         // ロジック時間
 let debugDrawTime = 0;          // 描画にかかった時間
 let debugTotalTime = 0;
@@ -976,6 +977,8 @@ let currentResolution = {
 function detectResolution(screenW, screenH) {
     const ratio = screenW / screenH;
     const isPortrait = screenH > screenW;
+    const isTouchDevice = navigator.maxTouchPoints > 0;
+    const isMobileViewport = isIOS || isTouchDevice || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     const longSide = Math.max(screenW, screenH);
     const shortSide = Math.min(screenW, screenH);
@@ -1029,7 +1032,7 @@ function detectResolution(screenW, screenH) {
     // ----------------------------------------------------
     // 2. 超小型画面 (VGA相当のウィンドウや古いスマホ)
     // ----------------------------------------------------
-    if (longSide <= 800) {
+    if (!isMobileViewport && longSide <= 800) {
         return {
             key: isPortrait ? "VGA_P" : "VGA_L",
             width: screenW,
@@ -1394,14 +1397,18 @@ function updateDebugStats() {
     debugLastFrameTime = now;
 
     const elapsed = now - debugLastFpsTime;
+    const totalTime = typeof debugTotalTime !== 'undefined' ? debugTotalTime : 0;
+    debugMaxCpuInSecond = Math.max(debugMaxCpuInSecond, Math.round((totalTime / 16.666) * 100));
 
     if (elapsed >= 1000) {
         debugFps = Number.isFinite(debugMinFpsInSecond)
             ? Math.round(debugMinFpsInSecond)
             : Math.round((debugFrameCounter * 1000) / elapsed);
+        const debugCpuPeak = debugMaxCpuInSecond;
         debugFrameCounter = 0;
         debugLastFpsTime = now;
         debugMinFpsInSecond = Infinity;
+        debugMaxCpuInSecond = 0;
 
         const fpsEl = document.getElementById('simple-fps-text');
         if (fpsEl && fpsEl.style.opacity === '1') {
@@ -1412,6 +1419,7 @@ function updateDebugStats() {
                               ? GRAPHICS_SETTINGS[currentGraphicsQuality].resScale 
                               : 1.0;
             const appScaleVal = typeof baseAppScale !== 'undefined' ? baseAppScale : 1.0;
+            const uiScaleVal = typeof globalUiScale !== 'undefined' ? globalUiScale : 1.0;
             
             // HUDスケールの取得
             let hudScaleStr = document.documentElement.style.getPropertyValue('--hud-scale');
@@ -1421,11 +1429,7 @@ function updateDebugStats() {
             // ==========================================
             // ★変更：loop()全体の時間からCPU使用率を計算
             // ==========================================
-            const totalTime = typeof debugTotalTime !== 'undefined' ? debugTotalTime : 0;
-            // 60FPS(16.666ms)に対する使用率
-            const cpuUsage = Math.round((totalTime / 16.666) * 100);
-            
-            fpsEl.innerText = `FPS: ${debugFps} (CPU: ${cpuUsage}%)\nKEY: ${resKey}\nHUD: ${hudScaleStr} RES: ${typeof resScaleVal === 'number' ? resScaleVal.toFixed(2) : resScaleVal} APP: ${typeof appScaleVal === 'number' ? appScaleVal.toFixed(2) : appScaleVal}`;
+            fpsEl.innerText = `FPS: ${debugFps} (CPU: ${debugCpuPeak}%)\nKEY: ${resKey}\nHUD: ${hudScaleStr} UI: ${typeof uiScaleVal === 'number' ? uiScaleVal.toFixed(2) : uiScaleVal}\nRES: ${typeof resScaleVal === 'number' ? resScaleVal.toFixed(2) : resScaleVal} APP: ${typeof appScaleVal === 'number' ? appScaleVal.toFixed(2) : appScaleVal}`;
         }
     }
 }
@@ -1485,9 +1489,10 @@ function updateDebugOverlay() {
 
     // ★追加: 現在の画質設定と resScale を安全に取得
     const qualityStr = typeof currentGraphicsQuality !== 'undefined' ? currentGraphicsQuality : "UNKNOWN";
-    const resScaleVal = (typeof currentGraphicsQuality !== 'undefined' && typeof GRAPHICS_SETTINGS !== 'undefined' && GRAPHICS_SETTINGS[currentGraphicsQuality]) 
-                      ? GRAPHICS_SETTINGS[currentGraphicsQuality].resScale 
+    const resScaleVal = (typeof currentGraphicsQuality !== 'undefined' && typeof GRAPHICS_SETTINGS !== 'undefined' && GRAPHICS_SETTINGS[currentGraphicsQuality])
+                      ? GRAPHICS_SETTINGS[currentGraphicsQuality].resScale
                       : 1.0;
+    const uiScaleVal = typeof globalUiScale !== 'undefined' ? globalUiScale : 1.0;
 
     // ★修正: テンプレートリテラル内に QUALITY と RES SCALE を追加
     el.textContent =
@@ -1498,6 +1503,7 @@ FRAME: ${frame}
 QUALITY: ${qualityStr}
 RESOLUTION: ${resKey}
 RES SCALE: ${typeof resScaleVal === 'number' ? resScaleVal.toFixed(2) : resScaleVal}
+UI SCALE: ${typeof uiScaleVal === 'number' ? uiScaleVal.toFixed(2) : uiScaleVal}
 LOGIC TIME: ${typeof debugLogicTime !== 'undefined' ? debugLogicTime.toFixed(2) : "0.00"} ms
 DRAW TIME: ${typeof debugDrawTime !== 'undefined' ? debugDrawTime.toFixed(2) : "0.00"} ms
 PLAYER X: ${px} Y: ${py}
