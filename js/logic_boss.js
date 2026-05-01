@@ -8,7 +8,7 @@ function getBossHomingLaserShotCount() {
     if (stage <= 2) return 2;
     if (stage <= 4) return 3;
     if (stage <= 6) return 4;
-    return 5;
+    return 4;
 }
 
 function isBossHomingLaserShotFrame(timer, shotCount, attackFrames) {
@@ -273,8 +273,8 @@ function updateBossAI(e, options = {}) {
             const shotCount = getBossHomingLaserShotCount();
             if (isBossHomingLaserShotFrame(e.fireTimer, shotCount, brakeStart)) {
                 const sides = e.variant.sides;
-                const startSpd = 9.0 * SPEED_SCALE * bulletSpeedMult;
-                const targetSpd = 22.8 * SPEED_SCALE * bulletSpeedMult;
+                const startSpd = 10.0 * SPEED_SCALE * bulletSpeedMult;
+                const targetSpd = 25.0 * SPEED_SCALE * bulletSpeedMult;
                 for (let i = 0; i < sides; i++) {
                     const a = e.angle + (Math.PI * 2 / sides) * i;
                     spawnEnemyBulletObj({
@@ -287,7 +287,7 @@ function updateBossAI(e, options = {}) {
                         accelTimer: 26,
                         turnRate: 0.045 * angerFactor,
                         targetSpeed: targetSpd,
-                        accelRate: 0.66 * SPEED_SCALE * bulletSpeedMult,
+                        accelRate: 0.75 * SPEED_SCALE * bulletSpeedMult,
                         color: e.color
                     });
                 }

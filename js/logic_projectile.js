@@ -504,7 +504,7 @@ function updateEnemyBullets() {
 
         if (eb.isBossHomingLaser && eb.trail) {
             eb.trail.unshift({ x: eb.x, y: eb.y });
-            const maxTrail = eb.lockedDirection ? 8 : 12;
+            const maxTrail = eb.lockedDirection ? 6 : 9;
             while (eb.trail.length > maxTrail) eb.trail.pop();
         }
 
