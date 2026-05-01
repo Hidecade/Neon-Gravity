@@ -302,7 +302,7 @@ const STAGE_ENEMIES = {
 const BOSS_RUSH_SPAWN_CONFIG = {
     INTERVAL: 40,      // 出現間隔 (フレーム数)。小さいほど高頻度
     MAX_ENEMIES: 15,    // 画面内に存在できる雑魚の最大数
-    SPAWN_COUNT: 2,     // 1回のスポーンで出現する敵の数
+    SPAWN_COUNT: 1,     // 1回のスポーンで出現する敵の数
     WARP_DELAY: 400     // ワームホール出現から敵が出るまでの待ち時間(ms)
 };
 

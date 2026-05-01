@@ -19,6 +19,13 @@ function isExtremeTimeAttackMidBossActive() {
     return enemyPool.pool.some(e => e.active && e.type === 'boss');
 }
 
+function isNormalBossMinionSpawnSuppressed() {
+    if (typeof isExtremeTimeAttackMode === 'function' && isExtremeTimeAttackMode()) return false;
+    if (stage === 9 || stage === 10) return false;
+    const boss = enemyPool.pool.find(e => e.active && e.type === 'boss');
+    return !!(boss && (boss.aliveTimer || 0) < 1800);
+}
+
 function resetEnemyFxBudget() {
     if (enemyFxBudgetFrame === frame) return;
     enemyFxBudgetFrame = frame;
@@ -1870,6 +1877,11 @@ wormholes.forEach((w) => {
                 w.life = Math.min(w.life, 30);
                 return;
             }
+            if (isNormalBossMinionSpawnSuppressed()) {
+                w.active = false;
+                w.life = Math.min(w.life, 30);
+                return;
+            }
 
             if (stage !== 9 && stage !== 10 && w.life > 60 && w.life % SPAWN_SETTINGS.SPAWN_INTERVAL === 0) {
                 const isExtremeMode = (typeof isExtremeTimeAttackMode === 'function') && isExtremeTimeAttackMode();
@@ -1891,7 +1903,7 @@ wormholes.forEach((w) => {
                         isBossSpawned = true;
                     } else {
                         const bossEx = enemyPool.pool.some(e => e.active && e.type === 'boss');
-                        if (spawnedCount < enemiesToSpawn || bossEx) {
+                        if ((spawnedCount < enemiesToSpawn || bossEx) && !isNormalBossMinionSpawnSuppressed()) {
                             const pool = STAGE_ENEMIES[stage] || STAGE_ENEMIES[7];
                             const type = Math.random() < 0.15 ? 'cube' : pool[Math.floor(Math.random() * pool.length)];
                             spawnEnemy(w.x, w.y, type);
@@ -1962,6 +1974,7 @@ function spawnWormhole() {
     if (isStageClear) return;
     if (stage === 9 && rushBossIndex >= 8) return;
     if (isExtremeTimeAttackBattleshipActive()) return;
+    if (isNormalBossMinionSpawnSuppressed()) return;
 
     if (stage !== 9 && isBossSpawned && !enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'))) return;
 
@@ -2999,11 +3012,12 @@ function updateSpawnLogic() {
         const battleshipExists = enemyPool.pool.some(e => e.active && e.type === 'battleship');
         const blocksExtremeSpawn = isExtremeMode && isExtremeTimeAttackBattleshipActive();
         const bossExists = enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
+        const suppressNormalBossMinions = isNormalBossMinionSpawnSuppressed();
 
         // 修正：Time Attack中は専用スポーンだけを使い、ラスボス中は通常ワームホールを止める
         const canSpawn = isExtremeMode
             ? (!battleshipExists && !blocksExtremeSpawn)
-            : ((spawnedCount < enemiesToSpawn) || (isBossSpawned && bossExists));
+            : ((spawnedCount < enemiesToSpawn) || (isBossSpawned && bossExists && !suppressNormalBossMinions));
 
         const currentEnemyCount = enemyPool.getActiveCount();
 

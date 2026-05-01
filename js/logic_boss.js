@@ -99,7 +99,11 @@ function updateBossCombatMovement(e, options = {}) {
     e.y = clampedY;
 }
 
-function updateBossAI(e) {
+function updateBossAI(e, options = {}) {
+    const enableGravity = options.enableGravity !== false;
+    const movementSpeedMult = options.movementSpeedMult || 1.0;
+    const bulletSpeedMult = options.bulletSpeedMult || 1.0;
+
     // =========================================================
     // 1. 出現演出 (Spawn Sequence)
     // =========================================================
@@ -204,20 +208,20 @@ function updateBossAI(e) {
     const isPressurePhase = cycle < 140;
     const isSpreadLaserPattern = e.attackPattern === 0 && cycle < 140;
     const shouldHoldForLaser = isSpreadLaserPattern;
-    const isGravityPhase = cycle >= 140 && cycle < 260;
+    const isChargePhase = cycle >= 140 && cycle < 260;
 
     updateBossCombatMovement(e, {
         desiredRadius: 360,
         radiusTolerance: 110,
-        approachAccel: (isPressurePhase ? 0.12 : 0.085) * angerFactor,
-        strafeAccel: (isPressurePhase ? 0.2 : 0.14) * angerFactor,
-        retreatAccel: (isPressurePhase ? 0.08 : 0.1) * angerFactor,
-        radiusCorrectionAccel: (isPressurePhase ? 0.12 : 0.08) * angerFactor,
+        approachAccel: (isPressurePhase ? 0.12 : 0.085) * angerFactor * movementSpeedMult,
+        strafeAccel: (isPressurePhase ? 0.2 : 0.14) * angerFactor * movementSpeedMult,
+        retreatAccel: (isPressurePhase ? 0.08 : 0.1) * angerFactor * movementSpeedMult,
+        radiusCorrectionAccel: (isPressurePhase ? 0.12 : 0.08) * angerFactor * movementSpeedMult,
         friction: 0.99,
-        maxSpeed: e.speed * (isPressurePhase ? 8.5 : 7.0) * angerFactor,
+        maxSpeed: e.speed * (isPressurePhase ? 8.5 : 7.0) * angerFactor * movementSpeedMult,
         margin: 95,
         holdPosition: shouldHoldForLaser,
-        brakePosition: isGravityPhase,
+        brakePosition: isChargePhase,
         brakeFriction: 0.94
     });
 
@@ -247,7 +251,7 @@ function updateBossAI(e) {
             e.angle += 0.12 * gameSpeed * angerFactor; // 怒ると回転が速くなる
             if (e.fireTimer % 20 === 0) {
                 const sides = e.variant.sides;
-                const bulletSpd = 9 * SPEED_SCALE;
+                const bulletSpd = 13 * SPEED_SCALE * bulletSpeedMult;
                 for (let i = 0; i < sides; i++) {
                     const a = e.angle + (Math.PI * 2 / sides) * i;
                     spawnEnemyBulletObj({
@@ -269,7 +273,7 @@ function updateBossAI(e) {
             e.angle += diff * 0.1 * gameSpeed * angerFactor; // 怒ると照準合わせが速くなる
 
             if (e.fireTimer % 15 === 0) {
-                const bulletSpd = 15 * SPEED_SCALE;
+                const bulletSpd = 15 * SPEED_SCALE * bulletSpeedMult;
                 for (let i = -1; i <= 1; i++) {
                     const a = e.angle + i * 0.15;
                     spawnEnemyBulletObj({
@@ -285,7 +289,7 @@ function updateBossAI(e) {
         else if (e.attackPattern === 2) {
             e.angle -= 0.08 * gameSpeed * angerFactor; // 怒ると逆回転も速くなる
             if (e.fireTimer % 8 === 0) {
-                const bulletSpd = 10 * SPEED_SCALE;
+                const bulletSpd = 10 * SPEED_SCALE * bulletSpeedMult;
                 for (let i = 0; i < 4; i++) {
                     const a = e.angle + (Math.PI / 2) * i;
                     spawnEnemyBulletObj({
@@ -315,11 +319,9 @@ function updateBossAI(e) {
         else if (stage === 3) gravityRatio = 0.5;
         else if (stage === 4) gravityRatio = 0.75;
 
-        // ★ 全ステージで引き寄せ攻撃を行うように変更
-        if (e.fireTimer < gravityEnd) {
-            
+        if (enableGravity && e.fireTimer < gravityEnd) {
+
             if (e.fireTimer === brakeStart + 1) {
-                // ★ グローバル変数を廃止し、第4引数として gravityRatio を直接渡す
                 if (typeof AudioSys !== 'undefined') AudioSys.playSE('gravity_boss', e.x, e.y, gravityRatio);
             }
 
@@ -327,26 +329,23 @@ function updateBossAI(e) {
             const pullDy = e.y - player.y;
             const pullDist = Math.hypot(pullDx, pullDy) || 0.001;
 
-            const maxPullDist = 2400; 
-            
+            const maxPullDist = 2400;
+
             if (pullDist < maxPullDist) {
-                // ★ 引き込みの強さにも gravityRatio を掛ける
                 const pullStrength = 12.0 * SPEED_SCALE * gameSpeed * angerFactor * gravityRatio;
                 const force = pullStrength * (1 - pullDist / maxPullDist);
                 player.x += (pullDx / pullDist) * force;
                 player.y += (pullDy / pullDist) * force;
             }
 
-            // 空間の歪みも強さに比例させる
             if (frame % 6 === 0 && typeof distortGrid === 'function') {
                 distortGrid(e.x, e.y, -80 * gravityRatio, 800 * gravityRatio);
             }
-            
-            // ★ パーティクルの生成量も gravityRatio に比例させる（最大8個、最低1個）
+
             const particleCount = Math.max(1, Math.round(8 * gravityRatio));
             for (let i = 0; i < particleCount; i++) {
                 const pAngle = Math.random() * Math.PI * 2;
-                const pDist = 200 + Math.random() * 1000; 
+                const pDist = 200 + Math.random() * 1000;
                 const pColor = Math.random() > 0.5 ? e.color : '#ffffff';
                 const pSpeed = (12 + Math.random() * 18) * SPEED_SCALE;
                 const swirlAngle = pAngle + 0.2;
@@ -354,15 +353,26 @@ function updateBossAI(e) {
                 spawnParticleObj({
                     x: e.x + Math.cos(pAngle) * pDist,
                     y: e.y + Math.sin(pAngle) * pDist,
-                    vx: -Math.cos(swirlAngle) * pSpeed, 
+                    vx: -Math.cos(swirlAngle) * pSpeed,
                     vy: -Math.sin(swirlAngle) * pSpeed,
-                    color: pColor, 
+                    color: pColor,
                     life: 1.5 + Math.random(),
-                    // ★ パーティクルの太さも強さに比例させる（最低でも少し太く）
-                    size: Math.max(2.0, (2.5 + Math.random() * 2.0) * gravityRatio) 
+                    size: Math.max(2.0, (2.5 + Math.random() * 2.0) * gravityRatio)
                 });
             }
-        } 
+        } else if (!enableGravity && frame % 3 === 0) {
+            const ang = Math.random() * Math.PI * 2;
+            const dist = 70 + Math.random() * 30;
+            spawnParticleObj({
+                x: e.x + Math.cos(ang) * dist,
+                y: e.y + Math.sin(ang) * dist,
+                vx: -Math.cos(ang) * 5,
+                vy: -Math.sin(ang) * 5,
+                color: '#fff',
+                life: 0.2,
+                size: 2.5
+            });
+        }
     }
     // ----------------------------------------------------
     // [フェーズ3] 必殺技発射
@@ -381,8 +391,8 @@ function updateBossAI(e) {
                     const a = e.angle + volleyOffset + (Math.PI * 2 / sides) * i;
                     spawnEnemyBulletObj({
                         x: e.x + Math.cos(a) * 60, y: e.y + Math.sin(a) * 60,
-                        vx: Math.cos(a) * (BULLET_CONFIG.BOSS_HOMING.SPEED * SPEED_SCALE),
-                        vy: Math.sin(a) * (BULLET_CONFIG.BOSS_HOMING.SPEED * SPEED_SCALE),
+                        vx: Math.cos(a) * (BULLET_CONFIG.BOSS_HOMING.SPEED * SPEED_SCALE * bulletSpeedMult),
+                        vy: Math.sin(a) * (BULLET_CONFIG.BOSS_HOMING.SPEED * SPEED_SCALE * bulletSpeedMult),
                         life: BULLET_CONFIG.BOSS_HOMING.LIFE,
                         isMissile: true, color: e.color, trail: []
                     });
@@ -393,7 +403,7 @@ function updateBossAI(e) {
                 const ringCount = 12;
                 for (let i = 0; i < ringCount; i++) {
                     const a = (Math.PI * 2 / ringCount) * i;
-                    const spd = 12 * SPEED_SCALE;
+                    const spd = 12 * SPEED_SCALE * bulletSpeedMult;
                     spawnEnemyBulletObj({
                         x: e.x, y: e.y,
                         vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
@@ -435,189 +445,7 @@ function updateBossAI(e) {
 }
 
 function updateBossSpecialAI(e) {
-    // ==========================================
-    // 1. 出現演出 (共通)
-    // ==========================================
-    if (e.isSpawning) {
-        e.spawnTimer++;
-        e.x = e.spawnX; e.y = e.spawnY; e.vx = 0; e.vy = 0;
-        if (e.spawnTimer >= e.spawnMax) {
-            e.isSpawning = false;
-            e.originIdx = rushBossIndex;
-            e.attackPattern = 0;
-            e.aliveTimer = 0; // ★生存タイマー初期化
-            e.orbitDir = Math.random() < 0.5 ? -1 : 1;
-        }
-        return;
-    }
-
-    // ★生存タイマーを加算
-    e.aliveTimer = (e.aliveTimer || 0) + 1;
-
-    // --- 怒りによる移動ブースト計算 (Boss Anger Mode) ---
-    let angerFactor = 1.0;
-    if (e.aliveTimer > 1800) { // 30秒後から強化
-        angerFactor = 1.0 + Math.min(2.0, (e.aliveTimer - 1800) * 0.001);
-    }
-
-    if (e.orbitDir === undefined) {
-        e.orbitDir = Math.random() < 0.5 ? -1 : 1;
-    }
-
-    // ==========================================
-    // 2. 移動ロジック (距離連動・強化追尾)
-    // ==========================================
-    const dx = player.x - e.x;
-    const dy = player.y - e.y;
-    const dist = Math.hypot(dx, dy) || 1.0;
-
-    // 前半(Index 0-1)は少し大きめの弧、後半は鋭く食いつく
-    const isSlowMover = e.originIdx <= 1;
-
-    const maxCycle = 280;
-    const brakeStart = 160;
-    const fireTime = 220;
-    const cycle = e.fireTimer || 0;
-    const isSpreadLaserPattern = (e.originIdx <= 1 || e.attackPattern === 0) && cycle < 160;
-    const shouldHoldForLaser = isSpreadLaserPattern;
-
-    updateBossCombatMovement(e, {
-        desiredRadius: isSlowMover ? 340 : 260,
-        radiusTolerance: isSlowMover ? 100 : 80,
-        approachAccel: (isSlowMover ? 0.09 : 0.12) * angerFactor,
-        strafeAccel: (isSlowMover ? 0.11 : 0.16) * angerFactor,
-        retreatAccel: (isSlowMover ? 0.08 : 0.1) * angerFactor,
-        radiusCorrectionAccel: (isSlowMover ? 0.08 : 0.11) * angerFactor,
-        friction: 0.99,
-        maxSpeed: e.speed * (isSlowMover ? 6.8 : 8.2) * angerFactor,
-        margin: 135,
-        holdPosition: shouldHoldForLaser
-    });
-
-    // --- カウンター攻撃 (15%の確率) ---
-    if (e.prevHp && e.hp < e.prevHp && Math.random() < 0.15) {
-        const a = Math.atan2(dy, dx);
-        // カウンター弾も怒り時は速くする
-        const counterSpd = 12 * SPEED_SCALE * Math.min(1.5, angerFactor);
-        spawnEnemyBulletObj({ x: e.x, y: e.y, vx: Math.cos(a) * counterSpd, vy: Math.sin(a) * counterSpd, life: 180, color: '#fff' });
-        AudioSys.playSE('shoot');
-    }
-    e.prevHp = e.hp;
-
-    // ==========================================
-    // 3. 攻撃サイクル (通常ボスに準拠した強化版)
-    // ==========================================
-    e.fireTimer++;
-
-    // --- フェーズ1: メイン攻撃 ---
-    if (e.fireTimer < brakeStart) {
-
-        // 【Pattern A】Index 0-1: 強化回転レーザー
-        if (e.originIdx <= 1 || e.attackPattern === 0) {
-            e.angle += 0.15 * gameSpeed * angerFactor; // ★怒りで回転加速
-            if (e.fireTimer % 12 === 0) {
-                const sides = e.variant.sides;
-                for (let i = 0; i < sides; i++) {
-                    const a = e.angle + (Math.PI * 2 / sides) * i;
-                    spawnEnemyBulletObj({
-                        x: e.x + Math.cos(a) * 45, y: e.y + Math.sin(a) * 45,
-                        vx: Math.cos(a) * 11 * SPEED_SCALE, vy: Math.sin(a) * 11 * SPEED_SCALE,
-                        life: 200, isLaserMissile: true, color: e.color
-                    });
-                }
-                if (isOnScreen(e)) AudioSys.playSE('shoot');
-            }
-        }
-        // 【Pattern B】Index 2-4: 強化自機狙い3WAY
-        else if (e.originIdx <= 4 || e.attackPattern === 1) {
-            const targetA = Math.atan2(dy, dx);
-            let diff = targetA - e.angle;
-            while (diff <= -Math.PI) diff += Math.PI * 2;
-            while (diff > Math.PI) diff -= Math.PI * 2;
-            e.angle += diff * 0.18 * gameSpeed * angerFactor; // ★怒りで旋回加速
-
-            if (e.fireTimer % 10 === 0) {
-                const bulletSpd = 15 * SPEED_SCALE;
-                for (let i = -1; i <= 1; i++) {
-                    const a = e.angle + i * 0.18;
-                    spawnEnemyBulletObj({ x: e.x, y: e.y, vx: Math.cos(a) * bulletSpd, vy: Math.sin(a) * bulletSpd, life: 250, color: '#ff8800' });
-                }
-                if (isOnScreen(e)) AudioSys.playSE('shoot');
-            }
-        }
-        // 【Pattern C】Index 5-7: 高速回転クロス弾幕
-        else {
-            e.angle -= 0.15 * gameSpeed * angerFactor; // ★怒りで逆回転加速
-            if (e.fireTimer % 6 === 0) {
-                for (let i = 0; i < 4; i++) {
-                    const a = e.angle + (Math.PI / 2) * i;
-                    spawnEnemyBulletObj({
-                        x: e.x, y: e.y, vx: Math.cos(a) * 12 * SPEED_SCALE, vy: Math.sin(a) * 12 * SPEED_SCALE,
-                        life: 180, color: '#ff00ff', isLaserMissile: true
-                    });
-                }
-                if (isOnScreen(e) && e.fireTimer % 12 === 0) AudioSys.playSE('shoot');
-            }
-        }
-    }
-    // --- フェーズ2: 溜め演出 ---
-    else if (e.fireTimer >= brakeStart && e.fireTimer < fireTime) {
-        const ratio = 1.0 - (e.fireTimer - brakeStart) / (fireTime - brakeStart);
-        e.angle += Math.pow(ratio, 1.5) * 0.1;
-        if (frame % 3 === 0) {
-            const ang = Math.random() * Math.PI * 2;
-            const dist = 70 + Math.random() * 30;
-            spawnParticleObj({ x: e.x + Math.cos(ang) * dist, y: e.y + Math.sin(ang) * dist, vx: -Math.cos(ang) * 5, vy: -Math.sin(ang) * 5, color: '#fff', life: 0.2, size: 2.5 });
-        }
-    }
-    // --- フェーズ3: 必殺技 (Indexに準拠) ---
-    else if (e.fireTimer === fireTime || (e.originIdx <= 1 && e.fireTimer === fireTime + 12)) {
-
-        // Index 5-7: 衝撃波リング
-        if (e.originIdx >= 5) {
-            const ringCount = 12;
-            for (let i = 0; i < ringCount; i++) {
-                const a = (Math.PI * 2 / ringCount) * i;
-                spawnEnemyBulletObj({
-                    x: e.x, y: e.y,
-                    vx: Math.cos(a) * 10 * SPEED_SCALE, vy: Math.sin(a) * 10 * SPEED_SCALE,
-                    life: 300, color: e.color, isShockwave: true,
-                    baseScale: 0.8, scaleSpeed: 0.02
-                });
-            }
-            distortGrid(e.x, e.y, 250, 250);
-        }
-        // Index 2-4: 全方位拡散弾
-        else if (e.originIdx >= 2) {
-            const count = 24;
-            for (let i = 0; i < count; i++) {
-                const a = (Math.PI * 2 / count) * i;
-                spawnEnemyBulletObj({ x: e.x, y: e.y, vx: Math.cos(a) * 10 * SPEED_SCALE, vy: Math.sin(a) * 10 * SPEED_SCALE, life: 300, color: '#fff' });
-            }
-        }
-        // Index 0-1: ホーミングミサイル斉射
-        else {
-            const sides = e.variant.sides;
-            const volleyOffset = e.fireTimer === fireTime ? 0 : Math.PI / sides;
-            for (let i = 0; i < sides; i++) {
-                const a = e.angle + volleyOffset + (Math.PI * 2 / sides) * i;
-                spawnEnemyBulletObj({
-                    x: e.x + Math.cos(a) * 60, y: e.y + Math.sin(a) * 60,
-                    vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
-                    life: 300, isMissile: true, color: e.color, trail: []
-                });
-            }
-        }
-        if (isOnScreen(e)) AudioSys.playSE('launch');
-    }
-
-    // --- サイクルリセット & 抽選 ---
-    if (e.fireTimer >= maxCycle) {
-        e.fireTimer = 0;
-        // インデックスに応じて使えるパターンを増やす
-        let range = (e.originIdx >= 5) ? 3 : (e.originIdx >= 2 ? 2 : 1);
-        e.attackPattern = Math.floor(Math.random() * range);
-    }
+    updateBossAI(e);
 }
 
 function updateBattleshipAI(e) {
