@@ -489,7 +489,7 @@ function checkStageClear() {
     } else {
         const noEnemies = enemyPool.getActiveCount() === 0;
         const noWormholes = countActiveWormholes() === 0;
-        if (noEnemies && noWormholes && isBossSpawned) isClearCondition = true;
+        if (noEnemies && noWormholes && isBossSpawned && !isBossWarning) isClearCondition = true;
     }
 
     if (!isStageClear && isClearCondition) {

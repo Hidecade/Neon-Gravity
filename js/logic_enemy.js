@@ -1903,11 +1903,7 @@ wormholes.forEach((w) => {
                     spawnEnemy(w.x, w.y, type);
                 } else {
                 
-                    // ★修正：escaped を含めて remaining（残りノルマ） を正しく計算
-                    const escaped = window.enemiesEscaped || 0;
-                    const remaining = enemiesToSpawn - (enemiesKilled + escaped);
-                    
-                    if (!isBossSpawned && remaining <= 0) {
+                    if (!isBossSpawned && spawnedCount >= enemiesToSpawn) {
                         triggerBossEncounter();
                         isBossSpawned = true;
                     } else {
@@ -3049,12 +3045,9 @@ function updateSpawnLogic() {
         // ==========================================
         // ★ 追加：ボス出現のセーフティネット
         // ==========================================
-        // 条件：プレイ中、ボス未出現、ワームホールなし、敵もいない、且つノルマ付近
-        const escaped = window.enemiesEscaped || 0; // ★追加
-        const remaining = enemiesToSpawn - (enemiesKilled + escaped); // ★修正
-        
+        // 条件：プレイ中、ボス未出現、ワームホールなし、敵もいない、且つ出現ノルマ完了
         if (!isExtremeMode && gameState === 'PLAYING' && !isBossSpawned && !isBossWarning && activeWh === 0 && currentEnemyCount === 0) {
-            if (remaining <= 0) {
+            if (spawnedCount >= enemiesToSpawn) {
                 console.log("Safety Net: Triggering Boss Encounter");
                 triggerBossEncounter();
                 isBossSpawned = true;
