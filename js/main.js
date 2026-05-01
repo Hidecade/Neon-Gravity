@@ -126,8 +126,18 @@ function addExtremeTimeAttackGaugeSeconds(seconds) {
     );
 }
 
+function isExtremeTimeAttackFinalBossActive() {
+    if (!isExtremeTimeAttackMode()) return false;
+    if (typeof isExtremeTimeAttackBattleshipActive === 'function') {
+        return isExtremeTimeAttackBattleshipActive();
+    }
+    if (typeof enemyPool === 'undefined' || !enemyPool || !Array.isArray(enemyPool.pool)) return false;
+    return enemyPool.pool.some(e => e.active && e.type === 'battleship');
+}
+
 function applyExtremeTimeAttackHitPenalty(seconds) {
     if (!isExtremeTimeAttackMode() || !extremeTimeAttackState.active) return;
+    if (isExtremeTimeAttackFinalBossActive()) return;
     const frames = Math.floor(Math.max(0, seconds) * 60);
     extremeTimeAttackState.gaugeFrames = Math.max(0, extremeTimeAttackState.gaugeFrames - frames);
 }
@@ -174,6 +184,7 @@ function updateExtremeTimeAttack() {
 
     const graceFrames = Math.floor(EXTREME_TIME_ATTACK_CONFIG.START_GRACE_SECONDS * 60);
     if (extremeTimeAttackState.survivalFrames <= graceFrames) return;
+    if (isExtremeTimeAttackFinalBossActive()) return;
 
     let decay = EXTREME_TIME_ATTACK_CONFIG.GAUGE_DECAY_PER_SECOND;
     if (extremeTimeAttackState.survivalFrames >= 120 * 60) {
@@ -196,6 +207,7 @@ window.queueGameModeStart = queueGameModeStart;
 window.getCurrentGameMode = getCurrentGameMode;
 window.isExtremeTimeAttackMode = isExtremeTimeAttackMode;
 window.getExtremeTimeAttackState = getExtremeTimeAttackState;
+window.isExtremeTimeAttackFinalBossActive = isExtremeTimeAttackFinalBossActive;
 window.addExtremeTimeAttackGaugeSeconds = addExtremeTimeAttackGaugeSeconds;
 window.applyExtremeTimeAttackHitPenalty = applyExtremeTimeAttackHitPenalty;
 
@@ -586,6 +598,7 @@ function spawnEnemyObj(options) {
     e.color = options.color || '#fff';
     e.type = options.type || '';
     e.variant = options.variant || null;
+    e.spawnSource = options.spawnSource || (typeof activeEnemySpawnSource !== 'undefined' ? activeEnemySpawnSource : null);
     
     // ★サイズのリセット：指定がなければ 1 (大) をデフォルトにする
     e.size = options.size !== undefined ? options.size : 1; 

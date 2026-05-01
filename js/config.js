@@ -172,15 +172,15 @@ const STAGE_ENEMY_COUNTS = [
 
 // 画面内に同時に存在できる敵の最大数
 const STAGE_MAX_ON_SCREEN = [
-    20, 25, 30, 35, 40, 45, 50, 60
+    15, 20, 25, 30, 35, 40, 45, 50
 ];
 
 // 難易度上昇パラメータ
 const DIFFICULTY_CONFIG = {
-    SPEED_INC: 0.08,       // 1ステージごとの敵速度上昇率 (8%)
+    SPEED_INC: 0.10,       // 1ステージごとの敵速度上昇率 (8%)
     HP_INC: 0.5,           // 1ステージごとの敵HP上昇補正
-    SPAWN_INC: 15,         // 1ステージごとに増える敵の数
-    BULLET_SPEED_INC: 0.06 // 1ステージごとの敵弾速上昇率 (6%)
+    SPAWN_INC: 10,         // 1ステージごとに増える敵の数
+    BULLET_SPEED_INC: 0.08 // 1ステージごとの敵弾速上昇率 (6%)
 };
 
 // --- プレイヤー設定 ---
@@ -236,7 +236,7 @@ const ENEMY_LIMITS = {
     LIGHTCYCLE_FADE_LENGTH: 10,     // 尾がパーティクル化して消えゆく部分の長さ
 };
 
-const DRAGON_ACCELERATION = 0.2; // ドラゴンの追尾加速力
+const DRAGON_ACCELERATION = 0.3; // ドラゴンの追尾加速力
 
 // 当たり判定（半径）
 const ENEMY_HITBOX = {

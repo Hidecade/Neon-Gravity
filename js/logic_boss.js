@@ -692,7 +692,7 @@ function updateBattleshipAI(e) {
             const targetY = Math.max(100, Math.min(worldSize - 100, sy));
 
             // ワームホール生成演出
-            wormholes.push({ x: targetX, y: targetY, life: 60, maxLife: 60, active: true });
+            wormholes.push({ x: targetX, y: targetY, life: 60, maxLife: 60, active: true, spawnSource: 'battleship' });
             if (typeof distortGrid === 'function') distortGrid(targetX, targetY, 150, 300);
 
             // 0.5秒後に敵を出現させる
@@ -702,7 +702,7 @@ function updateBattleshipAI(e) {
                     const randomType = types[Math.floor(Math.random() * types.length)];
 
                     // 1. 敵を生成（spawnEnemy内部でステージ10の速度補正 1.72倍 がすでにかかります）
-                    spawnEnemy(targetX, targetY, randomType, 1, '#e00');
+                    spawnEnemy(targetX, targetY, randomType, 1, '#e00', 'battleship');
 
                     // プールを後ろから検索して「たった今生成された敵」を取得する
                     let newEnemy = null;
@@ -747,10 +747,10 @@ function updateBattleshipAI(e) {
             const sx = e.x + Math.cos(spawnAngle) * 300;
             const sy = e.y + Math.sin(spawnAngle) * 300;
 
-            wormholes.push({ x: sx, y: sy, life: 80, maxLife: 80, active: true });
+            wormholes.push({ x: sx, y: sy, life: 80, maxLife: 80, active: true, spawnSource: 'battleship' });
             setTimeout(() => {
                 if (gameState === 'PLAYING' && !isDesperationMode) {
-                    spawnEnemy(sx, sy, 'asteroid');
+                    spawnEnemy(sx, sy, 'asteroid', 1, null, 'battleship');
                 }
             }, 800);
         }
@@ -808,11 +808,12 @@ function updateBattleshipAI(e) {
                     vy: Math.sin(launchA) * 0.25 * SPEED_SCALE,
                     hp: 3, 
                     speed: 1.0, 
-                    color: '#0ff', 
-                    type: 'fighter', 
+                    color: '#0ff',
+                    type: 'fighter',
                     state: 'deploy',
-                    scale: 0.8, 
-                    noDrop: true
+                    scale: 0.8,
+                    noDrop: true,
+                    spawnSource: 'battleship'
                 });
 
                 if (!fighter) continue;
@@ -853,7 +854,8 @@ function updateBattleshipAI(e) {
                 y: sy,
                 life: 100,
                 maxLife: 100,
-                active: true
+                active: true,
+                spawnSource: 'battleship'
             });
             if (typeof distortGrid === 'function') distortGrid(sx, sy, 100, 200);
 
@@ -861,7 +863,7 @@ function updateBattleshipAI(e) {
             setTimeout(() => {
                 // ゲームが進行中（タイトルに戻っていない）かチェック
                 if (gameState === 'PLAYING') {
-                    spawnEnemy(sx, sy, 'phantom');
+                    spawnEnemy(sx, sy, 'phantom', 1, null, 'battleship');
                     if (typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
                 }
             }, 600); // 0.6秒後に実体化

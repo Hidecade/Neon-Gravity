@@ -514,30 +514,6 @@ function updateEnemyBullets() {
             }
         }
 
-        // --- 5. アステロイドによる弾の吸収 ---
-        if (!eb.isShockwave) {
-            const pool = enemyPool.pool;
-            for (let j = 0; j < pool.length; j++) {
-                const rock = pool[j];
-                
-                // ★追加: 非アクティブ（プール内待機中）のオブジェクトは処理をスキップ
-                if (!rock.active) continue;
-                
-                if (rock.type !== 'asteroid' || rock.hp <= 0) continue;
-                const rockRadius = 25 * rock.scale * G_SCALE;
-                
-                const dx = rock.x - eb.x;
-                const dy = rock.y - eb.y;
-                if (dx * dx + dy * dy < rockRadius * rockRadius) {
-                    enemyBulletPool.release(eb); // ★プール返却
-                    eb.life = 0;
-                    createExplosion(eb.x, eb.y, '#fff', 3);
-                    break;
-                }
-            }
-            if (!eb.active) continue;
-        }
-
         // --- 6. ミサイルの誘導と自機弾との判定 ---
         if (eb.isMissile) {
             // ... (誘導ロジックは既存のままでOKですが、eb.activeチェックを適宜挟みます) ...

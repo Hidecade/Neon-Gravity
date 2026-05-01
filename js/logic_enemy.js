@@ -6,6 +6,18 @@ let enemyAttackDistortCount = 0;
 let enemyDeathDistortCount = 0;
 let enemySeCount = 0;
 let enemyCrowdLevel = 0;
+let activeEnemySpawnSource = null;
+
+function isExtremeTimeAttackBattleshipActive() {
+    if (typeof isExtremeTimeAttackMode !== 'function' || !isExtremeTimeAttackMode()) return false;
+    if (isBossWarning && nextBossSpawnType === 'battleship') return true;
+    return enemyPool.pool.some(e => e.active && e.type === 'battleship');
+}
+
+function isExtremeTimeAttackMidBossActive() {
+    if (typeof isExtremeTimeAttackMode !== 'function' || !isExtremeTimeAttackMode()) return false;
+    return enemyPool.pool.some(e => e.active && e.type === 'boss');
+}
 
 function resetEnemyFxBudget() {
     if (enemyFxBudgetFrame === frame) return;
@@ -1853,10 +1865,18 @@ function updateWormholes() {
 wormholes.forEach((w) => {
         w.life--;
         if (w.active) {
+            if (isExtremeTimeAttackBattleshipActive() && w.spawnSource !== 'battleship') {
+                w.active = false;
+                w.life = Math.min(w.life, 30);
+                return;
+            }
+
             if (stage !== 9 && stage !== 10 && w.life > 60 && w.life % SPAWN_SETTINGS.SPAWN_INTERVAL === 0) {
                 const isExtremeMode = (typeof isExtremeTimeAttackMode === 'function') && isExtremeTimeAttackMode();
 
                 if (isExtremeMode) {
+                    if (isExtremeTimeAttackBattleshipActive()) return;
+                    if (isExtremeTimeAttackMidBossActive() && ((w.life / SPAWN_SETTINGS.SPAWN_INTERVAL) % 2 !== 0)) return;
                     const pool = getExtremeTimeAttackSpawnPool();
                     const type = pool[Math.floor(Math.random() * pool.length)];
                     spawnEnemy(w.x, w.y, type);
@@ -1941,31 +1961,44 @@ function updateExtremeTimeAttackBossSpawn() {
 function spawnWormhole() {
     if (isStageClear) return;
     if (stage === 9 && rushBossIndex >= 8) return;
-    
+    if (isExtremeTimeAttackBattleshipActive()) return;
+
     if (stage !== 9 && isBossSpawned && !enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'))) return;
 
     // 変数に作ってからpushする形に修正（配列末尾への直接アクセス撲滅）
     const newWormhole = {
         x: WALL_MARGIN + 100 + Math.random() * (worldSize - WALL_MARGIN * 2 - 200),
         y: WALL_MARGIN + 100 + Math.random() * (worldSize - WALL_MARGIN * 2 - 200),
-        life: 400, maxLife: 400, active: true
+        life: 400,
+        maxLife: 400,
+        active: true,
+        spawnSource: (typeof isExtremeTimeAttackMode === 'function' && isExtremeTimeAttackMode()) ? 'extremeTimeAttack' : 'stage'
     };
     
     wormholes.push(newWormhole);
     distortGrid(newWormhole.x, newWormhole.y, 50, 150);
 }
 
-function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
+function spawnEnemy(x, y, type, size = 1, overrideColor = null, spawnSource = null) {
 
     if (isStageClear) return;
     if (stage === 9 && rushBossIndex >= 8) return;
+    if (isExtremeTimeAttackBattleshipActive() &&
+        type !== 'battleship' &&
+        spawnSource !== 'battleship') {
+        return;
+    }
     if (stage !== 9 && isBossSpawned && type !== 'boss' && type !== 'battleship') {
         const bossExists = enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
         if (!bossExists) return; // ボスが既に死んでいるなら雑魚は出さない
     }
 
+    const previousEnemySpawnSource = activeEnemySpawnSource;
+    activeEnemySpawnSource = spawnSource;
+
+    try {
     const spd = SPEED_SCALE;
-    const stageMag = (1.0 + (stage - 1) * DIFFICULTY_CONFIG.SPEED_INC) * bossAngerMinionSpeedMag; 
+    const stageMag = (1.0 + (stage - 1) * DIFFICULTY_CONFIG.SPEED_INC) * bossAngerMinionSpeedMag;
 
     const hpMag = (stage - 1) * DIFFICULTY_CONFIG.HP_INC;
 
@@ -2406,9 +2439,12 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null) {
         spawnedCount++;
 
         if (typeof AudioSys !== 'undefined') {
-            AudioSys.stopSE('lc_engine'); 
-            AudioSys.playSE('lc_engine', rx, ry); 
+            AudioSys.stopSE('lc_engine');
+            AudioSys.playSE('lc_engine', rx, ry);
         }
+    }
+    } finally {
+        activeEnemySpawnSource = previousEnemySpawnSource;
     }
 }
 
@@ -2500,7 +2536,7 @@ function updateEnemies() {
         // ★分裂の限界を「size < 3」に戻す
         if ((e.type === 'asteroid' || e.type === 'bubble') && e.size < 3 && !e.noSplit) {
             for (let i = 0; i < 2; i++) {
-                spawnEnemy(e.x, e.y, e.type, e.size + 1, e.variant);
+                spawnEnemy(e.x, e.y, e.type, e.size + 1, e.variant, e.spawnSource || null);
             }
         }
 
@@ -2961,10 +2997,13 @@ function updateSpawnLogic() {
         }
 
         const battleshipExists = enemyPool.pool.some(e => e.active && e.type === 'battleship');
+        const blocksExtremeSpawn = isExtremeMode && isExtremeTimeAttackBattleshipActive();
         const bossExists = enemyPool.pool.some(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
 
-        // 修正：ノルマに達していない、またはボス戦中ならスポーン可能
-        const canSpawn = (isExtremeMode && !battleshipExists) || (spawnedCount < enemiesToSpawn) || (isBossSpawned && bossExists);
+        // 修正：Time Attack中は専用スポーンだけを使い、ラスボス中は通常ワームホールを止める
+        const canSpawn = isExtremeMode
+            ? (!battleshipExists && !blocksExtremeSpawn)
+            : ((spawnedCount < enemiesToSpawn) || (isBossSpawned && bossExists));
 
         const currentEnemyCount = enemyPool.getActiveCount();
 
