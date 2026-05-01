@@ -7,6 +7,19 @@
 // 1. 入力状態の管理
 // =========================================================
 
+function syncDebugEnabled() {
+    if (typeof DEBUG === 'undefined') return;
+    const fpsText = document.getElementById('simple-fps-text');
+    const isFpsVisible = fpsText && fpsText.style.opacity === '1';
+    DEBUG.enabled = !!(
+        isFpsVisible ||
+        DEBUG.showOverlay ||
+        DEBUG.showHitboxes ||
+        DEBUG.showEnemyTargetLines ||
+        DEBUG.showSpawnPoints
+    );
+}
+
 /**
  * すべての入力状態を初期化・リセットする
  * (ポーズ時やゲームパッド切断時などに呼ばれる)
@@ -521,25 +534,33 @@ function initInputHandlers() {
 
         if (e.code === "F3") {
             e.preventDefault();
-            if (DEBUG.enabled) DEBUG.showOverlay = !DEBUG.showOverlay;
+            if (!DEBUG.enabled) return;
+            DEBUG.showOverlay = !DEBUG.showOverlay;
+            syncDebugEnabled();
             return;
         }
 
         if (e.code === "F4") {
             e.preventDefault();
-            if (DEBUG.enabled) DEBUG.showHitboxes = !DEBUG.showHitboxes;
+            if (!DEBUG.enabled) return;
+            DEBUG.showHitboxes = !DEBUG.showHitboxes;
+            syncDebugEnabled();
             return;
         }
 
         if (e.code === "F5") {
             e.preventDefault();
-            if (DEBUG.enabled) DEBUG.showEnemyTargetLines = !DEBUG.showEnemyTargetLines;
+            if (!DEBUG.enabled) return;
+            DEBUG.showEnemyTargetLines = !DEBUG.showEnemyTargetLines;
+            syncDebugEnabled();
             return;
         }
 
         if (e.code === "F6") {
             e.preventDefault();
-            if (DEBUG.enabled) DEBUG.showSpawnPoints = !DEBUG.showSpawnPoints;
+            if (!DEBUG.enabled) return;
+            DEBUG.showSpawnPoints = !DEBUG.showSpawnPoints;
+            syncDebugEnabled();
             return;
         }
     });
@@ -734,6 +755,13 @@ function initInputHandlers() {
                 // --- ポーズ中以外の場合：従来のFPS表示/非表示切り替え ---
                 isFpsVisible = !isFpsVisible;
                 fpsText.style.opacity = isFpsVisible ? '1' : '0';
+                DEBUG.enabled = isFpsVisible;
+                if (!isFpsVisible) {
+                    DEBUG.showOverlay = false;
+                    DEBUG.showHitboxes = false;
+                    DEBUG.showEnemyTargetLines = false;
+                    DEBUG.showSpawnPoints = false;
+                }
             }
         };
         fpsZone.addEventListener('mousedown', handleFpsZoneClick);

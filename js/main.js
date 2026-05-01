@@ -1420,6 +1420,7 @@ function updateDebugStats() {
                               : 1.0;
             const appScaleVal = typeof baseAppScale !== 'undefined' ? baseAppScale : 1.0;
             const uiScaleVal = typeof globalUiScale !== 'undefined' ? globalUiScale : 1.0;
+            const cameraScaleVal = typeof cameraScale !== 'undefined' ? cameraScale : 1.0;
             
             // HUDスケールの取得
             let hudScaleStr = document.documentElement.style.getPropertyValue('--hud-scale');
@@ -1429,7 +1430,7 @@ function updateDebugStats() {
             // ==========================================
             // ★変更：loop()全体の時間からCPU使用率を計算
             // ==========================================
-            fpsEl.innerText = `FPS: ${debugFps} (CPU: ${debugCpuPeak}%)\nKEY: ${resKey}\nHUD: ${hudScaleStr} UI: ${typeof uiScaleVal === 'number' ? uiScaleVal.toFixed(2) : uiScaleVal}\nRES: ${typeof resScaleVal === 'number' ? resScaleVal.toFixed(2) : resScaleVal} APP: ${typeof appScaleVal === 'number' ? appScaleVal.toFixed(2) : appScaleVal}`;
+            fpsEl.innerText = `FPS: ${debugFps} (CPU: ${debugCpuPeak}%)\nKEY: ${resKey}\nHUD: ${hudScaleStr} UI: ${typeof uiScaleVal === 'number' ? uiScaleVal.toFixed(2) : uiScaleVal} CAM: ${typeof cameraScaleVal === 'number' ? cameraScaleVal.toFixed(2) : cameraScaleVal}\nRES: ${typeof resScaleVal === 'number' ? resScaleVal.toFixed(2) : resScaleVal} APP: ${typeof appScaleVal === 'number' ? appScaleVal.toFixed(2) : appScaleVal}`;
         }
     }
 }
@@ -1493,6 +1494,7 @@ function updateDebugOverlay() {
                       ? GRAPHICS_SETTINGS[currentGraphicsQuality].resScale
                       : 1.0;
     const uiScaleVal = typeof globalUiScale !== 'undefined' ? globalUiScale : 1.0;
+    const cameraScaleVal = typeof cameraScale !== 'undefined' ? cameraScale : 1.0;
 
     // ★修正: テンプレートリテラル内に QUALITY と RES SCALE を追加
     el.textContent =
@@ -1504,6 +1506,7 @@ QUALITY: ${qualityStr}
 RESOLUTION: ${resKey}
 RES SCALE: ${typeof resScaleVal === 'number' ? resScaleVal.toFixed(2) : resScaleVal}
 UI SCALE: ${typeof uiScaleVal === 'number' ? uiScaleVal.toFixed(2) : uiScaleVal}
+CAM SCALE: ${typeof cameraScaleVal === 'number' ? cameraScaleVal.toFixed(2) : cameraScaleVal}
 LOGIC TIME: ${typeof debugLogicTime !== 'undefined' ? debugLogicTime.toFixed(2) : "0.00"} ms
 DRAW TIME: ${typeof debugDrawTime !== 'undefined' ? debugDrawTime.toFixed(2) : "0.00"} ms
 PLAYER X: ${px} Y: ${py}
