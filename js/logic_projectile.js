@@ -465,8 +465,39 @@ function updateEnemyBullets() {
         if (!eb.active) continue;
 
         // --- 1. 座標更新 ---
+        if (eb.isBossHomingLaser) {
+            eb.age = (eb.age || 0) + gameSpeed;
+
+            if (eb.age <= eb.lockTimer) {
+                const dx = player.x - eb.x;
+                const dy = player.y - eb.y;
+                const targetAngle = Math.atan2(dy, dx);
+                const currentAngle = Math.atan2(eb.vy, eb.vx);
+                let diff = targetAngle - currentAngle;
+                while (diff <= -Math.PI) diff += Math.PI * 2;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+
+                const turn = Math.max(-eb.turnRate, Math.min(eb.turnRate, diff)) * gameSpeed;
+                const speed = Math.hypot(eb.vx, eb.vy) || 0.001;
+                const nextAngle = currentAngle + turn;
+                eb.vx = Math.cos(nextAngle) * speed;
+                eb.vy = Math.sin(nextAngle) * speed;
+            } else if (eb.age <= eb.lockTimer + eb.accelTimer) {
+                const speed = Math.hypot(eb.vx, eb.vy) || 0.001;
+                const nextSpeed = Math.min(eb.targetSpeed, speed + eb.accelRate * gameSpeed);
+                eb.vx = (eb.vx / speed) * nextSpeed;
+                eb.vy = (eb.vy / speed) * nextSpeed;
+            }
+        }
+
         eb.x += eb.vx * gameSpeed;
         eb.y += eb.vy * gameSpeed;
+
+        if (eb.isBossHomingLaser && eb.trail) {
+            eb.trail.unshift({ x: eb.x, y: eb.y });
+            const maxTrail = 12;
+            while (eb.trail.length > maxTrail) eb.trail.pop();
+        }
 
         // --- 2. ワールド境界との衝突判定 ---
         const isHitWall = (eb.x < WALL_MARGIN || eb.x > worldSize - WALL_MARGIN || eb.y < WALL_MARGIN || eb.y > worldSize - WALL_MARGIN);

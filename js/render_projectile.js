@@ -200,7 +200,9 @@ function drawEnemyProjectiles() {
         ctx.globalAlpha = currentAlpha;
 
         // 弾の種類に応じた描画関数の呼び出し
-        if (eb.isLaserMissile) {
+        if (eb.isBossHomingLaser) {
+            drawBossHomingLaser(ctx, eb);
+        } else if (eb.isLaserMissile) {
             drawLaserMissile(ctx, eb);
         } else if (eb.isFighter) {
             drawFighterJet(ctx, eb);
@@ -218,6 +220,59 @@ function drawEnemyProjectiles() {
     // 描画設定を元に戻す
     ctx.globalAlpha = 1.0;
     ctx.globalCompositeOperation = 'source-over';
+}
+
+function drawBossHomingLaser(ctx, eb) {
+    const currentAlpha = (eb.alpha !== undefined) ? eb.alpha : 1.0;
+    const color = eb.color || '#f00';
+
+    if (eb.trail && eb.trail.length > 1) {
+        ctx.save();
+        ctx.translate(-eb.x, -eb.y);
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(eb.trail[0].x, eb.trail[0].y);
+        for (let i = 1; i < eb.trail.length; i++) {
+            ctx.lineTo(eb.trail[i].x, eb.trail[i].y);
+        }
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 6 * G_SCALE;
+        ctx.globalAlpha = 0.5 * currentAlpha;
+        ctx.stroke();
+
+        ctx.strokeStyle = '#fff8cc';
+        ctx.lineWidth = 2 * G_SCALE;
+        ctx.globalAlpha = currentAlpha;
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    ctx.save();
+    ctx.rotate(Math.atan2(eb.vy, eb.vx));
+
+    const maxLife = (typeof BULLET_CONFIG !== 'undefined' && BULLET_CONFIG.BOSS_LASER) ? BULLET_CONFIG.BOSS_LASER.LIFE : 180;
+    const lifeRatio = Math.max(0, Math.min(1, eb.life / maxLife));
+    const headLen = Math.max(3, 16 * G_SCALE * lifeRatio);
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 6 * G_SCALE;
+    ctx.globalAlpha = 0.85 * currentAlpha;
+    ctx.beginPath();
+    ctx.moveTo(-headLen * 0.5, 0);
+    ctx.lineTo(headLen * 0.5, 0);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#fff8cc';
+    ctx.lineWidth = 2 * G_SCALE;
+    ctx.globalAlpha = currentAlpha;
+    ctx.beginPath();
+    ctx.moveTo(-headLen * 0.5, 0);
+    ctx.lineTo(headLen * 0.5, 0);
+    ctx.stroke();
+    ctx.restore();
 }
 
 function drawNormalBullet(ctx, eb) {

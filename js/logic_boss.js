@@ -4,6 +4,21 @@
 
 const BOSS_PROJECTILE_SPEED_MULT = 1.3;
 
+function getBossHomingLaserShotCount() {
+    if (stage <= 2) return 2;
+    if (stage <= 4) return 3;
+    if (stage <= 6) return 4;
+    return 5;
+}
+
+function isBossHomingLaserShotFrame(timer, shotCount, attackFrames) {
+    for (let i = 1; i <= shotCount; i++) {
+        const shotFrame = Math.round((attackFrames / (shotCount + 1)) * i);
+        if (timer === shotFrame) return true;
+    }
+    return false;
+}
+
 function updateBossCombatMovement(e, options = {}) {
     const dx = player.x - e.x;
     const dy = player.y - e.y;
@@ -208,9 +223,8 @@ function updateBossAI(e, options = {}) {
 
     const cycle = e.fireTimer || 0;
     const isPressurePhase = cycle < 140;
-    const isSpreadLaserPattern = e.attackPattern === 0 && cycle < 140;
-    const shouldHoldForLaser = isSpreadLaserPattern;
-    const isChargePhase = cycle >= 140 && cycle < 260;
+    const isGravityEnabledForStage = enableGravity && stage >= 5;
+    const isChargePhase = isGravityEnabledForStage && cycle >= 140 && cycle < 260;
 
     updateBossCombatMovement(e, {
         desiredRadius: 360,
@@ -222,7 +236,7 @@ function updateBossAI(e, options = {}) {
         friction: 0.99,
         maxSpeed: e.speed * (isPressurePhase ? 8.5 : 7.0) * angerFactor * movementSpeedMult,
         margin: 95,
-        holdPosition: shouldHoldForLaser,
+        holdPosition: false,
         brakePosition: isChargePhase,
         brakeFriction: 0.94
     });
@@ -248,18 +262,28 @@ function updateBossAI(e, options = {}) {
     // ----------------------------------------------------
     if (e.fireTimer < brakeStart) {
 
-        // パターン0: 回転拡散レーザー
+        // パターン0: ホーミングレーザー
         if (e.attackPattern === 0) {
-            e.angle += 0.12 * gameSpeed * angerFactor; // 怒ると回転が速くなる
-            if (e.fireTimer % 20 === 0) {
+            e.angle += 0.08 * gameSpeed * angerFactor; // 怒ると回転が速くなる
+            const shotCount = getBossHomingLaserShotCount();
+            if (isBossHomingLaserShotFrame(e.fireTimer, shotCount, brakeStart)) {
                 const sides = e.variant.sides;
-                const bulletSpd = 13 * SPEED_SCALE * bulletSpeedMult;
+                const startSpd = 9.0 * SPEED_SCALE * bulletSpeedMult;
+                const targetSpd = 22.8 * SPEED_SCALE * bulletSpeedMult;
                 for (let i = 0; i < sides; i++) {
                     const a = e.angle + (Math.PI * 2 / sides) * i;
                     spawnEnemyBulletObj({
                         x: e.x + Math.cos(a) * 45, y: e.y + Math.sin(a) * 45,
-                        vx: Math.cos(a) * bulletSpd, vy: Math.sin(a) * bulletSpd,
-                        life: BULLET_CONFIG.BOSS_LASER.LIFE, isLaserMissile: true, color: e.color
+                        vx: Math.cos(a) * startSpd, vy: Math.sin(a) * startSpd,
+                        life: BULLET_CONFIG.BOSS_LASER.LIFE,
+                        isLaserMissile: true,
+                        isBossHomingLaser: true,
+                        lockTimer: 38,
+                        accelTimer: 26,
+                        turnRate: 0.045 * angerFactor,
+                        targetSpeed: targetSpd,
+                        accelRate: 0.66 * SPEED_SCALE * bulletSpeedMult,
+                        color: e.color
                     });
                 }
                 if (isOnScreen(e) && typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
@@ -313,15 +337,9 @@ function updateBossAI(e, options = {}) {
         const ratio = 1.0 - (e.fireTimer - brakeStart) / (fireTime - brakeStart);
         e.angle += Math.pow(ratio, 1.5) * 0.1;
 
-        // ★ ステージに応じた重力の強さ（割合）を計算
-        // 1: 1/4(0.25), 2: 1/3(0.33), 3: 1/2(0.5), 4: 3/4(0.75), 5以上: 最大(1.0)
-        let gravityRatio = 1.0;
-        if (stage === 1) gravityRatio = 0.25;
-        else if (stage === 2) gravityRatio = 0.333;
-        else if (stage === 3) gravityRatio = 0.5;
-        else if (stage === 4) gravityRatio = 0.75;
+        const gravityRatio = 1.0;
 
-        if (enableGravity && e.fireTimer < gravityEnd) {
+        if (isGravityEnabledForStage && e.fireTimer < gravityEnd) {
 
             if (e.fireTimer === brakeStart + 1) {
                 if (typeof AudioSys !== 'undefined') AudioSys.playSE('gravity_boss', e.x, e.y, gravityRatio);

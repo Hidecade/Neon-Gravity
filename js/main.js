@@ -359,8 +359,11 @@ const createRing = () => ({
 const createEnemyBullet = () => ({
     x: 0, y: 0, vx: 0, vy: 0, life: 0, color: '#f00',
     isMissile: false, isLaserMissile: false, isShockwave: false,
+    isBossHomingLaser: false,
     isFading: false, baseAlpha: 1, alpha: 1, // フェード演出用
     homingTimer: 0, trail: null,             // ミサイル用
+    age: 0, lockTimer: 0, accelTimer: 0,
+    turnRate: 0, targetSpeed: 0, accelRate: 0,
     baseScale: 1, scaleSpeed: 0.02,          // 衝撃波用
     active: false
 });
@@ -455,13 +458,20 @@ function spawnEnemyBulletObj(options) {
     eb.isMissile = options.isMissile || false;
     eb.isLaserMissile = options.isLaserMissile || false;
     eb.isShockwave = options.isShockwave || false;
-    
+    eb.isBossHomingLaser = options.isBossHomingLaser || false;
+
     // 演出・状態用パラメータのリセット
     eb.isFading = false;
     eb.baseAlpha = 1.0;
     eb.alpha = 1.0;
     eb.homingTimer = options.homingTimer || 240;
-    if (eb.isMissile) {
+    eb.age = 0;
+    eb.lockTimer = options.lockTimer || 0;
+    eb.accelTimer = options.accelTimer || 0;
+    eb.turnRate = options.turnRate || 0;
+    eb.targetSpeed = options.targetSpeed || 0;
+    eb.accelRate = options.accelRate || 0;
+    if (eb.isMissile || eb.isBossHomingLaser) {
         if (!eb.trail) eb.trail = []; // 最初だけ作る
         eb.trail.length = 0;          // 中身だけリセットして再利用！
     } else {
