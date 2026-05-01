@@ -1006,7 +1006,7 @@ function detectResolution(screenW, screenH) {
     // ----------------------------------------------------
     // 1. VGA: PCブラウザの小型表示確認用
     // ----------------------------------------------------
-    if (longSide <= 800) {
+    if (longSide <= 800 && !isPhoneViewport) {
         return {
             key: isPortrait ? "VGA_P" : "VGA_L",
             width: screenW,
