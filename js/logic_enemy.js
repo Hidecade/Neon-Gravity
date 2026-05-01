@@ -26,6 +26,15 @@ function isNormalBossMinionSpawnSuppressed() {
     return !!(boss && (boss.aliveTimer || 0) < 1800);
 }
 
+function isNormalBossMinionSpawnHalved() {
+    if (typeof isExtremeTimeAttackMode === 'function' && isExtremeTimeAttackMode()) return false;
+    if (stage === 9 || stage === 10) return false;
+    const boss = enemyPool.pool.find(e => e.active && e.type === 'boss');
+    if (!boss) return false;
+    const aliveTimer = boss.aliveTimer || 0;
+    return aliveTimer >= 1800 && aliveTimer < 3600;
+}
+
 function resetEnemyFxBudget() {
     if (enemyFxBudgetFrame === frame) return;
     enemyFxBudgetFrame = frame;
@@ -1898,11 +1907,12 @@ wormholes.forEach((w) => {
                     const escaped = window.enemiesEscaped || 0;
                     const remaining = enemiesToSpawn - (enemiesKilled + escaped);
                     
-                    if (!isBossSpawned && (remaining <= enemiesToSpawn * 0.2 || spawnedCount >= enemiesToSpawn)) {
+                    if (!isBossSpawned && remaining <= 0) {
                         triggerBossEncounter();
                         isBossSpawned = true;
                     } else {
                         const bossEx = enemyPool.pool.some(e => e.active && e.type === 'boss');
+                        if (bossEx && isNormalBossMinionSpawnHalved() && ((w.life / SPAWN_SETTINGS.SPAWN_INTERVAL) % 2 !== 0)) return;
                         if ((spawnedCount < enemiesToSpawn || bossEx) && !isNormalBossMinionSpawnSuppressed()) {
                             const pool = STAGE_ENEMIES[stage] || STAGE_ENEMIES[7];
                             const type = Math.random() < 0.15 ? 'cube' : pool[Math.floor(Math.random() * pool.length)];
@@ -3044,7 +3054,7 @@ function updateSpawnLogic() {
         const remaining = enemiesToSpawn - (enemiesKilled + escaped); // ★修正
         
         if (!isExtremeMode && gameState === 'PLAYING' && !isBossSpawned && !isBossWarning && activeWh === 0 && currentEnemyCount === 0) {
-            if (remaining <= enemiesToSpawn * 0.2 || spawnedCount >= enemiesToSpawn) {
+            if (remaining <= 0) {
                 console.log("Safety Net: Triggering Boss Encounter");
                 triggerBossEncounter();
                 isBossSpawned = true;

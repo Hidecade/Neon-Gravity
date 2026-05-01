@@ -2,6 +2,8 @@
 // BOSS AI
 // ==========================================
 
+const BOSS_PROJECTILE_SPEED_MULT = 1.3;
+
 function updateBossCombatMovement(e, options = {}) {
     const dx = player.x - e.x;
     const dy = player.y - e.y;
@@ -102,7 +104,7 @@ function updateBossCombatMovement(e, options = {}) {
 function updateBossAI(e, options = {}) {
     const enableGravity = options.enableGravity !== false;
     const movementSpeedMult = options.movementSpeedMult || 1.0;
-    const bulletSpeedMult = options.bulletSpeedMult || 1.0;
+    const bulletSpeedMult = (options.bulletSpeedMult || 1.0) * BOSS_PROJECTILE_SPEED_MULT;
 
     // =========================================================
     // 1. 出現演出 (Spawn Sequence)
@@ -149,7 +151,7 @@ function updateBossAI(e, options = {}) {
         // 4フレームごとの超高速連射
         if (frame % 4 === 0) {
             const sides = 16; // 16方向へ同時発射
-            const spd = 12 * SPEED_SCALE;
+            const spd = 12 * SPEED_SCALE * BOSS_PROJECTILE_SPEED_MULT;
 
             for (let i = 0; i < sides; i++) {
                 // 回転に合わせて発射角度をずらす（スパイラル状に広がる）
@@ -597,7 +599,9 @@ function updateBattleshipAI(e) {
                 for (let i = -1; i <= 1; i++) {
                     const a = baseA + (i * 0.2);
                     spawnEnemyBulletObj({
-                        x: sx, y: sy, vx: Math.cos(a) * 24 * SPEED_SCALE, vy: Math.sin(a) * 24 * SPEED_SCALE,
+                        x: sx, y: sy,
+                        vx: Math.cos(a) * 24 * SPEED_SCALE * BOSS_PROJECTILE_SPEED_MULT,
+                        vy: Math.sin(a) * 24 * SPEED_SCALE * BOSS_PROJECTILE_SPEED_MULT,
                         life: 200, color: '#0ff', isLaserMissile: true
                     });
                 }
@@ -703,7 +707,8 @@ function updateBattleshipAI(e) {
                 const a = e.angle + (Math.PI * 2 / 8) * i;
                 spawnEnemyBulletObj({
                     x: e.x + Math.cos(a) * 80, y: e.y + Math.sin(a) * 80,
-                    vx: Math.cos(a) * 4, vy: Math.sin(a) * 4,
+                    vx: Math.cos(a) * 4 * BOSS_PROJECTILE_SPEED_MULT,
+                    vy: Math.sin(a) * 4 * BOSS_PROJECTILE_SPEED_MULT,
                     life: 200, color: '#0ff', isLaserMissile: true
                 });
             }

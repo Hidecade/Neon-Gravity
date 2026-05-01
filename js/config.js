@@ -160,14 +160,14 @@ const MAX_STAGE = 10;         // 最大ステージ
 
 // ステージごとの敵総出現数
 const STAGE_ENEMY_COUNTS = [
-    60, // Stage 1
-    80, // Stage 2
-    80, // Stage 3
-    120, // Stage 4
-    180, // Stage 5
-    200, // Stage 6
-    250, // Stage 7
-    360 // Stage 8 (Final)
+    50, // Stage 1
+    70, // Stage 2
+    70, // Stage 3
+    110, // Stage 4
+    170, // Stage 5
+    190, // Stage 6
+    240, // Stage 7
+    350 // Stage 8 (Final)
 ];
 
 // 画面内に同時に存在できる敵の最大数
@@ -301,17 +301,11 @@ const STAGE_ENEMIES = {
 // Stage 9 (ボスラッシュ) 専用の雑魚スポーン設定
 const BOSS_RUSH_SPAWN_CONFIG = {
     INTERVAL: 40,      // 出現間隔 (フレーム数)。小さいほど高頻度
-    MAX_ENEMIES: 15,    // 画面内に存在できる雑魚の最大数
+    MAX_ENEMIES: 10,    // 画面内に存在できる雑魚の最大数
     SPAWN_COUNT: 1,     // 1回のスポーンで出現する敵の数
     WARP_DELAY: 400     // ワームホール出現から敵が出るまでの待ち時間(ms)
 };
 
-// Stage 9 (ボスラッシュ) 専用のボス弾速設定
-const BOSS_RUSH_BULLET_CONFIG = {
-    PHASE1_LASER_SPD: 2,  // フェーズ1：拡散レーザーの速度倍率
-    PHASE2_SNIPE_SPD: 15,   // フェーズ2：狙撃弾の基本速度
-    PHASE3_MISSILE_SPD: 1.5 // フェーズ3：誘導ミサイルの速度倍率
-};
 
 // スポーンロジック設定
 const SPAWN_SETTINGS = {
