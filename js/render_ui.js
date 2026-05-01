@@ -105,15 +105,15 @@ function updateUI() {
     ui.enemyBar.style.boxShadow = '';
 
     if (isExtremeMode && extremeState) {
-        const gaugePct = extremeState.maxGaugeFrames > 0
-            ? Math.max(0, Math.min(100, (extremeState.gaugeFrames / extremeState.maxGaugeFrames) * 100))
-            : 0;
         const targetSec = Math.floor((extremeState.targetFrames || 0) / 60);
         const survivedSec = Math.floor((extremeState.survivalFrames || 0) / 60);
         const remainSec = Math.max(0, targetSec - survivedSec);
+        const remainPct = extremeState.targetFrames > 0
+            ? Math.max(0, Math.min(100, ((extremeState.targetFrames - extremeState.survivalFrames) / extremeState.targetFrames) * 100))
+            : 0;
 
-        ui.enemyBar.style.width = `${gaugePct}%`;
-        if (ui.enemyLabel) ui.enemyLabel.innerText = `CORE: ${Math.max(0, extremeState.gaugeFrames / 60).toFixed(1)}s`;
+        ui.enemyBar.style.width = `${remainPct}%`;
+        if (ui.enemyLabel) ui.enemyLabel.innerText = `TIME: ${remainSec}s`;
         ui.stage.innerText = extremeState.cleared ? 'ALL' : `TA ${remainSec}s`;
     } else if (stage === 9) {
         const progress = rushBossIndex / 8;

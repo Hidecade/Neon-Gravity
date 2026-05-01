@@ -1741,12 +1741,6 @@ function destroyEnemy(e) {
     score += pts;
     ui.score.innerText = score.toString().padStart(6, '0');
 
-    if (typeof addExtremeTimeAttackGaugeSeconds === 'function' && typeof isExtremeTimeAttackMode === 'function' && isExtremeTimeAttackMode()) {
-        const bonusMap = EXTREME_TIME_ATTACK_CONFIG.KILL_BONUS_SECONDS;
-        const gain = bonusMap[e.type] || bonusMap.default || 0;
-        addExtremeTimeAttackGaugeSeconds(gain);
-    }
-    
     // ボス撃破時は文字を少し強調する（alphaを高く、寿命を長く）
     const isBossClass = (e.type === 'boss' || e.type === 'battleship');
     const popLife = isBossClass ? 120 : 40;

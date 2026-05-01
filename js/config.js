@@ -35,24 +35,8 @@ const GAME_MODES = {
 const EXTREME_TIME_ATTACK_CONFIG = {
     TARGET_TIME_SECONDS: 180,
     WARNING_TIME_SECONDS: 6,
-    INITIAL_GAUGE_SECONDS: 20,
-    GAUGE_DECAY_PER_SECOND: 1.05,
-    DECAY_MULT_60S: 1.25,
-    DECAY_MULT_120S: 1.55,
-    DAMAGE_PENALTY_SECONDS: 2.5,
-    START_GRACE_SECONDS: 5,
     BOSS_SPAWN_SECONDS: [60, 120],
-    TIME_BONUS_SCORE_PER_SECOND: 1000,
-    KILL_BONUS_SECONDS: {
-        default: 0.6,
-        dragon: 1.5,
-        boss: 3.0,
-        battleship: 4.0,
-        eclipse: 1.2,
-        hunter: 0.8,
-        phantom: 0.8,
-        lightcycle: 0.9
-    }
+    TIME_BONUS_SCORE_PER_SECOND: 1000
 };
 
 const EXTREME_TIME_ATTACK_SPAWN_TIERS = [

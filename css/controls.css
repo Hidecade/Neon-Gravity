@@ -14,8 +14,8 @@
 
 .joystick-area {
     position: absolute;
-    width: calc(200px * var(--ui-scale, 1));
-    height: calc(200px * var(--ui-scale, 1));
+    width: calc(200px * var(--ui-scale, 1) * var(--control-scale, 1));
+    height: calc(200px * var(--ui-scale, 1) * var(--control-scale, 1));
     max-width: 200px;  /* ★追加: 最大サイズを制限 */
     max-height: 200px; /* ★追加: 最大サイズを制限 */
     border-radius: 50%;
@@ -79,12 +79,12 @@
 
 #launch-btn {
     position: absolute;
-    width: calc(100px * var(--ui-scale, 1));
-    height: calc(100px * var(--ui-scale, 1));
+    width: calc(100px * var(--ui-scale, 1) * var(--control-scale, 1));
+    height: calc(100px * var(--ui-scale, 1) * var(--control-scale, 1));
     max-width: 100px;  /* ★追加: 発射ボタンの最大サイズを制限 */
     max-height: 100px; /* ★追加: 発射ボタンの最大サイズを制限 */
     right: calc(30px * var(--ui-scale, 1));
-    bottom: calc(230px * var(--ui-scale, 1));
+    bottom: calc((230px * var(--ui-scale, 1)) - var(--iphone-landscape-control-drop, 0px));
     border-radius: 50%;
     background: rgba(255, 255, 0, 0.1);
     border: 2px solid #ff0;
@@ -95,8 +95,8 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    font-size: calc(16px * var(--ui-scale, 1));
-    letter-spacing: calc(1px * var(--ui-scale, 1));
+    font-size: calc(16px * var(--ui-scale, 1) * var(--control-scale, 1));
+    letter-spacing: calc(1px * var(--ui-scale, 1) * var(--control-scale, 1));
     box-shadow: 0 0 15px rgba(30, 30, 27, 0.3), inset 0 0 10px rgba(255, 255, 0, 0.2);
     pointer-events: auto;
     text-shadow: 0 0 5px #ff0;
@@ -107,8 +107,8 @@
 #launch-btn::before {
     content: '';
     position: absolute;
-    width: calc(110px * var(--ui-scale, 1));
-    height: calc(110px * var(--ui-scale, 1));
+    width: calc(110px * var(--ui-scale, 1) * var(--control-scale, 1));
+    height: calc(110px * var(--ui-scale, 1) * var(--control-scale, 1));
     max-width: 105px;  /* ★追加: 点線枠の最大サイズを制限 (元の比率 110/100 に合わせる) */
     max-height: 105px; /* ★追加: 点線枠の最大サイズを制限 */
     border: 1px dashed rgba(255, 255, 0, 0.4);
@@ -140,7 +140,7 @@
 #pause-btn {
     position: absolute;
     right: calc(30px * var(--ui-scale, 1));
-    bottom: calc(350px * var(--ui-scale, 1));
+    bottom: calc((350px * var(--ui-scale, 1)) - var(--iphone-landscape-control-drop, 0px));
     width: calc(50px * var(--ui-scale, 1));
     height: calc(50px * var(--ui-scale, 1));
     max-width: 70px;  /* ★追加: ポーズボタンの最大サイズを制限 */

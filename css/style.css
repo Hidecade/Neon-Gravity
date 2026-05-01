@@ -28,6 +28,8 @@
     --ui-scale: 1;
     /* HUDスケール変数：HUD要素のサイズ調整用 */
     --hud-scale: 1;
+    --control-scale: 1;
+    --iphone-landscape-control-drop: 0px;
 }
 
 /* ▼ iOS Safariでの強制文字拡大（Font Boosting）を無効化 */

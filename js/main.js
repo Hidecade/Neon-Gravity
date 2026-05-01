@@ -43,8 +43,6 @@ let extremeTimeAttackState = {
     cleared: false,
     targetFrames: 0,
     survivalFrames: 0,
-    gaugeFrames: 0,
-    maxGaugeFrames: 0,
     bossSpawnIndex: 0,
     lastCountdownSecond: null,
     warningShown: false,
@@ -97,8 +95,6 @@ function resetExtremeTimeAttackState() {
         cleared: false,
         targetFrames: Math.floor(EXTREME_TIME_ATTACK_CONFIG.TARGET_TIME_SECONDS * 60),
         survivalFrames: 0,
-        gaugeFrames: 0,
-        maxGaugeFrames: Math.floor(EXTREME_TIME_ATTACK_CONFIG.INITIAL_GAUGE_SECONDS * 60),
         bossSpawnIndex: 0,
         lastCountdownSecond: null,
         warningShown: false,
@@ -110,20 +106,10 @@ function resetExtremeTimeAttackState() {
 function initExtremeTimeAttackState() {
     resetExtremeTimeAttackState();
     extremeTimeAttackState.active = true;
-    extremeTimeAttackState.gaugeFrames = extremeTimeAttackState.maxGaugeFrames;
 }
 
 function getExtremeTimeAttackState() {
     return extremeTimeAttackState;
-}
-
-function addExtremeTimeAttackGaugeSeconds(seconds) {
-    if (!isExtremeTimeAttackMode() || !extremeTimeAttackState.active) return;
-    const frames = Math.floor(Math.max(0, seconds) * 60);
-    extremeTimeAttackState.gaugeFrames = Math.min(
-        extremeTimeAttackState.maxGaugeFrames,
-        extremeTimeAttackState.gaugeFrames + frames
-    );
 }
 
 function isExtremeTimeAttackFinalBossActive() {
@@ -133,13 +119,6 @@ function isExtremeTimeAttackFinalBossActive() {
     }
     if (typeof enemyPool === 'undefined' || !enemyPool || !Array.isArray(enemyPool.pool)) return false;
     return enemyPool.pool.some(e => e.active && e.type === 'battleship');
-}
-
-function applyExtremeTimeAttackHitPenalty(seconds) {
-    if (!isExtremeTimeAttackMode() || !extremeTimeAttackState.active) return;
-    if (isExtremeTimeAttackFinalBossActive()) return;
-    const frames = Math.floor(Math.max(0, seconds) * 60);
-    extremeTimeAttackState.gaugeFrames = Math.max(0, extremeTimeAttackState.gaugeFrames - frames);
 }
 
 function updateExtremeTimeAttack() {
@@ -181,26 +160,6 @@ function updateExtremeTimeAttack() {
         }
         return;
     }
-
-    const graceFrames = Math.floor(EXTREME_TIME_ATTACK_CONFIG.START_GRACE_SECONDS * 60);
-    if (extremeTimeAttackState.survivalFrames <= graceFrames) return;
-    if (isExtremeTimeAttackFinalBossActive()) return;
-
-    let decay = EXTREME_TIME_ATTACK_CONFIG.GAUGE_DECAY_PER_SECOND;
-    if (extremeTimeAttackState.survivalFrames >= 120 * 60) {
-        decay *= EXTREME_TIME_ATTACK_CONFIG.DECAY_MULT_120S;
-    } else if (extremeTimeAttackState.survivalFrames >= 60 * 60) {
-        decay *= EXTREME_TIME_ATTACK_CONFIG.DECAY_MULT_60S;
-    }
-
-    extremeTimeAttackState.gaugeFrames -= decay;
-    if (extremeTimeAttackState.gaugeFrames <= 0) {
-        extremeTimeAttackState.gaugeFrames = 0;
-        if (gameState === 'PLAYING') {
-            player.shield = 0;
-            if (typeof damage === 'function') damage(0);
-        }
-    }
 }
 
 window.queueGameModeStart = queueGameModeStart;
@@ -208,8 +167,6 @@ window.getCurrentGameMode = getCurrentGameMode;
 window.isExtremeTimeAttackMode = isExtremeTimeAttackMode;
 window.getExtremeTimeAttackState = getExtremeTimeAttackState;
 window.isExtremeTimeAttackFinalBossActive = isExtremeTimeAttackFinalBossActive;
-window.addExtremeTimeAttackGaugeSeconds = addExtremeTimeAttackGaugeSeconds;
-window.applyExtremeTimeAttackHitPenalty = applyExtremeTimeAttackHitPenalty;
 
 // =========================================================
 // 2. ステージ・進行管理変数
@@ -1029,7 +986,7 @@ function detectResolution(screenW, screenH) {
             width: Math.floor(screenW * scale),
             height: Math.floor(screenH * scale),
             uiScale: isPortrait ? 0.82 : 0.78,
-            hudScale: isPortrait ? 0.9 : 0.78,
+            hudScale: isPortrait ? 0.945 : 1.00,
             playScale: isPortrait ? 1.25 : 1.15
         };
     }
@@ -1109,8 +1066,12 @@ function resize() {
     document.documentElement.style.setProperty('--ui-scale', globalUiScale);
 
     const hudScale = currentResolution.hudScale || globalUiScale;
+    const controlScale = currentResolution.key && currentResolution.key.includes('iPhone') ? 0.8 : 1.0;
+    const iPhoneLandscapeControlDrop = currentResolution.key === 'iPhone_L' ? '24px' : '0px';
 
     document.documentElement.style.setProperty('--hud-scale', hudScale);
+    document.documentElement.style.setProperty('--control-scale', controlScale);
+    document.documentElement.style.setProperty('--iphone-landscape-control-drop', iPhoneLandscapeControlDrop);
 
     // stage / warning メッセージだけ必要ならスケール
     const scaleElements = [
