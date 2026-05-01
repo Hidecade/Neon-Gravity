@@ -1030,7 +1030,7 @@ function detectResolution(screenW, screenH) {
             height: Math.floor(screenH * scale),
             uiScale: isPortrait ? 0.82 : 0.78,
             hudScale: isPortrait ? 0.9 : 0.78,
-            playScale: isPortrait ? 1.3 : 1.2
+            playScale: isPortrait ? 1.25 : 1.15
         };
     }
 

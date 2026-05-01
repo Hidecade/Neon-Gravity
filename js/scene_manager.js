@@ -2310,11 +2310,13 @@ function updateCamera() {
         const t = boss.cameraLerpTimer / smoothMax;
         const camT = 1 - Math.pow(1 - t, 4);
 
-        const dist = Math.hypot(player.x - boss.x, player.y - boss.y) || 0.1;
-        const maxDist = 1500;
-        const ratio = Math.min(dist / maxDist, 1.0);
-
-        targetScale = 1.0 - (ratio * 0.35 * camT);
+        const dx = player.x - boss.x;
+        const dy = player.y - boss.y;
+        const isPortraitView = height > width;
+        const axisDist = isPortraitView ? Math.abs(dx) : Math.abs(dy);
+        const maxAxisDist = 900;
+        const ratio = Math.min(axisDist / maxAxisDist, 1.0);
+        targetScale = 1.0 - (ratio * 0.40 * camT);
 
         const bias = ratio * 0.25 * camT;
         focusX = player.x + (boss.x - player.x) * bias;
