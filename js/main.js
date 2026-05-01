@@ -1052,7 +1052,8 @@ function detectResolution(screenW, screenH) {
         key: isPortrait ? "MOBILE_P" : "MOBILE_L",
         width: Math.floor(screenW * scale),
         height: Math.floor(screenH * scale),
-        uiScale: isPortrait ? 0.82 : 0.78
+        //uiScale: isPortrait ? 0.82 : 0.78
+        uiScale: isPortrait ? 0.70 : 0.74
     };
 }
 

@@ -6,7 +6,7 @@ window.GAME_VERSION = globalThis.NEON_GRAVITY_VERSION || "0.9.37";
 
 
 const DEBUG = {
-    enabled: false,
+    enabled: true,
     showOverlay: false,
     showHitboxes: false,
     showEnemyTargetLines: false,
