@@ -2955,8 +2955,8 @@ function updateSpawnLogic() {
         // ★修正：基本の最大数を取得
         let screenMax = STAGE_MAX_ON_SCREEN[stage - 1] || 40;
         
-        // ★追加：スマホ（MOBILE_P や MOBILE_L）の時は、最大敵数を 80% に減らす
-        if (typeof currentResolution !== 'undefined' && currentResolution.key.includes('MOBILE')) {
+        // ★追加：スマホ（iPhone_P や iPhone_L）の時は、最大敵数を 80% に減らす
+        if (typeof currentResolution !== 'undefined' && currentResolution.key.includes('iPhone')) {
             screenMax = Math.floor(screenMax * 0.80);
         }
 

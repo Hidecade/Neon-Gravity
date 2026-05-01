@@ -971,92 +971,86 @@ let currentResolution = {
     key: "PC_L",
     width: 1920,
     height: 1080,
-    uiScale: 1.0
+    uiScale: 1.0,
+    hudScale: 1.0,
+    playScale: 1.0
 };
 
 function detectResolution(screenW, screenH) {
     const ratio = screenW / screenH;
     const isPortrait = screenH > screenW;
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const ua = navigator.userAgent;
     const isTouchDevice = navigator.maxTouchPoints > 0;
-    const isMobileViewport = isIOS || isTouchDevice || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isIPhone = /iPhone|iPod/i.test(ua);
+    const isIPad = /iPad/i.test(ua) || (/Macintosh/i.test(ua) && isTouchDevice);
+    const isAndroid = /Android/i.test(ua);
+    const isPhoneViewport = isIPhone || isAndroid || (isTouchDevice && Math.min(screenW, screenH) < 768);
+    const isTabletViewport = isIPad || (isTouchDevice && Math.min(screenW, screenH) >= 768);
 
     const longSide = Math.max(screenW, screenH);
     const shortSide = Math.min(screenW, screenH);
 
     // ----------------------------------------------------
-    // 1. PC / iPad / 大画面モニター (短辺が十分大きい)
+    // 1. VGA: PCブラウザの小型表示確認用
     // ----------------------------------------------------
-    if (shortSide >= 768) {
-        // 短辺に応じてUIスケールを動的に計算 (1.0〜最大1.6)
-        let calculatedUiScale = (shortSide / 768) * 1.3; 
-        calculatedUiScale = Math.min(calculatedUiScale, 1.6);
-
-        // 横画面 (Landscape) の場合
-        if (!isPortrait) {
-            // 超大画面の制限
-            if (longSide > 1920) {
-                return {
-                    key: "FHD_CAPPED",
-                    width: 1920,
-                    height: Math.floor(1920 / ratio),
-                    uiScale: 1.0 
-                };
-            }
-            return {
-                key: "PC_L",
-                width: screenW,
-                height: screenH,
-                uiScale: calculatedUiScale 
-            };
-        } 
-        // 縦画面 (Portrait) の場合 (PC_P を追加)
-        else {
-            // 縦長の場合も、長辺が大きすぎる場合の制限を設ける（必要に応じて）
-            if (longSide > 1920) {
-                return {
-                    key: "FHD_CAPPED_P", // 縦用のキャップキー
-                    width: Math.floor(1920 * ratio),
-                    height: 1920,
-                    uiScale: 1.0
-                };
-            }
-            return {
-                key: "PC_P",
-                width: screenW,
-                height: screenH,
-                uiScale: calculatedUiScale
-            };
-        }
-    }
-
-    // ----------------------------------------------------
-    // 2. 超小型画面 (VGA相当のウィンドウや古いスマホ)
-    // ----------------------------------------------------
-    if (!isMobileViewport && longSide <= 800) {
+    if (longSide <= 800) {
         return {
             key: isPortrait ? "VGA_P" : "VGA_L",
             width: screenW,
             height: screenH,
-            uiScale: 0.6 
+            uiScale: 0.6,
+            hudScale: 0.9,
+            playScale: isPortrait ? 1.3 : 1.2
         };
     }
 
     // ----------------------------------------------------
-    // 3. 一般的なスマホ / タブレット
+    // 2. iPhone: 現在の見え方を維持
     // ----------------------------------------------------
-    const MAX_MOBILE_LONG_SIDE = 1200;
-    let scale = 1.0;
-    
-    if (longSide > MAX_MOBILE_LONG_SIDE) {
-        scale = MAX_MOBILE_LONG_SIDE / longSide;
+    if (isPhoneViewport) {
+        const MAX_MOBILE_LONG_SIDE = 1200;
+        const scale = longSide > MAX_MOBILE_LONG_SIDE ? MAX_MOBILE_LONG_SIDE / longSide : 1.0;
+
+        return {
+            key: isPortrait ? "iPhone_P" : "iPhone_L",
+            width: Math.floor(screenW * scale),
+            height: Math.floor(screenH * scale),
+            uiScale: isPortrait ? 0.82 : 0.78,
+            hudScale: isPortrait ? 0.9 : 0.78,
+            playScale: isPortrait ? 1.3 : 1.2
+        };
     }
 
+    // ----------------------------------------------------
+    // 3. iPad: 縦横とも少し引き気味
+    // ----------------------------------------------------
+    if (isTabletViewport || isPortrait) {
+        const MAX_TABLET_LONG_SIDE = 1366;
+        const scale = longSide > MAX_TABLET_LONG_SIDE ? MAX_TABLET_LONG_SIDE / longSide : 1.0;
+
+        return {
+            key: isPortrait ? "iPad_P" : "iPad_L",
+            width: Math.floor(screenW * scale),
+            height: Math.floor(screenH * scale),
+            uiScale: 1.05,
+            hudScale: isPortrait ? 1.2 : 1.25,
+            playScale: isPortrait ? 1.0 : 0.95
+        };
+    }
+
+    // ----------------------------------------------------
+    // 4. PC: FHD横画面想定。大きい画面はFHD相当にキャップ
+    // ----------------------------------------------------
+    const MAX_PC_WIDTH = 1920;
+    const pcScale = screenW > MAX_PC_WIDTH ? MAX_PC_WIDTH / screenW : 1.0;
+
     return {
-        key: isPortrait ? "MOBILE_P" : "MOBILE_L",
-        width: Math.floor(screenW * scale),
-        height: Math.floor(screenH * scale),
-        uiScale: isPortrait ? 0.82 : 0.78
+        key: isPortrait ? "PC_P" : "PC_L",
+        width: Math.floor(screenW * pcScale),
+        height: Math.floor(screenH * pcScale),
+        uiScale: 1.15,
+        hudScale: 1.5,
+        playScale: 0.9
     };
 }
 
@@ -1091,21 +1085,9 @@ function resize() {
     baseAppScale = maxDim / REFERENCE_SIZE;
 
     const isPortrait = vh > vw;
-    
+
     // プレイ画面のズームサイズ調整
-    if (isPortrait) {
-        baseAppScale *= 1.3;
-    } else {
-        // ★修正: 大画面(FHD_CAPPED, PC_L)とスマホ(MOBILE_L等)でズーム倍率を分ける
-        if (currentResolution.key === "FHD_CAPPED") {
-            baseAppScale *= 0.75; 
-        } else if (currentResolution.key === "PC_L") {
-            baseAppScale *= 1.2; 
-        } else {
-            // スマホの横画面などは迫力を出すために1.2倍のまま
-            baseAppScale *= 1.2;
-        }
-    }
+    baseAppScale *= currentResolution.playScale || (isPortrait ? 1.3 : 1.2);
 
     // ==========================================
     // UIスケールとHUDスケール
@@ -1113,19 +1095,7 @@ function resize() {
     globalUiScale = currentResolution.uiScale;
     document.documentElement.style.setProperty('--ui-scale', globalUiScale);
 
-    let hudScale = 1.0;
-
-    // ★修正: 指定された6つのキーに基づいてHUDスケールを割り当て
-    if (currentResolution.key === "VGA_L" || currentResolution.key === "VGA_P") {
-        // VGAサイズ（超小型）の場合はHUDを少し小さくする
-        hudScale = 0.9;
-    } else if (currentResolution.key === "MOBILE_P") {
-        // 縦持ちスマホ
-        hudScale = 0.9;
-    } else {
-        // 横画面系（FHD_CAPPED, PC_L, MOBILE_L）はUIスケールに連動させる
-        hudScale = globalUiScale; 
-    }
+    const hudScale = currentResolution.hudScale || globalUiScale;
 
     document.documentElement.style.setProperty('--hud-scale', hudScale);
 
