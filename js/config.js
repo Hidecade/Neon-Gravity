@@ -149,9 +149,9 @@ const STAGE_ENEMY_COUNTS = [
     70, // Stage 3
     110, // Stage 4
     150, // Stage 5
-    130, // Stage 6
-    230, // Stage 7
-    300 // Stage 8 (Final)
+    110, // Stage 6
+    200, // Stage 7
+    250 // Stage 8 (Final)
 ];
 
 // 画面内に同時に存在できる敵の最大数
@@ -284,8 +284,8 @@ const STAGE_ENEMIES = {
 
 // Stage 9 (ボスラッシュ) 専用の雑魚スポーン設定
 const BOSS_RUSH_SPAWN_CONFIG = {
-    INTERVAL: 40,      // 出現間隔 (フレーム数)。小さいほど高頻度
-    MAX_ENEMIES: 10,    // 画面内に存在できる雑魚の最大数
+    INTERVAL: 60,      // 出現間隔 (フレーム数)。小さいほど高頻度
+    MAX_ENEMIES: 8,    // 画面内に存在できる雑魚の最大数
     SPAWN_COUNT: 1,     // 1回のスポーンで出現する敵の数
     WARP_DELAY: 400     // ワームホール出現から敵が出るまでの待ち時間(ms)
 };

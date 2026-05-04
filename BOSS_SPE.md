@@ -16,7 +16,7 @@ Neon Gravity のボス仕様まとめ。実装上の主な参照先は `js/logic
   - 出現完了後に `attackPattern = 0`, `aliveTimer = 0`, `orbitDir` を初期化
 - HP:
   - 通常出現: `variant.hp + (stage - 1) * 10`
-  - Boss Rush: `variant.hp * 1.2`
+  - Boss Rush: `variant.hp`
 - 速度:
   - `1.2 * variant.speedFactor * SPEED_SCALE * (1.0 + (stage - 1) * 0.08)`
 - 撃破スコア: `30000`
@@ -332,7 +332,7 @@ GENESIS-ARK の攻撃は `fireTimer % 1380` で管理する。
 - 出現するボス:
   - `BOSS_VARIANTS[0]` から `BOSS_VARIANTS[7]` までの8体
 - ラッシュ補正:
-  - HPが `variant.hp * 1.2`
+  - HPが `variant.hp`
   - `updateBossSpecialAI(e)` を経由するが、現在は `updateBossAI(e)` と同一
   - 1〜4体目相当のボスは重力場なし
 
