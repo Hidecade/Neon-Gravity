@@ -113,7 +113,7 @@ const EXTERNAL_SE_FILES = {
 
 const EXTERNAL_SE_GAIN_MULTIPLIERS = {
     homing: 0.20,
-    damage: 0.20,
+    damage: 0.40,
     boss_laser: 0.20,
     boss_3way: 0.20,
     boss_cross: 0.20,
