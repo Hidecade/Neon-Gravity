@@ -340,7 +340,7 @@ const BULLET_CONFIG = {
 // 1〜10の10段階。5が標準音量。
 const SE_VOLUME_LEVELS = {
     player_shoot: 5,
-    player_laser: 5,
+    player_laser: 7,
     player_homing: 5,
     player_satellite_launch: 5,
     player_powerup: 5,
