@@ -7,6 +7,16 @@ let enemyDeathDistortCount = 0;
 let enemySeCount = 0;
 let enemyCrowdLevel = 0;
 let activeEnemySpawnSource = null;
+let fighterArkLaserSeFrame = -1;
+
+function tryPlayFighterArkLaserSe(x, y) {
+    if (typeof AudioSys === 'undefined') return;
+    if (typeof frame !== 'undefined') {
+        if (fighterArkLaserSeFrame === frame) return;
+        fighterArkLaserSeFrame = frame;
+    }
+    AudioSys.playSE('ark_laser', x, y);
+}
 
 function isExtremeTimeAttackBattleshipActive() {
     if (typeof isExtremeTimeAttackMode !== 'function' || !isExtremeTimeAttackMode()) return false;
@@ -1115,7 +1125,7 @@ function updateFighterJetAI(eb) {
                 life: 250, color: '#f05', isLaserMissile: true
             });
             eb.burstCount++;
-            if (typeof AudioSys !== 'undefined') AudioSys.playSE('laser');
+            tryPlayFighterArkLaserSe(eb.x, eb.y);
             eb.vx -= Math.cos(aimAngle) * 2.5 * SPEED_SCALE;
             eb.vy -= Math.sin(aimAngle) * 2.5 * SPEED_SCALE;
         }
