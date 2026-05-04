@@ -95,6 +95,20 @@ const SE_BASE_VOLUME_MULTIPLIERS = {
     system_warp: 0.8
 };
 
+const EXTERNAL_SE_FILES = {
+    boss_laser: 'audio/SE/boss_laser.mp3',
+    boss_3way: 'audio/SE/boss_3way.mp3',
+    boss_cross: 'audio/SE/boss_cross.mp3',
+    boss_homing: 'audio/SE/boss_homing.mp3'
+};
+
+const EXTERNAL_SE_GAIN_MULTIPLIERS = {
+    boss_laser: 0.20,
+    boss_3way: 0.20,
+    boss_cross: 0.20,
+    boss_homing: 0.20
+};
+
 function getSEVolumeMultiplier(name) {
     const levels = (typeof SE_VOLUME_LEVELS !== 'undefined') ? SE_VOLUME_LEVELS : null;
     const configKey = SE_VOLUME_CONFIG_KEYS[name] || name;
@@ -823,6 +837,8 @@ const AudioSys = {
 
     // BGM管理用プロパティ
     bgmBuffers: {},       // デコード済みのAudioBufferをキャッシュ
+    externalSeBuffers: {},
+    externalSeLoading: {},
     bgmSource: null,      // 現在再生中のAudioBufferSourceNode
     bgmGain: null,        // BGM用のGainNode（フェード・音量制御）
     currentBgmRawKey: null,  // 再生中のBGMキー
@@ -851,6 +867,7 @@ const AudioSys = {
                     this.ctx = new AC({ sampleRate: 44100 });
                     this.createNoise();
                     this.prepareSEBuffers();
+                    this.prepareExternalSEBuffers();
                 }
             } catch (e) {
                 console.error("Audio init error:", e);
@@ -980,6 +997,38 @@ const AudioSys = {
         }
     },
 
+    async prepareExternalSEBuffers() {
+        if (!this.ctx) return;
+
+        for (const [name, url] of Object.entries(EXTERNAL_SE_FILES)) {
+            this.loadExternalSE(name, url);
+        }
+    },
+
+    async loadExternalSE(name, url = EXTERNAL_SE_FILES[name]) {
+        if (!this.ctx || !url) return null;
+        if (this.externalSeBuffers[name]) return this.externalSeBuffers[name];
+        if (this.externalSeLoading[name]) return this.externalSeLoading[name];
+
+        this.externalSeLoading[name] = (async () => {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const arrayBuffer = await response.arrayBuffer();
+                const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+                this.externalSeBuffers[name] = audioBuffer;
+                return audioBuffer;
+            } catch (e) {
+                console.warn(`External SE load failed: ${name} (${url})`, e);
+                return null;
+            } finally {
+                delete this.externalSeLoading[name];
+            }
+        })();
+
+        return this.externalSeLoading[name];
+    },
+
     async renderSEBuffer(name, duration, OfflineAC) {
         const sampleRate = this.ctx ? this.ctx.sampleRate : 44100;
         const renderDuration = Math.max(0.05, duration + 0.05);
@@ -1015,6 +1064,26 @@ const AudioSys = {
         source.start(this.ctx.currentTime);
 
         const cleanupTime = Math.max(2000, source.buffer.duration * 1000 + 100);
+        this.registerNode(name, masterGain, cleanupTime, outputNode);
+        return true;
+    },
+
+    playExternalSE(name, masterGain, outputNode = masterGain) {
+        const buffer = this.externalSeBuffers[name];
+        if (!buffer) {
+            if (EXTERNAL_SE_FILES[name]) this.loadExternalSE(name);
+            return false;
+        }
+
+        const source = this.ctx.createBufferSource();
+        source.buffer = buffer;
+        const fileGain = this.ctx.createGain();
+        fileGain.gain.value = EXTERNAL_SE_GAIN_MULTIPLIERS[name] || 1.0;
+        source.connect(fileGain);
+        fileGain.connect(masterGain);
+        source.start(this.ctx.currentTime);
+
+        const cleanupTime = Math.max(2000, buffer.duration * 1000 + 100);
         this.registerNode(name, masterGain, cleanupTime, outputNode);
         return true;
     },
@@ -1114,6 +1183,10 @@ const AudioSys = {
         }
 
         const outputNode = this.connectSEOutput(masterGain, x, y);
+
+        if (this.playExternalSE(name, masterGain, outputNode)) {
+            return;
+        }
 
         if (this.seBuffersReady && customParam === 1.0 && this.playCachedSE(name, masterGain, outputNode)) {
             return;
