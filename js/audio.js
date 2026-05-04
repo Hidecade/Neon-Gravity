@@ -99,14 +99,20 @@ const EXTERNAL_SE_FILES = {
     boss_laser: 'audio/SE/boss_laser.mp3',
     boss_3way: 'audio/SE/boss_3way.mp3',
     boss_cross: 'audio/SE/boss_cross.mp3',
-    boss_homing: 'audio/SE/boss_homing.mp3'
+    boss_homing: 'audio/SE/boss_homing.mp3',
+    explode_large: 'audio/SE/enemy_explode_large.mp3',
+    ark_laser: 'audio/SE/ark_laser.mp3',
+    ark_fighter: 'audio/SE/ark_fighter.mp3'
 };
 
 const EXTERNAL_SE_GAIN_MULTIPLIERS = {
     boss_laser: 0.20,
     boss_3way: 0.20,
     boss_cross: 0.20,
-    boss_homing: 0.20
+    boss_homing: 0.20,
+    explode_large: 0.40,
+    ark_laser: 0.20,
+    ark_fighter: 0.20
 };
 
 function getSEVolumeMultiplier(name) {
