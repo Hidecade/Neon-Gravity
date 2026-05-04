@@ -126,7 +126,7 @@ function startStage() {
         hud.style.display = 'none';
         hud.style.opacity = '0';
     }
-    //hideGameMessage(true); 
+    //hideGameMessage(true);
     if (ui.bossContainer) ui.bossContainer.style.display = 'none';
 
     const stageBoard = document.getElementById('stage-result-board');
@@ -2320,10 +2320,22 @@ function updateCamera() {
         const maxY = Math.max(player.y, boss.y) + fitMargin;
         const requiredW = Math.max(1, maxX - minX);
         const requiredH = Math.max(1, maxY - minY);
-        const fitFillRatio = boss.type === 'battleship' ? 0.76 : 0.86;
-        const maxFitScale = boss.type === 'battleship' ? 1.28 : 1.52;
+        const isIPhoneView =
+            typeof currentResolution !== 'undefined' &&
+            currentResolution &&
+            typeof currentResolution.key === 'string' &&
+            currentResolution.key.includes('iPhone');
+        const fitFillRatio = isIPhoneView
+            ? (boss.type === 'battleship' ? 0.70 : 0.78)
+            : (boss.type === 'battleship' ? 0.76 : 0.86);
+        const minFitScale = isIPhoneView
+            ? (boss.type === 'battleship' ? 0.74 : 0.78)
+            : 0.48;
+        const maxFitScale = isIPhoneView
+            ? (boss.type === 'battleship' ? 1.10 : 1.16)
+            : (boss.type === 'battleship' ? 1.28 : 1.52);
         const fitScale = Math.max(
-            0.48,
+            minFitScale,
             Math.min(
                 maxFitScale,
                 (width / (baseAppScale * requiredW)) * fitFillRatio,
@@ -2331,7 +2343,8 @@ function updateCamera() {
             )
         );
 
-        targetScale = 1.0 + (fitScale - 1.0) * camT;
+        const zoomResponse = isIPhoneView ? 0.7 : 1.0;
+        targetScale = 1.0 + (fitScale - 1.0) * camT * zoomResponse;
 
         const targetViewH = height / (baseAppScale * targetScale);
         const fitFocusX = (minX + maxX) / 2;
