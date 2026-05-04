@@ -131,6 +131,7 @@ Neon Gravity のボス仕様まとめ。実装上の主な参照先は `js/logic
 - Stage 9 Boss Rush:
   - 1体目から8体目まで、元ステージ相当の A, B, C, D, A, B, C, D を使用
   - 攻撃解禁は `stage = 9` 扱いのため高ステージ攻撃を使用する
+  - 1〜4体目相当のボスは重力場を使用しない
 - Stage 10 GENESIS-ARK:
   - `updateBattleshipAI` の専用移動
   - 通常BOSSの A-D 移動は使わない
@@ -204,6 +205,7 @@ Neon Gravity のボス仕様まとめ。実装上の主な参照先は `js/logic
 ### 4.4 Gravity
 
 - Stage 5以降で有効
+- 頻度は2サイクルに1回
 - フレーム `140 - 259` の間に発生
 - 吸引範囲: `1700`
 - 吸引力: `7.5 * SPEED_SCALE * gameSpeed * min(angerFactor, 1.6)`
@@ -310,6 +312,15 @@ GENESIS-ARK の攻撃は `fireTimer % 1380` で管理する。
 - ラッシュ補正:
   - HPが `variant.hp * 1.2`
   - `updateBossSpecialAI(e)` を経由するが、現在は `updateBossAI(e)` と同一
+  - 1〜4体目相当のボスは重力場なし
+
+### 6.1 Boss Rush雑魚出現
+
+- 出現判定: 60フレームごと
+- 1回の出現数: 1体
+- ワームホール演出から実体化まで: 400ms
+- 画面内の最大雑魚数: 8体まで
+- `lightcycle` は最大生存数2体に制限
 
 ## 7. UI / 演出
 

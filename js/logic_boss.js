@@ -134,6 +134,13 @@ function getBossMovementPatternKey(e) {
     return 'C';
 }
 
+function shouldBossUseGravity(e, enableGravity) {
+    if (!enableGravity || stage < 5) return false;
+    const patternStage = getBossMovementPatternStage(e);
+    if (stage === 9 && patternStage <= 4) return false;
+    return ((e.gravityCycleIndex || 0) % 2) === 0;
+}
+
 function clampBossMovement(e, margin = 95) {
     const clampedX = Math.max(margin, Math.min(worldSize - margin, e.x));
     const clampedY = Math.max(margin, Math.min(worldSize - margin, e.y));
@@ -387,7 +394,7 @@ function updateBossAI(e, options = {}) {
 
     const cycle = e.fireTimer || 0;
     const isPressurePhase = cycle < 140;
-    const isGravityEnabledForStage = enableGravity && stage >= 5;
+    const isGravityEnabledForStage = shouldBossUseGravity(e, enableGravity);
     const isChargePhase = isGravityEnabledForStage && cycle >= 140 && cycle < 260;
     const isIPhoneView = typeof currentResolution !== 'undefined' &&
         currentResolution.key &&
@@ -623,6 +630,7 @@ function updateBossAI(e, options = {}) {
     // --- サイクル完了・次パターンの抽選 ---
     if (e.fireTimer >= maxCycle) {
         e.fireTimer = 0;
+        e.gravityCycleIndex = (e.gravityCycleIndex || 0) + 1;
         // ステージ進行度に応じて攻撃パターンの種類を増やす
         if (stage <= 2) {
             e.attackPattern = 0;
