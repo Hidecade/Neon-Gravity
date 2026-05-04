@@ -2320,12 +2320,14 @@ function updateCamera() {
         const maxY = Math.max(player.y, boss.y) + fitMargin;
         const requiredW = Math.max(1, maxX - minX);
         const requiredH = Math.max(1, maxY - minY);
+        const fitFillRatio = boss.type === 'battleship' ? 0.76 : 0.86;
+        const maxFitScale = boss.type === 'battleship' ? 1.28 : 1.52;
         const fitScale = Math.max(
             0.48,
             Math.min(
-                1.0,
-                width / (baseAppScale * requiredW),
-                height / (baseAppScale * requiredH)
+                maxFitScale,
+                (width / (baseAppScale * requiredW)) * fitFillRatio,
+                (height / (baseAppScale * requiredH)) * fitFillRatio
             )
         );
 
