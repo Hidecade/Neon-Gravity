@@ -76,12 +76,32 @@ const SE_VOLUME_CONFIG_KEYS = {
     warp_in: 'system_warp_in'
 };
 
+const SE_BASE_VOLUME_MULTIPLIERS = {
+    player_laser: 0.4,
+    enemy_lightcycle_engine: 1.6,
+
+    boss_hit: 0.8,
+    boss_warning: 0.6,
+    boss_laser: 1.4,
+    boss_3way: 1.4,
+    boss_cross: 1.8,
+    boss_homing: 1.4,
+    boss_shockwave: 1.4,
+    boss_dash: 1.4,
+
+    ark_laser: 1.6,
+    ark_summon: 2.0,
+
+    system_warp: 0.8
+};
+
 function getSEVolumeMultiplier(name) {
     const levels = (typeof SE_VOLUME_LEVELS !== 'undefined') ? SE_VOLUME_LEVELS : null;
     const configKey = SE_VOLUME_CONFIG_KEYS[name] || name;
     const rawLevel = levels && Number.isFinite(Number(levels[configKey])) ? Number(levels[configKey]) : 5;
     const level = Math.max(1, Math.min(10, rawLevel));
-    return level / 5;
+    const baseMult = SE_BASE_VOLUME_MULTIPLIERS[configKey] || 1.0;
+    return baseMult * (level / 5);
 }
 
 // --- 1. SEの音響定義ライブラリ (変更なし) ---
