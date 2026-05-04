@@ -99,3 +99,81 @@
     background: #0ff;
     box-shadow: 0 0 15px #fff, 0 0 30px #0ff, 0 0 45px #0ff;
 }
+
+.se-test-browser {
+    display: grid;
+    grid-template-columns: 46px minmax(150px, 1fr) 46px;
+    gap: 8px;
+    width: min(360px, 82vw);
+    margin: 0 auto;
+}
+
+.se-test-arrow,
+.se-test-play {
+    min-height: 42px;
+    border: 1px solid rgba(0, 255, 255, 0.75);
+    background: rgba(0, 12, 24, 0.78);
+    color: #dff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.35);
+}
+
+.se-test-arrow {
+    font-size: 18px;
+}
+
+.se-test-play {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+}
+
+#se-test-name {
+    font-size: 11px;
+    color: #fff;
+}
+
+#se-test-count,
+#se-test-instruction {
+    color: #888;
+    font-size: 9px;
+    letter-spacing: 1px;
+}
+
+#se-test-instruction {
+    margin-top: 6px;
+}
+
+.se-test-arrow:hover,
+.se-test-arrow:focus,
+.se-test-play:hover,
+.se-test-play:focus {
+    color: #fff;
+    background: rgba(0, 255, 255, 0.18);
+    outline: none;
+}
+
+.se-test-arrow:active,
+.se-test-play:active {
+    transform: translateY(1px);
+    box-shadow: 0 0 14px rgba(255, 255, 255, 0.55);
+}
+
+@media screen and (max-height: 620px) {
+    .se-test-browser {
+        grid-template-columns: 40px minmax(140px, 1fr) 40px;
+        gap: 6px;
+        width: min(380px, 86vw);
+    }
+
+    .se-test-arrow,
+    .se-test-play {
+        min-height: 34px;
+        font-size: 9px;
+    }
+}

@@ -1309,6 +1309,10 @@ function openSetting() {
     if (typeof syncLanguageToggleText === 'function') {
         syncLanguageToggleText();
     }
+
+    if (typeof syncSettingSEBrowser === 'function') {
+        syncSettingSEBrowser();
+    }
 }
 
 function closeSetting() {

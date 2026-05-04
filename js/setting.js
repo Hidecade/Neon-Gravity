@@ -4,6 +4,42 @@
 
 // スライダーの数値(0〜3)と品質の対応表
 const GFX_LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'ULTRA'];
+const SETTING_SE_LIST = [
+    'gravity',
+    'gravity_boss',
+    'shoot',
+    'laser',
+    'homing',
+    'boss_laser',
+    'boss_3way',
+    'boss_cross',
+    'boss_homing',
+    'boss_shockwave',
+    'boss_dash',
+    'ark_laser',
+    'ark_fighter',
+    'ark_summon',
+    'ark_rotary',
+    'warning',
+    'explode_small',
+    'explode_medium',
+    'explode_large',
+    'target_ping',
+    'launch',
+    'powerup',
+    'damage',
+    'invincible',
+    'boss_hit',
+    'enemy_hit',
+    'lc_engine',
+    'select',
+    'warp',
+    'warp_in',
+    'coin',
+    'coin_cyber',
+    'point'
+];
+let settingSeIndex = 0;
 
 /**
  * スライダーを動かしている「最中」にテキストと見た目を更新する
@@ -111,4 +147,40 @@ function syncLanguageToggleText() {
         toggleBtn.innerText = 'ENGLISH';
         if (instruction) instruction.innerText = 'PLEASE SELECT YOUR LANGUAGE'; // 英語メッセージ
     }
+}
+
+function syncSettingSEBrowser() {
+    const nameEl = document.getElementById('se-test-name');
+    const countEl = document.getElementById('se-test-count');
+    if (!nameEl || !countEl) return;
+
+    const name = SETTING_SE_LIST[settingSeIndex] || SETTING_SE_LIST[0];
+    const configKey = (typeof SE_VOLUME_CONFIG_KEYS !== 'undefined' && SE_VOLUME_CONFIG_KEYS[name])
+        ? SE_VOLUME_CONFIG_KEYS[name]
+        : name;
+    nameEl.innerText = configKey.toUpperCase().replace(/_/g, ' ');
+    countEl.innerText = `${String(settingSeIndex + 1).padStart(2, '0')} / ${SETTING_SE_LIST.length}`;
+}
+
+function cycleSettingSE(dir) {
+    settingSeIndex = (settingSeIndex + dir + SETTING_SE_LIST.length) % SETTING_SE_LIST.length;
+    syncSettingSEBrowser();
+    previewCurrentSettingSE();
+}
+
+function previewCurrentSettingSE() {
+    const name = SETTING_SE_LIST[settingSeIndex] || SETTING_SE_LIST[0];
+    previewSettingSE(name);
+}
+
+async function previewSettingSE(name) {
+    if (typeof AudioSys === 'undefined') return;
+    AudioSys.init();
+    const ready = await AudioSys.ensureAudioReady(true);
+    if (!ready) return;
+
+    const x = (typeof player !== 'undefined' && Number.isFinite(player.x)) ? player.x : null;
+    const y = (typeof player !== 'undefined' && Number.isFinite(player.y)) ? player.y : null;
+    const param = name === 'gravity_boss' ? 0.65 : 1.0;
+    AudioSys.playSE(name, x, y, param);
 }

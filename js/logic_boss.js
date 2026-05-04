@@ -246,7 +246,7 @@ function updateBossPatternDMovement(e, options = {}) {
     if (!options.isChargePhase && options.isPressurePhase && e.attackDashTimer <= 0 && e.attackDashCooldown <= 0) {
         e.attackDashTimer = 28;
         e.attackDashCooldown = 150 + Math.floor(Math.random() * 90);
-        if (typeof AudioSys !== 'undefined' && isOnScreen(e)) AudioSys.playSE('launch');
+        if (typeof AudioSys !== 'undefined' && isOnScreen(e)) AudioSys.playSE('boss_dash', e.x, e.y);
     }
 
     if (e.attackDashTimer > 0) {
@@ -466,7 +466,7 @@ function updateBossAI(e, options = {}) {
                         color: e.color
                     });
                 }
-                if (isOnScreen(e) && typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
+                if (isOnScreen(e) && typeof AudioSys !== 'undefined') AudioSys.playSE('boss_laser', e.x, e.y);
             }
         }
         // パターン1: 自機狙い3WAY
@@ -488,7 +488,7 @@ function updateBossAI(e, options = {}) {
                         life: 300, color: '#ffaa00'
                     });
                 }
-                if (isOnScreen(e) && typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
+                if (isOnScreen(e) && typeof AudioSys !== 'undefined') AudioSys.playSE('boss_3way', e.x, e.y);
             }
         }
         // パターン2: 十字回転クロスファイア
@@ -504,7 +504,7 @@ function updateBossAI(e, options = {}) {
                         life: 180, color: '#ff00ff', isLaserMissile: true
                     });
                 }
-                if (isOnScreen(e) && e.fireTimer % 16 === 0 && typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
+                if (isOnScreen(e) && e.fireTimer % 24 === 0 && typeof AudioSys !== 'undefined') AudioSys.playSE('boss_cross', e.x, e.y);
             }
         }
     }
@@ -597,6 +597,7 @@ function updateBossAI(e, options = {}) {
                         isMissile: true, color: e.color, trail: []
                     });
                 }
+                if (isOnScreen(e) && typeof AudioSys !== 'undefined') AudioSys.playSE('boss_homing', e.x, e.y);
             }
             // 必殺B: 衝撃波リング (高ステージ)
             else if (e.fireTimer === fireTime) {
@@ -611,8 +612,8 @@ function updateBossAI(e, options = {}) {
                         isShockwave: true, baseScale: 0.8, scaleSpeed: 0.02
                     });
                 }
+                if (isOnScreen(e) && typeof AudioSys !== 'undefined') AudioSys.playSE('boss_shockwave', e.x, e.y);
             }
-            if (isOnScreen(e) && typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
             spawnRingObj({ x: e.x, y: e.y, r: 20, color: '#fff', life: 1.0 });
             spawnRingObj({ x: e.x, y: e.y, r: 100, color: e.color, life: 0.8 });
             if (typeof distortGrid === 'function') distortGrid(e.x, e.y, 150, 250);
@@ -805,7 +806,7 @@ function updateBattleshipAI(e) {
                     });
                 }
             }
-            if (typeof AudioSys !== 'undefined') AudioSys.playSE('shoot');
+            if (typeof AudioSys !== 'undefined') AudioSys.playSE('ark_laser', e.x, e.y);
             // ==========================================
             // ★追加：全方位レーザー発射時の軽い歪み
             // ==========================================
@@ -855,7 +856,7 @@ function updateBattleshipAI(e) {
                 fighter.orbitAngleOffset = posIdx;
                 fighter.targetRadius = 400;
             }
-            if (typeof AudioSys !== 'undefined') AudioSys.playSE('launch');
+            if (typeof AudioSys !== 'undefined') AudioSys.playSE('ark_fighter', e.x, e.y);
 
             // ==========================================
             // ★追加：ファイター射出時の歪み（射出の反動を表現）
@@ -889,6 +890,7 @@ function updateBattleshipAI(e) {
                 spawnSource: 'battleship'
             });
             if (typeof distortGrid === 'function') distortGrid(sx, sy, 100, 200);
+            if (typeof AudioSys !== 'undefined') AudioSys.playSE('ark_summon', sx, sy);
 
             // 3. 少し遅らせて（ワームホールが開ききった頃）Phantomを出現させる
             setTimeout(() => {
@@ -918,6 +920,7 @@ function updateBattleshipAI(e) {
             if (cycle === 900 && typeof distortGrid === 'function') {
                 distortGrid(e.x, e.y, 140, 150);
             }
+            if (cycle % 30 === 0 && typeof AudioSys !== 'undefined') AudioSys.playSE('ark_rotary', e.x, e.y);
         }
         if (Math.random() < 0.3) createExplosion(e.x + (Math.random() - 0.5) * 150, e.y + (Math.random() - 0.5) * 150, '#0ff', 5);
     }

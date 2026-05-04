@@ -282,6 +282,17 @@
             <div id="lang-instruction" style="color: #888; font-size: 11px; margin-top: 2px; letter-spacing: 1px;">
                 PLEASE SELECT YOUR LANGUAGE
             </div>
+
+            <h3 style="color:#0ff; margin-top:20px; margin-bottom:10px; font-size:18px;">SOUND EFFECT TEST</h3>
+            <div class="se-test-browser">
+                <button type="button" class="se-test-arrow" onclick="cycleSettingSE(-1)" aria-label="Previous SE">&lt;</button>
+                <button type="button" class="se-test-play" onclick="previewCurrentSettingSE()">
+                    <span id="se-test-name">GRAVITY</span>
+                    <span id="se-test-count">01 / 33</span>
+                </button>
+                <button type="button" class="se-test-arrow" onclick="cycleSettingSE(1)" aria-label="Next SE">&gt;</button>
+            </div>
+            <div id="se-test-instruction">LEFT / RIGHT: CHANGE SE - CENTER: PLAY</div>
         </div>
 
         <div class="btn-row">

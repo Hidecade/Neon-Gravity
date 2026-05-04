@@ -149,7 +149,7 @@ const STAGE_ENEMY_COUNTS = [
     70, // Stage 3
     110, // Stage 4
     150, // Stage 5
-    180, // Stage 6
+    130, // Stage 6
     230, // Stage 7
     300 // Stage 8 (Final)
 ];
@@ -284,8 +284,8 @@ const STAGE_ENEMIES = {
 
 // Stage 9 (ボスラッシュ) 専用の雑魚スポーン設定
 const BOSS_RUSH_SPAWN_CONFIG = {
-    INTERVAL: 60,      // 出現間隔 (フレーム数)。小さいほど高頻度
-    MAX_ENEMIES: 8,    // 画面内に存在できる雑魚の最大数
+    INTERVAL: 40,      // 出現間隔 (フレーム数)。小さいほど高頻度
+    MAX_ENEMIES: 10,    // 画面内に存在できる雑魚の最大数
     SPAWN_COUNT: 1,     // 1回のスポーンで出現する敵の数
     WARP_DELAY: 400     // ワームホール出現から敵が出るまでの待ち時間(ms)
 };
@@ -334,6 +334,48 @@ const BULLET_CONFIG = {
         SPEED: 10.0,    // ボスのホーミングミサイルの速さ
         LIFE: 300
     }
+};
+
+// --- 効果音音量設定 ---
+// 1〜10の10段階。5が標準音量。
+const SE_VOLUME_LEVELS = {
+    player_shoot: 5,
+    player_laser: 5,
+    player_homing: 5,
+    player_satellite_launch: 5,
+    player_powerup: 5,
+    player_damage: 5,
+    player_invincible: 5,
+    player_coin: 5,
+    player_coin_cyber: 5,
+    player_score_point: 5,
+
+    enemy_gravity: 5,
+    enemy_hit: 5,
+    enemy_lightcycle_engine: 5,
+    enemy_explode_small: 5,
+    enemy_explode_medium: 5,
+    enemy_explode_large: 5,
+
+    boss_gravity: 5,
+    boss_hit: 5,
+    boss_target_ping: 5,
+    boss_warning: 5,
+    boss_laser: 5,
+    boss_3way: 5,
+    boss_cross: 5,
+    boss_homing: 5,
+    boss_shockwave: 5,
+    boss_dash: 5,
+
+    ark_laser: 5,
+    ark_fighter: 5,
+    ark_summon: 5,
+    ark_rotary: 5,
+
+    system_select: 5,
+    system_warp: 5,
+    system_warp_in: 5
 };
 
 // --- アイテム・ドロップ設定 ---

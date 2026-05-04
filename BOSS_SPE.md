@@ -229,6 +229,18 @@ Neon Gravity のボス仕様まとめ。実装上の主な参照先は `js/logic
 - Stage 3-5: Pattern 0 / 1 を 50% ずつ
 - Stage 6以降: Pattern 0 / 1 / 2 を約33%ずつ
 
+### 4.7 通常BOSS攻撃SE
+
+| 攻撃 | SE |
+|---|---|
+| Dパターン突進 | `boss_dash` |
+| Homing Laser | `boss_laser` |
+| Aimed 3-Way | `boss_3way` |
+| Rotating Crossfire | `boss_cross` |
+| Gravity | `gravity_boss` |
+| Homing Missile Finisher | `boss_homing` |
+| Shockwave Ring Finisher | `boss_shockwave` |
+
 ## 5. GENESIS-ARK AI
 
 ### 5.1 通常状態
@@ -297,6 +309,16 @@ GENESIS-ARK の攻撃は `fireTimer % 1380` で管理する。
 - 弾速: `4 * BATTLESHIP_PROJECTILE_SPEED_MULT`
 - 弾寿命: `200`
 - `isLaserMissile = true`
+
+### 5.4 GENESIS-ARK攻撃SE
+
+| 攻撃 | SE |
+|---|---|
+| 全方位レーザー | `ark_laser` |
+| ファイター展開 | `ark_fighter` |
+| Phantom召喚ワームホール | `ark_summon` |
+| 回転連射 | `ark_rotary` |
+| Critical召喚の実体化 | `launch` |
 
 ## 6. Stage 9: Boss Rush
 
