@@ -2929,7 +2929,7 @@ function updateSpawnLogic() {
                     const variant = BOSS_VARIANTS[rushBossIndex];
                     newBoss.variant = variant;
                     newBoss.color = variant.color;
-                    newBoss.hp = variant.hp * 1.5; // ラッシュ用にHP強化
+                    newBoss.hp = variant.hp * 1.2; // ラッシュ用にHP強化
                     newBoss.maxHp = newBoss.hp;
                     newBoss.scale = 1.5 + (variant.sides * 0.1);
                     newBoss.spawnMax = 150;

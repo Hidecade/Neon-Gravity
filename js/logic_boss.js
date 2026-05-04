@@ -2,13 +2,14 @@
 // BOSS AI
 // ==========================================
 
-const BOSS_PROJECTILE_SPEED_MULT = 1.3;
+const BOSS_PROJECTILE_SPEED_MULT = 1.15;
+const BOSS_ANGER_MAX_BONUS = 0.9;
+const BATTLESHIP_PROJECTILE_SPEED_MULT = 1.05;
 
 function getBossHomingLaserShotCount() {
     if (stage <= 2) return 2;
     if (stage <= 4) return 3;
-    if (stage <= 6) return 4;
-    return 4;
+    return 3;
 }
 
 function isBossHomingLaserShotFrame(timer, shotCount, attackFrames) {
@@ -116,6 +117,169 @@ function updateBossCombatMovement(e, options = {}) {
     e.y = clampedY;
 }
 
+function getBossMovementPatternStage(e) {
+    if (stage === 9 && e.variant && typeof BOSS_VARIANTS !== 'undefined') {
+        const idx = BOSS_VARIANTS.findIndex(v => v && v.name === e.variant.name);
+        if (idx >= 0) return idx + 1;
+    }
+    return stage;
+}
+
+function getBossMovementPatternKey(e) {
+    const patternStage = getBossMovementPatternStage(e);
+    if (patternStage === 1 || patternStage === 5) return 'A';
+    if (patternStage === 2 || patternStage === 6) return 'B';
+    if (patternStage === 3 || patternStage === 7) return 'C';
+    if (patternStage === 4 || patternStage === 8) return 'D';
+    return 'C';
+}
+
+function clampBossMovement(e, margin = 95) {
+    const clampedX = Math.max(margin, Math.min(worldSize - margin, e.x));
+    const clampedY = Math.max(margin, Math.min(worldSize - margin, e.y));
+    if (clampedX !== e.x || clampedY !== e.y) {
+        e.orbitDir = -(e.orbitDir || 1);
+        if (clampedX !== e.x) e.vx *= -0.45;
+        if (clampedY !== e.y) e.vy *= -0.45;
+    }
+    e.x = clampedX;
+    e.y = clampedY;
+}
+
+function limitBossMovementSpeed(e, maxSpeed) {
+    const currentSpeed = Math.hypot(e.vx, e.vy) || 0.001;
+    if (currentSpeed > maxSpeed) {
+        e.vx = (e.vx / currentSpeed) * maxSpeed;
+        e.vy = (e.vy / currentSpeed) * maxSpeed;
+    }
+}
+
+function updateBossEvadeSide(e, interval = 54) {
+    if (!e.evadeSide) e.evadeSide = Math.random() < 0.5 ? -1 : 1;
+    e.evadeSideTimer = (e.evadeSideTimer || 0) + 1;
+    if (e.evadeSideTimer >= interval) {
+        e.evadeSide *= -1;
+        e.evadeSideTimer = 0;
+    }
+    return e.evadeSide;
+}
+
+function updateBossPatternAMovement(e, options = {}) {
+    const dy = player.y - e.y;
+    const absDy = Math.abs(dy);
+    const dirToPlayerY = dy === 0 ? (e.orbitDir || 1) : Math.sign(dy);
+    const desiredRadius = options.desiredRadius || 360;
+    const radiusTolerance = options.radiusTolerance || 95;
+    const accel = (options.isPressurePhase ? 0.17 : 0.11) * options.angerFactor * options.movementSpeedMult;
+    const retreatAccel = (options.isPressurePhase ? 0.13 : 0.1) * options.angerFactor * options.movementSpeedMult;
+    const maxSpeed = e.speed * (options.isPressurePhase ? 6.2 : 4.8) * options.angerFactor * options.movementSpeedMult;
+
+    const evadeDir = updateBossEvadeSide(e, 46);
+    e.vx += (e.orbitDir || 1) * 0.09 * SPEED_SCALE * gameSpeed;
+    e.vx += evadeDir * 0.11 * options.angerFactor * options.movementSpeedMult * SPEED_SCALE * gameSpeed;
+
+    if (options.isChargePhase) {
+        e.vy *= 0.92;
+    } else if (absDy > desiredRadius + radiusTolerance) {
+        e.vy += dirToPlayerY * accel * SPEED_SCALE * gameSpeed;
+    } else if (absDy < desiredRadius - radiusTolerance) {
+        e.vy -= dirToPlayerY * retreatAccel * SPEED_SCALE * gameSpeed;
+    } else {
+        e.vy *= 0.94;
+    }
+
+    e.vx *= 0.985;
+    e.vy *= 0.985;
+    limitBossMovementSpeed(e, maxSpeed);
+    e.x += e.vx * gameSpeed;
+    e.y += e.vy * gameSpeed;
+    clampBossMovement(e, options.margin || 95);
+}
+
+function updateBossPatternBMovement(e, options = {}) {
+    const dx = player.x - e.x;
+    const dy = player.y - e.y;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+    const evadeDir = updateBossEvadeSide(e, 42);
+    const wiggle = evadeDir * 170;
+    const dodge = evadeDir * 0.09;
+    const axisAccel = (options.isPressurePhase ? 0.22 : 0.15) * options.angerFactor * options.movementSpeedMult;
+    const maxSpeed = e.speed * (options.isPressurePhase ? 7.0 : 5.4) * options.angerFactor * options.movementSpeedMult;
+
+    if (options.isChargePhase) {
+        e.vx *= 0.92;
+        e.vy *= 0.92;
+    } else if (absDy >= absDx) {
+        const targetX = player.x + wiggle;
+        const moveX = targetX - e.x;
+        e.vx += Math.max(-1, Math.min(1, moveX / 180)) * axisAccel * SPEED_SCALE * gameSpeed;
+        e.vx += dodge * options.angerFactor * options.movementSpeedMult * SPEED_SCALE * gameSpeed;
+        e.vy *= 0.94;
+    } else {
+        const targetY = player.y + wiggle;
+        const moveY = targetY - e.y;
+        e.vy += Math.max(-1, Math.min(1, moveY / 180)) * axisAccel * SPEED_SCALE * gameSpeed;
+        e.vx += dodge * 0.65 * options.angerFactor * options.movementSpeedMult * SPEED_SCALE * gameSpeed;
+        e.vx *= 0.94;
+    }
+
+    e.vx *= 0.985;
+    e.vy *= 0.985;
+    limitBossMovementSpeed(e, maxSpeed);
+    e.x += e.vx * gameSpeed;
+    e.y += e.vy * gameSpeed;
+    clampBossMovement(e, options.margin || 95);
+}
+
+function updateBossPatternDMovement(e, options = {}) {
+    e.attackDashCooldown = Math.max(0, (e.attackDashCooldown || 0) - 1);
+    e.attackDashTimer = Math.max(0, e.attackDashTimer || 0);
+
+    if (!options.isChargePhase && options.isPressurePhase && e.attackDashTimer <= 0 && e.attackDashCooldown <= 0) {
+        e.attackDashTimer = 28;
+        e.attackDashCooldown = 150 + Math.floor(Math.random() * 90);
+        if (typeof AudioSys !== 'undefined' && isOnScreen(e)) AudioSys.playSE('launch');
+    }
+
+    if (e.attackDashTimer > 0) {
+        const dx = player.x - e.x;
+        const dy = player.y - e.y;
+        const dist = Math.hypot(dx, dy) || 1.0;
+        const dashAccel = 0.42 * options.angerFactor * options.movementSpeedMult;
+        const maxSpeed = e.speed * 11.0 * options.angerFactor * options.movementSpeedMult;
+        e.vx += (dx / dist) * dashAccel * SPEED_SCALE * gameSpeed;
+        e.vy += (dy / dist) * dashAccel * SPEED_SCALE * gameSpeed;
+        e.vx *= 0.99;
+        e.vy *= 0.99;
+        limitBossMovementSpeed(e, maxSpeed);
+        e.x += e.vx * gameSpeed;
+        e.y += e.vy * gameSpeed;
+        e.attackDashTimer--;
+        clampBossMovement(e, options.margin || 95);
+        return;
+    }
+
+    updateBossCombatMovement(e, {
+        ...options,
+        strafeAccel: options.strafeAccel * 1.12,
+        maxSpeed: options.maxSpeed * 1.05
+    });
+}
+
+function updateBossStageMovement(e, options = {}) {
+    const pattern = getBossMovementPatternKey(e);
+    if (pattern === 'A') {
+        updateBossPatternAMovement(e, options);
+    } else if (pattern === 'B') {
+        updateBossPatternBMovement(e, options);
+    } else if (pattern === 'D') {
+        updateBossPatternDMovement(e, options);
+    } else {
+        updateBossCombatMovement(e, options);
+    }
+}
+
 function updateBossAI(e, options = {}) {
     const enableGravity = options.enableGravity !== false;
     const movementSpeedMult = options.movementSpeedMult || 1.0;
@@ -208,8 +372,8 @@ function updateBossAI(e, options = {}) {
     // 30秒(1800F)経過後から、ボスの性能が徐々に上がり始める
     let angerFactor = 1.0;
     if (e.aliveTimer > 1800) {
-        // 時間経過で 1.0 -> 2.5 まで上昇
-        angerFactor = 1.0 + Math.min(1.5, (e.aliveTimer - 1800) * 0.001);
+        // 時間経過で 1.0 -> 1.9 まで上昇
+        angerFactor = 1.0 + Math.min(BOSS_ANGER_MAX_BONUS, (e.aliveTimer - 1800) * 0.0007);
     }
 
     if (e.orbitDir === undefined) {
@@ -231,15 +395,19 @@ function updateBossAI(e, options = {}) {
     const desiredBossRadius = isIPhoneView ? 300 : 360;
     const bossRadiusTolerance = isIPhoneView ? 85 : 110;
 
-    updateBossCombatMovement(e, {
+    updateBossStageMovement(e, {
         desiredRadius: desiredBossRadius,
         radiusTolerance: bossRadiusTolerance,
+        isPressurePhase,
+        isChargePhase,
+        angerFactor,
+        movementSpeedMult,
         approachAccel: (isPressurePhase ? 0.12 : 0.085) * angerFactor * movementSpeedMult,
         strafeAccel: (isPressurePhase ? 0.2 : 0.14) * angerFactor * movementSpeedMult,
         retreatAccel: (isPressurePhase ? 0.08 : 0.1) * angerFactor * movementSpeedMult,
         radiusCorrectionAccel: (isPressurePhase ? 0.12 : 0.08) * angerFactor * movementSpeedMult,
         friction: 0.99,
-        maxSpeed: e.speed * (isPressurePhase ? 8.5 : 7.0) * angerFactor * movementSpeedMult,
+        maxSpeed: e.speed * (isPressurePhase ? 7.0 : 5.8) * angerFactor * movementSpeedMult,
         margin: 95,
         holdPosition: false,
         brakePosition: isChargePhase,
@@ -285,7 +453,7 @@ function updateBossAI(e, options = {}) {
                         isBossHomingLaser: true,
                         lockTimer: 38,
                         accelTimer: 26,
-                        turnRate: 0.045 * angerFactor,
+                        turnRate: 0.035 * angerFactor,
                         targetSpeed: targetSpd,
                         accelRate: 0.75 * SPEED_SCALE * bulletSpeedMult,
                         color: e.color
@@ -303,8 +471,8 @@ function updateBossAI(e, options = {}) {
             while (diff > Math.PI) diff -= Math.PI * 2;
             e.angle += diff * 0.1 * gameSpeed * angerFactor; // 怒ると照準合わせが速くなる
 
-            if (e.fireTimer % 15 === 0) {
-                const bulletSpd = 15 * SPEED_SCALE * bulletSpeedMult;
+            if (e.fireTimer % 20 === 0) {
+                const bulletSpd = 22.5 * SPEED_SCALE * bulletSpeedMult;
                 for (let i = -1; i <= 1; i++) {
                     const a = e.angle + i * 0.15;
                     spawnEnemyBulletObj({
@@ -319,7 +487,7 @@ function updateBossAI(e, options = {}) {
         // パターン2: 十字回転クロスファイア
         else if (e.attackPattern === 2) {
             e.angle -= 0.08 * gameSpeed * angerFactor; // 怒ると逆回転も速くなる
-            if (e.fireTimer % 8 === 0) {
+            if (e.fireTimer % 12 === 0) {
                 const bulletSpd = 10 * SPEED_SCALE * bulletSpeedMult;
                 for (let i = 0; i < 4; i++) {
                     const a = e.angle + (Math.PI / 2) * i;
@@ -354,10 +522,10 @@ function updateBossAI(e, options = {}) {
             const pullDy = e.y - player.y;
             const pullDist = Math.hypot(pullDx, pullDy) || 0.001;
 
-            const maxPullDist = 2400;
+            const maxPullDist = 1700;
 
             if (pullDist < maxPullDist) {
-                const pullStrength = 12.0 * SPEED_SCALE * gameSpeed * angerFactor * gravityRatio;
+                const pullStrength = 7.5 * SPEED_SCALE * gameSpeed * Math.min(angerFactor, 1.6) * gravityRatio;
                 const force = pullStrength * (1 - pullDist / maxPullDist);
                 player.x += (pullDx / pullDist) * force;
                 player.y += (pullDy / pullDist) * force;
@@ -404,7 +572,7 @@ function updateBossAI(e, options = {}) {
     // ----------------------------------------------------
     else if (e.fireTimer >= fireTime && e.fireTimer < restartTime) {
         const isHomingAttack = e.attackPattern === 0 || stage < 4;
-        const isHomingVolleyTime = isHomingAttack && (e.fireTimer === fireTime || e.fireTimer === fireTime + 12);
+        const isHomingVolleyTime = isHomingAttack && (e.fireTimer === fireTime || (stage >= 6 && e.fireTimer === fireTime + 14));
 
         if (e.fireTimer === fireTime || isHomingVolleyTime) {
 
@@ -533,8 +701,8 @@ function updateBattleshipAI(e) {
         if (ui.bossBarFrame) ui.bossBarFrame.style.borderColor = "#f0f";
 
 
-        // 30フレーム（約1秒）に1回、ワームホールから敵を召喚
-        if (frame % 30 === 0) {
+        // 60フレーム（約1秒）に1回、ワームホールから敵を召喚
+        if (frame % 60 === 0) {
             const spawnAngle = Math.random() * Math.PI * 2;
             const spawnDist = 400;
             const sx = e.x + Math.cos(spawnAngle) * spawnDist;
@@ -623,8 +791,8 @@ function updateBattleshipAI(e) {
                     const a = baseA + (i * 0.2);
                     spawnEnemyBulletObj({
                         x: sx, y: sy,
-                        vx: Math.cos(a) * 24 * SPEED_SCALE * BOSS_PROJECTILE_SPEED_MULT,
-                        vy: Math.sin(a) * 24 * SPEED_SCALE * BOSS_PROJECTILE_SPEED_MULT,
+                        vx: Math.cos(a) * 24 * SPEED_SCALE * BATTLESHIP_PROJECTILE_SPEED_MULT,
+                        vy: Math.sin(a) * 24 * SPEED_SCALE * BATTLESHIP_PROJECTILE_SPEED_MULT,
                         life: 200, color: '#0ff', isLaserMissile: true
                     });
                 }
@@ -647,7 +815,7 @@ function updateBattleshipAI(e) {
             distortGrid(e.x, e.y, 250, -15);
         }
         if (cycle === 320 || cycle === 460) {
-            const fighterCount = 10;
+            const fighterCount = 8;
             const pToBossAngle = Math.atan2(e.y - player.y, e.x - player.x);
             const bossToPlayerAngle = pToBossAngle + Math.PI;
 
@@ -693,7 +861,7 @@ function updateBattleshipAI(e) {
     // ★ 修正：ミサイルから「ワームホール & Phantom召喚」へ変更
     // ==========================================
     else if (cycle < 900) {
-        const sub = cycle % 100; // 召喚の間隔を少し調整（約2.5秒に1回）
+        const sub = cycle % 140; // 召喚の間隔を少し調整
 
         if (sub === 0) {
             // 1. ボスの斜め前方にワームホールを生成する座標を計算
@@ -730,8 +898,8 @@ function updateBattleshipAI(e) {
                 const a = e.angle + (Math.PI * 2 / 8) * i;
                 spawnEnemyBulletObj({
                     x: e.x + Math.cos(a) * 80, y: e.y + Math.sin(a) * 80,
-                    vx: Math.cos(a) * 4 * BOSS_PROJECTILE_SPEED_MULT,
-                    vy: Math.sin(a) * 4 * BOSS_PROJECTILE_SPEED_MULT,
+                    vx: Math.cos(a) * 4 * BATTLESHIP_PROJECTILE_SPEED_MULT,
+                    vy: Math.sin(a) * 4 * BATTLESHIP_PROJECTILE_SPEED_MULT,
                     life: 200, color: '#0ff', isLaserMissile: true
                 });
             }

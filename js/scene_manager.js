@@ -2297,9 +2297,8 @@ function updateCamera() {
     let focusY = player.y;
 
     const boss = enemyPool.pool.find(e => e.active && (e.type === 'boss' || e.type === 'battleship'));
-    const isIPhoneView = typeof currentResolution !== 'undefined' && currentResolution.key && currentResolution.key.includes('iPhone');
 
-    if (isIPhoneView && boss && Number.isFinite(boss.x) && Number.isFinite(boss.y)) {
+    if (boss && Number.isFinite(boss.x) && Number.isFinite(boss.y)) {
         const smoothMax = (boss.spawnMax || 100) + 20;
         if (boss.cameraLerpTimer === undefined) boss.cameraLerpTimer = 0;
 
@@ -2310,17 +2309,29 @@ function updateCamera() {
         const t = boss.cameraLerpTimer / smoothMax;
         const camT = 1 - Math.pow(1 - t, 4);
 
-        const dx = player.x - boss.x;
-        const dy = player.y - boss.y;
-        const isPortraitView = height > width;
-        const axisDist = isPortraitView ? Math.abs(dx) : Math.abs(dy);
-        const maxAxisDist = 900;
-        const ratio = Math.min(axisDist / maxAxisDist, 1.0);
-        targetScale = 1.0 - (ratio * 0.40 * camT);
+        const fitMargin = boss.type === 'battleship' ? 90 : 55;
+        const minX = Math.min(player.x, boss.x) - fitMargin;
+        const maxX = Math.max(player.x, boss.x) + fitMargin;
+        const minY = Math.min(player.y, boss.y) - fitMargin;
+        const maxY = Math.max(player.y, boss.y) + fitMargin;
+        const requiredW = Math.max(1, maxX - minX);
+        const requiredH = Math.max(1, maxY - minY);
+        const fitScale = Math.max(
+            0.48,
+            Math.min(
+                1.0,
+                width / (baseAppScale * requiredW),
+                height / (baseAppScale * requiredH)
+            )
+        );
 
-        const bias = ratio * 0.25 * camT;
-        focusX = player.x + (boss.x - player.x) * bias;
-        focusY = player.y + (boss.y - player.y) * bias;
+        targetScale = 1.0 + (fitScale - 1.0) * camT;
+
+        const targetViewH = height / (baseAppScale * targetScale);
+        const fitFocusX = (minX + maxX) / 2;
+        const fitFocusY = (minY + maxY) / 2 + targetViewH * (CAMERA_Y_OFFSET - 0.5);
+        focusX = player.x + (fitFocusX - player.x) * camT;
+        focusY = player.y + (fitFocusY - player.y) * camT;
     }
 
     const finalTargetScale = targetScale * baseAppScale;
