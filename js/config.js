@@ -353,9 +353,9 @@ const SE_VOLUME_LEVELS = {
     enemy_gravity: 5,
     enemy_hit: 5,
     enemy_lightcycle_engine: 5,
-    enemy_explode_small: 3,
-    enemy_explode_medium: 4,
-    enemy_explode_large: 5,
+    enemy_explode_small: 2,
+    enemy_explode_medium: 3,
+    enemy_explode_large: 4,
 
     boss_gravity: 5,
     boss_hit: 5,
