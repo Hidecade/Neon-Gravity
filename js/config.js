@@ -317,10 +317,10 @@ const BULLET_CONFIG = {
         SPEED: 32.0,        // 自機の弾の速さ
         LIFE: 60,           // 自機の弾の現在の射程（寿命）
         BASE_LIFE: 60,      // ゲームパッド/マウス操作時の基本寿命
-        TOUCH_LIFE: 90,     // タッチ操作時の強化寿命
+        TOUCH_LIFE: 70,     // タッチ操作時の強化寿命
         POWER: 1.5,         // 自機の弾の基本威力
         BASE_POWER: 1.5,    // ゲームパッド/マウス操作時の基本威力
-        TOUCH_POWER: 2.0    // タッチ操作（パッドなし）時の強化威力
+        TOUCH_POWER: 1.8    // タッチ操作（パッドなし）時の強化威力
     },  
     ENEMY_NORMAL: {
         SPEED: 10.0,   // 雑魚敵の弾の速さ
