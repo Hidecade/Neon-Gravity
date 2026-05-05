@@ -2524,7 +2524,6 @@ function updateEnemies() {
             }
 
             if (typeof AudioSys !== 'undefined') {
-                AudioSys.playSE('explode_large');
                 if (!isExtremeMode && AudioSys.bgmEl) {
                     AudioSys.bgmEl.pause();
                 }

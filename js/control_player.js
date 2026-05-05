@@ -529,7 +529,7 @@ function checkPlayerCollision(e) {
             player.shield -= damageAmount; // 計算したダメージを適用
             player.invuln = 10;
             createExplosion(player.x, player.y, '#f00', 5);
-            if (typeof AudioSys !== 'undefined') AudioSys.playSE('damage');
+            if (player.shield > 0 && typeof AudioSys !== 'undefined') AudioSys.playSE('damage');
         }
         ui.shieldBar.style.width = Math.max(0, player.shield) + "%";
 
