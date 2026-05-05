@@ -152,10 +152,16 @@
 .se-test-arrow:hover,
 .se-test-arrow:focus,
 .se-test-play:hover,
-.se-test-play:focus {
+.se-test-play:focus,
+.se-test-play.selected {
     color: #fff;
     background: rgba(0, 255, 255, 0.18);
     outline: none;
+}
+
+.se-test-play.selected {
+    border-color: #ff0;
+    box-shadow: 0 0 10px #ff0, 0 0 20px rgba(255, 255, 0, 0.45), inset 0 0 10px rgba(255, 255, 0, 0.18);
 }
 
 .se-test-arrow:active,

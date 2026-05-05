@@ -753,7 +753,7 @@ window.refreshMenuButtons = function (resetIndex = true) {
     } else if (howtoOverlay && howtoOverlay.style.display === 'flex') {
         pushVisibleButtons('#howto-overlay .menu-btn');
     } else if (settingsOverlay && settingsOverlay.style.display === 'flex') {
-        pushVisibleButtons('#settings-overlay .menu-btn');
+        pushVisibleButtons('#settings-overlay .menu-btn, #settings-overlay .se-test-play');
     } else if (trainingGuide && trainingGuide.style.display !== 'none') {
         pushVisibleButtons('#training-guide .menu-btn');
     } else if (gameState === 'ENDING') {
@@ -769,7 +769,7 @@ window.refreshMenuButtons = function (resetIndex = true) {
  * 取得したメニューボタンのUI上のフォーカス状態を描画・スクロールする
  */
 window.updateMenuSelectionUI = function () {
-    document.querySelectorAll('.menu-btn.selected, .track-item.selected').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.menu-btn.selected, .track-item.selected, .se-test-play.selected').forEach(el => el.classList.remove('selected'));
 
     if (currentMenuButtons.length > 0) {
         selectedMenuIndex = Math.max(0, Math.min(selectedMenuIndex, currentMenuButtons.length - 1));

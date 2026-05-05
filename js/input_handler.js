@@ -419,6 +419,28 @@ function handleGamepadInput() {
         const isDown = dpadDown || moveY > 0.5;
         const isLeft = dpadLeft || moveX < -0.5;
         const isRight = dpadRight || moveX > 0.5;
+
+        if (isSettingsOpen || gameState === 'SETTINGS') {
+            const selectedBtn = currentMenuButtons[selectedMenuIndex];
+            const isSETestSelected = selectedBtn && selectedBtn.classList.contains('se-test-play');
+
+            if (isSETestSelected && (isLeft || isRight)) {
+                if (!input.padDirPressed) {
+                    if (typeof cycleSettingSE === 'function') cycleSettingSE(isLeft ? -1 : 1);
+                }
+                input.padDirPressed = true;
+                input.padAPressed = aBtn;
+                return;
+            }
+
+            if (isSETestSelected && aBtn) {
+                if (!input.padAPressed && typeof previewCurrentSettingSE === 'function') {
+                    previewCurrentSettingSE();
+                }
+                input.padAPressed = true;
+                return;
+            }
+        }
         
         // ★ スクロール画面では上下入力(isUp/isDown)を無視し、スクロールに専念させる
         const shouldMoveCursor = isScrollScreen ? (isLeft || isRight) : (isUp || isDown || isLeft || isRight);

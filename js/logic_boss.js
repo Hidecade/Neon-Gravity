@@ -208,11 +208,11 @@ function updateBossPatternBMovement(e, options = {}) {
     const dy = player.y - e.y;
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
-    const evadeDir = updateBossEvadeSide(e, 42);
-    const wiggle = evadeDir * 170;
-    const dodge = evadeDir * 0.09;
-    const axisAccel = (options.isPressurePhase ? 0.22 : 0.15) * options.angerFactor * options.movementSpeedMult;
-    const maxSpeed = e.speed * (options.isPressurePhase ? 7.0 : 5.4) * options.angerFactor * options.movementSpeedMult;
+    const evadeDir = updateBossEvadeSide(e, 34);
+    const wiggle = evadeDir * 260;
+    const dodge = evadeDir * 0.16;
+    const axisAccel = (options.isPressurePhase ? 0.3 : 0.2) * options.angerFactor * options.movementSpeedMult;
+    const maxSpeed = e.speed * (options.isPressurePhase ? 8.0 : 6.2) * options.angerFactor * options.movementSpeedMult;
 
     if (options.isChargePhase) {
         e.vx *= 0.92;
@@ -220,15 +220,15 @@ function updateBossPatternBMovement(e, options = {}) {
     } else if (absDy >= absDx) {
         const targetX = player.x + wiggle;
         const moveX = targetX - e.x;
-        e.vx += Math.max(-1, Math.min(1, moveX / 180)) * axisAccel * SPEED_SCALE * gameSpeed;
+        e.vx += Math.max(-1, Math.min(1, moveX / 145)) * axisAccel * SPEED_SCALE * gameSpeed;
         e.vx += dodge * options.angerFactor * options.movementSpeedMult * SPEED_SCALE * gameSpeed;
         e.vy *= 0.94;
     } else {
         const targetY = player.y + wiggle;
         const moveY = targetY - e.y;
-        e.vy += Math.max(-1, Math.min(1, moveY / 180)) * axisAccel * SPEED_SCALE * gameSpeed;
-        e.vx += dodge * 0.65 * options.angerFactor * options.movementSpeedMult * SPEED_SCALE * gameSpeed;
-        e.vx *= 0.94;
+        e.vy += Math.max(-1, Math.min(1, moveY / 145)) * axisAccel * SPEED_SCALE * gameSpeed;
+        e.vx += dodge * 0.9 * options.angerFactor * options.movementSpeedMult * SPEED_SCALE * gameSpeed;
+        e.vx *= 0.96;
     }
 
     e.vx *= 0.985;
