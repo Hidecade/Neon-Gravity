@@ -15,20 +15,26 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // config.jsからバージョンを取得 (例: "1.4.5")
-const fullVersion = window.GAME_VERSION || "1.0.0";
+const fullVersion = window.GAME_VERSION || "1.0.000";
 
 // ドットで区切って最初の数字(メジャーバージョン)だけを取り出す (例: "1")
 const majorVersion = fullVersion.split('.')[0];
 
 const MODE_NORMAL = 'NORMAL';
+const MODE_OLD_NORMAL = 'OLD_NORMAL';
 const MODE_EXTREME = 'EXTREME_TIME_ATTACK';
+const OLD_NORMAL_MAJOR_VERSION = '0';
 
 function normalizeMode(mode) {
+    if (mode === MODE_OLD_NORMAL) return MODE_OLD_NORMAL;
     return mode === MODE_EXTREME ? MODE_EXTREME : MODE_NORMAL;
 }
 
 function getScoresCollection(mode) {
     const normalized = normalizeMode(mode);
+    if (normalized === MODE_OLD_NORMAL) {
+        return `neon_gravity_scores_v${OLD_NORMAL_MAJOR_VERSION}`;
+    }
     if (normalized === MODE_EXTREME) {
         return `neon_gravity_scores_v${majorVersion}_xta`;
     }
@@ -106,6 +112,7 @@ window.firebaseOps = {
             score: score,
             stage: stage,
             mode: normalizedMode,
+            version: fullVersion,
             surviveSeconds: surviveSeconds,
             clear: !!isClear,
             timestamp: serverTimestamp()
@@ -137,6 +144,8 @@ window.showRanking = async function (onClose = null, modeOverride = null) {
     if (titleMain) {
         if (rankingMode === MODE_EXTREME) {
             titleMain.innerText = "TIME ATTACK";
+        } else if (rankingMode === MODE_OLD_NORMAL) {
+            titleMain.innerText = "OLD COMMANDERS";
         } else {
             titleMain.innerText = "TOP COMMANDERS";
         }
@@ -145,11 +154,15 @@ window.showRanking = async function (onClose = null, modeOverride = null) {
     if (modeBtn) {
         if (rankingMode === MODE_EXTREME) {
             modeBtn.innerText = "MODE: TIME ATTACK";
+        } else if (rankingMode === MODE_OLD_NORMAL) {
+            modeBtn.innerText = "MODE: OLD 0.9";
         } else {
             modeBtn.innerText = "MODE: NORMAL";
         }
         modeBtn.onclick = () => {
-            const nextMode = rankingMode === MODE_EXTREME ? MODE_NORMAL : MODE_EXTREME;
+            const modeCycle = [MODE_NORMAL, MODE_OLD_NORMAL, MODE_EXTREME];
+            const currentIndex = modeCycle.indexOf(rankingMode);
+            const nextMode = modeCycle[(currentIndex + 1) % modeCycle.length];
             window.showRanking(onClose, nextMode);
         };
     }

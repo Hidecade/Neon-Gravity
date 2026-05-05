@@ -1,7 +1,7 @@
 importScripts('./js/version.js');
 
 // version.js をキャッシュ名の単一ソースとして使う
-const CACHE_NAME = `neon-gravity-v${self.NEON_GRAVITY_VERSION || '0.9.09'}`;
+const CACHE_NAME = `neon-gravity-v${self.NEON_GRAVITY_VERSION || '1.0.000'}`;
 
 // キャッシュ対象のファイル一覧
 const ASSETS_TO_CACHE = [
