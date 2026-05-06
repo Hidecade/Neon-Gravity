@@ -13,7 +13,7 @@
     justify-content: flex-start; /* 上寄せ */
     box-sizing: border-box;
     min-height: 100%;
-    padding: 10px 0 12px;
+    padding: 2vh 0 12px; /* 上の余白を狭く */
     gap: 10px;
 }
 
@@ -21,15 +21,13 @@
     position: relative;
     z-index: 2;
     width: min(92vw, 720px);
-    padding: 18px 16px 16px;
-    border-radius: 3px;
-    border: 1px solid rgba(120,255,255,0.18);
-    background: rgba(0,0,0,0.5);
+    padding: 0px;
     box-shadow:
         0 0 30px rgba(0,255,255,0.08),
         inset 0 0 24px rgba(120,255,255,0.04);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
+    background: rgba(0, 0, 0, 0.65);
     
     margin: 0;
 
@@ -43,22 +41,23 @@
 }
 
 /* 本文パネル */
-#story-scroll-container {
-    width: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    margin: 0;
-    padding-right: 12px;
-    -webkit-overflow-scrolling: touch;
+    #story-scroll-container {
+        width: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-overflow-scrolling: touch;
 
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
 
-    /* ★追加：親(story-panel)の空きスペースをすべて埋める */
-    flex: 1;
-    min-height: 0;
-    height: 100%;
-}
+        /* ★追加：親(story-panel)の空きスペースをすべて埋める */
+        flex: 1;
+        min-height: 0;
+        height: 100%;
+        box-sizing: border-box;
+    }
 
 /* スクロールバー */
 #story-scroll-container::-webkit-scrollbar {
@@ -185,14 +184,9 @@
 
 #story-scroll-container .archive-story-image-wrap {
     width: min(100%, 520px);
-    margin: 0 auto 16px;
-    border: 1px solid rgba(120, 255, 255, 0.3);
-    border-radius: 6px;
+    margin: 0px;
     overflow: hidden;
     background: rgba(0, 10, 18, 0.65);
-    box-shadow:
-        0 0 20px rgba(0, 255, 255, 0.18),
-        inset 0 0 24px rgba(0, 255, 255, 0.08);
 }
 
 #story-scroll-container .archive-story-image-wrap.archive-fixed {
@@ -368,12 +362,32 @@
     }
 
     #story-scroll-container.archive-layout-active .archive-story-image-wrap.archive-fixed {
-        width: min(100%, 420px);
-        margin: 0 auto;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        border-radius: 0 !important;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box;
+    }
+    #story-scroll-container .archive-story-image {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        height: auto !important;
+        max-height: 60vh !important;
+        object-fit: cover !important;
+        margin: 0 !important;
+        display: block !important;
+        box-sizing: border-box;
+    }
     }
 
     #story-scroll-container.archive-layout-active .archive-story-text-flow {
-        padding-right: 6px;
+        padding-right: 0;
     }
 
     #story-scroll-container h1 {
@@ -409,7 +423,29 @@
 
     #story-scroll-container.archive-layout-active {
         flex-direction: row;
-        align-items: stretch;
+        align-items: stretch; /* 全体はstretch */
+    }
+
+    #story-scroll-container.archive-layout-active .archive-story-image-wrap.archive-fixed {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    #story-scroll-container .archive-story-image {
+        width: auto !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: 60vh !important;
+        object-fit: contain !important;
+        margin: 0 !important;
+        display: block !important;
+        box-sizing: border-box;
+    }
+
+    #story-scroll-container.archive-layout-active .archive-story-text-flow {
+        align-self: flex-start;
+    }
     }
 
     #story-scroll-container.archive-layout-active .archive-story-image-wrap.archive-fixed {
@@ -454,7 +490,7 @@
             font-size: clamp(10px, 2vw, 13px) !important;
         }
         #story-panel {
-            padding: 4px 2px 2px 2px;
+            padding: 0px;
         }
     }
 }
