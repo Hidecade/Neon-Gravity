@@ -723,7 +723,7 @@
 
                 checkNeonGravityRemoteVersion();
 
-                const swVersion = window.NEON_GRAVITY_VERSION || '1.0.000';
+                const swVersion = window.NEON_GRAVITY_VERSION || '1.0.1';
                 navigator.serviceWorker.register(`./sw.js?v=${encodeURIComponent(swVersion)}`)
                     .then((reg) => {
                         console.log('SW registered:', reg);
@@ -766,7 +766,7 @@
                     return;
                 }
                 // バージョン付きで登録
-                const swVersion = window.NEON_GRAVITY_VERSION || '1.0.000';
+                const swVersion = window.NEON_GRAVITY_VERSION || '1.0.1';
                 navigator.serviceWorker.register(`./sw.js?v=${encodeURIComponent(swVersion)}`)
                     .then(reg => {
                         console.log('SW registered:', reg);

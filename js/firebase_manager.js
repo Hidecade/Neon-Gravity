@@ -15,7 +15,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // config.jsからバージョンを取得 (例: "1.4.5")
-const fullVersion = window.GAME_VERSION || "1.0.000";
+const fullVersion = window.GAME_VERSION || "1.0.1";
 
 // ドットで区切って最初の数字(メジャーバージョン)だけを取り出す (例: "1")
 const majorVersion = fullVersion.split('.')[0];

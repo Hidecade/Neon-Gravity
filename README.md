@@ -1,6 +1,6 @@
 # NEON GRAVITY: ORBITAL
 
-version 1.0.000
+version 1.0.1
 
 宇宙を幾何学的な死の世界へ変換する謎の機械生命体『アキシオム』。
 空間を歪ませる「ネオン・グリッド」の最深部へ向け、次元潜行型特務戦闘機「エメラルド・フェニックス」が発進する——。
@@ -157,7 +157,7 @@ This project is licensed under the MIT License.
 
 # NEON GRAVITY: ORBITAL
 
-version 1.0.000
+version 1.0.1
 
 The "Axiom"—a mysterious swarm of machine lifeforms converting the universe into a world of geometric death.
 The dimensional dive fighter "Emerald Phoenix" launches into the deepest sector of the space-distorting "Neon Grid"...
