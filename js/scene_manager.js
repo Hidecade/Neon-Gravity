@@ -1542,33 +1542,47 @@ async function renderArchiveStorySlide(index) {
     fixedImageEl.classList.remove('archive-image-zooming');
     void fixedImageEl.offsetWidth;
 
+    // テキスト描画は画像読み込み完了後に行う
+    const showText = async () => {
+        updateArchiveStoryOverlayHeader(slide);
+        textFlow.innerHTML = '';
+        textFlow.scrollTop = 0;
+        const sectionEl = document.createElement('section');
+        sectionEl.className = 'archive-story-section';
+        const bodyEl = document.createElement('p');
+        bodyEl.className = `${langClass} archive-typed-line`;
+        sectionEl.appendChild(bodyEl);
+        textFlow.appendChild(sectionEl);
+        const bodyOk = await typeLineText(bodyEl, slide.text, sessionId);
+        if (sessionId === archiveStoryTypingSessionId) {
+            isArchiveStorySlideTyping = false;
+            archiveStoryFastForwardRequested = false;
+        }
+    };
+
+    // 画像読み込み完了時にテキスト描画
+    fixedImageEl.onload = function() {
+        fixedImageEl.classList.add('archive-image-zooming');
+        showText();
+    };
+    // 読み込み失敗時もテキスト描画（黒背景）
+    fixedImageEl.onerror = function() {
+        fixedImageEl.src = '';
+        showText();
+    };
+    // srcを最後にセット
     fixedImageEl.src = slide.image || '';
     fixedImageEl.alt = slide.chapter === 0 ? 'Story Title' : `Story Chapter ${slide.chapter}`;
-
-    fixedImageEl.classList.add('archive-image-zooming');
-
-    updateArchiveStoryOverlayHeader(slide);
-
-    textFlow.innerHTML = '';
-    textFlow.scrollTop = 0;
-
-    const sectionEl = document.createElement('section');
-    sectionEl.className = 'archive-story-section';
-
-    const bodyEl = document.createElement('p');
-    bodyEl.className = `${langClass} archive-typed-line`;
-    sectionEl.appendChild(bodyEl);
-
-    textFlow.appendChild(sectionEl);
-
-    const bodyOk = await typeLineText(bodyEl, slide.text, sessionId);
-
-    if (sessionId === archiveStoryTypingSessionId) {
-        isArchiveStorySlideTyping = false;
-        archiveStoryFastForwardRequested = false;
+    // キャッシュ済み画像の場合onloadが発火しないことがあるので、completeなら即時描画
+    if (fixedImageEl.complete) {
+        if (fixedImageEl.naturalWidth > 0) {
+            fixedImageEl.classList.add('archive-image-zooming');
+            showText();
+        } else {
+            fixedImageEl.src = '';
+            showText();
+        }
     }
-
-    if (!bodyOk) return;
 }
 
 async function startArchiveStoryTyping(lang) {
