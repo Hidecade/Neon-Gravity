@@ -1593,6 +1593,10 @@ async function startArchiveStoryTyping(lang) {
     fixedImageEl.id = 'story-fixed-image';
     fixedImageEl.className = 'archive-story-image';
     fixedImageEl.alt = 'Story Chapter';
+    // 画像読み込み失敗時はsrcを空にして黒背景だけ表示
+    fixedImageEl.onerror = function() {
+        this.src = '';
+    };
     fixedImageWrap.appendChild(fixedImageEl);
     container.appendChild(fixedImageWrap);
 

@@ -255,6 +255,7 @@
     background: rgba(0, 255, 255, 0.9);
 }
 
+
 #story-scroll-container .archive-story-image {
     display: block;
     width: 100%;
@@ -263,8 +264,16 @@
     object-fit: cover;
     object-position: center center;
     image-rendering: auto;
-
     transform-origin: center center;
+    background: transparent;
+}
+
+/* 画像が読み込めなかった場合（srcが空）imgを非表示にし、親divで黒背景 */
+#story-scroll-container .archive-story-image[src=''] {
+    display: none;
+}
+#story-scroll-container .archive-story-image-wrap {
+    background: #000 !important;
 }
 
 #story-scroll-container .archive-story-image.archive-image-zooming {
