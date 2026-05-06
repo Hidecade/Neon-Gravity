@@ -20,44 +20,43 @@
 #story-panel {
     position: relative;
     z-index: 2;
-    width: min(92vw, 720px);
+    width: min(94vw, 1100px);
     padding: 0px;
     box-shadow:
         0 0 30px rgba(0,255,255,0.08),
         inset 0 0 24px rgba(120,255,255,0.04);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-    background: rgba(0, 0, 0, 0.65);
-    
+    background: rgba(0, 0, 0, 0.55);
+
     margin: 0;
 
-    /* ヘッダーとナビを除いた残り高さを常に使う */
     display: flex;
     flex-direction: column;
-    box-sizing: border-box; /* 内側の余白（padding）を高さに含める */
+    box-sizing: border-box;
     flex: 1 1 auto;
-    min-height: 0;          /* 縮んだ状態でスクロールさせるためのおまじない */
+    min-height: 0;
     max-height: 100%;
+    overflow: hidden;
 }
 
 /* 本文パネル */
-    #story-scroll-container {
-        width: 100%;
-        overflow-y: auto;
-        overflow-x: hidden;
-        margin: 0 !important;
-        padding: 0 !important;
-        -webkit-overflow-scrolling: touch;
+#story-scroll-container {
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-overflow-scrolling: touch;
 
-        scrollbar-width: thin;
-        scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
 
-        /* ★追加：親(story-panel)の空きスペースをすべて埋める */
-        flex: 1;
-        min-height: 0;
-        height: 100%;
-        box-sizing: border-box;
-    }
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    box-sizing: border-box;
+}
 
 /* スクロールバー */
 #story-scroll-container::-webkit-scrollbar {
@@ -146,7 +145,7 @@
 /* 英文 */
 .en-text {
     color: rgba(220, 235, 240, 0.78);
-    font-size: 12.5px;
+    font-size: clamp(13px, 1.05vw, 17px);
     line-height: 1.8;
     margin: 0 0 0.45em;
     letter-spacing: 0.04em;
@@ -156,7 +155,7 @@
 /* 和文 */
 .ja-text {
     color: #d7e3e8;
-    font-size: 13px;
+    font-size: clamp(14px, 1.1vw, 18px);
     line-height: 1.9;
     font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Meiryo', sans-serif;
     letter-spacing: 0.04em;
@@ -183,10 +182,10 @@
 }
 
 #story-scroll-container .archive-story-image-wrap {
-    width: min(100%, 520px);
+    width: min(100%, 720px);
     margin: 0px;
     overflow: hidden;
-    background: rgba(0, 10, 18, 0.65);
+    background: #000;
 }
 
 #story-scroll-container .archive-story-image-wrap.archive-fixed {
@@ -212,14 +211,25 @@
 }
 
 #story-scroll-container.archive-layout-active .archive-story-text-flow {
-    flex: 1;
+    position: relative;
+    z-index: 2;
+
+    flex: 1 1 auto;
     min-height: 0;
     min-width: 0;
+
+    margin-top: 0;
     overflow-y: auto;
-    overflow-x: hidden;
-    padding-right: 8px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
+
+    padding: 14px 16px 18px;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+
+    background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.34) 0%,
+        rgba(0, 0, 0, 0.18) 48%,
+        rgba(0, 0, 0, 0.06) 100%
+    );
 }
 
 #story-scroll-container.archive-layout-active .archive-story-text-flow::-webkit-scrollbar {
@@ -248,8 +258,10 @@
 #story-scroll-container .archive-story-image {
     display: block;
     width: 100%;
+    height: 100%;
     aspect-ratio: 1 / 1;
     object-fit: cover;
+    object-position: center center;
     image-rendering: auto;
 }
 
@@ -265,7 +277,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: min(92vw, 720px);
+    width: min(94vw, 1100px);
     max-width: 100%;
     box-sizing: border-box;
     padding: 0 4px;
@@ -279,7 +291,12 @@
     text-indent: 0;
     letter-spacing: 0;
     transform: none;
-    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    transition:
+        background 0.18s ease,
+        border-color 0.18s ease,
+        color 0.18s ease,
+        box-shadow 0.18s ease,
+        filter 0.18s ease;
 }
 
 /* STORYナビでは selected と hover の見た目差をなくし、矢印ボタンの挙動を統一する */
@@ -317,7 +334,7 @@
 }
 
 #story-overlay .overlay-title-sub.story-chapter-description {
-    max-width: min(92vw, 720px);
+    max-width: min(94vw, 1100px);
     white-space: pre-line;
     line-height: 1.35;
     letter-spacing: 0.08em;
@@ -326,68 +343,93 @@
 }
 
 /* =========================================
-   レスポンシブ (メディアクエリ)
+   レスポンシブ
 ========================================= */
 
-/* スマホ縦画面 (Portrait) */
+/* 縦画面 */
 @media (orientation: portrait) {
     #story-overlay {
-        padding: 4vh 0 2.5vh;
+        padding: max(8px, env(safe-area-inset-top)) 0 max(10px, env(safe-area-inset-bottom));
+        gap: 6px;
     }
 
     #story-panel {
-        width: 90vw;
-        padding: 14px 12px 12px;
+        width: 100vw;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
     }
 
     #story-nav-buttons {
-        width: 90vw;
+        width: 96vw;
         gap: 4px;
-        padding: 0 2px;
+        padding: 0 4px;
+        margin-top: 10px;
+        margin-bottom: max(8px, env(safe-area-inset-bottom));
     }
 
     #story-nav-buttons .menu-btn {
         padding: 8px 4px;
-        font-size: clamp(14px, 4.4vw, 18px);
+        font-size: clamp(13px, 4vw, 18px);
     }
 
     #story-scroll-container {
         width: 100%;
-        padding-right: 6px;
-    }
-
-    #story-scroll-container.archive-layout-active {
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    #story-scroll-container.archive-layout-active .archive-story-image-wrap.archive-fixed {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        border-radius: 0 !important;
-        display: flex;
-        justify-content: center;
-        align-items: center;
         padding: 0 !important;
-        margin: 0 !important;
-        box-sizing: border-box;
-    }
-    #story-scroll-container .archive-story-image {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        height: auto !important;
-        max-height: 60vh !important;
-        object-fit: cover !important;
-        margin: 0 !important;
-        display: block !important;
-        box-sizing: border-box;
-    }
     }
 
+    /* 縦画面：画像 → 文字 の順に縦配置 */
+    #story-scroll-container.archive-layout-active {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    /* 画像をタイトル直下から左右Fit表示 */
+    #story-scroll-container.archive-layout-active .archive-story-image-wrap.archive-fixed {
+        width: 100%;
+        max-width: none;
+        height: auto;
+        max-height: 58%;
+        aspect-ratio: 1 / 1;
+        flex: 0 0 auto;
+        margin: 0;
+        background: #000;
+        z-index: 1;
+    }
+
+    #story-scroll-container .archive-story-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        object-position: center top;
+    }
+
+    /* 文字は画像の直下 */
     #story-scroll-container.archive-layout-active .archive-story-text-flow {
-        padding-right: 0;
+        position: relative;
+        z-index: 2;
+
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+
+        margin-top: 0;
+        overflow-y: auto;
+
+        padding: 14px 16px 18px;
+        padding-bottom: calc(18px + env(safe-area-inset-bottom));
+
+        background: linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0.92) 0%,
+            rgba(0, 0, 0, 0.78) 48%,
+            rgba(0, 0, 0, 0.58) 100%
+        );
     }
 
     #story-scroll-container h1 {
@@ -396,101 +438,114 @@
     }
 
     #story-scroll-container h2 {
-        font-size: 15px;
-        margin-top: 2em;
+        font-size: 16px;
+        margin-top: 1.8em;
     }
 
     .en-text {
-        font-size: 11.5px;
+        font-size: clamp(12px, 3.1vw, 14px);
     }
 
     .ja-text {
-        font-size: 12.5px;
-        margin-bottom: 2em;
+        font-size: clamp(13px, 3.35vw, 15px);
+        margin-bottom: 1.8em;
     }
 }
 
-/* スマホ横画面 (Landscape) */
+/* 横画面 */
 @media (orientation: landscape) {
     #story-overlay {
-        padding: 3vh 0 2vh;
+        padding: 1.4vh 0 1vh;
+        gap: 6px;
     }
 
     #story-panel {
-        width: min(86vw, 720px);
-        padding: 12px;
+        width: min(96vw, 1200px);
+        padding: 0;
     }
 
-    #story-scroll-container.archive-layout-active {
-        flex-direction: row;
-        align-items: stretch; /* 全体はstretch */
-    }
-
-    #story-scroll-container.archive-layout-active .archive-story-image-wrap.archive-fixed {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-    }
-    #story-scroll-container .archive-story-image {
-        width: auto !important;
-        max-width: 100% !important;
-        height: auto !important;
-        max-height: 60vh !important;
-        object-fit: contain !important;
-        margin: 0 !important;
-        display: block !important;
-        box-sizing: border-box;
-    }
-
-    #story-scroll-container.archive-layout-active .archive-story-text-flow {
-        align-self: flex-start;
-    }
-    }
-
-    #story-scroll-container.archive-layout-active .archive-story-image-wrap.archive-fixed {
-        width: min(44%, 330px);
-    }
-
-    #story-scroll-container.archive-layout-active .archive-story-text-flow {
-        margin-top: 0;
-    }
-    
     #story-nav-buttons {
-        margin-top: 12px;
-        margin-bottom: 12px;
+        width: min(96vw, 1200px);
+        margin-top: 8px;
+        margin-bottom: 8px;
         gap: 6px;
-        width: min(86vw, 720px);
         padding: 0 2px;
     }
 
-    #btn-story-prev,
-    #btn-story-next,
-    #btn-story-title {
-        max-width: none;
+    #story-nav-buttons .menu-btn {
+        font-size: clamp(13px, 1.6vw, 18px);
+        padding: 6px 4px;
     }
 
-    /* iPhone横向き・画面高さが短い場合のボタン・タイトル縮小 */
-    @media screen and (max-height: 430px) {
-        #story-nav-buttons .menu-btn {
-            padding: 4px 2px;
-            font-size: clamp(11px, 2.8vw, 15px);
-            min-height: 28px;
-            height: 28px;
-        }
-        #story-nav-buttons {
-            margin-top: 4px;
-            margin-bottom: 4px;
-            gap: 2px;
-        }
-        #story-overlay .overlay-title-main {
-            font-size: clamp(16px, 4vw, 22px) !important;
-        }
-        #story-overlay .overlay-title-sub {
-            font-size: clamp(10px, 2vw, 13px) !important;
-        }
-        #story-panel {
-            padding: 0px;
-        }
+    #story-scroll-container {
+        padding: 0 !important;
+    }
+
+    #story-scroll-container.archive-layout-active {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        gap: 12px;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    #story-scroll-container.archive-layout-active .archive-story-image-wrap.archive-fixed {
+        flex: 0 0 auto;
+        height: 100%;
+        aspect-ratio: 1 / 1;
+        width: auto;
+        max-width: min(52vw, 560px);
+        margin: 0;
+        background: #000;
+    }
+
+    #story-scroll-container .archive-story-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center center;
+    }
+
+    #story-scroll-container.archive-layout-active .archive-story-text-flow {
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 0;
+        height: 100%;
+        margin-top: 0;
+        padding: 0 8px 0 0;
+        align-self: stretch;
+    }
+
+    .en-text {
+        font-size: clamp(13px, 0.95vw, 17px);
+    }
+
+    .ja-text {
+        font-size: clamp(14px, 1.02vw, 18px);
+    }
+}
+
+/* 高さがかなり低い横画面 */
+@media (orientation: landscape) and (max-height: 430px) {
+    #story-nav-buttons .menu-btn {
+        padding: 4px 2px;
+        font-size: clamp(11px, 2.8vw, 15px);
+        min-height: 28px;
+        height: 28px;
+    }
+
+    #story-nav-buttons {
+        margin-top: 4px;
+        margin-bottom: 4px;
+        gap: 2px;
+    }
+
+    #story-overlay .overlay-title-main {
+        font-size: clamp(16px, 4vw, 22px) !important;
+    }
+
+    #story-overlay .overlay-title-sub {
+        font-size: clamp(10px, 2vw, 13px) !important;
     }
 }
