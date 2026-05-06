@@ -263,6 +263,12 @@
     object-fit: cover;
     object-position: center center;
     image-rendering: auto;
+
+    transform-origin: center center;
+}
+
+#story-scroll-container .archive-story-image.archive-image-zooming {
+    animation: archiveImageSlowZoom 24s ease-out forwards;
 }
 
 #story-scroll-container .archive-typed-line {

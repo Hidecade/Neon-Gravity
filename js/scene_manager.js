@@ -1539,8 +1539,14 @@ async function renderArchiveStorySlide(index) {
     isArchiveStorySlideTyping = true;
     archiveStoryFastForwardRequested = false;
 
+    fixedImageEl.classList.remove('archive-image-zooming');
+    void fixedImageEl.offsetWidth;
+
     fixedImageEl.src = slide.image || '';
     fixedImageEl.alt = slide.chapter === 0 ? 'Story Title' : `Story Chapter ${slide.chapter}`;
+
+    fixedImageEl.classList.add('archive-image-zooming');
+
     updateArchiveStoryOverlayHeader(slide);
 
     textFlow.innerHTML = '';
