@@ -1155,41 +1155,44 @@ function requestFullScreen() {
 // 2.6 ARCHIVE STORY: image-first + typing presentation
 // =========================================================
 
-const ARCHIVE_STORY_TITLE_IMAGE = 'img/story/story_title.png';
+const ARCHIVE_STORY_TITLE_IMAGE = 'img/story/story_title.jpg';
 
 const ARCHIVE_STORY_IMAGE_MAP = {
     1: [
-        'img/story/story_1_00.png', 'img/story/story_1_01.png', 'img/story/story_1_02.png',
-        'img/story/story_1_03.png', 'img/story/story_1_04.png', 'img/story/story_1_05.png',
-        'img/story/story_1_06.png', 'img/story/story_1_07.png', 'img/story/story_1_08.png',
-        'img/story/story_1_09.png', 'img/story/story_1_10.png', 'img/story/story_1_11.png'
+        'img/story/story_1_00.jpg', 'img/story/story_1_01.jpg', 'img/story/story_1_02.jpg',
+        'img/story/story_1_03.jpg', 'img/story/story_1_04.jpg', 'img/story/story_1_05.jpg',
+        'img/story/story_1_06.jpg', 'img/story/story_1_07.jpg', 'img/story/story_1_08.jpg',
+        'img/story/story_1_09.jpg', 'img/story/story_1_10.jpg', 'img/story/story_1_11.jpg'
     ],
     2: [
-        'img/story/story_2_00.png', 'img/story/story_2_00.png', 'img/story/story_2_00.png', 'img/story/story_2_01.png', 'img/story/story_2_02.png',
-        'img/story/story_2_03.png', 'img/story/story_2_04.png', 'img/story/story_2_05.png',
-        'img/story/story_2_06.png', 'img/story/story_2_07.png', 'img/story/story_2_08.png',
-        'img/story/story_2_09.png'
+        'img/story/story_2_00.jpg', 'img/story/story_2_00.jpg', 'img/story/story_2_00.jpg', 
+        'img/story/story_2_01.jpg', 'img/story/story_2_02.jpg',
+        'img/story/story_2_03.jpg', 'img/story/story_2_04.jpg', 'img/story/story_2_05.jpg',
+        'img/story/story_2_06.jpg', 'img/story/story_2_07.jpg', 'img/story/story_2_08.jpg',
+        'img/story/story_2_09.jpg'
     ],
     3: [
-        'img/story/story_3_00.png', 'img/story/story_3_01.png', 'img/story/story_3_02.png', 'img/story/story_3_03.png',
-        'img/story/story_3_04.png', 'img/story/story_3_05.png', 'img/story/story_3_06.png',
-        'img/story/story_3_07.png', 'img/story/story_3_08.png', 'img/story/story_3_09.png',
-        'img/story/story_3_10.png', 'img/story/story_3_11.png'
+        'img/story/story_3_00.jpg', 'img/story/story_3_01.jpg', 'img/story/story_3_02.jpg', 
+        'img/story/story_3_03.jpg',
+        'img/story/story_3_04.jpg', 'img/story/story_3_05.jpg', 'img/story/story_3_06.jpg',
+        'img/story/story_3_07.jpg', 'img/story/story_3_08.jpg', 'img/story/story_3_09.jpg',
+        'img/story/story_3_10.jpg', 'img/story/story_3_11.jpg'
     ],
     4: [
-        'img/story/story_4_00.png', 'img/story/story_4_01.png', 'img/story/story_4_02.png',
-        'img/story/story_4_03.png', 'img/story/story_4_04.png', 'img/story/story_4_05.png',
-        'img/story/story_4_06.png', 'img/story/story_4_07.png', 'img/story/story_4_08.png',
-        'img/story/story_4_09.png', 'img/story/story_4_10.png', 'img/story/story_4_11.png',
-        'img/story/story_4_12.png', 'img/story/story_4_13.png'
+        'img/story/story_4_00.jpg', 'img/story/story_4_01.jpg', 'img/story/story_4_02.jpg',
+        'img/story/story_4_03.jpg', 'img/story/story_4_04.jpg', 'img/story/story_4_05.jpg',
+        'img/story/story_4_06.jpg', 'img/story/story_4_07.jpg', 'img/story/story_4_08.jpg',
+        'img/story/story_4_09.jpg', 'img/story/story_4_10.jpg', 'img/story/story_4_11.jpg',
+        'img/story/story_4_12.jpg', 'img/story/story_4_13.jpg'
     ],
     5: [
-        'img/story/story_5_00.png', 'img/story/story_5_01.png', 'img/story/story_5_01.png', 
-        'img/story/story_5_01.png', 'img/story/story_5_02.png', 'img/story/story_5_02.png',
-        'img/story/story_5_03.png', 'img/story/story_5_03.png', 'img/story/story_5_04.png', 'img/story/story_5_04.png', 
-        'img/story/story_5_05.png',
-        'img/story/story_5_06.png', 'img/story/story_5_07.png', 'img/story/story_5_08.png',
-        'img/story/story_5_09.png', 'img/story/story_5_10.png', 'img/story/story_title.png'
+        'img/story/story_5_00.jpg', 'img/story/story_5_01.jpg', 'img/story/story_5_01.jpg', 
+        'img/story/story_5_01.jpg', 'img/story/story_5_02.jpg', 'img/story/story_5_02.jpg',
+        'img/story/story_5_03.jpg', 'img/story/story_5_03.jpg', 'img/story/story_5_04.jpg', 
+        'img/story/story_5_04.jpg', 
+        'img/story/story_5_05.jpg',
+        'img/story/story_5_06.jpg', 'img/story/story_5_07.jpg', 'img/story/story_5_08.jpg',
+        'img/story/story_5_09.jpg', 'img/story/story_5_10.jpg', 'img/story/story_title.jpg'
     ]
 };
 
