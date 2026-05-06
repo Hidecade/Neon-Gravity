@@ -1165,7 +1165,7 @@ const ARCHIVE_STORY_IMAGE_MAP = {
         'img/story/story_1_09.jpg', 'img/story/story_1_10.jpg', 'img/story/story_1_11.jpg'
     ],
     2: [
-        'img/story/story_2_00.jpg', 'img/story/story_2_00.jpg', 'img/story/story_2_00.jpg', 
+        'img/story/story_2_00.jpg', 'img/story/story_2_00a.jpg', 'img/story/story_2_00b.jpg', 
         'img/story/story_2_01.jpg', 'img/story/story_2_02.jpg',
         'img/story/story_2_03.jpg', 'img/story/story_2_04.jpg', 'img/story/story_2_05.jpg',
         'img/story/story_2_06.jpg', 'img/story/story_2_07.jpg', 'img/story/story_2_08.jpg',
@@ -1192,7 +1192,7 @@ const ARCHIVE_STORY_IMAGE_MAP = {
         'img/story/story_5_04.jpg', 
         'img/story/story_5_05.jpg',
         'img/story/story_5_06.jpg', 'img/story/story_5_07.jpg', 'img/story/story_5_08.jpg',
-        'img/story/story_5_09.jpg', 'img/story/story_5_10.jpg', 'img/story/story_title.jpg'
+        'img/story/story_5_09.jpg', 'img/story/story_5_10.jpg', 'img/story/story_5_11.jpg'
     ]
 };
 
