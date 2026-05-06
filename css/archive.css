@@ -11,6 +11,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start; /* 上寄せ */
+    box-sizing: border-box;
+    min-height: 100%;
+    padding: 10px 0 12px;
+    gap: 10px;
 }
 
 #story-panel {
@@ -27,16 +31,15 @@
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     
-    /* 上下中央寄せ */
-    margin-top: auto;
-    margin-bottom: auto;
+    margin: 0;
 
-    /* ★修正：高さを自動計算にし、はみ出しを完全に防ぐ最強の設定 */
+    /* ヘッダーとナビを除いた残り高さを常に使う */
     display: flex;
     flex-direction: column;
     box-sizing: border-box; /* 内側の余白（padding）を高さに含める */
-    flex: 0 1 auto;         /* 画面が狭いときは自動的に縮む */
+    flex: 1 1 auto;
     min-height: 0;          /* 縮んだ状態でスクロールさせるためのおまじない */
+    max-height: 100%;
 }
 
 /* 本文パネル */
@@ -176,10 +179,156 @@
     max-width: 92ch;
 }
 
-#btn-story-back {
+#story-scroll-container .archive-story-section {
+    margin-bottom: 2.4em;
+}
+
+#story-scroll-container .archive-story-image-wrap {
+    width: min(100%, 520px);
+    margin: 0 auto 16px;
+    border: 1px solid rgba(120, 255, 255, 0.3);
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(0, 10, 18, 0.65);
+    box-shadow:
+        0 0 20px rgba(0, 255, 255, 0.18),
+        inset 0 0 24px rgba(0, 255, 255, 0.08);
+}
+
+#story-scroll-container .archive-story-image-wrap.archive-fixed {
+    z-index: 3;
+}
+
+#story-scroll-container .archive-story-text-flow {
+    margin-top: 6px;
+}
+
+#story-scroll-container.archive-layout-active {
+    display: flex;
+    gap: 12px;
+    overflow: hidden;
+    padding-right: 0;
+}
+
+#story-scroll-container.archive-layout-active .archive-story-image-wrap.archive-fixed {
+    position: relative;
+    top: auto;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+#story-scroll-container.archive-layout-active .archive-story-text-flow {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 255, 255, 0.6) rgba(0, 255, 255, 0.05);
+}
+
+#story-scroll-container.archive-layout-active .archive-story-text-flow::-webkit-scrollbar {
+    width: 7px;
+}
+
+#story-scroll-container.archive-layout-active .archive-story-text-flow::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 999px;
+}
+
+#story-scroll-container.archive-layout-active .archive-story-text-flow::-webkit-scrollbar-thumb {
+    background: linear-gradient(
+        to bottom,
+        rgba(0, 255, 255, 0.35),
+        rgba(0, 255, 255, 0.7)
+    );
+    border-radius: 999px;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.35);
+}
+
+#story-scroll-container.archive-layout-active .archive-story-text-flow::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 255, 0.9);
+}
+
+#story-scroll-container .archive-story-image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    image-rendering: auto;
+}
+
+#story-scroll-container .archive-typed-line {
+    white-space: pre-line;
+}
+
+#story-nav-buttons {
     margin-top: 20px;
     margin-bottom: 20px;
-    flex-shrink: 0; /* 画面が狭くてもボタンが潰れないように保護 */
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: min(92vw, 720px);
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0 4px;
+    flex-wrap: nowrap;
+}
+
+#story-nav-buttons .menu-btn {
+    min-width: 0 !important;
+    padding: 8px 6px;
+    font-size: clamp(16px, 4.2vw, 22px);
+    text-indent: 0;
+    letter-spacing: 0;
+    transform: none;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+/* STORYナビでは selected と hover の見た目差をなくし、矢印ボタンの挙動を統一する */
+#story-nav-buttons .menu-btn:hover,
+#story-nav-buttons .menu-btn.selected {
+    transform: none;
+}
+
+#story-nav-buttons .menu-btn:active {
+    transform: none;
+    filter: brightness(1.1);
+}
+
+#story-nav-buttons .menu-btn.selected {
+    color: #fff !important;
+    border-color: #0ff !important;
+}
+
+#btn-story-prev-chapter,
+#btn-story-prev,
+#btn-story-next,
+#btn-story-next-chapter,
+#btn-story-title {
+    flex: 1 1 0;
+    max-width: none;
+}
+
+#btn-story-prev-chapter,
+#btn-story-next-chapter {
+    flex: 0.8 1 0;
+}
+
+#btn-story-title {
+    flex: 1.25 1 0;
+}
+
+#story-overlay .overlay-title-sub.story-chapter-description {
+    max-width: min(92vw, 720px);
+    white-space: pre-line;
+    line-height: 1.35;
+    letter-spacing: 0.08em;
+    text-indent: 0;
+    text-transform: none;
 }
 
 /* =========================================
@@ -189,7 +338,7 @@
 /* スマホ縦画面 (Portrait) */
 @media (orientation: portrait) {
     #story-overlay {
-        padding-top: 5vh;
+        padding: 4vh 0 2.5vh;
     }
 
     #story-panel {
@@ -197,8 +346,33 @@
         padding: 14px 12px 12px;
     }
 
+    #story-nav-buttons {
+        width: 90vw;
+        gap: 4px;
+        padding: 0 2px;
+    }
+
+    #story-nav-buttons .menu-btn {
+        padding: 8px 4px;
+        font-size: clamp(14px, 4.4vw, 18px);
+    }
+
     #story-scroll-container {
         width: 100%;
+        padding-right: 6px;
+    }
+
+    #story-scroll-container.archive-layout-active {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #story-scroll-container.archive-layout-active .archive-story-image-wrap.archive-fixed {
+        width: min(100%, 420px);
+        margin: 0 auto;
+    }
+
+    #story-scroll-container.archive-layout-active .archive-story-text-flow {
         padding-right: 6px;
     }
 
@@ -225,16 +399,62 @@
 /* スマホ横画面 (Landscape) */
 @media (orientation: landscape) {
     #story-overlay {
-        padding-top: 4vh;
+        padding: 3vh 0 2vh;
     }
 
     #story-panel {
         width: min(86vw, 720px);
         padding: 12px;
     }
+
+    #story-scroll-container.archive-layout-active {
+        flex-direction: row;
+        align-items: stretch;
+    }
+
+    #story-scroll-container.archive-layout-active .archive-story-image-wrap.archive-fixed {
+        width: min(44%, 330px);
+    }
+
+    #story-scroll-container.archive-layout-active .archive-story-text-flow {
+        margin-top: 0;
+    }
     
-    #btn-story-back {
+    #story-nav-buttons {
         margin-top: 12px;
         margin-bottom: 12px;
+        gap: 6px;
+        width: min(86vw, 720px);
+        padding: 0 2px;
+    }
+
+    #btn-story-prev,
+    #btn-story-next,
+    #btn-story-title {
+        max-width: none;
+    }
+
+    /* iPhone横向き・画面高さが短い場合のボタン・タイトル縮小 */
+    @media screen and (max-height: 430px) {
+        #story-nav-buttons .menu-btn {
+            padding: 4px 2px;
+            font-size: clamp(11px, 2.8vw, 15px);
+            min-height: 28px;
+            height: 28px;
+        }
+        #story-nav-buttons {
+            margin-top: 4px;
+            margin-bottom: 4px;
+            gap: 2px;
+        }
+        #story-overlay .overlay-title-main {
+            font-size: clamp(16px, 4vw, 22px) !important;
+        }
+        #story-overlay .overlay-title-sub {
+            font-size: clamp(10px, 2vw, 13px) !important;
+        }
+        #story-panel {
+            padding: 4px 2px 2px 2px;
+        }
     }
 }

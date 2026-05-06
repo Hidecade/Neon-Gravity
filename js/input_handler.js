@@ -367,7 +367,7 @@ function handleGamepadInput() {
         else if (isSubMenuOpen || ['STORY', 'RANKING', 'OST'].includes(gameState)) {
             // 各画面の固有の「戻る」ボタンをシミュレートクリックして安全に閉じる
             let backBtnId = '';
-            if (isStoryOpen || gameState === 'STORY') backBtnId = 'btn-story-back';
+            if (isStoryOpen || gameState === 'STORY') backBtnId = 'btn-story-title';
             else if (isRankingOpen || gameState === 'RANKING') backBtnId = 'close-ranking-btn';
             else if (isOstOpen || gameState === 'OST') backBtnId = 'btn-back';
             
@@ -401,7 +401,11 @@ function handleGamepadInput() {
         // ---------------------------------------------------------
         if (isScrollScreen) {
             let targetId = '';
-            if (isStoryOpen || gameState === 'STORY') targetId = 'story-scroll-container';
+            if (isStoryOpen || gameState === 'STORY') {
+                targetId = document.getElementById('story-text-scroll-container')
+                    ? 'story-text-scroll-container'
+                    : 'story-scroll-container';
+            }
             else if (isRankingOpen || gameState === 'RANKING') targetId = 'ranking-scroll-container';
             else if (isOstOpen || gameState === 'OST') targetId = 'ost-scroll-container';
 
@@ -802,7 +806,11 @@ function initInputHandlers() {
     bindBtn('btn-ost', openOST);
     bindBtn('btn-back', closeOST);
     bindBtn('btn-story', openStory);
-    bindBtn('btn-story-back', closeStory);
+    bindBtn('btn-story-prev-chapter', prevArchiveStoryChapter);
+    bindBtn('btn-story-prev', prevArchiveStorySlide);
+    bindBtn('btn-story-next', nextArchiveStorySlide);
+    bindBtn('btn-story-next-chapter', nextArchiveStoryChapter);
+    bindBtn('btn-story-title', closeStory);
     bindBtn('btn-howto-back', hideHowTo);
     bindBtn('btn-extreme-ta', startExtremeTimeAttack);
     bindBtn('btn-howto-next', startTraining);

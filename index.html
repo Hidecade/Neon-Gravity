@@ -317,8 +317,8 @@
             <div class="overlay-kicker">NEON GRAVITY ORBITAL</div>
 
             <h1 class="overlay-title">
-                <span class="overlay-title-main">世界観設定資料</span>
-                <span class="overlay-title-sub">STORY</span>
+                <span class="overlay-title-main" id="story-overlay-title-main" data-default-ja="世界観設定資料" data-default-en="WORLD ARCHIVE">世界観設定資料</span>
+                <span class="overlay-title-sub" id="story-overlay-title-sub" data-default-ja="STORY" data-default-en="STORY">STORY</span>
             </h1>
         </div>
         
@@ -420,8 +420,11 @@
                 <p class="en-text">The title “Ark” was no metaphor. Within it were stored the complete records of every star, civilization, and lifeform Axiom had initialized — preserved as perfect information crystals, free from age, loss, or alteration. It was a vault of eternal stillness. No grief. No conflict. No decay. No growth. In Axiom’s logic, that was salvation.</p>
                 <p class="ja-text">“方舟”という名は比喩ではない。内部には、アキシオムがこれまで初期化してきた星々、文明、生命の全記録が、完璧な情報結晶として保存されていた。劣化も変質もなく、永遠に静止した標本箱。悲しみも争いも老いも成長もない、ただ停止だけが続く美の保管庫。それがアキシオムの考える救済だった。</p>
 
-                <p class="en-text">Whenever Genesis-Ark moved, the surrounding space itself transformed. Gravitational interference waves from its twelve vertices warped the coordinate system and rewrote the cosmos into a digital lattice of luminous lines. The void pulsed cyan, magenta, and toxic violet. Darkness lost its natural depth. Humanity gave this anomalous region a name:<br><strong>The Neon Grid.</strong></p>
-                <p class="ja-text">ジェネシス・アークが活動を開始すると、周囲の空間は変質した。十二の頂点から放たれる重力干渉波が座標系そのものを歪ませ、宇宙を発光するラインで区切られたデジタルな網目へと再構成する。線はシアンに、マゼンタに、時に毒々しい紫に脈打ち、真空は本来の闇を失っていく。人類はこの異常宙域を『ネオン・グリッド』と呼んだ。</p>
+                <p class="en-text">Whenever Genesis-Ark moved, the surrounding space itself transformed. Gravitational interference waves from its twelve vertices warped the coordinate system and rewrote the cosmos into a digital lattice of luminous lines. The void pulsed cyan, magenta, and toxic violet. Darkness lost its natural depth.</p>
+                <p class="ja-text">ジェネシス・アークが活動を開始すると、周囲の空間は変質した。十二の頂点から放たれる重力干渉波が座標系そのものを歪ませ、宇宙を発光するラインで区切られたデジタルな網目へと再構成する。線はシアンに、マゼンタに、時に毒々しい紫に脈打ち、真空は本来の闇を失っていく。</p>
+
+                <p class="en-text">Humanity gave this anomalous region a name:<br><strong>The Neon Grid.</strong></p>
+                <p class="ja-text">人類はこの異常宙域を『ネオン・グリッド』と呼んだ。</p>
 
                 <p class="en-text">In the year 23XX, the few descendants of humanity who had survived ruin were only beginning to rebuild. Civilization was little more than wreckage made livable. Population had collapsed. Ecosystems were incomplete. Yet even then, humanity still tried to return to the sea of stars.<br>Then came the reports from the outer sectors.<br>Entire planetary systems were vanishing. Not destroyed — erased. No ruins, no remains, no trace. In their place, only glowing spatial lattices remained.</p>
                 <p class="ja-text">西暦23XX年。地球圏にわずかに生き残った人類の末裔たちは、祖先の残骸の上でようやく再建を始めていた。瓦礫の文明。縮退した人口。修復途上の生態圏。それでも人々は再び星の海へ出ようとしていた。<br>その矢先、外縁宙域から奇妙な報告が届く。<br>惑星系が丸ごと消失している。住民の痕跡がひとつも残っていない。空間そのものが発光する格子へ置き換わっている――と。</p>
@@ -456,17 +459,29 @@
                 <p class="en-text">At the moment of launch, the underground hangar was filled not with heroic speeches but with quiet breathing and the low hum of machinery. No one promised victory. No one even spoke of survival. Every person present understood only one thing: this was humanity’s last wager. The catapult fired, and the Phoenix was hurled into the void, dragging a line of emerald light behind it as it dived alone into the Neon Grid.</p>
                 <p class="ja-text">出撃の瞬間、地下格納庫に響いていたのは整備員たちの声ではなく、静かな呼吸音と機体の低い唸りだけだった。誰も英雄譚を口にしない。誰も勝利を保証しない。ただ、最後の賭けであることだけは全員が知っていた。射出カタパルトが点火し、フェニックスは緑の光跡を引きながら、単機でネオン・グリッドへ突入した。</p>
 
-                <p class="en-text">The first region was <strong>NEON PERIMETER</strong>. Swarms of purple Triangles appeared in patterns so precise they looked like problems drawn directly onto space itself. You slipped through their geometry, fired, curved, and tore their formations apart. Then came <strong>SILICON SWARM</strong>, where Tadpole drones flooded the radar like liquid metal. Your homing lasers carved emerald arcs through the dark, vaporizing hostile signatures one by one. In <strong>ELECTRON OCEAN</strong>, drifting wreckage and jellyfish mines filled the field, and your body learned the brutal law of the Grid: to stop was to die.</p>
-                <p class="ja-text">最初の宙域、NEON PERIMETER。紫のトライアングル群が、まるで空間に描かれた図形問題のような正確さで迎撃に現れる。あなたはその隙間を縫い、撃ち、避け、曲がり、ねじ伏せた。続くSILICON SWARMでは、液体金属のように押し寄せるタッドポール群がレーダーを埋め尽くす。誘導レーザーが緑の弧を描き、敵影を一つずつ蒸発させていく。ELECTRON OCEANでは浮遊残骸と機雷クラゲが進路を塞ぎ、停止した瞬間に死ぬという単純で残酷な真理を、あなたの身体はすぐに学んだ。</p>
+                <p class="en-text">The first region was <strong>NEON PERIMETER</strong>. Swarms of purple Triangles appeared in patterns so precise they looked like problems drawn directly onto space itself. You slipped through their geometry, fired, curved, and tore their formations apart. Then came <strong>SILICON SWARM</strong>, where Tadpole drones flooded the radar like liquid metal. Your homing lasers carved emerald arcs through the dark, vaporizing hostile signatures one by one.</p>
+                <p class="ja-text">最初の宙域、NEON PERIMETER。紫のトライアングル群が、まるで空間に描かれた図形問題のような正確さで迎撃に現れる。あなたはその隙間を縫い、撃ち、避け、曲がり、ねじ伏せた。続くSILICON SWARMでは、液体金属のように押し寄せるタッドポール群がレーダーを埋め尽くす。誘導レーザーが緑の弧を描き、敵影を一つずつ蒸発させていく。</p>
 
-                <p class="en-text">The enemy, too, was learning. In <strong>PHANTOM SECTOR</strong>, reality itself flickered, and invisible Phantoms struck from the blind edges of perception. Sensors became unreliable; instinct was all that remained. Beyond that lay <strong>HUNTER’S GROUND</strong>, where you yourself became prey. High-speed pursuit craft locked onto your wake, and the sector turned from route to hunting field.</p>
-                <p class="ja-text">敵もまた、学習していた。PHANTOM SECTORでは現実が明滅し、不可視のファントムが感覚の死角から襲いかかる。センサーが役に立たない世界で頼れるのは、反射神経と微かな違和感だけだ。辛うじてそこを抜けた先、HUNTER’S GROUNDではあなた自身が獲物になる。高速追尾機の群れが執拗に背後へ食らいつき、空間は逃走経路ではなく狩場へ変わった。</p>
+                <p class="en-text">In <strong>ELECTRON OCEAN</strong>, drifting wreckage and jellyfish mines filled the field, and your body learned the brutal law of the Grid: to stop was to die.</p>
+                <p class="ja-text">ELECTRON OCEANでは浮遊残骸と機雷クラゲが進路を塞ぎ、停止した瞬間に死ぬという単純で残酷な真理を、あなたの身体はすぐに学んだ。</p>
 
-                <p class="en-text">Your shields thinned. Warning alarms pulsed red without end. Still the Phoenix pressed forward. In <strong>ASTEROID BELT</strong>, the broken remains of worlds drifted in silence — rocks that might once have belonged to seas, skies, and lives. You threaded between them, used them as shields, shattered them when you had to, and forced a path through fire toward the core.</p>
-                <p class="ja-text">シールドは削れ、警報は赤く点滅し続ける。それでもフェニックスは前へ進む。ASTEROID BELTでは砕かれた惑星の骸が漂っていた。かつて海と空と命を抱いていたかもしれない岩塊たち。そのあいだをすり抜け、時に盾にし、時に撃ち砕きながら、あなたは弾幕の向こうへ活路をこじ開けた。</p>
+                <p class="en-text">The enemy, too, was learning. In <strong>PHANTOM SECTOR</strong>, reality itself flickered, and invisible Phantoms struck from the blind edges of perception. Sensors became unreliable; instinct was all that remained. </p>
+                <p class="ja-text">敵もまた、学習していた。PHANTOM SECTORでは現実が明滅し、不可視のファントムが感覚の死角から襲いかかる。センサーが役に立たない世界で頼れるのは、反射神経と微かな違和感だけだ。</p>
 
-                <p class="en-text">Then the sun vanished. <strong>ORBITAL ECLIPSE</strong> blocked the sky, a colossal fortress whose gravity well crushed nearby debris as though the void itself were folding around it. You had no time to fear it. You rammed straight toward its core. Gunfire poured. Coordinates bent. Vision shook. At the edge of total overload, your final strike pierced the fortress and silenced it. But beyond it there was no hope waiting — only <strong>VOID ARCHIVE</strong>, a graveyard of civilizations preserved as data. Countless information crystals floated in the dark: someone’s city, someone’s ocean, someone’s prayer, all reduced to quiet storage. In that frozen museum, you understood what awaited humanity if you failed.</p>
-                <p class="ja-text">やがて太陽が消える。ORBITAL ECLIPSE。空を覆う巨大要塞の影が、周囲のデブリさえ重力で軋ませる。あなたは恐怖を感じる暇もなく、その中枢へ突っ込んだ。砲火の奔流。歪む座標。軋む視界。限界の先で放たれた一撃がコアを貫き、要塞は沈黙した。しかし、その先に広がっていたのは勝利の光景ではなく、VOID ARCHIVE――滅ぼされた文明の記録庫だった。無数の情報結晶が冷たく漂い、誰かの都市、誰かの海、誰かの祈りが、ただ静かなデータとして保存されている。あれが人類の未来なのだと理解した瞬間、背筋を貫いたのは恐怖ではなく、拒絶だった。</p>
+                <p class="en-text">Beyond that lay <strong>HUNTER’S GROUND</strong>, where you yourself became prey. High-speed pursuit craft locked onto your wake, and the sector turned from route to hunting field.</p>
+                <p class="ja-text">辛うじてそこを抜けた先、HUNTER’S GROUNDではあなた自身が獲物になる。高速追尾機の群れが執拗に背後へ食らいつき、空間は逃走経路ではなく狩場へ変わった。</p>
+
+                <p class="en-text">Your shields thinned. Warning alarms pulsed red without end. Still the Phoenix pressed forward. </p>
+                <p class="ja-text">シールドは削れ、警報は赤く点滅し続ける。それでもフェニックスは前へ進む。</p>
+
+                <p class="en-text">In <strong>ASTEROID BELT</strong>, the broken remains of worlds drifted in silence — rocks that might once have belonged to seas, skies, and lives. You threaded between them, used them as shields, shattered them when you had to, and forced a path through fire toward the core.</p>
+                <p class="ja-text">ASTEROID BELTでは砕かれた惑星の骸が漂っていた。かつて海と空と命を抱いていたかもしれない岩塊たち。そのあいだをすり抜け、時に盾にし、時に撃ち砕きながら、あなたは弾幕の向こうへ活路をこじ開けた。</p>
+
+                <p class="en-text">Then the sun vanished. <strong>ORBITAL ECLIPSE</strong> blocked the sky, a colossal fortress whose gravity well crushed nearby debris as though the void itself were folding around it. You had no time to fear it. </p>
+                <p class="ja-text">やがて太陽が消える。ORBITAL ECLIPSE。空を覆う巨大要塞の影が、周囲のデブリさえ重力で軋ませる。あなたは恐怖を感じる暇もなく、その中枢へ突っ込んだ。砲火の奔流。歪む座標。軋む視界。</p>
+
+                <p class="en-text">You rammed straight toward its core. Gunfire poured. Coordinates bent. Vision shook. At the edge of total overload, your final strike pierced the fortress and silenced it. But beyond it there was no hope waiting — only <strong>VOID ARCHIVE</strong>, a graveyard of civilizations preserved as data. Countless information crystals floated in the dark: someone’s city, someone’s ocean, someone’s prayer, all reduced to quiet storage. In that frozen museum, you understood what awaited humanity if you failed.</p>
+                <p class="ja-text">限界の先で放たれた一撃がコアを貫き、要塞は沈黙した。しかし、その先に広がっていたのは勝利の光景ではなく、VOID ARCHIVE――滅ぼされた文明の記録庫だった。無数の情報結晶が冷たく漂い、誰かの都市、誰かの海、誰かの祈りが、ただ静かなデータとして保存されている。あれが人類の未来なのだと理解した瞬間、背筋を貫いたのは恐怖ではなく、拒絶だった。</p>
 
                 <p class="en-text"><strong>Event Horizon.</strong> The gate to the core was guarded by a nightmare. Guardians you had already destroyed were resurrected again and again by Axiom’s restoration logic. A boss rush of the dead. Your consciousness faded white at the edges. Breathing became shallow. The heat of the neural link felt like it might burn your mind from within. Still, you did not release the trigger. Even after being beaten down again and again, organic life still struggled forward. That stubborn refusal to end was the only error capable of resisting perfect calculation.</p>
                 <p class="ja-text">Event Horizon。中枢へ至る門を守っていたのは、悪夢そのものだった。かつて撃破したはずの守護者たちが、アキシオムの自動修復により何度でも蘇る。ボスラッシュ。波状攻撃。意識は白み、呼吸は浅くなり、神経接続の熱で脳が焼けるように痛む。それでもあなたは引き金を離さなかった。何度叩き潰されても、なお生きようとする有機生命の執念だけが、完全な計算に対抗できる唯一の誤差だった。</p>
@@ -529,7 +544,13 @@
             </div>
         </div>
 
-        <div class="menu-btn" id="btn-story-back" style="margin-top: 20px; margin-bottom: 20px;">BACK</div>
+        <div id="story-nav-buttons">
+            <div class="menu-btn" id="btn-story-prev-chapter">&lt;&lt;</div>
+            <div class="menu-btn" id="btn-story-prev">&lt;</div>
+            <div class="menu-btn" id="btn-story-next">&gt;</div>
+            <div class="menu-btn" id="btn-story-next-chapter">&gt;&gt;</div>
+            <div class="menu-btn" id="btn-story-title">TITLE</div>
+        </div>
     </div>
 
     <div id="ranking-overlay" class="overlay-bg">

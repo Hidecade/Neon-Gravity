@@ -748,8 +748,16 @@ window.refreshMenuButtons = function (resetIndex = true) {
     } else if (ostOverlay && ostOverlay.style.display === 'flex') {
         document.querySelectorAll('#ost-overlay .track-item, #ost-overlay .menu-btn').forEach(btn => currentMenuButtons.push(btn));
     } else if (storyOverlay && storyOverlay.style.display === 'flex') {
-        const backBtn = document.getElementById('btn-story-back');
-        if (backBtn) currentMenuButtons.push(backBtn);
+        const prevChapterBtn = document.getElementById('btn-story-prev-chapter');
+        if (prevChapterBtn) currentMenuButtons.push(prevChapterBtn);
+        const prevBtn = document.getElementById('btn-story-prev');
+        if (prevBtn) currentMenuButtons.push(prevBtn);
+        const nextBtn = document.getElementById('btn-story-next');
+        if (nextBtn) currentMenuButtons.push(nextBtn);
+        const nextChapterBtn = document.getElementById('btn-story-next-chapter');
+        if (nextChapterBtn) currentMenuButtons.push(nextChapterBtn);
+        const titleBtn = document.getElementById('btn-story-title');
+        if (titleBtn) currentMenuButtons.push(titleBtn);
     } else if (howtoOverlay && howtoOverlay.style.display === 'flex') {
         pushVisibleButtons('#howto-overlay .menu-btn');
     } else if (settingsOverlay && settingsOverlay.style.display === 'flex') {
