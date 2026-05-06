@@ -1583,6 +1583,13 @@ async function renderArchiveStorySlide(index) {
             showText();
         }
     }
+
+    // --- 次の画像をプリロード ---
+    const nextSlide = archiveStoryCurrentSlides[index + 1];
+    if (nextSlide && nextSlide.image) {
+        const preloadImg = new window.Image();
+        preloadImg.src = nextSlide.image;
+    }
 }
 
 async function startArchiveStoryTyping(lang) {
