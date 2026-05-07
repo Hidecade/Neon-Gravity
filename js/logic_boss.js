@@ -100,19 +100,40 @@ function damageBossCore(e, damage, hitX, hitY) {
     e.flashTimer = 5;
 
     if (typeof spawnParticleObj === 'function') {
-        for (let i = 0; i < 6; i++) {
+        const core = getBossCoreWorldPosition(e);
+        const burstCount = e.type === 'battleship' ? 34 : 24;
+        for (let i = 0; i < burstCount; i++) {
             const a = Math.random() * Math.PI * 2;
-            const spd = (2 + Math.random() * 7) * SPEED_SCALE;
+            const spd = (4 + Math.random() * 14) * SPEED_SCALE;
+            const originMix = Math.random();
             spawnParticleObj({
-                x: hitX,
-                y: hitY,
-                vx: Math.cos(a) * spd,
-                vy: Math.sin(a) * spd,
-                color: Math.random() > 0.35 ? (e.color || '#ff3344') : '#ff3344',
-                life: 0.25 + Math.random() * 0.35,
-                size: (1.4 + Math.random() * 2.4) * G_SCALE
+                x: hitX * originMix + core.x * (1 - originMix) + (Math.random() - 0.5) * core.radius * 0.8,
+                y: hitY * originMix + core.y * (1 - originMix) + (Math.random() - 0.5) * core.radius * 0.8,
+                vx: Math.cos(a) * spd + e.vx * 0.15,
+                vy: Math.sin(a) * spd + e.vy * 0.15,
+                color: Math.random() > 0.45 ? '#ffffff' : (Math.random() > 0.35 ? '#ff3344' : (e.color || '#ff3344')),
+                life: 0.28 + Math.random() * 0.55,
+                size: (1.5 + Math.random() * 3.6) * G_SCALE
             });
         }
+        for (let i = 0; i < 8; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const spd = (1.5 + Math.random() * 5) * SPEED_SCALE;
+            spawnParticleObj({
+                x: core.x + Math.cos(a) * core.radius * 0.5,
+                y: core.y + Math.sin(a) * core.radius * 0.5,
+                vx: Math.cos(a) * spd,
+                vy: Math.sin(a) * spd,
+                color: '#ff1028',
+                life: 0.55 + Math.random() * 0.55,
+                size: (3.0 + Math.random() * 3.5) * G_SCALE
+            });
+        }
+    }
+    if (typeof spawnRingObj === 'function') {
+        const core = getBossCoreWorldPosition(e);
+        spawnRingObj({ x: core.x, y: core.y, r: core.radius * 0.9, color: '#ffffff', life: 0.18, lineWidth: 4 });
+        spawnRingObj({ x: core.x, y: core.y, r: core.radius * 1.8, color: '#ff3344', life: 0.3, lineWidth: 3 });
     }
 
     syncBossHpFromReactors(e);
