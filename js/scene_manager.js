@@ -1160,7 +1160,7 @@ const ARCHIVE_STORY_TITLE_IMAGE = 'img/story/story_title.jpg';
 const ARCHIVE_STORY_IMAGE_MAP = {
     1: [
         'img/story/story_1_00.jpg', 'img/story/story_1_01.jpg', 'img/story/story_1_02.jpg',
-        'img/story/story_1_03.jpg', 'img/story/story_1_04.jpg', 'img/story/story_1_05.jpg',
+        'img/story/story_1_03a.jpg', 'img/story/story_1_04.jpg', 'img/story/story_1_05.jpg',
         'img/story/story_1_06.jpg', 'img/story/story_1_07.jpg', 'img/story/story_1_08.jpg',
         'img/story/story_1_09.jpg', 'img/story/story_1_10.jpg', 'img/story/story_1_11.jpg'
     ],
@@ -1187,9 +1187,8 @@ const ARCHIVE_STORY_IMAGE_MAP = {
     ],
     5: [
         'img/story/story_5_00.jpg', 'img/story/story_5_01.jpg', 'img/story/story_5_01a.jpg', 
-        'img/story/story_5_01b.jpg', 'img/story/story_5_02.jpg', 'img/story/story_5_02.jpg',
-        'img/story/story_5_03.jpg', 'img/story/story_5_03.jpg', 'img/story/story_5_04.jpg', 
-        'img/story/story_5_04.jpg', 
+        'img/story/story_5_01b.jpg', 'img/story/story_5_02.jpg', 'img/story/story_5_02a.jpg',
+        'img/story/story_5_03.jpg', 'img/story/story_5_03a.jpg', 'img/story/story_5_04.jpg', 
         'img/story/story_5_05.jpg',
         'img/story/story_5_06.jpg', 'img/story/story_5_07.jpg', 'img/story/story_5_08.jpg',
         'img/story/story_5_09.jpg', 'img/story/story_5_10.jpg', 'img/story/story_5_11.jpg'
@@ -1388,7 +1387,8 @@ async function typeLineText(targetEl, text, sessionId) {
 
     let rendered = '';
 
-    // Long lines are emitted in small chunks to keep progression readable but not too slow.
+
+    // タイピング速度をゆっくりに（delay値を増やす）
     const chunkSize = full.length > 240 ? 4 : 2;
 
     for (let i = 0; i < full.length; i += chunkSize) {
@@ -1410,8 +1410,9 @@ async function typeLineText(targetEl, text, sessionId) {
         }
 
         const nextChunk = full.slice(i, i + chunkSize);
-        const hasPauseChar = /[\.!\?。！？：:]/.test(nextChunk);
-        const delay = hasPauseChar ? 26 : 8;
+        const hasPauseChar = /[\.\!?。！？：:]/.test(nextChunk);
+        // 句読点などは80ms、通常は32msに
+        const delay = hasPauseChar ? 80 : 32;
         const keepGoing = await waitArchiveTyping(delay, sessionId);
         if (!keepGoing) return false;
     }
