@@ -1312,6 +1312,62 @@ function getArchiveStoryParagraphIndex(chapter, imageIdx, imagePath, paragraphCo
     return Math.max(0, Math.min(imageIdx, Math.max(0, paragraphCount - 1)));
 }
 
+function splitArchiveStorySubtitleText(text, lang) {
+    const source = (text || '').replace(/\s+/g, ' ').trim();
+    if (!source) return [''];
+
+    const maxLength = lang === 'ja' ? 58 : 118;
+    const sentences = [];
+    let sentenceStart = 0;
+    for (let i = 0; i < source.length; i++) {
+        if (!/[。！？.!?]/.test(source[i])) continue;
+        const sentence = source.slice(sentenceStart, i + 1).trim();
+        if (sentence) sentences.push(sentence);
+        while (source[i + 1] === ' ') i++;
+        sentenceStart = i + 1;
+    }
+    const tail = source.slice(sentenceStart).trim();
+    if (tail) sentences.push(tail);
+    const chunks = [];
+    let current = '';
+
+    const pushCurrent = () => {
+        if (!current) return;
+        chunks.push(current);
+        current = '';
+    };
+
+    const pushLongText = (part) => {
+        let remaining = part;
+        while (remaining.length > maxLength) {
+            let splitAt = remaining.lastIndexOf(' ', maxLength);
+            if (splitAt < Math.floor(maxLength * 0.55)) splitAt = maxLength;
+            chunks.push(remaining.slice(0, splitAt).trim());
+            remaining = remaining.slice(splitAt).trim();
+        }
+        current = remaining;
+    };
+
+    for (const sentence of sentences) {
+        if (sentence.length > maxLength) {
+            pushCurrent();
+            pushLongText(sentence);
+            continue;
+        }
+
+        const next = current ? `${current} ${sentence}` : sentence;
+        if (next.length > maxLength) {
+            pushCurrent();
+            current = sentence;
+        } else {
+            current = next;
+        }
+    }
+
+    pushCurrent();
+    return chunks.length ? chunks : [source];
+}
+
 function ensureArchiveStorySlides() {
     ensureArchiveStorySections();
     if (!archiveStorySectionsByLang || archiveStorySlidesByLang) return;
@@ -1323,12 +1379,12 @@ function ensureArchiveStorySlides() {
 
         const titleText = (parsed.preface || []).join('\n').trim();
         if (titleText) {
-            slides.push({
+            splitArchiveStorySubtitleText(titleText, lang).forEach((text) => slides.push({
                 chapter: 0,
                 heading: '',
                 image: ARCHIVE_STORY_TITLE_IMAGE,
-                text: titleText
-            });
+                text
+            }));
         }
 
         sections.forEach((section) => {
@@ -1336,23 +1392,24 @@ function ensureArchiveStorySlides() {
             const paragraphs = section.paragraphs || [];
 
             if (!images.length) {
-                slides.push({
+                splitArchiveStorySubtitleText(paragraphs[0] || '', lang).forEach((text) => slides.push({
                     chapter: section.chapter,
                     heading: section.heading,
                     image: null,
-                    text: paragraphs[0] || ''
-                });
+                    text
+                }));
                 return;
             }
 
             images.forEach((imagePath, imageIdx) => {
                 const pIdx = getArchiveStoryParagraphIndex(section.chapter, imageIdx, imagePath, paragraphs.length);
-                slides.push({
+                const subtitleChunks = splitArchiveStorySubtitleText(paragraphs[pIdx] || '', lang);
+                subtitleChunks.forEach((text) => slides.push({
                     chapter: section.chapter,
                     heading: section.heading,
                     image: imagePath,
-                    text: paragraphs[pIdx] || ''
-                });
+                    text
+                }));
             });
         });
 
@@ -1380,44 +1437,16 @@ function waitArchiveTyping(ms, sessionId) {
 
 async function typeLineText(targetEl, text, sessionId) {
     const full = text || '';
-    if (!full) {
-        targetEl.textContent = '';
-        return true;
+    targetEl.textContent = full;
+    targetEl.classList.remove('archive-subtitle-visible');
+    void targetEl.offsetWidth;
+    targetEl.classList.add('archive-subtitle-visible');
+
+    if (archiveStoryFastForwardRequested) {
+        return sessionId === archiveStoryTypingSessionId && gameState === 'STORY';
     }
 
-    let rendered = '';
-
-
-    // タイピング速度をゆっくりに（delay値を増やす）
-    const chunkSize = full.length > 240 ? 4 : 2;
-
-    for (let i = 0; i < full.length; i += chunkSize) {
-        if (sessionId !== archiveStoryTypingSessionId || gameState !== 'STORY') return false;
-
-        if (archiveStoryFastForwardRequested) {
-            targetEl.textContent = full;
-            return sessionId === archiveStoryTypingSessionId && gameState === 'STORY';
-        }
-
-        rendered += full.slice(i, i + chunkSize);
-        targetEl.textContent = rendered;
-
-        if (i % (chunkSize * 4) === 0) {
-            const container = document.getElementById('story-scroll-container');
-            const textFlow = document.getElementById('story-text-scroll-container');
-            const scrollTarget = textFlow || container;
-            if (scrollTarget) scrollTarget.scrollTop = scrollTarget.scrollHeight;
-        }
-
-        const nextChunk = full.slice(i, i + chunkSize);
-        const hasPauseChar = /[\.\!?。！？：:]/.test(nextChunk);
-        // 句読点などは80ms、通常は32msに
-        const delay = hasPauseChar ? 80 : 32;
-        const keepGoing = await waitArchiveTyping(delay, sessionId);
-        if (!keepGoing) return false;
-    }
-
-    return true;
+    return waitArchiveTyping(420, sessionId);
 }
 
 function updateArchiveStoryNavButtons() {
@@ -1540,12 +1569,33 @@ async function renderArchiveStorySlide(index) {
     isArchiveStorySlideTyping = true;
     archiveStoryFastForwardRequested = false;
 
-    fixedImageEl.classList.remove('archive-image-zooming');
-    void fixedImageEl.offsetWidth;
+    if ((textFlow.textContent || '').trim()) {
+        textFlow.classList.add('archive-subtitle-fading-out');
+        const fadeOutOk = await waitArchiveTyping(220, sessionId);
+        if (!fadeOutOk || sessionId !== archiveStoryTypingSessionId || gameState !== 'STORY') return;
+    }
+
+    const nextImageSrc = slide.image || '';
+    const currentImageSrc = fixedImageEl.getAttribute('src') || '';
+    const isSameImage = currentImageSrc === nextImageSrc && (!nextImageSrc || fixedImageEl.naturalWidth > 0);
+
+    if (!isSameImage) {
+        fixedImageEl.classList.add('archive-image-faded');
+        const imageFadeOk = await waitArchiveTyping(260, sessionId);
+        if (!imageFadeOk || sessionId !== archiveStoryTypingSessionId || gameState !== 'STORY') return;
+        fixedImageEl.classList.remove('archive-image-zooming');
+        void fixedImageEl.offsetWidth;
+    } else {
+        fixedImageEl.classList.remove('archive-image-faded');
+    }
 
     // テキスト描画は画像読み込み完了後に行う
+    let didShowText = false;
     const showText = async () => {
+        if (didShowText || sessionId !== archiveStoryTypingSessionId || gameState !== 'STORY') return;
+        didShowText = true;
         updateArchiveStoryOverlayHeader(slide);
+        textFlow.classList.remove('archive-subtitle-fading-out');
         textFlow.innerHTML = '';
         textFlow.scrollTop = 0;
         const sectionEl = document.createElement('section');
@@ -1561,26 +1611,38 @@ async function renderArchiveStorySlide(index) {
         }
     };
 
-    // 画像読み込み完了時にテキスト描画
-    fixedImageEl.onload = function() {
-        fixedImageEl.classList.add('archive-image-zooming');
+    if (isSameImage) {
         showText();
-    };
-    // 読み込み失敗時もテキスト描画（黒背景）
-    fixedImageEl.onerror = function() {
-        fixedImageEl.src = '';
-        showText();
-    };
-    // srcを最後にセット
-    fixedImageEl.src = slide.image || '';
+    } else {
+        // 画像読み込み完了時にテキスト描画
+        fixedImageEl.onload = function() {
+            fixedImageEl.classList.add('archive-image-zooming');
+            requestAnimationFrame(() => {
+                fixedImageEl.classList.remove('archive-image-faded');
+            });
+            showText();
+        };
+        // 読み込み失敗時もテキスト描画（黒背景）
+        fixedImageEl.onerror = function() {
+            fixedImageEl.src = '';
+            fixedImageEl.classList.remove('archive-image-faded');
+            showText();
+        };
+        // srcを最後にセット
+        fixedImageEl.src = nextImageSrc;
+    }
     fixedImageEl.alt = slide.chapter === 0 ? 'Story Title' : `Story Chapter ${slide.chapter}`;
     // キャッシュ済み画像の場合onloadが発火しないことがあるので、completeなら即時描画
-    if (fixedImageEl.complete) {
+    if (!isSameImage && fixedImageEl.complete) {
         if (fixedImageEl.naturalWidth > 0) {
             fixedImageEl.classList.add('archive-image-zooming');
+            requestAnimationFrame(() => {
+                fixedImageEl.classList.remove('archive-image-faded');
+            });
             showText();
         } else {
             fixedImageEl.src = '';
+            fixedImageEl.classList.remove('archive-image-faded');
             showText();
         }
     }
