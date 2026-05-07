@@ -70,6 +70,14 @@ function areAllBossReactorsDestroyed(e) {
     return !!(e && Array.isArray(e.reactors) && e.reactors.length > 0 && e.reactors.every(reactor => reactor.destroyed));
 }
 
+function isBossReactorOperationalForShot(e, shotIndex, shotCount) {
+    if (!e || !Array.isArray(e.reactors) || e.reactors.length === 0) return true;
+    const safeShotCount = Math.max(1, shotCount || e.reactors.length);
+    const reactorIndex = Math.round((shotIndex / safeShotCount) * e.reactors.length) % e.reactors.length;
+    const reactor = e.reactors[reactorIndex];
+    return !(reactor && reactor.destroyed);
+}
+
 function exposeBossCore(e) {
     if (!e || e.coreExposed) return;
     e.coreExposed = true;
@@ -825,13 +833,14 @@ function updateBossAI(e, options = {}) {
 
         // パターン0: ホーミングレーザー
         if (e.attackPattern === 0) {
-            e.angle += 0.08 * gameSpeed * angerFactor; // 怒ると回転が速くなる
+            e.angle += 0.035 * gameSpeed * Math.min(angerFactor, 1.35);
             const shotCount = getBossHomingLaserShotCount();
             if (isBossHomingLaserShotFrame(e.fireTimer, shotCount, brakeStart)) {
                 const sides = e.variant.sides;
                 const startSpd = 10.0 * SPEED_SCALE * bulletSpeedMult;
                 const targetSpd = 25.0 * SPEED_SCALE * bulletSpeedMult;
                 for (let i = 0; i < sides; i++) {
+                    if (!isBossReactorOperationalForShot(e, i, sides)) continue;
                     const a = e.angle + (Math.PI * 2 / sides) * i;
                     spawnEnemyBulletObj({
                         x: e.x + Math.cos(a) * 45, y: e.y + Math.sin(a) * 45,
@@ -960,15 +969,21 @@ function updateBossAI(e, options = {}) {
     // ----------------------------------------------------
     else if (e.fireTimer >= fireTime && e.fireTimer < restartTime) {
         const isHomingAttack = e.attackPattern === 0 || stage < 4;
-        const isHomingVolleyTime = isHomingAttack && (e.fireTimer === fireTime || (stage >= 6 && e.fireTimer === fireTime + 14));
+        const homingVolleyCount = stage >= 6 ? 3 : 1;
+        const homingVolleyIndex = Math.floor((e.fireTimer - fireTime) / 14);
+        const isHomingVolleyTime = isHomingAttack &&
+            homingVolleyIndex >= 0 &&
+            homingVolleyIndex < homingVolleyCount &&
+            e.fireTimer === fireTime + homingVolleyIndex * 14;
 
         if (e.fireTimer === fireTime || isHomingVolleyTime) {
 
             // 必殺A: ホーミングミサイル (Pattern 0 または 低ステージ)
             if (isHomingAttack) {
                 const sides = e.variant.sides;
-                const volleyOffset = e.fireTimer === fireTime ? 0 : Math.PI / sides;
+                const volleyOffset = homingVolleyIndex <= 0 ? 0 : (Math.PI / sides) * homingVolleyIndex;
                 for (let i = 0; i < sides; i++) {
+                    if (!isBossReactorOperationalForShot(e, i, sides)) continue;
                     const a = e.angle + volleyOffset + (Math.PI * 2 / sides) * i;
                     spawnEnemyBulletObj({
                         x: e.x + Math.cos(a) * 60, y: e.y + Math.sin(a) * 60,
@@ -1177,6 +1192,7 @@ function updateBattleshipAI(e) {
     if (cycle < 300) {
         if (cycle % 60 === 0) {
             for (let j = 0; j < sides; j++) {
+                if (!isBossReactorOperationalForShot(e, j, sides)) continue;
                 const baseA = e.angle + (Math.PI * 2 / sides) * j;
                 const sx = e.x + Math.cos(baseA) * 100, sy = e.y + Math.sin(baseA) * 100;
                 for (let i = -1; i <= 1; i++) {
@@ -1287,8 +1303,10 @@ function updateBattleshipAI(e) {
     }
     else if (cycle < 1200) {
         if (cycle % 10 === 0) {
-            for (let i = 0; i < 8; i++) {
-                const a = e.angle + (Math.PI * 2 / 8) * i;
+            const rotaryShotCount = 8;
+            for (let i = 0; i < rotaryShotCount; i++) {
+                if (!isBossReactorOperationalForShot(e, i, rotaryShotCount)) continue;
+                const a = e.angle + (Math.PI * 2 / rotaryShotCount) * i;
                 spawnEnemyBulletObj({
                     x: e.x + Math.cos(a) * 80, y: e.y + Math.sin(a) * 80,
                     vx: Math.cos(a) * 4 * BATTLESHIP_PROJECTILE_SPEED_MULT,

@@ -144,14 +144,14 @@ const MAX_STAGE = 10;         // 最大ステージ
 
 // ステージごとの敵総出現数
 const STAGE_ENEMY_COUNTS = [
-    5, // Stage 1
-    7, // Stage 2
-    7, // Stage 3
-    11, // Stage 4
-    15, // Stage 5
-    11, // Stage 6
-    20, // Stage 7
-    25 // Stage 8 (Final)
+    50, // Stage 1
+    70, // Stage 2
+    70, // Stage 3
+    110, // Stage 4
+    150, // Stage 5
+    110, // Stage 6
+    200, // Stage 7
+    250 // Stage 8 (Final)
 ];
 
 // 画面内に同時に存在できる敵の最大数
