@@ -232,10 +232,14 @@ function drawBossEnemyVector(ctx, e) {
         // C. リアクター（維持）
         if (drawColorLayer) {
         ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
+        const reactor = Array.isArray(e.reactors) ? e.reactors[i] : null;
+        const isReactorDestroyed = !!(reactor && reactor.destroyed);
+        const isReactorHit = !!(reactor && reactor.flashTimer > 0);
+        if (reactor && reactor.flashTimer > 0) reactor.flashTimer--;
+        ctx.globalCompositeOperation = isReactorDestroyed ? 'source-over' : 'lighter';
         const energyPulse = Math.sin(frame * 0.3 + i) * 0.3 + 0.7;
-        ctx.fillStyle = reactorColor;
-        ctx.globalAlpha = energyPulse * baseAlpha;
+        ctx.fillStyle = isReactorDestroyed ? BOSS_REACTOR_DEAD_COLOR : (isReactorHit ? '#ff8844' : reactorColor);
+        ctx.globalAlpha = isReactorDestroyed ? 0.98 * baseAlpha : energyPulse * baseAlpha;
         for (let k = 0; k < 5; k++) {
             const y = -10 + k * 6;
             const w = 14 + k * 1.5;
@@ -536,10 +540,14 @@ function drawBattleshipBossVector(ctx, e) {
 
         if (drawColorLayer) {
         ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
+        const reactor = Array.isArray(e.reactors) ? e.reactors[i] : null;
+        const isReactorDestroyed = !!(reactor && reactor.destroyed);
+        const isReactorHit = !!(reactor && reactor.flashTimer > 0);
+        if (reactor && reactor.flashTimer > 0) reactor.flashTimer--;
+        ctx.globalCompositeOperation = isReactorDestroyed ? 'source-over' : 'lighter';
         const energyPulse = Math.sin(frame * 0.3 + i) * 0.3 + 0.7;
-        ctx.fillStyle = reactorColor;
-        ctx.globalAlpha = energyPulse * baseAlpha; // ★ baseAlpha を掛ける
+        ctx.fillStyle = isReactorDestroyed ? BOSS_REACTOR_DEAD_COLOR : (isReactorHit ? '#ff8844' : reactorColor);
+        ctx.globalAlpha = isReactorDestroyed ? 0.98 * baseAlpha : energyPulse * baseAlpha; // ★ baseAlpha を掛ける
         for (let k = 0; k < 5; k++) {
             const y = -10 + k * 6;
             const w = 14 + k * 1.5;
@@ -705,4 +713,3 @@ function drawBattleshipBossVector(ctx, e) {
     }
     ctx.restore();
 }
-

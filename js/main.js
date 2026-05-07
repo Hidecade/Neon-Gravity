@@ -341,8 +341,8 @@ const createEnemy = () => ({
 });
 
 const createParticle = () => ({
-    x: 0, y: 0, vx: 0, vy: 0, 
-    color: '#fff', life: 0, size: 1, 
+    x: 0, y: 0, vx: 0, vy: 0,
+    color: '#fff', life: 0, size: 1,
     isShard: false, shardType: null, angle: 0, rotV: 0,
     isBubble: false, wobbleOffset: 0,
     segIndex: 0, vertices: null, // ★この2つを追加！

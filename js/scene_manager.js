@@ -1989,7 +1989,7 @@ function openStory(options = {}) {
         startArchiveStoryTyping(currentLanguage === 'ja' ? 'ja' : 'en');
     }
 
-    if (typeof AudioSys !== 'undefined') AudioSys.playBGM('title');
+    if (typeof AudioSys !== 'undefined') AudioSys.playBGM('story');
     if (window.refreshMenuButtons && !isArchiveStoryAutoPlaying) window.refreshMenuButtons();
 }
 

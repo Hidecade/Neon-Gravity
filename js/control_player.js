@@ -324,10 +324,20 @@ function launchSatellites() {
         const dist = Math.hypot(e.x - player.x, e.y - player.y);
         if (dist <= bombRadius) {
             if (e.type === 'boss' || e.type === 'battleship' || e.type === 'dragon') {
-                // ボス級にはクリスタル数に応じたダメージ（少しマイルドに調整）
-                e.hp -= crystalCount * 2;
-                e.flashTimer = 10;
-                createExplosion(e.x, e.y, '#ff0', 8);
+                if (e.type === 'boss' || e.type === 'battleship') {
+                    if (typeof damageBossReactorsInRadius === 'function') {
+                        const didHit = damageBossReactorsInRadius(e, player.x, player.y, bombRadius, crystalCount * 2);
+                        if (didHit) {
+                            e.flashTimer = 10;
+                            createExplosion(e.x, e.y, '#ff0', 8);
+                        }
+                    }
+                } else {
+                    // ボス級にはクリスタル数に応じたダメージ（少しマイルドに調整）
+                    e.hp -= crystalCount * 2;
+                    e.flashTimer = 10;
+                    createExplosion(e.x, e.y, '#ff0', 8);
+                }
             } else {
                 // 雑魚敵は即死
                 e.hp = 0;
@@ -476,7 +486,13 @@ function checkPlayerCollision(e) {
 
         if (player.invuln > 0) {
             if (e.type === 'boss' || e.type === 'battleship' || e.type === 'dragon' || e.type === 'asteroid') {
-                e.hp -= 0.15;
+                if (e.type === 'boss' || e.type === 'battleship') {
+                    if (typeof damageBossReactorsInRadius === 'function') {
+                        damageBossReactorsInRadius(e, player.x, player.y, 24 * G_SCALE, 0.15);
+                    }
+                } else {
+                    e.hp -= 0.15;
+                }
 
                 if (e.type === 'boss' || e.type === 'battleship') {
                     player.invuln -= 1;
@@ -549,16 +565,22 @@ function checkSatelliteCollision(e) {
         const s = player.satellites[i];
 
         // ★修正2: Math.hypot を廃止し、距離の2乗を計算
-        const dx = s.x - e.x;
-        const dy = s.y - e.y;
-        const distSq = dx * dx + dy * dy;
+        let didSatelliteHit = false;
+        if (e.type === 'boss' || e.type === 'battleship') {
+            didSatelliteHit = typeof hitBossReactorAtPoint === 'function' && hitBossReactorAtPoint(e, s.x, s.y, 20);
+        } else {
+            const dx = s.x - e.x;
+            const dy = s.y - e.y;
+            const distSq = dx * dx + dy * dy;
+            didSatelliteHit = distSq < HIT_RADIUS_SQ;
+        }
 
         // ★修正3: 2乗同士で比較
-        if (distSq < HIT_RADIUS_SQ) {
+        if (didSatelliteHit) {
 
             // --- 以下、衝突時の処理 (変更なし) ---
             if (e.type === 'boss' || e.type === 'battleship' || e.type === 'dragon') {
-                e.hp -= 20;
+                if (e.type === 'dragon') e.hp -= 20;
 
                 if (e.type === 'boss' || e.type === 'battleship') e.flashTimer = 5;
                 if (typeof AudioSys !== 'undefined') AudioSys.playSE('boss_hit');

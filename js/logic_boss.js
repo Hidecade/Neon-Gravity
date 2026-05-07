@@ -5,6 +5,203 @@
 const BOSS_PROJECTILE_SPEED_MULT = 1.15;
 const BOSS_ANGER_MAX_BONUS = 0.9;
 const BATTLESHIP_PROJECTILE_SPEED_MULT = 1.05;
+const BOSS_REACTOR_DEAD_COLOR = '#050505';
+
+function initBossReactors(e) {
+    if (!e || !e.variant || !Number.isFinite(e.maxHp)) return;
+    const sides = Math.max(1, e.variant.sides || 1);
+    if (Array.isArray(e.reactors) && e.reactors.length === sides) return;
+
+    const hpPerReactor = e.maxHp / sides;
+    e.reactors = Array.from({ length: sides }, (_, index) => ({
+        index,
+        hp: hpPerReactor,
+        maxHp: hpPerReactor,
+        destroyed: false,
+        flashTimer: 0
+    }));
+    e.hp = e.maxHp;
+}
+
+function getBossReactorLayout(e) {
+    const isBattleship = e && e.type === 'battleship';
+    return isBattleship
+        ? { baseRadius: 90, moduleOffset: 12, moduleScale: 0.8, reactorLocalY: -1, radius: 18 }
+        : { baseRadius: 45, moduleOffset: 5, moduleScale: 0.5, reactorLocalY: -1, radius: 12 };
+}
+
+function getBossReactorWorldPosition(e, index) {
+    const sides = Math.max(1, (e.variant && e.variant.sides) || 1);
+    const layout = getBossReactorLayout(e);
+    const shipScale = e.scale * G_SCALE * (e.type === 'battleship' ? 1.5 : 1);
+    const localY = -layout.baseRadius + layout.moduleOffset + (layout.reactorLocalY * layout.moduleScale);
+    const localAngle = (Math.PI * 2 / sides) * index - Math.PI / 2;
+    const angle = localAngle + (e.angle || 0);
+
+    return {
+        x: e.x + Math.cos(angle) * Math.abs(localY) * shipScale,
+        y: e.y + Math.sin(angle) * Math.abs(localY) * shipScale,
+        radius: layout.radius * shipScale
+    };
+}
+
+function syncBossHpFromReactors(e) {
+    if (!e || !Array.isArray(e.reactors)) return;
+    e.hp = e.reactors.reduce((sum, reactor) => sum + Math.max(0, reactor.hp), 0);
+}
+
+function damageBossReactor(e, reactor, damage, hitX, hitY) {
+    if (!e || !reactor || reactor.destroyed) return false;
+
+    reactor.hp -= damage;
+    reactor.flashTimer = 6;
+    e.flashTimer = 4;
+
+    if (reactor.hp <= 0) {
+        reactor.hp = 0;
+        reactor.destroyed = true;
+        if (typeof createExplosion === 'function') {
+            createExplosion(hitX, hitY, '#f22', 10);
+            createExplosion(hitX, hitY, '#fd0', 4);
+        }
+        if (typeof spawnRingObj === 'function') {
+            spawnRingObj({ x: hitX, y: hitY, r: 12 * G_SCALE, color: '#fd0', life: 0.28 });
+            spawnRingObj({ x: hitX, y: hitY, r: 22 * G_SCALE, color: '#f22', life: 0.55 });
+        }
+        for (let i = 0; i < 22; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const spd = (2 + Math.random() * 8) * SPEED_SCALE;
+            spawnParticleObj({
+                x: hitX,
+                y: hitY,
+                vx: Math.cos(a) * spd,
+                vy: Math.sin(a) * spd,
+                color: Math.random() > 0.35 ? '#ff3344' : '#f6de00',
+                life: 0.45 + Math.random() * 0.55,
+                size: (1.6 + Math.random() * 2.8) * G_SCALE
+            });
+        }
+        for (let i = 0; i < 84; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const spd = (5 + Math.random() * 16) * SPEED_SCALE;
+            const sparkColor = Math.random() > 0.42 ? '#ffffff' : (Math.random() > 0.35 ? '#ffee88' : (e.color || '#ff3344'));
+            spawnParticleObj({
+                x: hitX + (Math.random() - 0.5) * 16 * G_SCALE,
+                y: hitY + (Math.random() - 0.5) * 16 * G_SCALE,
+                vx: e.vx * 0.25 + Math.cos(a) * spd,
+                vy: e.vy * 0.25 + Math.sin(a) * spd,
+                color: sparkColor,
+                life: 0.42 + Math.random() * 0.68,
+                size: (1.9 + Math.random() * 3.4) * G_SCALE
+            });
+        }
+        reactor.sparkTimer = 0;
+    }
+
+    syncBossHpFromReactors(e);
+    if (e.hp <= 0) e.hp = 0;
+    return true;
+}
+
+function updateBossReactorSparks(e) {
+    if (!e || !Array.isArray(e.reactors) || e.isDying || e.isDead || e.isSpawning) return;
+
+    for (const reactor of e.reactors) {
+        if (!reactor.destroyed) continue;
+        reactor.sparkTimer = (reactor.sparkTimer || 0) + 1;
+        const interval = e.type === 'battleship' ? 1 : 2;
+        if (reactor.sparkTimer % interval !== 0) continue;
+
+        const pos = getBossReactorWorldPosition(e, reactor.index);
+        const count = e.type === 'battleship' ? 15 : 12;
+        for (let i = 0; i < count; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const spd = (3.5 + Math.random() * 12.5) * SPEED_SCALE;
+            const sparkColor = Math.random() > 0.38 ? '#ffffff' : (Math.random() > 0.35 ? '#ffee88' : (e.color || '#ff3344'));
+            spawnParticleObj({
+                x: pos.x + (Math.random() - 0.5) * pos.radius * 1.35,
+                y: pos.y + (Math.random() - 0.5) * pos.radius * 1.35,
+                vx: e.vx * 0.2 + Math.cos(a) * spd,
+                vy: e.vy * 0.2 + Math.sin(a) * spd,
+                color: sparkColor,
+                life: 0.3 + Math.random() * 0.52,
+                size: (1.6 + Math.random() * 2.9) * G_SCALE
+            });
+        }
+        if (reactor.sparkTimer % (e.type === 'battleship' ? 4 : 6) === 0 && typeof spawnRingObj === 'function') {
+            spawnRingObj({ x: pos.x, y: pos.y, r: pos.radius * 0.35, color: '#ffffff', life: 0.22, lineWidth: 4 });
+            spawnRingObj({ x: pos.x, y: pos.y, r: pos.radius * 0.75, color: e.color || '#ff3344', life: 0.28, lineWidth: 4 });
+        }
+    }
+}
+
+function hitBossReactorAtPoint(e, x, y, damage) {
+    if (!e || (e.type !== 'boss' && e.type !== 'battleship')) return false;
+    initBossReactors(e);
+    if (!Array.isArray(e.reactors)) return false;
+
+    for (const reactor of e.reactors) {
+        if (reactor.destroyed) continue;
+        const pos = getBossReactorWorldPosition(e, reactor.index);
+        const dx = x - pos.x;
+        const dy = y - pos.y;
+        if (dx * dx + dy * dy <= pos.radius * pos.radius) {
+            return damageBossReactor(e, reactor, damage, pos.x, pos.y);
+        }
+    }
+    return false;
+}
+
+function damageBossReactorsInRadius(e, x, y, radius, damage) {
+    if (!e || (e.type !== 'boss' && e.type !== 'battleship')) return false;
+    initBossReactors(e);
+    if (!Array.isArray(e.reactors)) return false;
+
+    let didHit = false;
+    for (const reactor of e.reactors) {
+        if (reactor.destroyed) continue;
+        const pos = getBossReactorWorldPosition(e, reactor.index);
+        const hitRadius = radius + pos.radius;
+        const dx = x - pos.x;
+        const dy = y - pos.y;
+        if (dx * dx + dy * dy <= hitRadius * hitRadius) {
+            damageBossReactor(e, reactor, damage, pos.x, pos.y);
+            didHit = true;
+        }
+    }
+    return didHit;
+}
+
+function hitBossReactorOnSegment(e, x1, y1, x2, y2, damage) {
+    if (!e || (e.type !== 'boss' && e.type !== 'battleship')) return null;
+    initBossReactors(e);
+    if (!Array.isArray(e.reactors)) return null;
+
+    const sx = x2 - x1;
+    const sy = y2 - y1;
+    const lenSq = sx * sx + sy * sy || 1;
+    let best = null;
+
+    for (const reactor of e.reactors) {
+        if (reactor.destroyed) continue;
+        const pos = getBossReactorWorldPosition(e, reactor.index);
+        const t = Math.max(0, Math.min(1, ((pos.x - x1) * sx + (pos.y - y1) * sy) / lenSq));
+        const hx = x1 + sx * t;
+        const hy = y1 + sy * t;
+        const dx = pos.x - hx;
+        const dy = pos.y - hy;
+        if (dx * dx + dy * dy <= pos.radius * pos.radius) {
+            const distAlong = Math.sqrt((hx - x1) * (hx - x1) + (hy - y1) * (hy - y1));
+            if (!best || distAlong < best.distAlong) {
+                best = { reactor, x: hx, y: hy, distAlong };
+            }
+        }
+    }
+
+    if (!best) return null;
+    damageBossReactor(e, best.reactor, damage, best.x, best.y);
+    return best;
+}
 
 function getBossHomingLaserShotCount() {
     if (stage <= 2) return 2;
@@ -288,6 +485,8 @@ function updateBossStageMovement(e, options = {}) {
 }
 
 function updateBossAI(e, options = {}) {
+    updateBossReactorSparks(e);
+
     const enableGravity = options.enableGravity !== false;
     const movementSpeedMult = options.movementSpeedMult || 1.0;
     const bulletSpeedMult = (options.bulletSpeedMult || 1.0) * BOSS_PROJECTILE_SPEED_MULT;
@@ -512,7 +711,7 @@ function updateBossAI(e, options = {}) {
     // [フェーズ1.5 & 2] 減速・重力場・溜め演出 (140 ~ 299F)
     // ----------------------------------------------------
     else if (e.fireTimer >= brakeStart && e.fireTimer < fireTime) {
-        
+
         // 回転を徐々に止める
         const ratio = 1.0 - (e.fireTimer - brakeStart) / (fireTime - brakeStart);
         e.angle += Math.pow(ratio, 1.5) * 0.1;
@@ -651,6 +850,8 @@ function updateBossSpecialAI(e) {
 }
 
 function updateBattleshipAI(e) {
+    updateBossReactorSparks(e);
+
     // 1. 出現演出
     if (e.isSpawning) {
         e.spawnTimer++;
@@ -838,8 +1039,8 @@ function updateBattleshipAI(e) {
                     // ★修正: 初速を 2.5 -> 0.5 に下げて、フワッと射出させる
                     vx: Math.cos(launchA) * 0.25 * SPEED_SCALE,
                     vy: Math.sin(launchA) * 0.25 * SPEED_SCALE,
-                    hp: 3, 
-                    speed: 1.0, 
+                    hp: 3,
+                    speed: 1.0,
                     color: '#0ff',
                     type: 'fighter',
                     state: 'deploy',

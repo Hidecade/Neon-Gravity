@@ -43,6 +43,7 @@ function openOST() {
         { n: 'Mission Complete', k: 'clear' },
         { n: 'All Mission Complete', k: 'all_clear' },
         { n: 'Name Entry', k: 'name' },
+        { n: 'Archive Story', k: 'story' },
         { n: 'Ending Theme', k: 'ending' }
     );
 

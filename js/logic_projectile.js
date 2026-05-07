@@ -244,14 +244,11 @@ function updatePlayerBullets() {
 
                 const dx = b.x - e.x;
                 const dy = b.y - e.y;
-                if (dx * dx + dy * dy < hitRadius * hitRadius) {
-                    e.hp -= damage; 
-                    hitSomething = true;
-
-                    if (e.type === 'boss' || e.type === 'battleship') {
-                        e.flashTimer = 5;
+                if (e.type === 'boss' || e.type === 'battleship') {
+                    if (typeof hitBossReactorAtPoint === 'function' && hitBossReactorAtPoint(e, b.x, b.y, damage)) {
+                        hitSomething = true;
                         if (typeof AudioSys !== 'undefined') AudioSys.playSE('boss_hit');
-                        if (e.hp > 0) createWallImpact(b.x, b.y, '#0f8');
+                        if (e.hp > 0) createWallImpact(b.x, b.y, '#f22');
                         for (let k = 0; k < 3; k++) {
                             spawnParticleObj({
                                 x: b.x, y: b.y,
@@ -260,18 +257,22 @@ function updatePlayerBullets() {
                                 color: '#fff', life: 0.2, size: 2 * G_SCALE
                             });
                         }
-                    } else {
-                        if (e.hp > 0) {
-                            if (typeof AudioSys !== 'undefined') AudioSys.playSE('enemy_hit');
-                            createWallImpact(b.x, b.y, '#0f8');
-                            const sparkColor = e.color || '#fff';
-                            for (let k = 0; k < 4; k++) {
-                                spawnParticleObj({
-                                    x: b.x, y: b.y,
-                                    vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8,
-                                    color: sparkColor, life: 0.8 + Math.random() * 0.4, size: 2.0
-                                });
-                            }
+                        break;
+                    }
+                } else if (dx * dx + dy * dy < hitRadius * hitRadius) {
+                    e.hp -= damage;
+                    hitSomething = true;
+
+                    if (e.hp > 0) {
+                        if (typeof AudioSys !== 'undefined') AudioSys.playSE('enemy_hit');
+                        createWallImpact(b.x, b.y, '#0f8');
+                        const sparkColor = e.color || '#fff';
+                        for (let k = 0; k < 4; k++) {
+                            spawnParticleObj({
+                                x: b.x, y: b.y,
+                                vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8,
+                                color: sparkColor, life: 0.8 + Math.random() * 0.4, size: 2.0
+                            });
                         }
                     }
                     break;
@@ -362,6 +363,30 @@ function updateLasers() {
             if (diff > Math.PI) diff = Math.PI * 2 - diff;
 
             // ★修正4: 距離比較を2乗で行う (distToEnemy < currentLen -> distToEnemySq < currentLenSq)
+            if (e.type === 'boss' || e.type === 'battleship') {
+                const segmentHit = typeof hitBossReactorOnSegment === 'function'
+                    ? hitBossReactorOnSegment(e, p1x, p1y, p2x, p2y, 0.5)
+                    : null;
+                if (segmentHit) {
+                    currentLen = Math.min(currentLen, segmentHit.distAlong);
+                    currentLenSq = currentLen * currentLen;
+                    e.flashTimer = 5;
+                    if (frame % 2 === 0) {
+                        createExplosion(segmentHit.x, segmentHit.y, '#f22', 2);
+                        if (frame % 4 === 0 && typeof AudioSys !== 'undefined') AudioSys.playSE('boss_hit');
+                        spawnParticleObj({
+                            x: segmentHit.x, y: segmentHit.y,
+                            vx: (Math.random() - 0.5) * 10,
+                            vy: (Math.random() - 0.5) * 10,
+                            color: '#fff',
+                            life: 0.3,
+                            size: 2 * G_SCALE
+                        });
+                    }
+                }
+                continue;
+            }
+
             if (diff < 0.35 && distToEnemySq < currentLenSq) {
                 const hitRadius = (e.type === 'boss' || e.type === 'battleship' ? 45 : 15) * e.scale;
 
@@ -750,15 +775,18 @@ function updateHomingLasers() {
             
             if (e.hp <= 0) return;
             const hitRadius = (e.type === 'asteroid' ? 25 * e.scale : 30);
-            
+
             const dx = e.x - m.x;
             const dy = e.y - m.y;
-            if (dx * dx + dy * dy < hitRadius * hitRadius) {
-                
-                // ★修正: ダメージを寿命に応じて減衰させる（基本ダメージ5）
-                const damage = 5 * lifeRatio;
-                e.hp -= damage;
-                
+            // ★修正: ダメージを寿命に応じて減衰させる（基本ダメージ5）
+            const damage = 5 * lifeRatio;
+            const isBossClass = e.type === 'boss' || e.type === 'battleship';
+            const didHitBossReactor = isBossClass && typeof hitBossReactorAtPoint === 'function'
+                ? hitBossReactorAtPoint(e, m.x, m.y, damage)
+                : false;
+            if (didHitBossReactor || (!isBossClass && dx * dx + dy * dy < hitRadius * hitRadius)) {
+                if (!isBossClass) e.hp -= damage;
+
                 m.life = 0;
                 if (typeof createExplosion === 'function') createExplosion(m.x, m.y, m.color || '#fff', 8);
                 if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_small');

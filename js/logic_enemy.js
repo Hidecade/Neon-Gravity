@@ -2209,6 +2209,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null, spawnSource = nu
         e.spawnX = sX;
         e.spawnY = sY;
         e.cameraLerpTimer = 0;
+        if (typeof initBossReactors === 'function') initBossReactors(e);
 
         spawnedCount++;
 
@@ -2269,6 +2270,7 @@ function spawnEnemy(x, y, type, size = 1, overrideColor = null, spawnSource = nu
         // ボス・戦艦専用の特殊パラメータを直接セット
         e.spawnX = x;
         e.spawnY = y;
+        if (typeof initBossReactors === 'function') initBossReactors(e);
 
         spawnedCount++;
         if (typeof AudioSys !== 'undefined') AudioSys.playSE('explode_large');
@@ -2943,6 +2945,8 @@ function updateSpawnLogic() {
                     newBoss.scale = 1.5 + (variant.sides * 0.1);
                     newBoss.spawnMax = 150;
                     newBoss.isSpawning = true;
+                    newBoss.reactors = null;
+                    if (typeof initBossReactors === 'function') initBossReactors(newBoss);
                 }
 
                 isBossSpawned = true;

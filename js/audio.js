@@ -22,6 +22,7 @@ const BGM_FILES = {
     all_clear: 'audio/Neon_Gravity_All_Clear.mp3',
     boss: 'audio/Neon_Gravity_Boss.mp3',
     last: 'audio/Neon_Gravity_Last.mp3',
+    story: 'audio/Neon_Gravity_Story.mp3',
     name: 'audio/Neon_Gravity_Name.mp3',
     ending: 'audio/Neon_Gravity_Ending.mp3',
     stages: [
