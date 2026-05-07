@@ -12,7 +12,8 @@ function initBossReactors(e) {
     const sides = Math.max(1, e.variant.sides || 1);
     if (Array.isArray(e.reactors) && e.reactors.length === sides) return;
 
-    const hpPerReactor = e.maxHp / sides;
+    const reactorTotalHp = e.maxHp * 0.75;
+    const hpPerReactor = reactorTotalHp / sides;
     e.reactors = Array.from({ length: sides }, (_, index) => ({
         index,
         hp: hpPerReactor,
@@ -20,6 +21,11 @@ function initBossReactors(e) {
         destroyed: false,
         flashTimer: 0
     }));
+    e.coreHp = e.maxHp * 0.25;
+    e.coreMaxHp = e.coreHp;
+    e.coreExposed = false;
+    e.coreFlashTimer = 0;
+    e.coreAttackTimer = 0;
     e.hp = e.maxHp;
 }
 
@@ -47,7 +53,63 @@ function getBossReactorWorldPosition(e, index) {
 
 function syncBossHpFromReactors(e) {
     if (!e || !Array.isArray(e.reactors)) return;
-    e.hp = e.reactors.reduce((sum, reactor) => sum + Math.max(0, reactor.hp), 0);
+    const reactorHp = e.reactors.reduce((sum, reactor) => sum + Math.max(0, reactor.hp), 0);
+    e.hp = reactorHp + Math.max(0, e.coreHp || 0);
+}
+
+function getBossCoreWorldPosition(e) {
+    const shipScale = (e.scale || 1) * G_SCALE * (e.type === 'battleship' ? 1.5 : 1);
+    return {
+        x: e.x,
+        y: e.y,
+        radius: (e.type === 'battleship' ? 30 : 18) * shipScale
+    };
+}
+
+function areAllBossReactorsDestroyed(e) {
+    return !!(e && Array.isArray(e.reactors) && e.reactors.length > 0 && e.reactors.every(reactor => reactor.destroyed));
+}
+
+function exposeBossCore(e) {
+    if (!e || e.coreExposed) return;
+    e.coreExposed = true;
+    e.coreAttackTimer = 0;
+    e.coreFlashTimer = 18;
+
+    const core = getBossCoreWorldPosition(e);
+    if (typeof spawnRingObj === 'function') {
+        spawnRingObj({ x: core.x, y: core.y, r: core.radius * 2.3, color: e.color || '#ff3344', life: 0.75, lineWidth: 5 });
+    }
+    if (typeof createExplosion === 'function') createExplosion(core.x, core.y, e.color || '#ff3344', 12);
+    if (typeof distortGrid === 'function') distortGrid(core.x, core.y, 120, core.radius * 8);
+}
+
+function damageBossCore(e, damage, hitX, hitY) {
+    if (!e || !e.coreExposed || e.coreHp <= 0) return false;
+
+    e.coreHp = Math.max(0, (e.coreHp || 0) - damage);
+    e.coreFlashTimer = 8;
+    e.flashTimer = 5;
+
+    if (typeof spawnParticleObj === 'function') {
+        for (let i = 0; i < 6; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const spd = (2 + Math.random() * 7) * SPEED_SCALE;
+            spawnParticleObj({
+                x: hitX,
+                y: hitY,
+                vx: Math.cos(a) * spd,
+                vy: Math.sin(a) * spd,
+                color: Math.random() > 0.35 ? (e.color || '#ff3344') : '#ff3344',
+                life: 0.25 + Math.random() * 0.35,
+                size: (1.4 + Math.random() * 2.4) * G_SCALE
+            });
+        }
+    }
+
+    syncBossHpFromReactors(e);
+    if (e.coreHp <= 0) e.hp = 0;
+    return true;
 }
 
 function damageBossReactor(e, reactor, damage, hitX, hitY) {
@@ -98,6 +160,7 @@ function damageBossReactor(e, reactor, damage, hitX, hitY) {
         reactor.sparkTimer = 0;
     }
 
+    if (areAllBossReactorsDestroyed(e)) exposeBossCore(e);
     syncBossHpFromReactors(e);
     if (e.hp <= 0) e.hp = 0;
     return true;
@@ -140,6 +203,15 @@ function hitBossReactorAtPoint(e, x, y, damage) {
     initBossReactors(e);
     if (!Array.isArray(e.reactors)) return false;
 
+    if (e.coreExposed) {
+        const core = getBossCoreWorldPosition(e);
+        const cdx = x - core.x;
+        const cdy = y - core.y;
+        if (cdx * cdx + cdy * cdy <= core.radius * core.radius) {
+            return damageBossCore(e, damage, x, y);
+        }
+    }
+
     for (const reactor of e.reactors) {
         if (reactor.destroyed) continue;
         const pos = getBossReactorWorldPosition(e, reactor.index);
@@ -157,7 +229,7 @@ function damageBossReactorsInRadius(e, x, y, radius, damage) {
     initBossReactors(e);
     if (!Array.isArray(e.reactors)) return false;
 
-    let didHit = false;
+    const hitReactors = [];
     for (const reactor of e.reactors) {
         if (reactor.destroyed) continue;
         const pos = getBossReactorWorldPosition(e, reactor.index);
@@ -165,11 +237,27 @@ function damageBossReactorsInRadius(e, x, y, radius, damage) {
         const dx = x - pos.x;
         const dy = y - pos.y;
         if (dx * dx + dy * dy <= hitRadius * hitRadius) {
-            damageBossReactor(e, reactor, damage, pos.x, pos.y);
-            didHit = true;
+            hitReactors.push({ reactor, pos });
         }
     }
-    return didHit;
+
+    if (hitReactors.length === 0 && e.coreExposed) {
+        const core = getBossCoreWorldPosition(e);
+        const hitRadius = radius + core.radius;
+        const dx = x - core.x;
+        const dy = y - core.y;
+        if (dx * dx + dy * dy <= hitRadius * hitRadius) {
+            return damageBossCore(e, damage, core.x, core.y);
+        }
+    }
+
+    if (hitReactors.length === 0) return false;
+
+    const distributedDamage = damage / hitReactors.length;
+    hitReactors.forEach(({ reactor, pos }) => {
+        damageBossReactor(e, reactor, distributedDamage, pos.x, pos.y);
+    });
+    return true;
 }
 
 function hitBossReactorOnSegment(e, x1, y1, x2, y2, damage) {
@@ -181,6 +269,20 @@ function hitBossReactorOnSegment(e, x1, y1, x2, y2, damage) {
     const sy = y2 - y1;
     const lenSq = sx * sx + sy * sy || 1;
     let best = null;
+
+    if (e.coreExposed) {
+        const core = getBossCoreWorldPosition(e);
+        const t = Math.max(0, Math.min(1, ((core.x - x1) * sx + (core.y - y1) * sy) / lenSq));
+        const hx = x1 + sx * t;
+        const hy = y1 + sy * t;
+        const dx = core.x - hx;
+        const dy = core.y - hy;
+        if (dx * dx + dy * dy <= core.radius * core.radius) {
+            const distAlong = Math.sqrt((hx - x1) * (hx - x1) + (hy - y1) * (hy - y1));
+            damageBossCore(e, damage, hx, hy);
+            return { reactor: null, core: true, x: hx, y: hy, distAlong };
+        }
+    }
 
     for (const reactor of e.reactors) {
         if (reactor.destroyed) continue;
@@ -484,6 +586,81 @@ function updateBossStageMovement(e, options = {}) {
     }
 }
 
+function updateBossCoreAttack(e, bulletSpeedMult, angerFactor) {
+    e.coreAttackTimer = (e.coreAttackTimer || 0) + 1;
+    const sides = Math.max(3, (e.variant && e.variant.sides) || 6);
+    const variation = sides % 3;
+    const chargeFrames = variation === 0 ? 38 : (variation === 1 ? 46 : 42);
+    const volleyGap = variation === 0 ? 14 : (variation === 1 ? 20 : 17);
+    const volleyCount = Math.max(1, Math.min(6, Number.isFinite(stage) ? stage : 1));
+    const spread = (0.16 + Math.min(0.12, sides * 0.008)) * (e.type === 'battleship' ? 1.2 : 1.0);
+    const speedBoost = 1 + Math.min(0.22, (sides - 3) * 0.025);
+
+    const dx = player.x - e.x;
+    const dy = player.y - e.y;
+    const aim = Math.atan2(dy, dx);
+    let diff = aim - (e.angle || 0);
+    while (diff <= -Math.PI) diff += Math.PI * 2;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    e.angle += diff * 0.16 * gameSpeed * Math.min(2.0, angerFactor);
+
+    const timer = e.coreAttackTimer;
+    const volleyIndex = (timer - chargeFrames) / volleyGap;
+    const isVolley = timer >= chargeFrames &&
+        Number.isInteger(volleyIndex) &&
+        volleyIndex >= 0 &&
+        volleyIndex < volleyCount;
+
+    if (timer < chargeFrames) {
+        if (timer % 5 === 0 && typeof spawnParticleObj === 'function') {
+            const core = getBossCoreWorldPosition(e);
+            const a = Math.random() * Math.PI * 2;
+            const dist = core.radius * (1.2 + Math.random() * 1.8);
+            spawnParticleObj({
+                x: core.x + Math.cos(a) * dist,
+                y: core.y + Math.sin(a) * dist,
+                vx: -Math.cos(a) * 4 * SPEED_SCALE,
+                vy: -Math.sin(a) * 4 * SPEED_SCALE,
+                color: Math.random() > 0.35 ? (e.color || '#ff3344') : '#ff3344',
+                life: 0.35 + Math.random() * 0.25,
+                size: (1.7 + Math.random() * 2.2) * G_SCALE
+            });
+        }
+        return;
+    }
+
+    if (isVolley) {
+        const core = getBossCoreWorldPosition(e);
+        const shotAngle = Math.atan2(player.y - core.y, player.x - core.x);
+        const offsets = [-spread, 0, spread];
+        const bulletSpd = 26 * 0.8 * speedBoost * SPEED_SCALE * bulletSpeedMult;
+
+        offsets.forEach(offset => {
+            const a = shotAngle + offset;
+            spawnEnemyBulletObj({
+                x: core.x,
+                y: core.y,
+                vx: Math.cos(a) * bulletSpd,
+                vy: Math.sin(a) * bulletSpd,
+                life: BULLET_CONFIG.BOSS_LASER.LIFE,
+                isLaserMissile: true,
+                isCoreLaser: true,
+                color: e.color || '#ff3344'
+            });
+        });
+
+        if (typeof spawnRingObj === 'function') {
+            spawnRingObj({ x: core.x, y: core.y, r: core.radius * 1.6, color: e.color || '#ff3344', life: 0.25, lineWidth: 4 });
+        }
+        if (typeof AudioSys !== 'undefined' && isOnScreen(e)) AudioSys.playSE('boss_laser', core.x, core.y);
+        if (typeof distortGrid === 'function') distortGrid(core.x, core.y, 45, core.radius * 4);
+    }
+
+    if (timer >= chargeFrames + volleyGap * Math.max(0, volleyCount - 1) + 52) {
+        e.coreAttackTimer = 0;
+    }
+}
+
 function updateBossAI(e, options = {}) {
     updateBossReactorSparks(e);
 
@@ -623,6 +800,11 @@ function updateBossAI(e, options = {}) {
     const dx = player.x - e.x;
     const dy = player.y - e.y;
     const dist = Math.hypot(dx, dy) || 1.0;
+
+    if (e.coreExposed) {
+        updateBossCoreAttack(e, bulletSpeedMult, angerFactor);
+        return;
+    }
 
     // --- C. 攻撃サイクル ---
     e.fireTimer++;

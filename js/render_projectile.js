@@ -371,6 +371,35 @@ function drawLaserMissile(ctx, eb) {
     ctx.rotate(angle);
 
     const color = eb.color || '#0ff';
+
+    if (eb.isCoreLaser) {
+        const scale = (typeof G_SCALE !== 'undefined') ? G_SCALE : 1.0;
+        const drawW = 22 * scale;
+        const outerW = 5 * scale;
+        const innerW = 1.6 * scale;
+
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = color;
+        ctx.globalAlpha = 0.7;
+        ctx.lineWidth = outerW;
+        ctx.beginPath();
+        ctx.moveTo(-drawW / 2, 0);
+        ctx.lineTo(drawW / 2, 0);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.globalAlpha = 0.85;
+        ctx.lineWidth = innerW;
+        ctx.beginPath();
+        ctx.moveTo(-drawW / 2, 0);
+        ctx.lineTo(drawW / 2, 0);
+        ctx.stroke();
+
+        ctx.globalCompositeOperation = 'source-over';
+        return;
+    }
+
     const tex = getLaserMissileTexture(color);
 
     // G_SCALEを使って描画時のサイズを調整

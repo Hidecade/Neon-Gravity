@@ -1205,7 +1205,9 @@ let archiveStoryCurrentSlideIndex = 0;
 let isArchiveStorySlideTyping = false;
 let archiveStoryFastForwardRequested = false;
 let isArchiveStoryAutoPlaying = false;
+let isArchiveStoryAutoPreview = false;
 let archiveStoryAutoTimer = null;
+let archiveStoryCurrentBgmChapter = null;
 let archiveStoryWakeLock = null;
 let archiveStoryWakeVideo = null;
 let shouldKeepArchiveStoryAwake = false;
@@ -1213,6 +1215,7 @@ const ARCHIVE_STRONG_OPEN_MARKER = '%%ARCHIVE_STRONG_OPEN%%';
 const ARCHIVE_STRONG_CLOSE_MARKER = '%%ARCHIVE_STRONG_CLOSE%%';
 const ARCHIVE_STORY_AUTO_IDLE_FRAMES = 300;
 const ARCHIVE_STORY_AUTO_ADVANCE_MS = 4700;
+const ARCHIVE_STORY_TITLE_DEMO_END = { chapter: 4, paragraph: 4 };
 
 // chapterごとの「画像(index) -> 段落(index)」対応表。
 // 例: 1章の3枚目画像に5段落目を表示したい場合は { 1: { 2: 4 } }
@@ -1448,6 +1451,8 @@ function ensureArchiveStorySlides() {
                     chapter: section.chapter,
                     heading: section.heading,
                     image: imagePath,
+                    imageIndex: imageIdx,
+                    paragraphIndex: pIdx,
                     text
                 }));
             });
@@ -1479,6 +1484,37 @@ function clearArchiveStoryAutoTimer() {
     if (archiveStoryAutoTimer) {
         clearTimeout(archiveStoryAutoTimer);
         archiveStoryAutoTimer = null;
+    }
+}
+
+function isArchiveStoryTitleDemoFinalSlide(index) {
+    const slide = archiveStoryCurrentSlides[index];
+    if (!slide || slide.chapter !== ARCHIVE_STORY_TITLE_DEMO_END.chapter) return false;
+    if (slide.paragraphIndex !== ARCHIVE_STORY_TITLE_DEMO_END.paragraph) return false;
+
+    const nextSlide = archiveStoryCurrentSlides[index + 1];
+    return !nextSlide ||
+        nextSlide.chapter !== slide.chapter ||
+        nextSlide.paragraphIndex !== slide.paragraphIndex;
+}
+
+function updateArchiveStoryChapterBGM(slide) {
+    if (typeof AudioSys === 'undefined' || !slide) return;
+
+    const chapter = slide.chapter >= 1 && slide.chapter <= 5 ? slide.chapter : 0;
+    if (archiveStoryCurrentBgmChapter === chapter) return;
+    archiveStoryCurrentBgmChapter = chapter;
+
+    if (chapter >= 1) {
+        if (typeof AudioSys.playBGMWithFade === 'function') {
+            AudioSys.playBGMWithFade('storyChapter', chapter - 1, 900);
+        } else {
+            AudioSys.playBGM('storyChapter', chapter - 1);
+        }
+    } else if (typeof AudioSys.playBGMWithFade === 'function') {
+        AudioSys.playBGMWithFade('story', 0, 900);
+    } else {
+        AudioSys.playBGM('story');
     }
 }
 
@@ -1561,12 +1597,19 @@ function scheduleArchiveStoryAutoAdvance(sessionId) {
         archiveStoryAutoTimer = null;
         if (!isArchiveStoryAutoPlaying || gameState !== 'STORY' || sessionId !== archiveStoryTypingSessionId) return;
 
+        if (isArchiveStoryAutoPreview && isArchiveStoryTitleDemoFinalSlide(archiveStoryCurrentSlideIndex)) {
+            exitArchiveStoryAutoPreview();
+            return;
+        }
+
         if (archiveStoryCurrentSlideIndex < archiveStoryCurrentSlides.length - 1) {
             archiveStoryCurrentSlideIndex++;
             updateArchiveStoryNavButtons();
             renderArchiveStorySlide(archiveStoryCurrentSlideIndex);
-        } else {
+        } else if (isArchiveStoryAutoPreview) {
             exitArchiveStoryAutoPreview();
+        } else {
+            clearArchiveStoryAutoTimer();
         }
     }, ARCHIVE_STORY_AUTO_ADVANCE_MS);
 }
@@ -1697,8 +1740,11 @@ async function renderArchiveStorySlide(index) {
     const textFlow = document.getElementById('story-text-scroll-container');
     if (!fixedImageEl || !textFlow) return;
 
+    clearArchiveStoryAutoTimer();
+
     const slide = archiveStoryCurrentSlides[index];
     if (!slide) return;
+    updateArchiveStoryChapterBGM(slide);
 
     const langClass = currentLanguage === 'ja' ? 'ja-text' : 'en-text';
     const sessionId = ++archiveStoryTypingSessionId;
@@ -1916,11 +1962,13 @@ function prevArchiveStoryChapter() {
 function stopArchiveStoryTyping() {
     clearArchiveStoryAutoTimer();
     releaseArchiveStoryWakeLock();
+    isArchiveStoryAutoPreview = false;
     archiveStoryTypingSessionId++;
     isArchiveStorySlideTyping = false;
     archiveStoryFastForwardRequested = false;
     archiveStoryCurrentSlides = [];
     archiveStoryCurrentSlideIndex = 0;
+    archiveStoryCurrentBgmChapter = null;
 
     const prevChapterBtn = document.getElementById('btn-story-prev-chapter');
     const prevBtn = document.getElementById('btn-story-prev');
@@ -1951,10 +1999,11 @@ function stopArchiveStoryTyping() {
     if (container) container.classList.remove('archive-layout-active');
 }
 
-function setArchiveStoryAutoMode(enabled) {
+function setArchiveStoryAutoMode(enabled, preview = false) {
     isArchiveStoryAutoPlaying = !!enabled;
+    isArchiveStoryAutoPreview = !!(enabled && preview);
     const storyOverlay = document.getElementById('story-overlay');
-    if (storyOverlay) storyOverlay.classList.toggle('archive-auto-preview', isArchiveStoryAutoPlaying);
+    if (storyOverlay) storyOverlay.classList.toggle('archive-auto-preview', isArchiveStoryAutoPreview);
 }
 
 /**
@@ -1962,7 +2011,8 @@ function setArchiveStoryAutoMode(enabled) {
  */
 function openStory(options = {}) {
     if (typeof resetTitleIdle === 'function') resetTitleIdle();
-    setArchiveStoryAutoMode(!!options.auto);
+    const shouldAutoAdvance = options.auto !== undefined ? !!options.auto : true;
+    setArchiveStoryAutoMode(shouldAutoAdvance, !!options.preview);
     requestArchiveStoryWakeLock();
     gameState = 'STORY';
     ui.titleOverlay.style.display = 'none';
@@ -1989,8 +2039,7 @@ function openStory(options = {}) {
         startArchiveStoryTyping(currentLanguage === 'ja' ? 'ja' : 'en');
     }
 
-    if (typeof AudioSys !== 'undefined') AudioSys.playBGM('story');
-    if (window.refreshMenuButtons && !isArchiveStoryAutoPlaying) window.refreshMenuButtons();
+    if (window.refreshMenuButtons && !isArchiveStoryAutoPreview) window.refreshMenuButtons();
 }
 
 function closeStory() {
@@ -2015,7 +2064,7 @@ function closeStory() {
 function openArchiveStoryAutoPreview() {
     if (gameState !== 'TITLE') return;
     titleIdleTimer = 0;
-    openStory({ auto: true });
+    openStory({ auto: true, preview: true });
 }
 
 function updateTitleIdleAutoPreview() {
@@ -2027,15 +2076,17 @@ function updateTitleIdleAutoPreview() {
 }
 
 function exitArchiveStoryAutoPreview() {
-    if (!isArchiveStoryAutoPlaying) return false;
+    if (!isArchiveStoryAutoPreview) return false;
     window.archiveStoryAutoExitBlockUntil = performance.now() + 350;
-    setArchiveStoryAutoMode(false);
+    setArchiveStoryAutoMode(false, false);
     stopArchiveStoryTyping();
 
     const storyOverlay = document.getElementById('story-overlay');
     if (storyOverlay) {
         storyOverlay.style.opacity = '0';
-        storyOverlay.style.display = 'none';
+        setTimeout(() => {
+            storyOverlay.style.display = 'none';
+        }, 500);
     }
     returnToTitle();
     return true;
@@ -3236,7 +3287,7 @@ function resetTitleIdle() {
     if (gameState === 'TITLE') {
         titleIdleTimer = 0;
         return false;
-    } else if (gameState === 'STORY' && isArchiveStoryAutoPlaying) {
+    } else if (gameState === 'STORY' && isArchiveStoryAutoPreview) {
         return exitArchiveStoryAutoPreview();
     } else if (gameState === 'HOWTO') {
         titleIdleTimer = 0;

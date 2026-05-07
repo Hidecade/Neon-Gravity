@@ -23,6 +23,13 @@ const BGM_FILES = {
     boss: 'audio/Neon_Gravity_Boss.mp3',
     last: 'audio/Neon_Gravity_Last.mp3',
     story: 'audio/Neon_Gravity_Story.mp3',
+    storyChapters: [
+        'audio/Neon_Gravity_Story_C1.mp3',
+        'audio/Neon_Gravity_Story_C2.mp3',
+        'audio/Neon_Gravity_Story_C3.mp3',
+        'audio/Neon_Gravity_Story_C4.mp3',
+        'audio/Neon_Gravity_Story_C5.mp3'
+    ],
     name: 'audio/Neon_Gravity_Name.mp3',
     ending: 'audio/Neon_Gravity_Ending.mp3',
     stages: [
@@ -1268,6 +1275,12 @@ const AudioSys = {
             }
             return "";
         }
+        if (key === "storyChapter") {
+            if (BGM_FILES.storyChapters && BGM_FILES.storyChapters.length > 0) {
+                return BGM_FILES.storyChapters[idx % BGM_FILES.storyChapters.length];
+            }
+            return "";
+        }
         return BGM_FILES[key] || "";
     },
 
@@ -1289,7 +1302,7 @@ const AudioSys = {
     },
 
     // 指定されたバッファを使ってソースノードを構築し再生する
-    _startBgmNode(buffer, key, offset = 0) {
+    _startBgmNode(buffer, key, offset = 0, startGain = null, fadeInSeconds = 0) {
         if (!this.ctx) return;
         
         this.bgmSource = this.ctx.createBufferSource();
@@ -1302,10 +1315,18 @@ const AudioSys = {
         source.loop = !(isOST || noLoopKeys.includes(key));
 
         this.bgmGain = this.ctx.createGain();
-        this.bgmGain.gain.value = this.bgmVolume;
+        const initialGain = Number.isFinite(startGain) ? startGain : this.bgmVolume;
+        this.bgmGain.gain.value = initialGain;
 
         source.connect(this.bgmGain);
         this.bgmGain.connect(this.ctx.destination);
+
+        if (fadeInSeconds > 0) {
+            const t = this.ctx.currentTime;
+            this.bgmGain.gain.cancelScheduledValues(t);
+            this.bgmGain.gain.setValueAtTime(Math.max(0.0001, initialGain), t);
+            this.bgmGain.gain.linearRampToValueAtTime(this.bgmVolume, t + fadeInSeconds);
+        }
 
         // オフセット位置から再生
         source.start(0, offset);
@@ -1364,6 +1385,52 @@ const AudioSys = {
 
         this.isBgmPaused = false;
         this._startBgmNode(buffer, key, 0);
+    },
+
+    async playBGMWithFade(key, idx = 0, fadeMs = 900) {
+        if (!this.ctx) this.init();
+        if (this.ctx.state !== "running") await this.ensureAudioReady(true);
+
+        const src = this.getBgmPath(key, idx);
+        if (!src) {
+            this.stopBGM();
+            return;
+        }
+
+        const nextFull = new URL(src, window.location.href).href;
+        if (this.currentBgmUrl === nextFull && !this.isBgmPaused && !this.isBgmFadingOut) {
+            return;
+        }
+
+        this.currentBgmRawKey = key;
+        this.currentBgmUrl = nextFull;
+
+        const buffer = await this.loadBGM(nextFull);
+        if (!buffer || this.currentBgmUrl !== nextFull) return;
+
+        const fadeSeconds = Math.max(0.05, fadeMs / 1000);
+        const oldSource = this.bgmSource;
+        const oldGain = this.bgmGain;
+
+        if (oldSource && oldGain && !this.isBgmPaused) {
+            this.isBgmFadingOut = true;
+            const t = this.ctx.currentTime;
+            oldGain.gain.cancelScheduledValues(t);
+            oldGain.gain.setValueAtTime(oldGain.gain.value, t);
+            oldGain.gain.linearRampToValueAtTime(0, t + fadeSeconds);
+            oldSource.onended = null;
+            setTimeout(() => {
+                try { oldSource.stop(); } catch (e) {}
+                try { oldSource.disconnect(); } catch (e) {}
+                try { oldGain.disconnect(); } catch (e) {}
+            }, fadeMs + 80);
+        }
+
+        this.bgmSource = null;
+        this.bgmGain = null;
+        this.isBgmPaused = false;
+        this.bgmOffset = 0;
+        this._startBgmNode(buffer, key, 0, 0.0001, fadeSeconds);
     },
 
     stopBGM(clearCurrentInfo = true) {

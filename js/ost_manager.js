@@ -47,6 +47,12 @@ function openOST() {
         { n: 'Ending Theme', k: 'ending' }
     );
 
+    if (typeof BGM_FILES !== 'undefined' && BGM_FILES.storyChapters) {
+        BGM_FILES.storyChapters.forEach((path, index) => {
+            ostTracks.push({ n: `Archive Story Chapter ${index + 1}`, k: 'storyChapter', i: index });
+        });
+    }
+
     // リスト描画
     ostTracks.forEach((t, idx) => {
         const d = document.createElement('div');

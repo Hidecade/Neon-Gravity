@@ -52,6 +52,11 @@ const ASSETS_TO_CACHE = [
     './audio/Neon_Gravity_Boss.mp3',
     './audio/Neon_Gravity_Last.mp3',
     './audio/Neon_Gravity_Story.mp3',
+    './audio/Neon_Gravity_Story_C1.mp3',
+    './audio/Neon_Gravity_Story_C2.mp3',
+    './audio/Neon_Gravity_Story_C3.mp3',
+    './audio/Neon_Gravity_Story_C4.mp3',
+    './audio/Neon_Gravity_Story_C5.mp3',
     './audio/Neon_Gravity_Name.mp3',
     './audio/Neon_Gravity_Ending.mp3',
 

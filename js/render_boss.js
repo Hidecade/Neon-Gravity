@@ -334,48 +334,68 @@ function drawBossEnemyVector(ctx, e) {
     ctx.restore();
     }
 
-    // --- 8. 立体ダイヤモンド・コア（変更なし） ---
+    // --- 8. 立体ダイヤモンド・コア（露出時は丸い発光コア） ---
     if (drawColorLayer) {
     ctx.save();
+    const coreExposed = !!e.coreExposed;
+    const coreHit = !!(e.coreFlashTimer > 0);
+    if (e.coreFlashTimer > 0) e.coreFlashTimer--;
     const pulse = Math.sin(frame * 0.1);
     const coreSize = socketRad * 0.6 + pulse * 1.5;
 
     ctx.globalCompositeOperation = 'lighter';
-    const glowSize = isDmg ? 1.8 : 1.4;
-    ctx.fillStyle = mainStroke;
-    ctx.globalAlpha = (isDmg ? 0.5 : 0.15) * baseAlpha;
-    ctx.beginPath(); drawPolygonPath(ctx, coreSize * glowSize, sides); ctx.fill();
+    if (coreExposed) {
+        const exposedPulse = 1 + Math.sin(frame * 0.16) * 0.08;
+        const r = socketRad * 0.28 * exposedPulse;
+        const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.8);
+        grad.addColorStop(0, coreHit ? '#ff4455' : '#ff1028');
+        grad.addColorStop(0.22, coreHit ? '#ff2238' : '#dd0018');
+        grad.addColorStop(0.55, 'rgba(255, 0, 40, 0.48)');
+        grad.addColorStop(1, 'rgba(255, 0, 40, 0)');
+        ctx.fillStyle = grad;
+        ctx.globalAlpha = baseAlpha;
+        ctx.beginPath(); ctx.arc(0, 0, r * 2.45, 0, Math.PI * 2); ctx.fill();
 
-    ctx.globalAlpha = 1.0 * baseAlpha;
-    ctx.fillStyle = 'rgba(10, 0, 0, 0.8)';
-    ctx.beginPath(); drawPolygonPath(ctx, coreSize, sides); ctx.fill();
-
-    const coreLayers = 3;
-    for (let l = 0; l < coreLayers; l++) {
-        const scale3d = 1.0 - (l * 0.25);
-        const alpha3d = 0.4 + (l * 0.2);
-        ctx.save();
-        ctx.rotate(frame * (0.02 + l * 0.01) * (l % 2 === 0 ? 1 : -1));
-        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha3d})`;
+        ctx.fillStyle = coreHit ? '#ff3344' : '#ff1028';
+        ctx.globalAlpha = 0.9 * baseAlpha;
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    } else {
+        const glowSize = isDmg ? 1.8 : 1.4;
         ctx.fillStyle = mainStroke;
-        ctx.globalAlpha = (alpha3d * 0.3) * baseAlpha;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath(); drawPolygonPath(ctx, coreSize * scale3d, sides);
-        ctx.fill(); ctx.stroke();
-        ctx.beginPath();
-        const rad = coreSize * scale3d;
-        for (let i = 0; i < sides; i++) {
-            const ang = (Math.PI * 2 / sides) * i - Math.PI / 2;
-            ctx.moveTo(0, 0); ctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
+        ctx.globalAlpha = (isDmg ? 0.5 : 0.15) * baseAlpha;
+        ctx.beginPath(); drawPolygonPath(ctx, coreSize * glowSize, sides); ctx.fill();
+
+        ctx.globalAlpha = 1.0 * baseAlpha;
+        ctx.fillStyle = 'rgba(10, 0, 0, 0.8)';
+        ctx.beginPath(); drawPolygonPath(ctx, coreSize, sides); ctx.fill();
+
+        const coreLayers = 3;
+        for (let l = 0; l < coreLayers; l++) {
+            const scale3d = 1.0 - (l * 0.25);
+            const alpha3d = 0.4 + (l * 0.2);
+            ctx.save();
+            ctx.rotate(frame * (0.02 + l * 0.01) * (l % 2 === 0 ? 1 : -1));
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha3d})`;
+            ctx.fillStyle = mainStroke;
+            ctx.globalAlpha = (alpha3d * 0.3) * baseAlpha;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); drawPolygonPath(ctx, coreSize * scale3d, sides);
+            ctx.fill(); ctx.stroke();
+            ctx.beginPath();
+            const rad = coreSize * scale3d;
+            for (let i = 0; i < sides; i++) {
+                const ang = (Math.PI * 2 / sides) * i - Math.PI / 2;
+                ctx.moveTo(0, 0); ctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
+            }
+            ctx.stroke(); ctx.restore();
         }
-        ctx.stroke(); ctx.restore();
+        ctx.fillStyle = mainStroke;
+        ctx.globalAlpha = 0.5 * baseAlpha;
+        ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 1.0 * baseAlpha;
+        ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
     }
-    ctx.fillStyle = mainStroke;
-    ctx.globalAlpha = 0.5 * baseAlpha;
-    ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.globalAlpha = 1.0 * baseAlpha;
-    ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
     ctx.restore(); // コア終了
     }
 
@@ -639,63 +659,81 @@ function drawBattleshipBossVector(ctx, e) {
     // --- 8. 立体ダイヤモンド・コア ---
     if (drawColorLayer) {
     ctx.save();
+    const coreExposed = !!e.coreExposed;
+    const coreHit = !!(e.coreFlashTimer > 0);
+    if (e.coreFlashTimer > 0) e.coreFlashTimer--;
     const pulse = Math.sin(frame * 0.1);
     const coreSize = socketRad * 0.6 + pulse * 1.5;
 
     ctx.globalCompositeOperation = 'lighter';
-    //if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = isDmg ? 60 : 30;
     ctx.shadowColor = colorRedNeon;
 
-    ctx.fillStyle = isDmg ? '#ffb000' : colorDeepRed;
-    ctx.globalAlpha = baseAlpha; // ★追加
-    ctx.beginPath(); drawPolygonPath(ctx, coreSize, sides); ctx.fill();
+    if (coreExposed) {
+        const exposedPulse = 1 + Math.sin(frame * 0.16) * 0.08;
+        const r = socketRad * 0.26 * exposedPulse;
+        const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 3.0);
+        grad.addColorStop(0, coreHit ? '#ff4455' : '#ff1028');
+        grad.addColorStop(0.2, coreHit ? '#ff2238' : '#dd0018');
+        grad.addColorStop(0.56, 'rgba(255, 0, 40, 0.52)');
+        grad.addColorStop(1, 'rgba(255, 0, 40, 0)');
+        ctx.fillStyle = grad;
+        ctx.globalAlpha = baseAlpha;
+        ctx.beginPath(); ctx.arc(0, 0, r * 2.55, 0, Math.PI * 2); ctx.fill();
 
-    const coreLayers = 4;
-    for (let l = 0; l < coreLayers; l++) {
-        const scale3d = 1.0 - (l * 0.18);
-        const alpha3d = 0.4 + (l * 0.15);
-        ctx.save();
-        ctx.rotate(frame * (0.01 + l * 0.005) * (l % 2 === 0 ? 1 : -1));
-        ctx.strokeStyle = isDmg ? `rgba(255, 230, 90, ${alpha3d})` : `rgba(255, 200, 200, ${alpha3d})`;
-        ctx.fillStyle = isDmg ? `rgba(255, 180, 0, ${alpha3d * 0.24})` : `rgba(255, 0, 50, ${alpha3d * 0.2})`;
-        ctx.globalAlpha = baseAlpha; // ★ rgba のアルファとは別に全体に掛ける
-        ctx.lineWidth = 1.0;
-        ctx.shadowBlur = 0;
+        ctx.fillStyle = coreHit ? '#ff3344' : '#ff1028';
+        ctx.globalAlpha = 0.92 * baseAlpha;
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    } else {
+        ctx.fillStyle = isDmg ? '#ffb000' : colorDeepRed;
+        ctx.globalAlpha = baseAlpha; // ★追加
+        ctx.beginPath(); drawPolygonPath(ctx, coreSize, sides); ctx.fill();
 
-        ctx.beginPath(); drawPolygonPath(ctx, coreSize * scale3d, sides);
-        ctx.fill(); ctx.stroke();
+        const coreLayers = 4;
+        for (let l = 0; l < coreLayers; l++) {
+            const scale3d = 1.0 - (l * 0.18);
+            const alpha3d = 0.4 + (l * 0.15);
+            ctx.save();
+            ctx.rotate(frame * (0.01 + l * 0.005) * (l % 2 === 0 ? 1 : -1));
+            ctx.strokeStyle = isDmg ? `rgba(255, 230, 90, ${alpha3d})` : `rgba(255, 200, 200, ${alpha3d})`;
+            ctx.fillStyle = isDmg ? `rgba(255, 180, 0, ${alpha3d * 0.24})` : `rgba(255, 0, 50, ${alpha3d * 0.2})`;
+            ctx.globalAlpha = baseAlpha; // ★ rgba のアルファとは別に全体に掛ける
+            ctx.lineWidth = 1.0;
+            ctx.shadowBlur = 0;
 
-        ctx.beginPath();
-        const rad = coreSize * scale3d;
-        for (let i = 0; i < sides; i++) {
-            const ang = (Math.PI * 2 / sides) * i - Math.PI / 2;
-            ctx.moveTo(0, 0);
-            ctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
-            if (l === 0) {
-                const nextAng = (Math.PI * 2 / sides) * (i + 1) - Math.PI / 2;
-                ctx.moveTo(Math.cos(ang) * rad * 0.5, Math.sin(ang) * rad * 0.5);
-                ctx.lineTo(Math.cos(nextAng) * rad, Math.sin(nextAng) * rad);
+            ctx.beginPath(); drawPolygonPath(ctx, coreSize * scale3d, sides);
+            ctx.fill(); ctx.stroke();
+
+            ctx.beginPath();
+            const rad = coreSize * scale3d;
+            for (let i = 0; i < sides; i++) {
+                const ang = (Math.PI * 2 / sides) * i - Math.PI / 2;
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
+                if (l === 0) {
+                    const nextAng = (Math.PI * 2 / sides) * (i + 1) - Math.PI / 2;
+                    ctx.moveTo(Math.cos(ang) * rad * 0.5, Math.sin(ang) * rad * 0.5);
+                    ctx.lineTo(Math.cos(nextAng) * rad, Math.sin(nextAng) * rad);
+                }
             }
+            ctx.stroke();
+            ctx.restore();
         }
+
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#fff';
+        ctx.globalAlpha = baseAlpha; // ★追加
+        ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
+
+        ctx.globalAlpha = (0.3 + pulse * 0.1) * baseAlpha; // ★ baseAlpha を掛ける
+        ctx.strokeStyle = colorHighLight;
+        ctx.lineWidth = 0.5;
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        const flareSize = coreSize * 1.5;
+        ctx.moveTo(-flareSize, -flareSize); ctx.lineTo(flareSize, flareSize);
+        ctx.moveTo(flareSize, -flareSize); ctx.lineTo(-flareSize, flareSize);
         ctx.stroke();
-        ctx.restore();
     }
-
-    ctx.fillStyle = '#ffffff';
-    //if (currentGraphicsQuality === 'HIGH') ctx.shadowBlur = 10;
-    ctx.shadowColor = '#fff';
-    ctx.globalAlpha = baseAlpha; // ★追加
-    ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
-
-    ctx.globalAlpha = (0.3 + pulse * 0.1) * baseAlpha; // ★ baseAlpha を掛ける
-    ctx.strokeStyle = colorHighLight;
-    ctx.lineWidth = 0.5;
-    ctx.shadowBlur = 0;
-    ctx.beginPath();
-    const flareSize = coreSize * 1.5;
-    ctx.moveTo(-flareSize, -flareSize); ctx.lineTo(flareSize, flareSize);
-    ctx.moveTo(flareSize, -flareSize); ctx.lineTo(-flareSize, flareSize);
-    ctx.stroke();
     ctx.restore();
     }
 

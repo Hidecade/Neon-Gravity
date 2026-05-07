@@ -359,7 +359,7 @@ const createRing = () => ({
 const createEnemyBullet = () => ({
     x: 0, y: 0, vx: 0, vy: 0, life: 0, color: '#f00',
     isMissile: false, isLaserMissile: false, isShockwave: false,
-    isBossHomingLaser: false,
+    isBossHomingLaser: false, isCoreLaser: false,
     isFading: false, baseAlpha: 1, alpha: 1, // フェード演出用
     homingTimer: 0, trail: null,             // ミサイル用
     age: 0, lockTimer: 0, accelTimer: 0,
@@ -460,6 +460,7 @@ function spawnEnemyBulletObj(options) {
     eb.isLaserMissile = options.isLaserMissile || false;
     eb.isShockwave = options.isShockwave || false;
     eb.isBossHomingLaser = options.isBossHomingLaser || false;
+    eb.isCoreLaser = options.isCoreLaser || false;
 
     // 演出・状態用パラメータのリセット
     eb.isFading = false;
@@ -595,6 +596,12 @@ function spawnEnemyObj(options) {
     
     // ボス用カメラタイマーもリセット
     e.cameraLerpTimer = 0;
+    e.reactors = null;
+    e.coreHp = 0;
+    e.coreMaxHp = 0;
+    e.coreExposed = false;
+    e.coreFlashTimer = 0;
+    e.coreAttackTimer = 0;
 
     // --- 5. 演出・回転系 ---
     e.rotX = options.rotX || 0;
