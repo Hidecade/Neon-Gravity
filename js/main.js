@@ -758,6 +758,7 @@ window.refreshMenuButtons = function (resetIndex = true) {
         if (nextChapterBtn) currentMenuButtons.push(nextChapterBtn);
         const titleBtn = document.getElementById('btn-story-title');
         if (titleBtn) currentMenuButtons.push(titleBtn);
+        if (resetIndex && nextBtn) selectedMenuIndex = currentMenuButtons.indexOf(nextBtn);
     } else if (howtoOverlay && howtoOverlay.style.display === 'flex') {
         pushVisibleButtons('#howto-overlay .menu-btn');
     } else if (settingsOverlay && settingsOverlay.style.display === 'flex') {
