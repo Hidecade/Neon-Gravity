@@ -1216,6 +1216,13 @@ const ARCHIVE_STRONG_CLOSE_MARKER = '%%ARCHIVE_STRONG_CLOSE%%';
 const ARCHIVE_STORY_AUTO_IDLE_FRAMES = 300;
 const ARCHIVE_STORY_AUTO_ADVANCE_MS = 4700;
 const ARCHIVE_STORY_TITLE_DEMO_END = { chapter: 4, paragraph: 4 };
+const ARCHIVE_STORY_BGM_CUES = [
+    { bgmChapter: 1, chapter: 0, paragraph: 0 },
+    { bgmChapter: 2, chapter: 1, paragraph: 11 },
+    { bgmChapter: 3, chapter: 3, paragraph: 0 },
+    { bgmChapter: 4, chapter: 4, paragraph: 4 },
+    { bgmChapter: 5, chapter: 5, paragraph: 4 }
+];
 
 // chapterごとの「画像(index) -> 段落(index)」対応表。
 // 例: 1章の3枚目画像に5段落目を表示したい場合は { 1: { 2: 4 } }
@@ -1498,23 +1505,38 @@ function isArchiveStoryTitleDemoFinalSlide(index) {
         nextSlide.paragraphIndex !== slide.paragraphIndex;
 }
 
+function isArchiveStorySlideAtOrAfter(slide, cue) {
+    if (!slide || !cue) return false;
+    const slideChapter = Number.isInteger(slide.chapter) ? slide.chapter : 0;
+    const slideParagraph = Number.isInteger(slide.paragraphIndex) ? slide.paragraphIndex : 0;
+
+    if (slideChapter !== cue.chapter) return slideChapter > cue.chapter;
+    return slideParagraph >= cue.paragraph;
+}
+
+function getArchiveStoryBgmChapter(slide) {
+    let bgmChapter = 1;
+
+    ARCHIVE_STORY_BGM_CUES.forEach((cue) => {
+        if (isArchiveStorySlideAtOrAfter(slide, cue)) {
+            bgmChapter = cue.bgmChapter;
+        }
+    });
+
+    return bgmChapter;
+}
+
 function updateArchiveStoryChapterBGM(slide) {
     if (typeof AudioSys === 'undefined' || !slide) return;
 
-    const chapter = slide.chapter >= 1 && slide.chapter <= 5 ? slide.chapter : 0;
+    const chapter = getArchiveStoryBgmChapter(slide);
     if (archiveStoryCurrentBgmChapter === chapter) return;
     archiveStoryCurrentBgmChapter = chapter;
 
-    if (chapter >= 1) {
-        if (typeof AudioSys.playBGMWithFade === 'function') {
-            AudioSys.playBGMWithFade('storyChapter', chapter - 1, 900);
-        } else {
-            AudioSys.playBGM('storyChapter', chapter - 1);
-        }
-    } else if (typeof AudioSys.playBGMWithFade === 'function') {
-        AudioSys.playBGMWithFade('story', 0, 900);
+    if (typeof AudioSys.playBGMWithFade === 'function') {
+        AudioSys.playBGMWithFade('storyChapter', chapter - 1, 900);
     } else {
-        AudioSys.playBGM('story');
+        AudioSys.playBGM('storyChapter', chapter - 1);
     }
 }
 

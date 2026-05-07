@@ -833,6 +833,7 @@
         margin-left: 0;
         padding-left: 0;
         text-align: left;
+        font-size: 0.27em;
     }
 
     #story-overlay .overlay-glow-ring,
@@ -863,6 +864,11 @@
     #story-overlay .overlay-title-sub,
     #story-overlay .overlay-title-sub.story-chapter-description {
         max-width: min(44vw, 460px);
+    }
+
+    #story-overlay .overlay-header .overlay-title-sub.story-chapter-description {
+        font-size: calc(clamp(12px, 2.2vw, 18px) * 0.67) !important;
+        line-height: 1.25;
     }
 
     #story-panel {
