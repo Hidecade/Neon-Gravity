@@ -600,6 +600,7 @@
 }
 
 #story-overlay .overlay-kicker {
+    margin-bottom: 4px;
     font-size: clamp(9px, 1.8vw, 12px);
 }
 
@@ -679,7 +680,7 @@
 
 #archive-story-chapter-transition .archive-chapter-transition-title {
     color: #f8ffff;
-    font-size: clamp(30px, 7vw, 76px);
+    font-size: calc(clamp(30px, 7vw, 76px) * 0.8);
     font-weight: 800;
     text-shadow:
         0 0 12px rgba(0, 255, 255, 0.48),
