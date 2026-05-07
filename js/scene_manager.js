@@ -1203,6 +1203,8 @@ let archiveStoryCurrentSlides = [];
 let archiveStoryCurrentSlideIndex = 0;
 let isArchiveStorySlideTyping = false;
 let archiveStoryFastForwardRequested = false;
+const ARCHIVE_STRONG_OPEN_MARKER = '%%ARCHIVE_STRONG_OPEN%%';
+const ARCHIVE_STRONG_CLOSE_MARKER = '%%ARCHIVE_STRONG_CLOSE%%';
 
 // chapterごとの「画像(index) -> 段落(index)」対応表。
 // 例: 1章の3枚目画像に5段落目を表示したい場合は { 1: { 2: 4 } }
@@ -1254,7 +1256,7 @@ function parseArchiveStorySections(container, langClass) {
                 paragraphs: []
             };
         } else if (tag === 'P') {
-            const line = (el.innerText || '').trim();
+            const line = getArchiveStoryLineText(el);
             if (!line) continue;
             if (currentSection) {
                 currentSection.paragraphs.push(line);
@@ -1274,6 +1276,21 @@ function parseArchiveStorySections(container, langClass) {
             paragraphs: section.paragraphs
         }))
     };
+}
+
+function getArchiveStoryLineText(el) {
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll('br').forEach((br) => {
+        br.replaceWith(document.createTextNode(' '));
+    });
+    clone.querySelectorAll('strong').forEach((strongEl) => {
+        strongEl.replaceWith(
+            document.createTextNode(ARCHIVE_STRONG_OPEN_MARKER),
+            document.createTextNode(strongEl.textContent || ''),
+            document.createTextNode(ARCHIVE_STRONG_CLOSE_MARKER)
+        );
+    });
+    return (clone.textContent || '').replace(/\s+/g, ' ').trim();
 }
 
 function ensureArchiveStorySections() {
@@ -1310,6 +1327,21 @@ function getArchiveStoryParagraphIndex(chapter, imageIdx, imagePath, paragraphCo
         return Math.max(0, Math.min(mapped, Math.max(0, paragraphCount - 1)));
     }
     return Math.max(0, Math.min(imageIdx, Math.max(0, paragraphCount - 1)));
+}
+
+function escapeArchiveStoryHTML(text) {
+    return (text || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function renderArchiveStorySubtitleHTML(text) {
+    return escapeArchiveStoryHTML(text)
+        .replaceAll(ARCHIVE_STRONG_OPEN_MARKER, '<strong>')
+        .replaceAll(ARCHIVE_STRONG_CLOSE_MARKER, '</strong>');
 }
 
 function splitArchiveStorySubtitleText(text, lang) {
@@ -1437,7 +1469,7 @@ function waitArchiveTyping(ms, sessionId) {
 
 async function typeLineText(targetEl, text, sessionId) {
     const full = text || '';
-    targetEl.textContent = full;
+    targetEl.innerHTML = renderArchiveStorySubtitleHTML(full);
     targetEl.classList.remove('archive-subtitle-visible');
     void targetEl.offsetWidth;
     targetEl.classList.add('archive-subtitle-visible');

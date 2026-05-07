@@ -646,7 +646,7 @@
     align-items: center;
     justify-content: center;
     background:
-        linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.96) 10%, rgba(0, 0, 0, 0.18) 34%, rgba(0, 0, 0, 0.18) 66%, rgba(0, 0, 0, 0.96) 90%, #000 100%),
+        linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.98) 14%, rgba(0, 0, 0, 0.58) 28%, rgba(0, 0, 0, 0.12) 43%, rgba(0, 0, 0, 0.12) 57%, rgba(0, 0, 0, 0.58) 72%, rgba(0, 0, 0, 0.98) 86%, #000 100%),
         #000;
 }
 
@@ -734,6 +734,16 @@
         0 0 2px rgba(0, 0, 0, 1),
         0 0 14px rgba(0, 255, 255, 0.28);
     -webkit-text-stroke: 0.35px rgba(0, 0, 0, 0.8);
+}
+
+#story-scroll-container.archive-layout-active .archive-typed-line strong {
+    color: #ff334d;
+    font-weight: 900;
+    text-shadow:
+        0 2px 2px rgba(0, 0, 0, 1),
+        0 0 10px rgba(255, 40, 68, 0.56),
+        0 0 18px rgba(255, 0, 36, 0.32);
+    -webkit-text-stroke: 0.25px rgba(0, 0, 0, 0.82);
 }
 
 #story-nav-buttons {
