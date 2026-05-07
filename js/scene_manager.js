@@ -1206,6 +1206,9 @@ let isArchiveStorySlideTyping = false;
 let archiveStoryFastForwardRequested = false;
 let isArchiveStoryAutoPlaying = false;
 let archiveStoryAutoTimer = null;
+let archiveStoryWakeLock = null;
+let archiveStoryWakeVideo = null;
+let shouldKeepArchiveStoryAwake = false;
 const ARCHIVE_STRONG_OPEN_MARKER = '%%ARCHIVE_STRONG_OPEN%%';
 const ARCHIVE_STRONG_CLOSE_MARKER = '%%ARCHIVE_STRONG_CLOSE%%';
 const ARCHIVE_STORY_AUTO_IDLE_FRAMES = 300;
@@ -1478,6 +1481,77 @@ function clearArchiveStoryAutoTimer() {
         archiveStoryAutoTimer = null;
     }
 }
+
+async function requestArchiveStoryWakeLock() {
+    shouldKeepArchiveStoryAwake = true;
+
+    try {
+        if ('wakeLock' in navigator && !archiveStoryWakeLock) {
+            archiveStoryWakeLock = await navigator.wakeLock.request('screen');
+            archiveStoryWakeLock.addEventListener('release', () => {
+                archiveStoryWakeLock = null;
+            });
+            return;
+        }
+    } catch (e) {
+        archiveStoryWakeLock = null;
+    }
+
+    try {
+        if (!archiveStoryWakeVideo) {
+            const c = document.createElement('canvas');
+            c.width = 2;
+            c.height = 2;
+            const ctx2d = c.getContext('2d');
+            if (ctx2d) {
+                ctx2d.fillStyle = '#000';
+                ctx2d.fillRect(0, 0, c.width, c.height);
+            }
+
+            archiveStoryWakeVideo = document.createElement('video');
+            archiveStoryWakeVideo.muted = true;
+            archiveStoryWakeVideo.loop = true;
+            archiveStoryWakeVideo.playsInline = true;
+            archiveStoryWakeVideo.setAttribute('playsinline', '');
+            archiveStoryWakeVideo.style.position = 'fixed';
+            archiveStoryWakeVideo.style.width = '1px';
+            archiveStoryWakeVideo.style.height = '1px';
+            archiveStoryWakeVideo.style.opacity = '0';
+            archiveStoryWakeVideo.style.pointerEvents = 'none';
+            archiveStoryWakeVideo.style.left = '-10px';
+            archiveStoryWakeVideo.style.top = '-10px';
+
+            if (typeof c.captureStream === 'function') {
+                archiveStoryWakeVideo.srcObject = c.captureStream(1);
+            }
+
+            document.body.appendChild(archiveStoryWakeVideo);
+        }
+
+        await archiveStoryWakeVideo.play();
+    } catch (e) {
+        // iOS may reject this unless the story was opened from a user gesture.
+    }
+}
+
+function releaseArchiveStoryWakeLock() {
+    shouldKeepArchiveStoryAwake = false;
+
+    if (archiveStoryWakeLock) {
+        archiveStoryWakeLock.release().catch(() => {});
+        archiveStoryWakeLock = null;
+    }
+
+    if (archiveStoryWakeVideo) {
+        archiveStoryWakeVideo.pause();
+    }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && shouldKeepArchiveStoryAwake && gameState === 'STORY') {
+        requestArchiveStoryWakeLock();
+    }
+});
 
 function scheduleArchiveStoryAutoAdvance(sessionId) {
     clearArchiveStoryAutoTimer();
@@ -1841,6 +1915,7 @@ function prevArchiveStoryChapter() {
 
 function stopArchiveStoryTyping() {
     clearArchiveStoryAutoTimer();
+    releaseArchiveStoryWakeLock();
     archiveStoryTypingSessionId++;
     isArchiveStorySlideTyping = false;
     archiveStoryFastForwardRequested = false;
@@ -1888,6 +1963,7 @@ function setArchiveStoryAutoMode(enabled) {
 function openStory(options = {}) {
     if (typeof resetTitleIdle === 'function') resetTitleIdle();
     setArchiveStoryAutoMode(!!options.auto);
+    requestArchiveStoryWakeLock();
     gameState = 'STORY';
     ui.titleOverlay.style.display = 'none';
     const storyOverlay = document.getElementById('story-overlay');
