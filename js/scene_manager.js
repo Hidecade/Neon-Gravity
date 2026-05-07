@@ -1647,8 +1647,16 @@ async function startArchiveStoryTyping(lang) {
 function nextArchiveStorySlide() {
     if (gameState !== 'STORY') return;
 
+
     if (isArchiveStorySlideTyping) {
         archiveStoryFastForwardRequested = true;
+        // タイピング終了後すぐ次スライドへ進む
+        setTimeout(() => {
+            // まだSTORY画面かつタイピングが終わっていれば進む
+            if (gameState === 'STORY' && !isArchiveStorySlideTyping) {
+                nextArchiveStorySlide();
+            }
+        }, 0);
         return;
     }
 
