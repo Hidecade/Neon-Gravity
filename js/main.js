@@ -1157,12 +1157,16 @@ function loop() {
         if (typeof updateDying === 'function') updateDying();
         draw();
 
-    } else if (gameState === 'TITLE' || 
-        gameState === 'OST' || 
-        gameState === 'HOWTO' || 
-        gameState === 'RANKING'|| 
-        gameState === 'STORY' || 
+    } else if (gameState === 'TITLE' ||
+        gameState === 'OST' ||
+        gameState === 'HOWTO' ||
+        gameState === 'RANKING'||
+        gameState === 'STORY' ||
         gameState === 'SETTINGS') {
+        if (gameState === 'TITLE' && typeof updateTitleIdleAutoPreview === 'function') {
+            updateTitleIdleAutoPreview();
+        }
+
         introBgSpeed = 2;
         introBgScroll += introBgSpeed * gameSpeed;
 

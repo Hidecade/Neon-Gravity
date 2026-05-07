@@ -271,6 +271,20 @@ function handleGamepadInput() {
     const dpadDown = activeGp.buttons[13]?.pressed;
     const dpadLeft = activeGp.buttons[14]?.pressed;
     const dpadRight = activeGp.buttons[15]?.pressed;
+    const isPadInteraction =
+        startBtn || aBtn || bBtn || xBtn || rbBtn || rtBtn ||
+        dpadUp || dpadDown || dpadLeft || dpadRight ||
+        Math.abs(moveX) > 0.2 || Math.abs(moveY) > 0.2 ||
+        Math.abs(aimX) > 0.2 || Math.abs(aimY) > 0.2;
+
+    if (isPadInteraction && typeof resetTitleIdle === 'function' && resetTitleIdle()) {
+        input.padStartPressed = startBtn;
+        input.padAPressed = aBtn;
+        input.padBPressed = bBtn;
+        input.padBombPressed = (xBtn || bBtn || rbBtn || rtBtn);
+        input.padDirPressed = dpadUp || dpadDown || dpadLeft || dpadRight;
+        return;
+    }
 
     // 1. STAGE_INTRO のスキップ判定
     if (gameState === 'STAGE_INTRO' && typeof introPhase !== 'undefined' && (introPhase === 1 || introPhase === 2)) {
@@ -531,6 +545,12 @@ const handleInteraction = () => {
 // =========================================================
 
 function initInputHandlers() {
+    document.addEventListener('click', (e) => {
+        if (window.archiveStoryAutoExitBlockUntil && performance.now() < window.archiveStoryAutoExitBlockUntil) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, true);
 
     // -----------------------------------------------------
     // A. キーボード制御

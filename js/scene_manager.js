@@ -956,6 +956,7 @@ function proceedToNextMenu() {
  */
 function returnToTitle() {
     gameState = 'TITLE';
+    titleIdleTimer = 0;
 
     if (typeof resetStoryTypingState === 'function') resetStoryTypingState();
 
@@ -1203,8 +1204,12 @@ let archiveStoryCurrentSlides = [];
 let archiveStoryCurrentSlideIndex = 0;
 let isArchiveStorySlideTyping = false;
 let archiveStoryFastForwardRequested = false;
+let isArchiveStoryAutoPlaying = false;
+let archiveStoryAutoTimer = null;
 const ARCHIVE_STRONG_OPEN_MARKER = '%%ARCHIVE_STRONG_OPEN%%';
 const ARCHIVE_STRONG_CLOSE_MARKER = '%%ARCHIVE_STRONG_CLOSE%%';
+const ARCHIVE_STORY_AUTO_IDLE_FRAMES = 300;
+const ARCHIVE_STORY_AUTO_ADVANCE_MS = 4700;
 
 // chapterごとの「画像(index) -> 段落(index)」対応表。
 // 例: 1章の3枚目画像に5段落目を表示したい場合は { 1: { 2: 4 } }
@@ -1467,6 +1472,31 @@ function waitArchiveTyping(ms, sessionId) {
     });
 }
 
+function clearArchiveStoryAutoTimer() {
+    if (archiveStoryAutoTimer) {
+        clearTimeout(archiveStoryAutoTimer);
+        archiveStoryAutoTimer = null;
+    }
+}
+
+function scheduleArchiveStoryAutoAdvance(sessionId) {
+    clearArchiveStoryAutoTimer();
+    if (!isArchiveStoryAutoPlaying || gameState !== 'STORY') return;
+
+    archiveStoryAutoTimer = setTimeout(() => {
+        archiveStoryAutoTimer = null;
+        if (!isArchiveStoryAutoPlaying || gameState !== 'STORY' || sessionId !== archiveStoryTypingSessionId) return;
+
+        if (archiveStoryCurrentSlideIndex < archiveStoryCurrentSlides.length - 1) {
+            archiveStoryCurrentSlideIndex++;
+            updateArchiveStoryNavButtons();
+            renderArchiveStorySlide(archiveStoryCurrentSlideIndex);
+        } else {
+            exitArchiveStoryAutoPreview();
+        }
+    }, ARCHIVE_STORY_AUTO_ADVANCE_MS);
+}
+
 async function typeLineText(targetEl, text, sessionId) {
     const full = text || '';
     targetEl.innerHTML = renderArchiveStorySubtitleHTML(full);
@@ -1640,6 +1670,7 @@ async function renderArchiveStorySlide(index) {
         if (sessionId === archiveStoryTypingSessionId) {
             isArchiveStorySlideTyping = false;
             archiveStoryFastForwardRequested = false;
+            scheduleArchiveStoryAutoAdvance(sessionId);
         }
     };
 
@@ -1809,6 +1840,7 @@ function prevArchiveStoryChapter() {
 }
 
 function stopArchiveStoryTyping() {
+    clearArchiveStoryAutoTimer();
     archiveStoryTypingSessionId++;
     isArchiveStorySlideTyping = false;
     archiveStoryFastForwardRequested = false;
@@ -1844,11 +1876,18 @@ function stopArchiveStoryTyping() {
     if (container) container.classList.remove('archive-layout-active');
 }
 
+function setArchiveStoryAutoMode(enabled) {
+    isArchiveStoryAutoPlaying = !!enabled;
+    const storyOverlay = document.getElementById('story-overlay');
+    if (storyOverlay) storyOverlay.classList.toggle('archive-auto-preview', isArchiveStoryAutoPlaying);
+}
+
 /**
  * ストーリーアーカイブ画面を開く
  */
-function openStory() {
+function openStory(options = {}) {
     if (typeof resetTitleIdle === 'function') resetTitleIdle();
+    setArchiveStoryAutoMode(!!options.auto);
     gameState = 'STORY';
     ui.titleOverlay.style.display = 'none';
     const storyOverlay = document.getElementById('story-overlay');
@@ -1875,10 +1914,11 @@ function openStory() {
     }
 
     if (typeof AudioSys !== 'undefined') AudioSys.playBGM('title');
-    if (window.refreshMenuButtons) window.refreshMenuButtons();
+    if (window.refreshMenuButtons && !isArchiveStoryAutoPlaying) window.refreshMenuButtons();
 }
 
 function closeStory() {
+    setArchiveStoryAutoMode(false);
     stopArchiveStoryTyping();
 
     const storyOverlay = document.getElementById('story-overlay');
@@ -1894,6 +1934,35 @@ function closeStory() {
     } else {
         returnToTitle();
     }
+}
+
+function openArchiveStoryAutoPreview() {
+    if (gameState !== 'TITLE') return;
+    titleIdleTimer = 0;
+    openStory({ auto: true });
+}
+
+function updateTitleIdleAutoPreview() {
+    if (gameState !== 'TITLE') return;
+    titleIdleTimer++;
+    if (titleIdleTimer >= ARCHIVE_STORY_AUTO_IDLE_FRAMES) {
+        openArchiveStoryAutoPreview();
+    }
+}
+
+function exitArchiveStoryAutoPreview() {
+    if (!isArchiveStoryAutoPlaying) return false;
+    window.archiveStoryAutoExitBlockUntil = performance.now() + 350;
+    setArchiveStoryAutoMode(false);
+    stopArchiveStoryTyping();
+
+    const storyOverlay = document.getElementById('story-overlay');
+    if (storyOverlay) {
+        storyOverlay.style.opacity = '0';
+        storyOverlay.style.display = 'none';
+    }
+    returnToTitle();
+    return true;
 }
 
 /**
@@ -3089,10 +3158,15 @@ function updateCamera() {
  */
 function resetTitleIdle() {
     if (gameState === 'TITLE') {
+        titleIdleTimer = 0;
         return false;
+    } else if (gameState === 'STORY' && isArchiveStoryAutoPlaying) {
+        return exitArchiveStoryAutoPreview();
     } else if (gameState === 'HOWTO') {
+        titleIdleTimer = 0;
         return true;
     }
+    titleIdleTimer = 0;
     return false;
 }
 

@@ -764,6 +764,10 @@
     -webkit-backdrop-filter: blur(8px);
 }
 
+#story-overlay.archive-auto-preview #story-nav-buttons {
+    display: none;
+}
+
 @media (orientation: portrait) {
     #story-overlay .overlay-header {
         top: calc(env(safe-area-inset-top) + 24px);
