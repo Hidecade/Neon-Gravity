@@ -1186,8 +1186,8 @@ const ARCHIVE_STORY_IMAGE_MAP = {
         'img/story/story_4_12.jpg', 'img/story/story_4_13.jpg'
     ],
     5: [
-        'img/story/story_5_00.jpg', 'img/story/story_5_01.jpg', 'img/story/story_5_01.jpg', 
-        'img/story/story_5_01.jpg', 'img/story/story_5_02.jpg', 'img/story/story_5_02.jpg',
+        'img/story/story_5_00.jpg', 'img/story/story_5_01.jpg', 'img/story/story_5_01a.jpg', 
+        'img/story/story_5_01b.jpg', 'img/story/story_5_02.jpg', 'img/story/story_5_02.jpg',
         'img/story/story_5_03.jpg', 'img/story/story_5_03.jpg', 'img/story/story_5_04.jpg', 
         'img/story/story_5_04.jpg', 
         'img/story/story_5_05.jpg',
@@ -1584,11 +1584,24 @@ async function renderArchiveStorySlide(index) {
         }
     }
 
-    // --- 次の画像をプリロード ---
+    // --- 画像プリロード: 次→前→次Chapter ---
+    const preloadList = [];
+    // 次の画像
     const nextSlide = archiveStoryCurrentSlides[index + 1];
-    if (nextSlide && nextSlide.image) {
+    if (nextSlide && nextSlide.image) preloadList.push(nextSlide.image);
+    // 前の画像
+    const prevSlide = archiveStoryCurrentSlides[index - 1];
+    if (prevSlide && prevSlide.image) preloadList.push(prevSlide.image);
+    // 次のChapterの最初の画像
+    const nextChapterIdx = findArchiveStoryChapterStartIndex(index, 1);
+    if (nextChapterIdx >= 0) {
+        const nextChapterSlide = archiveStoryCurrentSlides[nextChapterIdx];
+        if (nextChapterSlide && nextChapterSlide.image) preloadList.push(nextChapterSlide.image);
+    }
+    // プリロード実行（順に）
+    for (const imgPath of preloadList) {
         const preloadImg = new window.Image();
-        preloadImg.src = nextSlide.image;
+        preloadImg.src = imgPath;
     }
 }
 
