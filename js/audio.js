@@ -22,7 +22,7 @@ const BGM_FILES = {
     all_clear: 'audio/Neon_Gravity_All_Clear.mp3',
     boss: 'audio/Neon_Gravity_Boss.mp3',
     last: 'audio/Neon_Gravity_Last.mp3',
-    story: 'audio/Neon_Gravity_Story.mp3',
+    story: 'audio/Neon_Gravity_Story_C1.mp3',
     storyChapters: [
         'audio/Neon_Gravity_Story_C1.mp3',
         'audio/Neon_Gravity_Story_C2.mp3',
@@ -1291,6 +1291,10 @@ const AudioSys = {
 
         try {
             const response = await fetch(url);
+            if (!response.ok) {
+                console.error("BGM Load Error:", response.status, url);
+                return null;
+            }
             const arrayBuffer = await response.arrayBuffer();
             const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
             this.bgmBuffers[url] = audioBuffer;
