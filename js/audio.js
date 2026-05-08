@@ -30,6 +30,7 @@ const BGM_FILES = {
         'audio/Neon_Gravity_Story_C4.mp3',
         'audio/Neon_Gravity_Story_C5.mp3'
     ],
+    storyChapter5Battle: 'audio/Neon_Gravity_Story_C5a.mp3',
     name: 'audio/Neon_Gravity_Name.mp3',
     ending: 'audio/Neon_Gravity_Ending.mp3',
     stages: [

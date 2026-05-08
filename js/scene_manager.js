@@ -1541,7 +1541,7 @@ function getArchiveStoryBgmCue(slide) {
     if (!chapter) return null;
 
     if (chapter === 5 && (slide.paragraphIndex || 0) < ARCHIVE_STORY_CHAPTER5_LIBERATION_PARAGRAPH) {
-        return { id: 'last', key: 'last', index: 0 };
+        return { id: 'storyChapter5Battle', key: 'storyChapter5Battle', index: 0 };
     }
 
     return {
