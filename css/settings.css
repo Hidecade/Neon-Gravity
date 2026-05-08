@@ -28,8 +28,8 @@
 @media screen and (max-height: 500px) {
     #settings-overlay {
         justify-content: flex-start;
-        gap: 10px;
-        padding: max(8px, env(safe-area-inset-top)) 0 max(10px, env(safe-area-inset-bottom));
+        gap: 4px;
+        padding: max(12px, env(safe-area-inset-top)) 0 max(14px, env(safe-area-inset-bottom));
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
     }
@@ -47,12 +47,12 @@
     }
 
     #settings-overlay .overlay-title-main {
-        font-size: clamp(20px, 5.8vh, 28px);
+        font-size: clamp(20px, 5.2vh, 25px);
     }
 
     #settings-overlay .overlay-title-sub {
         margin-top: 3px;
-        font-size: clamp(10px, 2.8vh, 13px);
+        font-size: clamp(9px, 2.5vh, 12px);
     }
 
     #settings-overlay #menu-buttons-container {
@@ -99,9 +99,9 @@
     }
 
     #settings-overlay .menu-btn.btn-small {
-        min-width: 124px;
-        padding: 7px 14px;
-        font-size: 12px;
+        min-width: 110px;
+        padding: 5px 12px;
+        font-size: 11px;
     }
 }
 
