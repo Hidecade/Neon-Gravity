@@ -300,15 +300,15 @@ const SPAWN_SETTINGS = {
 
 // --- ボス設定 ---
 const BOSS_VARIANTS = [
-    { name: 'TRI-FORTRESS', sides: 3, color: '#f0f', hp: 200, bulletCount: 3, speedFactor: 1.50 },
-    { name: 'DIAMOND-CORE', sides: 4, color: '#ffff00', hp: 220, bulletCount: 4, speedFactor: 1.44 },
-    { name: 'PENTA-BASE', sides: 5, color: '#0ff', hp: 240, bulletCount: 5, speedFactor: 1.38 },
-    { name: 'HEXAGON-NEST', sides: 6, color: '#0cc', hp: 260, bulletCount: 6, speedFactor: 1.33 },
-    { name: 'HEPTA-GATE', sides: 7, color: '#44f', hp: 280, bulletCount: 7, speedFactor: 1.29 },
-    { name: 'OCTAGON-COMMAND', sides: 8, color: '#f40', hp: 300, bulletCount: 8, speedFactor: 1.25 },
-    { name: 'NONA-REVEALER', sides: 9, color: '#f08', hp: 320, bulletCount: 9, speedFactor: 1.22 },
-    { name: 'DECA-DECIMATOR', sides: 10, color: '#fff', hp: 400, bulletCount: 10, speedFactor: 1.19 },
-    { name: 'GENESIS-ARK', sides: 12, color: '#00ffff', hp: 1000, bulletCount: 12, speedFactor: 1.10 }
+    { name: 'TRI-FORTRESS', sides: 3, color: '#f0f', hp: 250, bulletCount: 3, speedFactor: 1.50 },
+    { name: 'DIAMOND-CORE', sides: 4, color: '#ffff00', hp: 275, bulletCount: 4, speedFactor: 1.44 },
+    { name: 'PENTA-BASE', sides: 5, color: '#0ff', hp: 300, bulletCount: 5, speedFactor: 1.38 },
+    { name: 'HEXAGON-NEST', sides: 6, color: '#0cc', hp: 325, bulletCount: 6, speedFactor: 1.33 },
+    { name: 'HEPTA-GATE', sides: 7, color: '#44f', hp: 350, bulletCount: 7, speedFactor: 1.29 },
+    { name: 'OCTAGON-COMMAND', sides: 8, color: '#f40', hp: 375, bulletCount: 8, speedFactor: 1.25 },
+    { name: 'NONA-REVEALER', sides: 9, color: '#f08', hp: 400, bulletCount: 9, speedFactor: 1.22 },
+    { name: 'DECA-DECIMATOR', sides: 10, color: '#fff', hp: 500, bulletCount: 10, speedFactor: 1.19 },
+    { name: 'GENESIS-ARK', sides: 12, color: '#00ffff', hp: 1250, bulletCount: 12, speedFactor: 1.10 }
 ];
 
 // --- 弾丸設定 ---
