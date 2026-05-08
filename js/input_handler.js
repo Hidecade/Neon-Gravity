@@ -560,6 +560,12 @@ const handleInteraction = () => {
 
 function initInputHandlers() {
     document.addEventListener('click', (e) => {
+        if (window.mainTitleInputBlockUntil && performance.now() < window.mainTitleInputBlockUntil) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+
         if (window.archiveStoryAutoExitBlockUntil && performance.now() < window.archiveStoryAutoExitBlockUntil) {
             e.preventDefault();
             e.stopPropagation();

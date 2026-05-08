@@ -999,6 +999,7 @@ function enterTitleMenuFromMainTitle(event) {
         event.stopPropagation();
     }
     if (gameState !== 'MAIN_TITLE') return;
+    window.mainTitleInputBlockUntil = performance.now() + 450;
 
     const mainTitleOverlay = document.getElementById('main-title-overlay');
     if (mainTitleOverlay) {
@@ -1010,6 +1011,14 @@ function enterTitleMenuFromMainTitle(event) {
     }
 
     returnToTitle();
+    if (ui.titleOverlay) {
+        ui.titleOverlay.style.pointerEvents = 'none';
+        setTimeout(() => {
+            if (ui.titleOverlay && gameState === 'TITLE') {
+                ui.titleOverlay.style.pointerEvents = 'auto';
+            }
+        }, 450);
+    }
 }
 
 /**
