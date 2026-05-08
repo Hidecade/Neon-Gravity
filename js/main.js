@@ -32,7 +32,7 @@ let globalSpawnEnemyId = 0;     // 生成されるたびに増やす
 let globalEnemySpawnCounter = 0;
 
 // --- ゲーム状態管理 ---
-let gameState = 'TITLE';        // 現在の状態 ('TITLE', 'PLAYING', 'PAUSED' 等)
+let gameState = 'MAIN_TITLE';   // 現在の状態 ('MAIN_TITLE', 'TITLE', 'PLAYING', 'PAUSED' 等)
 let previousGameState = '';     // ポーズ前の状態保存用
 let stageClearTimer = 0;        // ステージクリア後の待機タイマー
 
@@ -669,6 +669,7 @@ const miniMapCtx = miniMapCanvas.getContext('2d');
 
 const ui = {
     titleOverlay: document.getElementById('title-overlay'),
+    mainTitleOverlay: document.getElementById('main-title-overlay'),
     gameoverOverlay: document.getElementById('gameover-overlay'),
     titleText: document.querySelector('#title-overlay h1'),
     pauseOverlay: document.getElementById('pause-overlay'),
@@ -1120,7 +1121,7 @@ function resize() {
     if (typeof initNebulae === 'function') {
         if (gameState === 'ENDING' || gameState === 'ENDING_STORY') {
             initNebulae('#00ccff');
-        } else if (['TITLE', 'HOWTO', 'RANKING', 'OST', 'STORY', 'GAMEOVER_UI'].includes(gameState)) {
+        } else if (['MAIN_TITLE', 'TITLE', 'HOWTO', 'RANKING', 'OST', 'STORY', 'GAMEOVER_UI'].includes(gameState)) {
             initNebulae('#00bbff');
         } else {
             initNebulae();
@@ -1164,7 +1165,8 @@ function loop() {
         if (typeof updateDying === 'function') updateDying();
         draw();
 
-    } else if (gameState === 'TITLE' ||
+    } else if (gameState === 'MAIN_TITLE' ||
+        gameState === 'TITLE' ||
         gameState === 'OST' ||
         gameState === 'HOWTO' ||
         gameState === 'RANKING'||
@@ -1208,7 +1210,8 @@ function loop() {
         'ENDING', 
         'ENDING_STORY', 
         'GAMEOVER_UI', 
-        'TITLE', 
+        'MAIN_TITLE',
+        'TITLE',
         'HOWTO', 
         'RANKING',
         'STORY',
@@ -1415,7 +1418,7 @@ function updateDebugOverlay() {
     if (!el) return;
 
     // タイトルでは表示しない
-    if (gameState === 'TITLE') {
+    if (gameState === 'MAIN_TITLE' || gameState === 'TITLE') {
         el.style.display = "none";
         return;
     }
@@ -1658,6 +1661,10 @@ window.closeInstallPrompt = function () {
 
 checkIOSInstallPrompt();
 init();
-returnToTitle();
+if (typeof showMainTitle === 'function') {
+    showMainTitle();
+} else {
+    returnToTitle();
+}
 window.refreshMenuButtons();
 loop();

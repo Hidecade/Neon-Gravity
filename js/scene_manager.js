@@ -951,6 +951,67 @@ function proceedToNextMenu() {
     }, isFading ? 500 : 0); // フェードアウトする要素があった時だけ500ms待つ
 }
 
+function showMainTitle() {
+    gameState = 'MAIN_TITLE';
+    titleIdleTimer = 0;
+
+    if (typeof resetStoryTypingState === 'function') resetStoryTypingState();
+
+    const mainTitleOverlay = document.getElementById('main-title-overlay');
+    if (mainTitleOverlay) {
+        mainTitleOverlay.style.display = 'flex';
+        mainTitleOverlay.style.opacity = '1';
+        mainTitleOverlay.style.pointerEvents = 'auto';
+    }
+
+    if (ui.titleOverlay) ui.titleOverlay.style.display = 'none';
+
+    const overlaysToHide = [
+        ui.gameoverOverlay,
+        ui.pauseOverlay,
+        ui.howtoOverlay,
+        ui.ostOverlay,
+        document.getElementById('ranking-overlay'),
+        document.getElementById('story-overlay'),
+        document.getElementById('settings-overlay'),
+        ui.nameInputArea
+    ];
+    overlaysToHide.forEach((el) => {
+        if (el) el.style.display = 'none';
+    });
+
+    if (ui.controls) ui.controls.style.display = 'none';
+    if (ui.pauseBtn) ui.pauseBtn.style.display = 'none';
+
+    const hud = document.querySelector('.hud-row');
+    if (hud) hud.style.display = 'none';
+
+    if (typeof initGrid === 'function') initGrid();
+    if (typeof initStars === 'function') initStars();
+    if (typeof initNebulae === 'function') initNebulae('#00bbff');
+
+    if (window.refreshMenuButtons) window.refreshMenuButtons();
+}
+
+function enterTitleMenuFromMainTitle(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (gameState !== 'MAIN_TITLE') return;
+
+    const mainTitleOverlay = document.getElementById('main-title-overlay');
+    if (mainTitleOverlay) {
+        mainTitleOverlay.style.pointerEvents = 'none';
+        mainTitleOverlay.style.opacity = '0';
+        setTimeout(() => {
+            if (mainTitleOverlay) mainTitleOverlay.style.display = 'none';
+        }, 260);
+    }
+
+    returnToTitle();
+}
+
 /**
  * メインタイトル画面への復帰
  */
@@ -997,6 +1058,8 @@ function returnToTitle() {
 
     // UIの表示状態
     ui.gameoverOverlay.style.display = 'none';
+    const mainTitleOverlay = document.getElementById('main-title-overlay');
+    if (mainTitleOverlay) mainTitleOverlay.style.display = 'none';
     ui.titleOverlay.style.display = 'flex';
 
     // ★追加：成績ボードを確実に隠す

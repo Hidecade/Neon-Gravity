@@ -99,7 +99,7 @@ function initNebulae(forcedColor = null) {
     // 引数があればそれを使用、なければステージのテーマ色、それもなければシアン
     let themeHex = forcedColor || STAGE_THEMES[stage] || '#00bbff';
 
-    if (!forcedColor && ['TITLE', 'HOWTO', 'RANKING', 'OST', 'STORY', 'GAMEOVER_UI'].includes(gameState)) {
+    if (!forcedColor && ['MAIN_TITLE', 'TITLE', 'HOWTO', 'RANKING', 'OST', 'STORY', 'GAMEOVER_UI'].includes(gameState)) {
         themeHex = '#00bbff';
     }
 

@@ -277,6 +277,20 @@ function handleGamepadInput() {
         Math.abs(moveX) > 0.2 || Math.abs(moveY) > 0.2 ||
         Math.abs(aimX) > 0.2 || Math.abs(aimY) > 0.2;
 
+    if (gameState === 'MAIN_TITLE') {
+        if (isPadInteraction && !input.padSkipLatch) {
+            if (typeof enterTitleMenuFromMainTitle === 'function') enterTitleMenuFromMainTitle();
+            input.padSkipLatch = true;
+        }
+        if (!isPadInteraction) input.padSkipLatch = false;
+        input.padStartPressed = startBtn;
+        input.padAPressed = aBtn;
+        input.padBPressed = bBtn;
+        input.padBombPressed = (xBtn || bBtn || rbBtn || rtBtn);
+        input.padDirPressed = dpadUp || dpadDown || dpadLeft || dpadRight;
+        return;
+    }
+
     if (isPadInteraction && typeof resetTitleIdle === 'function' && resetTitleIdle()) {
         input.padStartPressed = startBtn;
         input.padAPressed = aBtn;
@@ -559,6 +573,13 @@ function initInputHandlers() {
         // 名前入力中はショートカットを無効化
         if (document.activeElement === document.getElementById('player-name-input')) return;
 
+        if (gameState === 'MAIN_TITLE') {
+            if (!e.repeat && typeof enterTitleMenuFromMainTitle === 'function') {
+                enterTitleMenuFromMainTitle(e);
+            }
+            return;
+        }
+
         // ブラウザのデフォルト操作(スクロール等)を防止
         if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyZ', 'KeyX', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) e.preventDefault();
 
@@ -612,6 +633,17 @@ function initInputHandlers() {
     });
 
     window.addEventListener('keyup', e => input.keys[e.code] = false);
+
+    const mainTitleOverlay = document.getElementById('main-title-overlay');
+    if (mainTitleOverlay) {
+        const handleMainTitlePointer = (e) => {
+            if (typeof enterTitleMenuFromMainTitle === 'function') {
+                enterTitleMenuFromMainTitle(e);
+            }
+        };
+        mainTitleOverlay.addEventListener('pointerdown', handleMainTitlePointer);
+        mainTitleOverlay.addEventListener('click', handleMainTitlePointer);
+    }
 
     // -----------------------------------------------------
     // B. オンスクリーンUI (スティック・ボタン)

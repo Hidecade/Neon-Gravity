@@ -112,6 +112,7 @@ function drawBackground() {
         gameState === 'ENDING_STORY' ||
         gameState === 'GAMEOVER_UI' ||
         gameState === 'ENDING' ||
+        gameState === 'MAIN_TITLE' ||
         gameState === 'TITLE' ||
         gameState === 'HOWTO'||
         gameState === 'OST'||
