@@ -1212,6 +1212,7 @@ let isArchiveStoryChapterTransitioning = false;
 let archiveStoryWakeLock = null;
 let archiveStoryWakeVideo = null;
 let shouldKeepArchiveStoryAwake = false;
+const ARCHIVE_STORY_CHAPTER5_LIBERATION_PARAGRAPH = 10;
 const ARCHIVE_STRONG_OPEN_MARKER = '%%ARCHIVE_STRONG_OPEN%%';
 const ARCHIVE_STRONG_CLOSE_MARKER = '%%ARCHIVE_STRONG_CLOSE%%';
 const ARCHIVE_STORY_AUTO_IDLE_FRAMES = 300;
@@ -1535,18 +1536,33 @@ function getArchiveStoryBgmChapter(slide) {
     return Math.max(1, Math.min(5, slide.chapter));
 }
 
+function getArchiveStoryBgmCue(slide) {
+    const chapter = getArchiveStoryBgmChapter(slide);
+    if (!chapter) return null;
+
+    if (chapter === 5 && (slide.paragraphIndex || 0) < ARCHIVE_STORY_CHAPTER5_LIBERATION_PARAGRAPH) {
+        return { id: 'last', key: 'last', index: 0 };
+    }
+
+    return {
+        id: `storyChapter:${chapter}`,
+        key: 'storyChapter',
+        index: chapter - 1
+    };
+}
+
 function updateArchiveStoryChapterBGM(slide, fadeMs = 900) {
     if (typeof AudioSys === 'undefined' || !slide) return;
 
-    const chapter = getArchiveStoryBgmChapter(slide);
-    if (!chapter) return;
-    if (archiveStoryCurrentBgmChapter === chapter) return;
-    archiveStoryCurrentBgmChapter = chapter;
+    const cue = getArchiveStoryBgmCue(slide);
+    if (!cue) return;
+    if (archiveStoryCurrentBgmChapter === cue.id) return;
+    archiveStoryCurrentBgmChapter = cue.id;
 
     if (typeof AudioSys.playBGMWithFade === 'function') {
-        AudioSys.playBGMWithFade('storyChapter', chapter - 1, fadeMs);
+        AudioSys.playBGMWithFade(cue.key, cue.index, fadeMs);
     } else {
-        AudioSys.playBGM('storyChapter', chapter - 1);
+        AudioSys.playBGM(cue.key, cue.index);
     }
 }
 

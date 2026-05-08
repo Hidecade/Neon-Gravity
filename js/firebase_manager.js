@@ -123,6 +123,9 @@ window.firebaseOps = {
 window.showRanking = async function (onClose = null, modeOverride = null) {
     if (!rankingOverlay) return;
 
+    gameState = "RANKING";
+    titleIdleTimer = 0;
+
     if (modeOverride) {
         rankingMode = normalizeMode(modeOverride);
     }

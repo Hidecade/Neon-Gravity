@@ -27,10 +27,82 @@
    ===================================================== */
 @media screen and (max-height: 500px) {
     #settings-overlay {
-        padding: 2vh 0; /* 画面上下の余白を極限まで削る */
-        justify-content: center; /* 中央に寄せてはみ出しを防ぐ */
+        justify-content: flex-start;
+        gap: 10px;
+        padding: max(8px, env(safe-area-inset-top)) 0 max(10px, env(safe-area-inset-bottom));
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
-    
+
+    #settings-overlay .overlay-header {
+        min-width: min(76vw, 520px);
+        margin-bottom: 2px;
+        padding: 3px 10px 2px;
+    }
+
+    #settings-overlay .overlay-kicker {
+        margin-bottom: 2px;
+        font-size: clamp(8px, 1.7vh, 10px);
+        letter-spacing: 0.18em;
+    }
+
+    #settings-overlay .overlay-title-main {
+        font-size: clamp(20px, 5.8vh, 28px);
+    }
+
+    #settings-overlay .overlay-title-sub {
+        margin-top: 3px;
+        font-size: clamp(10px, 2.8vh, 13px);
+    }
+
+    #settings-overlay #menu-buttons-container {
+        flex: 1 1 auto;
+        justify-content: center;
+        gap: 4px;
+        min-height: 0;
+    }
+
+    #settings-overlay #menu-buttons-container h3 {
+        margin-top: 4px !important;
+        margin-bottom: 4px !important;
+        font-size: 13px !important;
+        line-height: 1.1;
+    }
+
+    #settings-overlay .slider-container {
+        margin-bottom: 0 !important;
+    }
+
+    #settings-overlay .neon-slider {
+        width: min(230px, 54vw);
+    }
+
+    #settings-overlay .se-test-browser {
+        grid-template-columns: 36px minmax(130px, 1fr) 36px;
+        width: min(310px, 72vw);
+    }
+
+    #settings-overlay .se-test-arrow,
+    #settings-overlay .se-test-play {
+        min-height: 30px;
+    }
+
+    #settings-overlay #se-test-instruction {
+        margin-top: 3px;
+        font-size: 8px;
+    }
+
+    #settings-overlay .btn-row {
+        flex: 0 0 auto;
+        margin-top: 2px;
+        margin-bottom: 0;
+    }
+
+    #settings-overlay .menu-btn.btn-small {
+        min-width: 124px;
+        padding: 7px 14px;
+        font-size: 12px;
+    }
 }
 
 /* ==========================================
