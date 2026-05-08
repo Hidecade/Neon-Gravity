@@ -6,13 +6,17 @@ const BOSS_PROJECTILE_SPEED_MULT = 1.15;
 const BOSS_ANGER_MAX_BONUS = 0.9;
 const BATTLESHIP_PROJECTILE_SPEED_MULT = 1.05;
 const BOSS_REACTOR_DEAD_COLOR = '#050505';
+const BOSS_CORE_HP_RATIO = 0.25;
+const BATTLESHIP_CORE_HP_RATIO = 0.10;
 
 function initBossReactors(e) {
     if (!e || !e.variant || !Number.isFinite(e.maxHp)) return;
     const sides = Math.max(1, e.variant.sides || 1);
     if (Array.isArray(e.reactors) && e.reactors.length === sides) return;
 
-    const reactorTotalHp = e.maxHp * 0.75;
+    const coreHpRatio = e.type === 'battleship' ? BATTLESHIP_CORE_HP_RATIO : BOSS_CORE_HP_RATIO;
+    const coreHp = e.maxHp * coreHpRatio;
+    const reactorTotalHp = e.maxHp - coreHp;
     const hpPerReactor = reactorTotalHp / sides;
     e.reactors = Array.from({ length: sides }, (_, index) => ({
         index,
@@ -21,7 +25,7 @@ function initBossReactors(e) {
         destroyed: false,
         flashTimer: 0
     }));
-    e.coreHp = e.maxHp * 0.25;
+    e.coreHp = coreHp;
     e.coreMaxHp = e.coreHp;
     e.coreExposed = false;
     e.coreFlashTimer = 0;
@@ -1206,6 +1210,10 @@ function updateBattleshipAI(e) {
     }
 
     // 4. 攻撃ロジック
+    if (e.coreExposed) {
+        updateBossCoreAttack(e, BATTLESHIP_PROJECTILE_SPEED_MULT, 1.6);
+        return;
+    }
 
     const cycle = e.fireTimer % 1380;
     const sides = e.variant.sides || 12;

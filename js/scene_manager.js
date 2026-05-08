@@ -1220,6 +1220,11 @@ const ARCHIVE_STORY_AUTO_ADVANCE_MS = 4700;
 const ARCHIVE_STORY_CHAPTER_FADE_MS = 1100;
 const ARCHIVE_STORY_CHAPTER_TITLE_MS = 1500;
 const ARCHIVE_STORY_TITLE_DEMO_END = { chapter: 4, paragraph: 4 };
+const ARCHIVE_STORY_TITLE_DEMO_OUTRO_MS = 2100;
+const ARCHIVE_STORY_TITLE_DEMO_OUTRO = {
+    title: "LET'S PLAY GAME",
+    subtitle: 'EMERALD PHOENIX: READY TO LAUNCH'
+};
 
 // chapterごとの「画像(index) -> 段落(index)」対応表。
 // 例: 1章の3枚目画像に5段落目を表示したい場合は { 1: { 2: 4 } }
@@ -1502,6 +1507,29 @@ function isArchiveStoryTitleDemoFinalSlide(index) {
         nextSlide.paragraphIndex !== slide.paragraphIndex;
 }
 
+async function playArchiveStoryTitleDemoOutro(sessionId) {
+    const container = document.getElementById('story-scroll-container');
+    const overlay = getArchiveStoryChapterTransitionOverlay();
+    if (!overlay) return false;
+
+    isArchiveStoryChapterTransitioning = true;
+    const title = overlay.querySelector('.archive-chapter-transition-title');
+    const subtitle = overlay.querySelector('.archive-chapter-transition-subtitle');
+    if (title) title.textContent = ARCHIVE_STORY_TITLE_DEMO_OUTRO.title;
+    if (subtitle) subtitle.textContent = ARCHIVE_STORY_TITLE_DEMO_OUTRO.subtitle;
+
+    overlay.classList.remove('title-visible');
+    overlay.classList.add('active');
+    if (container) container.classList.add('archive-chapter-fading-out');
+
+    const fadeOk = await waitArchiveTyping(ARCHIVE_STORY_CHAPTER_FADE_MS, sessionId);
+    if (!fadeOk || sessionId !== archiveStoryTypingSessionId || gameState !== 'STORY') return false;
+
+    overlay.classList.add('title-visible');
+    const outroOk = await waitArchiveTyping(ARCHIVE_STORY_TITLE_DEMO_OUTRO_MS, sessionId);
+    return !!(outroOk && sessionId === archiveStoryTypingSessionId && gameState === 'STORY');
+}
+
 function getArchiveStoryBgmChapter(slide) {
     if (!slide || !Number.isInteger(slide.chapter) || slide.chapter < 1) return null;
     return Math.max(1, Math.min(5, slide.chapter));
@@ -1679,7 +1707,9 @@ function scheduleArchiveStoryAutoAdvance(sessionId) {
         if (!isArchiveStoryAutoPlaying || gameState !== 'STORY' || sessionId !== archiveStoryTypingSessionId) return;
 
         if (isArchiveStoryAutoPreview && isArchiveStoryTitleDemoFinalSlide(archiveStoryCurrentSlideIndex)) {
-            exitArchiveStoryAutoPreview();
+            playArchiveStoryTitleDemoOutro(sessionId).then((ok) => {
+                if (ok) exitArchiveStoryAutoPreview();
+            });
             return;
         }
 
