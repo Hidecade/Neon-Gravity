@@ -191,7 +191,6 @@ function damageBossReactor(e, reactor, damage, hitX, hitY) {
             });
         }
         reactor.sparkTimer = 0;
-        reactor.counterLaserTimer = -reactor.index * 11;
     }
 
     if (areAllBossReactorsDestroyed(e)) exposeBossCore(e);
@@ -206,7 +205,6 @@ function updateBossReactorSparks(e) {
     for (const reactor of e.reactors) {
         if (!reactor.destroyed) continue;
         reactor.sparkTimer = (reactor.sparkTimer || 0) + 1;
-        updateDestroyedReactorCounterLaser(e, reactor);
         const interval = e.type === 'battleship' ? 1 : 2;
         if (reactor.sparkTimer % interval !== 0) continue;
 
@@ -231,45 +229,6 @@ function updateBossReactorSparks(e) {
             spawnRingObj({ x: pos.x, y: pos.y, r: pos.radius * 0.75, color: e.color || '#ff3344', life: 0.28, lineWidth: 4 });
         }
     }
-}
-
-function updateDestroyedReactorCounterLaser(e, reactor) {
-    if (!e || e.type !== 'battleship' || !reactor || !reactor.destroyed) return;
-    if (gameState !== 'PLAYING' && gameState !== 'DYING') return;
-
-    reactor.counterLaserTimer = (reactor.counterLaserTimer || 0) + 1;
-    const interval = 150;
-    const warningFrame = interval - 26;
-    const phase = ((reactor.counterLaserTimer % interval) + interval) % interval;
-    const pos = getBossReactorWorldPosition(e, reactor.index);
-
-    if (phase === warningFrame && typeof spawnRingObj === 'function') {
-        spawnRingObj({ x: pos.x, y: pos.y, r: pos.radius * 1.05, color: '#ff3344', life: 0.36, lineWidth: 4 });
-        spawnRingObj({ x: pos.x, y: pos.y, r: pos.radius * 1.85, color: '#ffffff', life: 0.28, lineWidth: 2 });
-    }
-
-    if (phase !== 0) return;
-
-    const shotAngle = Math.atan2(player.y - pos.y, player.x - pos.x);
-    const bulletSpd = 19 * SPEED_SCALE * BATTLESHIP_PROJECTILE_SPEED_MULT;
-    for (let i = -1; i <= 1; i++) {
-        const a = shotAngle + i * 0.11;
-        spawnEnemyBulletObj({
-            x: pos.x,
-            y: pos.y,
-            vx: Math.cos(a) * bulletSpd,
-            vy: Math.sin(a) * bulletSpd,
-            life: 170,
-            color: '#ff3344',
-            isLaserMissile: true
-        });
-    }
-
-    if (typeof spawnRingObj === 'function') {
-        spawnRingObj({ x: pos.x, y: pos.y, r: pos.radius * 1.3, color: '#ff3344', life: 0.24, lineWidth: 4 });
-    }
-    if (typeof distortGrid === 'function') distortGrid(pos.x, pos.y, 36, pos.radius * 3.2);
-    if (typeof AudioSys !== 'undefined' && isOnScreen(e)) AudioSys.playSE('ark_laser', pos.x, pos.y);
 }
 
 function hitBossReactorAtPoint(e, x, y, damage) {
@@ -1112,6 +1071,35 @@ function updateBossSpecialAI(e) {
     updateBossAI(e);
 }
 
+function updateBattleshipCoreOrbitMovement(e) {
+    if (e.coreOrbitDir === undefined) e.coreOrbitDir = Math.random() < 0.5 ? -1 : 1;
+
+    const dx = e.x - player.x;
+    const dy = e.y - player.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const ux = dx / dist;
+    const uy = dy / dist;
+    const tx = -uy * e.coreOrbitDir;
+    const ty = ux * e.coreOrbitDir;
+    const desiredRadius = 380 * G_SCALE;
+    const radialError = dist - desiredRadius;
+
+    const tangentAccel = 0.028 * SPEED_SCALE;
+    const radialAccel = Math.max(-0.06, Math.min(0.06, radialError * 0.00022)) * SPEED_SCALE;
+    e.vx += tx * tangentAccel - ux * radialAccel;
+    e.vy += ty * tangentAccel - uy * radialAccel;
+
+    const maxSpeed = Math.max(e.speed * 3.2, 6.8 * SPEED_SCALE);
+    const cv = Math.hypot(e.vx, e.vy);
+    if (cv > maxSpeed) {
+        e.vx = (e.vx / cv) * maxSpeed;
+        e.vy = (e.vy / cv) * maxSpeed;
+    }
+
+    e.vx *= 0.992;
+    e.vy *= 0.992;
+}
+
 function updateBattleshipAI(e) {
     updateBossReactorSparks(e);
 
@@ -1142,7 +1130,9 @@ function updateBattleshipAI(e) {
     const dy = player.y - e.y;
     const d = Math.hypot(dx, dy) || 0.1;
 
-    if (isDesperationMode) {
+    if (e.coreExposed) {
+        updateBattleshipCoreOrbitMovement(e);
+    } else if (isDesperationMode) {
         e.vx *= 0.95; e.vy *= 0.95;
     } else {
         const cycle = e.fireTimer % 1380;
