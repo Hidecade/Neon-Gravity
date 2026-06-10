@@ -14,6 +14,42 @@
     transition: opacity 0.26s ease;
 }
 
+#main-title-overlay::before,
+#title-overlay::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(180, 255, 235, 0.055) 0,
+            rgba(180, 255, 235, 0.055) 1px,
+            rgba(0, 0, 0, 0) 3px,
+            rgba(0, 0, 0, 0) 7px
+        ),
+        radial-gradient(ellipse at 50% 46%, rgba(120, 255, 220, 0.07) 0%, rgba(0, 0, 0, 0) 58%);
+    mix-blend-mode: screen;
+    opacity: 0.82;
+}
+
+#main-title-overlay::after,
+#title-overlay::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    background:
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0) 18%, rgba(0, 255, 180, 0.026) 50%, rgba(0, 0, 0, 0.18)),
+        radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.46) 78%, #000 100%);
+    box-shadow:
+        inset 0 0 42px rgba(0, 0, 0, 0.96),
+        inset 0 0 120px rgba(0, 0, 0, 0.92);
+    animation: vectrexCrtFlicker 5.2s steps(2, end) infinite;
+}
+
 #main-title-image {
     position: absolute;
     inset: 0;
@@ -21,22 +57,36 @@
     height: 100%;
     object-fit: contain;
     object-position: center center;
-    filter: saturate(1.08) contrast(1.05);
-    transform: scale(1.1);
+    opacity: 0.72;
+    filter:
+        grayscale(1)
+        contrast(1.58)
+        brightness(0.7)
+        drop-shadow(0 0 5px rgba(170, 255, 230, 0.85))
+        drop-shadow(0 0 18px rgba(0, 255, 190, 0.42));
+    mix-blend-mode: screen;
+    transform: scale(1.08);
     transform-origin: center center;
+    animation: vectrexImageBloom 4.8s ease-in-out infinite;
 }
 
 #main-title-vignette {
     position: absolute;
     inset: 0;
+    z-index: 1;
     pointer-events: none;
     background:
-        radial-gradient(circle at 50% 42%, rgba(0, 0, 0, 0) 46%, rgba(0, 0, 0, 0.28) 100%);
+        linear-gradient(90deg, rgba(0, 255, 185, 0) 0 48%, rgba(0, 255, 185, 0.18) 50%, rgba(0, 255, 185, 0) 52%),
+        linear-gradient(0deg, rgba(0, 255, 185, 0) 0 48%, rgba(0, 255, 185, 0.12) 50%, rgba(0, 255, 185, 0) 52%),
+        radial-gradient(circle at 50% 42%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.58) 100%);
+    opacity: 0.82;
 }
 
 @media (orientation: portrait) {
     #main-title-vignette {
         background:
+            linear-gradient(90deg, rgba(0, 255, 185, 0) 0 48%, rgba(0, 255, 185, 0.18) 50%, rgba(0, 255, 185, 0) 52%),
+            linear-gradient(0deg, rgba(0, 255, 185, 0) 0 48%, rgba(0, 255, 185, 0.12) 50%, rgba(0, 255, 185, 0) 52%),
             linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.72) 8%, rgba(0, 0, 0, 0) 24%, rgba(0, 0, 0, 0) 66%, rgba(0, 0, 0, 0.78) 88%, #000 100%),
             radial-gradient(circle at 50% 42%, rgba(0, 0, 0, 0) 46%, rgba(0, 0, 0, 0.28) 100%);
     }
@@ -45,6 +95,8 @@
 @media (orientation: landscape) {
     #main-title-vignette {
         background:
+            linear-gradient(90deg, rgba(0, 255, 185, 0) 0 48%, rgba(0, 255, 185, 0.18) 50%, rgba(0, 255, 185, 0) 52%),
+            linear-gradient(0deg, rgba(0, 255, 185, 0) 0 48%, rgba(0, 255, 185, 0.12) 50%, rgba(0, 255, 185, 0) 52%),
             linear-gradient(to right, #000 0%, rgba(0, 0, 0, 0.94) 10%, rgba(0, 0, 0, 0.34) 24%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0) 58%, rgba(0, 0, 0, 0.34) 76%, rgba(0, 0, 0, 0.94) 90%, #000 100%),
             radial-gradient(circle at 50% 42%, rgba(0, 0, 0, 0) 46%, rgba(0, 0, 0, 0.28) 100%);
     }
@@ -54,7 +106,7 @@
     position: absolute;
     left: 50%;
     bottom: calc(8vh + env(safe-area-inset-bottom));
-    z-index: 2;
+    z-index: 5;
     width: min(92vw, 920px);
     transform: translateX(-50%);
     display: flex;
@@ -71,13 +123,13 @@
     font-weight: 100;
     letter-spacing: 0.16em;
     text-indent: 0.16em;
-    color: #39ffee;
+    color: #d8fff3;
     text-transform: uppercase;
     text-shadow:
-        0 0 8px rgba(57, 255, 238, 0.9),
-        0 0 20px rgba(0, 255, 255, 0.62),
-        0 0 42px rgba(0, 120, 255, 0.36);
-    animation: mainTitlePromptPulse 1.45s ease-in-out infinite;
+        0 0 4px rgba(220, 255, 246, 0.95),
+        0 0 12px rgba(0, 255, 190, 0.72),
+        0 0 30px rgba(0, 255, 170, 0.34);
+    animation: mainTitlePromptPulse 1.45s steps(2, end) infinite;
 }
 
 @keyframes mainTitlePromptPulse {
@@ -90,10 +142,63 @@
     }
 }
 
+@keyframes vectrexCrtFlicker {
+    0%, 100% {
+        opacity: 0.86;
+    }
+
+    48% {
+        opacity: 0.78;
+    }
+
+    50% {
+        opacity: 0.92;
+    }
+
+    52% {
+        opacity: 0.8;
+    }
+}
+
+@keyframes vectrexImageBloom {
+    0%, 100% {
+        opacity: 0.68;
+        transform: scale(1.08);
+    }
+
+    50% {
+        opacity: 0.78;
+        transform: scale(1.085);
+    }
+}
+
+@keyframes vectrexTitleJitter {
+    0%, 100% {
+        transform: translate(0, 0);
+        filter: brightness(1);
+    }
+
+    48% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(1px, -1px);
+        filter: brightness(1.12);
+    }
+
+    52% {
+        transform: translate(-1px, 0);
+    }
+}
+
 #title-overlay {
     z-index: 100;
     transition: opacity 0.5s ease;
     opacity: 1;
+    background:
+        radial-gradient(ellipse at 50% 44%, rgba(0, 255, 185, 0.09) 0%, rgba(0, 50, 42, 0.05) 34%, rgba(0, 0, 0, 0.86) 76%, #000 100%),
+        #000;
 }
 
 #menu-buttons-container {
@@ -103,6 +208,117 @@
     gap: 12px;
     position: relative;
     z-index: 2;
+}
+
+#title-overlay .overlay-header,
+#title-overlay #menu-buttons-container,
+#title-overlay #menu-footer {
+    z-index: 5;
+}
+
+#title-overlay .overlay-kicker {
+    color: rgba(190, 255, 235, 0.82);
+    font-weight: 700;
+    text-shadow:
+        0 0 4px rgba(210, 255, 240, 0.7),
+        0 0 16px rgba(0, 255, 180, 0.3);
+}
+
+#title-overlay .overlay-title-main {
+    color: #eafff8;
+    text-shadow:
+        0 0 3px rgba(255, 255, 255, 0.92),
+        0 0 9px rgba(0, 255, 190, 0.78),
+        0 0 24px rgba(0, 255, 165, 0.45),
+        0 0 54px rgba(0, 255, 165, 0.22);
+    animation: vectrexTitleJitter 3.6s steps(2, end) infinite;
+}
+
+#title-overlay .overlay-title-sub {
+    color: rgba(220, 255, 242, 0.92);
+    text-shadow:
+        0 0 4px rgba(255, 255, 255, 0.64),
+        0 0 14px rgba(0, 255, 180, 0.38);
+}
+
+#title-overlay .overlay-glow-ring {
+    border-color: rgba(170, 255, 225, 0.46);
+    box-shadow:
+        0 0 9px rgba(190, 255, 230, 0.48),
+        0 0 30px rgba(0, 255, 170, 0.26),
+        inset 0 0 22px rgba(0, 255, 180, 0.06);
+}
+
+#title-overlay .overlay-glow-ring::before,
+#title-overlay .overlay-glow-ring::after {
+    border-color: rgba(170, 255, 225, 0.22);
+}
+
+#title-overlay .overlay-scanline {
+    height: 1px;
+    background: linear-gradient(
+        to right,
+        rgba(0, 0, 0, 0) 0%,
+        rgba(180, 255, 235, 0) 12%,
+        rgba(235, 255, 248, 0.96) 50%,
+        rgba(180, 255, 235, 0) 88%,
+        rgba(0, 0, 0, 0) 100%
+    );
+    box-shadow:
+        0 0 7px rgba(210, 255, 240, 0.72),
+        0 0 18px rgba(0, 255, 180, 0.38);
+}
+
+#title-overlay #menu-buttons-container .menu-btn {
+    color: #dffff4;
+    background:
+        linear-gradient(to right, rgba(0, 255, 180, 0.08), rgba(0, 0, 0, 0.46) 18%, rgba(0, 0, 0, 0.48) 82%, rgba(0, 255, 180, 0.08)),
+        rgba(0, 0, 0, 0.56);
+    border-color: rgba(180, 255, 230, 0.48);
+    border-radius: 0;
+    box-shadow:
+        0 0 5px rgba(180, 255, 230, 0.28),
+        inset 0 0 12px rgba(0, 255, 180, 0.06);
+    text-shadow:
+        0 0 4px rgba(230, 255, 247, 0.82),
+        0 0 12px rgba(0, 255, 185, 0.38);
+}
+
+#title-overlay #menu-buttons-container .menu-btn::before,
+#title-overlay #menu-buttons-container .menu-btn::after {
+    content: "";
+    width: 18px;
+    height: 1px;
+    flex: 0 0 auto;
+    background: currentColor;
+    box-shadow: 0 0 8px rgba(0, 255, 180, 0.9);
+    opacity: 0.78;
+}
+
+#title-overlay #menu-buttons-container .menu-btn::before {
+    margin-right: 12px;
+}
+
+#title-overlay #menu-buttons-container .menu-btn::after {
+    margin-left: 12px;
+}
+
+#title-overlay #menu-buttons-container .menu-btn:hover,
+#title-overlay #menu-buttons-container .menu-btn.selected {
+    color: #ffffff;
+    background:
+        linear-gradient(to right, rgba(220, 255, 240, 0.18), rgba(0, 255, 180, 0.08) 18%, rgba(0, 255, 180, 0.08) 82%, rgba(220, 255, 240, 0.18)),
+        rgba(0, 0, 0, 0.68);
+    border-color: rgba(240, 255, 250, 0.92);
+    box-shadow:
+        0 0 8px rgba(240, 255, 250, 0.6),
+        0 0 24px rgba(0, 255, 180, 0.32),
+        inset 0 0 16px rgba(0, 255, 180, 0.1);
+}
+
+#title-overlay #menu-footer {
+    color: rgba(180, 255, 232, 0.58);
+    text-shadow: 0 0 9px rgba(0, 255, 180, 0.24);
 }
 
 /* 設定で選ばれているボタンを緑色にするための専用クラス */
